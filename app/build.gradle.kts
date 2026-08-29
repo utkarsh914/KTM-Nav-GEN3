@@ -149,4 +149,9 @@ dependencies {
 
     // Backports java.time/java.nio APIs the Navigation SDK relies on to minSdk 26.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+
+    // JVM unit tests for the pure-Kotlin navigation core (model, formatters,
+    // maneuver map, encoder) - no Android/SDK dependencies, run on the JVM.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }
