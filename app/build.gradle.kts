@@ -37,6 +37,21 @@ android {
         // Public beta line, with a build stamp appended so it's easy to confirm
         // which build is actually installed on-device (Settings > Diagnostics).
         versionName = "0.2.0-beta+" + SimpleDateFormat("MMdd-HHmm").format(Date())
+
+        // Navigation SDK / Places API key, read from local.properties (gitignored).
+        // Applied at runtime via NavigationApi.setApiKey() rather than a manifest
+        // meta-data, so a KEYLESS build compiles and runs the notification
+        // fallback with nothing to fail on. Empty string = no key = fallback only.
+        buildConfigField(
+            "String",
+            "NAV_SDK_API_KEY",
+            "\"${localProps.getProperty("NAV_SDK_API_KEY", "")}\"",
+        )
+
+        // Size lever (minify stays off - see buildTypes). The Navigation SDK
+        // ships native libs for every ABI; the app targets modern 64-bit
+        // bikes/phones only. (Locale stripping is in androidResources below.)
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     signingConfigs {
@@ -72,6 +87,12 @@ android {
         compose = true
         buildConfig = true
     }
+    // Size lever: the Navigation SDK ships strings for every locale; the app
+    // authors English-only, so drop the rest. (Modern replacement for the
+    // deprecated defaultConfig.resourceConfigurations.)
+    androidResources {
+        localeFilters += listOf("en")
+    }
     // composeOptions.kotlinCompilerExtensionVersion is obsolete under Kotlin 2.x;
     // the Compose compiler now comes from the org.jetbrains.kotlin.plugin.compose plugin.
     packaging {
@@ -89,7 +110,20 @@ kotlin {
     }
 }
 
+// The Navigation SDK bundles the Google Maps SDK, and the two cannot coexist.
+// Strip play-services-maps from ALL configurations so no transitive dependency
+// drags it back in (required by the Nav SDK setup guide).
+configurations.all {
+    exclude(group = "com.google.android.gms", module = "play-services-maps")
+}
+
 dependencies {
+    // Google Navigation SDK for Android: runs Google's own turn-by-turn engine
+    // in-app and streams a NavInfo/StepInfo feed we normalise for the KTM dash.
+    // Compiled in unconditionally; activated at runtime only when a key + Play
+    // Services are present (see provider selection in the revamp plan).
+    implementation("com.google.android.libraries.navigation:navigation:7.9.0")
+
     // On-device maneuver-icon classifier (ported from the KTM Gen-3 companion
     // app's approach): a small TFLite CNN recognises the nav app's turn-icon
     // bitmap and outputs the dash turn-icon code.
