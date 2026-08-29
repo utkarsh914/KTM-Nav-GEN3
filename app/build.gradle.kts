@@ -13,16 +13,20 @@ val localProps = Properties().apply {
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "com.navigator.app"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.navigator.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
+        // Navigation SDK (Phase 2) pushes the method count past 64K; enable now
+        // so the toolchain state is final before the SDK lands.
+        multiDexEnabled = true
         // Days-since-epoch: monotonically increasing across builds, so every
         // new APK is a clean in-place update (Play Protect also treats a
         // never-incrementing versionCode as a suspicion signal).
@@ -56,23 +60,29 @@ android {
     }
 
     compileOptions {
+        // Required by the Navigation SDK (Phase 2); harmless to enable now.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // composeOptions.kotlinCompilerExtensionVersion is obsolete under Kotlin 2.x;
+    // the Compose compiler now comes from the org.jetbrains.kotlin.plugin.compose plugin.
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Kotlin 2.x: jvmTarget moved out of android.kotlinOptions into the top-level
+// compilerOptions DSL. Matches the Java 17 bytecode target in compileOptions above.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -89,7 +99,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
 
-    implementation(platform("androidx.compose:compose-bom:2024.09.03"))
+    implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -99,4 +109,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Backports java.time/java.nio APIs the Navigation SDK relies on to minSdk 26.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 }
