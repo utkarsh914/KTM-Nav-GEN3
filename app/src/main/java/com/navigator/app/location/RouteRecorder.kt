@@ -144,7 +144,7 @@ class RouteRecorder(private val context: Context) : LocationListener {
         try {
             file.writeText(
                 """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Navigator Gen3" xmlns="http://www.topografix.com/GPX/1/1" xmlns:od="urn:opendash:gpx">
+<gpx version="1.1" creator="KTM Navigator" xmlns="http://www.topografix.com/GPX/1/1" xmlns:od="urn:opendash:gpx">
 <trk><name>${file.nameWithoutExtension}</name><trkseg>
 """
             )

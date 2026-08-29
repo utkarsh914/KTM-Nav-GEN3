@@ -32,7 +32,7 @@ class RemoteModeOverlay(
     private val modes = listOf(
         Mode(AppSettings.MODE_GAMEPAD, "Gamepad", "Control phone apps"),
         Mode(AppSettings.MODE_MEDIA, "Media", "Play / pause / skip"),
-        Mode(AppSettings.MODE_DASH, "Dash menu", "Open Navigator Gen3"),
+        Mode(AppSettings.MODE_DASH, "Dash menu", "Open KTM Navigator"),
     )
 
     private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager

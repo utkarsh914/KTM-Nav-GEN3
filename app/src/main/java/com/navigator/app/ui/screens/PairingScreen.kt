@@ -201,7 +201,7 @@ fun PairingScreen(settings: AppSettings, onPaired: () -> Unit, onOpenLogs: () ->
         )
         Text(
             if (!btGranted)
-                "Navigator Gen3 needs the Nearby devices\npermission to find your bike's dash."
+                "KTM Navigator needs the Nearby devices\npermission to find your bike's dash."
             else
                 "Turn the ignition on and keep\nyour phone near the dash.",
             color = Ktm.Muted2,

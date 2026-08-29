@@ -21,7 +21,10 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.navigator.app"
+        // App identity on the device / Play Store. Kept separate from the code
+        // namespace (still com.navigator.app) - Google recommends a stable
+        // namespace, and the API key + install identity key off applicationId.
+        applicationId = "com.navigator.ktm"
         minSdk = 26
         targetSdk = 36
         // Navigation SDK (Phase 2) pushes the method count past 64K; enable now

@@ -591,7 +591,7 @@ class BccuConnectionService : LifecycleService() {
             PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Navigator Gen3")
+            .setContentTitle("KTM Navigator")
             .setContentText(status)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)

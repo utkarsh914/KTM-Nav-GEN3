@@ -229,7 +229,7 @@ private fun ColumnScope.WelcomeStep(onContinue: () -> Unit, onSkip: () -> Unit) 
         )
         Spacer(Modifier.height(14.dp))
         Text(
-            "Navigator Gen3 mirrors your notifications and navigation to the KTM dash, and turns " +
+            "KTM Navigator mirrors your notifications and navigation to the KTM dash, and turns " +
                 "the handlebar remote into a hands-free controller for your phone.",
             color = Ktm.Muted2, fontFamily = Barlow, fontSize = 15.sp, lineHeight = 22.sp,
         )
@@ -578,7 +578,7 @@ private fun ColumnScope.PermissionsStep(
     )
     Spacer(Modifier.height(6.dp))
     Text(
-        "Navigator Gen3 needs these to talk to your bike. Nothing leaves your phone.",
+        "KTM Navigator needs these to talk to your bike. Nothing leaves your phone.",
         color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp, lineHeight = 20.sp,
     )
 
