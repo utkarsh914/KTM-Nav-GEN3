@@ -30,10 +30,11 @@ interface DashOutput {
  */
 class NavigationCoordinator(
     private val scope: CoroutineScope,
-    private val provider: NavigationProvider,
+    initialProvider: NavigationProvider,
     private val output: DashOutput,
     private val encoder: KtmNavigationEncoder = KtmNavigationEncoder(),
 ) {
+    private var provider: NavigationProvider = initialProvider
     private var job: Job? = null
 
     fun start() {
@@ -47,6 +48,23 @@ class NavigationCoordinator(
         job?.cancel()
         job = null
         provider.detach()
+    }
+
+    /**
+     * Switch the active navigation source (e.g. notification <-> Google Nav SDK).
+     * Detaches the old provider, resets the encoder so the new provider's first
+     * snapshot is sent in full, and starts collecting the new one.
+     */
+    fun setProvider(newProvider: NavigationProvider) {
+        if (newProvider === provider) return
+        job?.cancel()
+        provider.detach()
+        encoder.reset()
+        provider = newProvider
+        provider.attach()
+        job = provider.state
+            .onEach { apply(encoder.encode(it)) }
+            .launchIn(scope)
     }
 
     /**

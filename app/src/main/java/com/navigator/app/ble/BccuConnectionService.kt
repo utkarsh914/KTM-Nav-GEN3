@@ -177,6 +177,11 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.sendTurnIcon(icon)
         }
 
+        /** Switch the active navigation provider (used by GoogleNavSdkController). */
+        fun setNavProviderIfRunning(provider: com.navigator.app.nav.NavigationProvider) {
+            runningInstance?.setNavProvider(provider)
+        }
+
         /** Updates the dash's center guidance view (distance/road/ETA/remaining distance), not the bottom notification banner. */
         fun sendGuidanceIfRunning(distanceText: String?, roadText: String?, etaText: String? = null, remainingDistanceText: String? = null) {
             runningInstance?.sendGuidance(distanceText, roadText, etaText, remainingDistanceText)
@@ -256,9 +261,14 @@ class BccuConnectionService : LifecycleService() {
         }
         navCoordinator = com.navigator.app.nav.NavigationCoordinator(
             scope = lifecycleScope,
-            provider = com.navigator.app.nav.providers.NotificationNavProvider,
+            initialProvider = com.navigator.app.nav.providers.NotificationNavProvider,
             output = output,
         ).also { it.start() }
+    }
+
+    /** Switch the active navigation provider (notification <-> Google Nav SDK). */
+    fun setNavProvider(provider: com.navigator.app.nav.NavigationProvider) {
+        navCoordinator?.setProvider(provider)
     }
 
     override fun onCreate() {

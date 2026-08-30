@@ -124,6 +124,10 @@ dependencies {
     // Services are present (see provider selection in the revamp plan).
     implementation("com.google.android.libraries.navigation:navigation:7.9.0")
 
+    // GoogleApiAvailability / ConnectionResult for the Play-services runtime check.
+    // The Nav SDK bundles play-services-basement but not -base, so add it explicitly.
+    implementation("com.google.android.gms:play-services-base:18.7.2")
+
     // On-device maneuver-icon classifier (ported from the KTM Gen-3 companion
     // app's approach): a small TFLite CNN recognises the nav app's turn-icon
     // bitmap and outputs the dash turn-icon code.

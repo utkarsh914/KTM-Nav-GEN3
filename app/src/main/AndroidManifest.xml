@@ -82,6 +82,11 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice|location" />
 
+        <!-- Navigation SDK binds here to stream turn-by-turn NavInfo updates. -->
+        <service
+            android:name=".nav.providers.NavInfoReceivingService"
+            android:exported="false" />
+
         <service
             android:name=".controller.RemoteControlAccessibilityService"
             android:exported="true"

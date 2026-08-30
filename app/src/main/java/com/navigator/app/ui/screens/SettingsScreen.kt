@@ -485,6 +485,26 @@ fun SettingsScreen(
                 }
             }
 
+            // ===== Google Nav SDK test (debug only, Phase 6) =====
+            if (com.navigator.app.BuildConfig.DEBUG) {
+                item {
+                    GroupCard("Navigation (debug)") {
+                        SettingsRow(
+                            "Test: Google Nav to Silk Board", showDivider = true,
+                            onClick = {
+                                (context as? android.app.Activity)?.let {
+                                    com.navigator.app.nav.providers.GoogleNavSdkController.startTest(it)
+                                }
+                            },
+                        ) { OutlinedPill("GO") }
+                        SettingsRow(
+                            "Stop Google Nav", showDivider = false,
+                            onClick = { com.navigator.app.nav.providers.GoogleNavSdkController.stop() },
+                        ) { OutlinedPill("STOP") }
+                    }
+                }
+            }
+
             // ===== Handlebar gamepad =====
             item {
                 GroupCard("Handlebar gamepad") {
