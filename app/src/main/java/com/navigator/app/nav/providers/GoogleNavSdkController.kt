@@ -33,6 +33,14 @@ object GoogleNavSdkController {
             GoogleApiAvailability.getInstance()
                 .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
+    /** Set the Nav SDK API key once (idempotent). Safe to call before showing the map. */
+    fun ensureApiKey() {
+        if (!apiKeySet && BuildConfig.NAV_SDK_API_KEY.isNotBlank()) {
+            NavigationApi.setApiKey(BuildConfig.NAV_SDK_API_KEY)
+            apiKeySet = true
+        }
+    }
+
     /** Phase-6 test entry point: navigate to Silk Board Junction. */
     fun startTest(activity: Activity) = startNavigation(activity, SILK_BOARD)
 

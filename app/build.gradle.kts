@@ -52,6 +52,11 @@ android {
         // ships native libs for every ABI; the app targets modern 64-bit
         // bikes/phones only. (Locale stripping is in androidResources below.)
         ndk { abiFilters += "arm64-v8a" }
+
+        // The bundled Maps (MapView, used by the map-pin picker) reads its key
+        // from this manifest meta-data. Same key as NAV_SDK_API_KEY; empty in a
+        // keyless build (the map UI is gated on the key being present anyway).
+        manifestPlaceholders["MAPS_API_KEY"] = localProps.getProperty("NAV_SDK_API_KEY", "")
     }
 
     signingConfigs {

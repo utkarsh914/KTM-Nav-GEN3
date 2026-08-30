@@ -47,6 +47,12 @@
         android:theme="@style/Theme.OpenDash"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- Key for the bundled Maps SDK (map-pin picker). Injected from
+             local.properties at build time; blank in a keyless build. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
