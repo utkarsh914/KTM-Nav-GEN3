@@ -178,6 +178,15 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.sendTurnIcon(icon)
         }
 
+        /**
+         * Turn the dash's center guidance view on/off. Exposed for the Symbol
+         * Testing probe, which needs the guidance view lit to render turn icons
+         * outside of an active navigation session.
+         */
+        fun setNavStateIfRunning(guidanceOn: Boolean, gpsIconOn: Boolean) {
+            runningInstance?.sendNavigationState(guidanceOn, gpsIconOn)
+        }
+
         /** Switch the active navigation provider (used by GoogleNavSdkController). */
         fun setNavProviderIfRunning(provider: com.navigator.app.nav.NavigationProvider) {
             runningInstance?.setNavProvider(provider)

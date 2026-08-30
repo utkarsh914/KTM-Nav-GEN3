@@ -84,6 +84,15 @@ fun SymbolTestScreen(onBack: () -> Unit) {
                 )
             }
             item { Eyebrow("Turn icons · center display", color = Ktm.Orange, fontSize = 11) }
+            item {
+                Text(
+                    "Roundabout probe: send RAB_SECT_1_RH … 16_RH in order and note the " +
+                        "exit-arrow clock position (e.g. 3 o'clock) for each N. That N→angle " +
+                        "map is what's needed to render Google's roundabout exits correctly.",
+                    color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
             items(BccuProtocol.TurnIcon.entries.toList()) { icon ->
                 IconTestRow(
                     label = icon.name, settings = settings, key = "turn_${icon.name}",
@@ -94,6 +103,9 @@ fun SymbolTestScreen(onBack: () -> Unit) {
                         ) { TurnIconRef(icon = icon, size = 26.dp, color = Ktm.TextPrimary) }
                     },
                     onSend = {
+                        // Light the guidance view so icons render even without an
+                        // active nav session, then send the icon + its name/code.
+                        BccuConnectionService.setNavStateIfRunning(guidanceOn = true, gpsIconOn = true)
                         BccuConnectionService.sendTurnIconIfRunning(icon)
                         BccuConnectionService.sendGuidanceIfRunning("code=${icon.binary}", icon.name)
                     },
