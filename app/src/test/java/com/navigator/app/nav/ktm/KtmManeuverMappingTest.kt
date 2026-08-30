@@ -13,9 +13,8 @@ class KtmManeuverMappingTest {
     private fun map(
         m: NormalizedManeuver,
         rotation: RoundaboutRotation = RoundaboutRotation.UNKNOWN,
-        exit: Int? = null,
         drivingSide: DrivingSide = DrivingSide.UNKNOWN,
-    ) = KtmManeuverMapping.toTurnIcon(m, rotation, exit, drivingSide)
+    ) = KtmManeuverMapping.toTurnIcon(m, rotation, drivingSide)
 
     @Test fun basicTurns() {
         assertEquals(TurnIcon.START, map(DEPART))
@@ -55,39 +54,50 @@ class KtmManeuverMappingTest {
         assertEquals(TurnIcon.UNDEFINED, map(UNKNOWN))
     }
 
-    @Test fun roundaboutWithExit_rotationSelectsRhLh() {
-        assertEquals(TurnIcon.RAB_SECT_2_RH, map(ROUNDABOUT_RIGHT, RoundaboutRotation.CLOCKWISE, exit = 2))
-        assertEquals(TurnIcon.RAB_SECT_2_LH, map(ROUNDABOUT_RIGHT, RoundaboutRotation.COUNTERCLOCKWISE, exit = 2))
-        assertEquals(TurnIcon.RAB_SECT_1_RH, map(ROUNDABOUT_LEFT, RoundaboutRotation.CLOCKWISE, exit = 1))
+    @Test fun roundaboutExitByAngle_rhBlock() {
+        // RH (clockwise): section chosen by exit turn-angle, N = 8 - angle/22.5.
+        // Hardware-verified: N1 sharpest right ... N8 straight ... N16 U-turn.
+        val cw = RoundaboutRotation.CLOCKWISE
+        assertEquals(TurnIcon.RAB_SECT_2_RH, map(ROUNDABOUT_SHARP_RIGHT, cw))  // +135 -> N2
+        assertEquals(TurnIcon.RAB_SECT_4_RH, map(ROUNDABOUT_RIGHT, cw))        // +90  -> N4
+        assertEquals(TurnIcon.RAB_SECT_6_RH, map(ROUNDABOUT_SLIGHT_RIGHT, cw)) // +45  -> N6
+        assertEquals(TurnIcon.RAB_SECT_8_RH, map(ROUNDABOUT_STRAIGHT, cw))     //  0   -> N8
+        assertEquals(TurnIcon.RAB_SECT_8_RH, map(ROUNDABOUT_EXIT, cw))         //  0   -> N8
+        assertEquals(TurnIcon.RAB_SECT_10_RH, map(ROUNDABOUT_SLIGHT_LEFT, cw)) // -45  -> N10
+        assertEquals(TurnIcon.RAB_SECT_12_RH, map(ROUNDABOUT_LEFT, cw))        // -90  -> N12
+        assertEquals(TurnIcon.RAB_SECT_14_RH, map(ROUNDABOUT_SHARP_LEFT, cw))  // -135 -> N14
     }
 
-    @Test fun roundaboutExitClampedToSixteen() {
-        assertEquals(TurnIcon.RAB_SECT_16_RH, map(ROUNDABOUT_RIGHT, RoundaboutRotation.CLOCKWISE, exit = 20))
+    @Test fun roundaboutExitByAngle_lhBlockMirrored() {
+        // LH (counter-clockwise): mirrored, N = 8 + angle/22.5.
+        val ccw = RoundaboutRotation.COUNTERCLOCKWISE
+        assertEquals(TurnIcon.RAB_SECT_14_LH, map(ROUNDABOUT_SHARP_RIGHT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_12_LH, map(ROUNDABOUT_RIGHT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_10_LH, map(ROUNDABOUT_SLIGHT_RIGHT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_8_LH, map(ROUNDABOUT_STRAIGHT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_6_LH, map(ROUNDABOUT_SLIGHT_LEFT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_4_LH, map(ROUNDABOUT_LEFT, ccw))
+        assertEquals(TurnIcon.RAB_SECT_2_LH, map(ROUNDABOUT_SHARP_LEFT, ccw))
     }
 
     @Test fun roundaboutRotationFromDrivingSideWhenUnknown() {
         // Left-hand traffic -> clockwise -> RH; right-hand traffic -> CCW -> LH.
-        assertEquals(TurnIcon.RAB_SECT_3_RH, map(ROUNDABOUT_RIGHT, exit = 3, drivingSide = DrivingSide.LEFT))
-        assertEquals(TurnIcon.RAB_SECT_3_LH, map(ROUNDABOUT_RIGHT, exit = 3, drivingSide = DrivingSide.RIGHT))
+        assertEquals(TurnIcon.RAB_SECT_4_RH, map(ROUNDABOUT_RIGHT, drivingSide = DrivingSide.LEFT))
+        assertEquals(TurnIcon.RAB_SECT_12_LH, map(ROUNDABOUT_RIGHT, drivingSide = DrivingSide.RIGHT))
     }
 
     @Test fun roundaboutDefaultsToClockwiseRhWhenAllUnknown() {
-        assertEquals(TurnIcon.RAB_SECT_2_RH, map(ROUNDABOUT_RIGHT, exit = 2))
+        assertEquals(TurnIcon.RAB_SECT_4_RH, map(ROUNDABOUT_RIGHT))
     }
 
-    @Test fun roundaboutWithoutExit_fallsBackToShape() {
-        assertEquals(TurnIcon.QUITE_RIGHT, map(ROUNDABOUT_RIGHT))
-        assertEquals(TurnIcon.HEAVY_LEFT, map(ROUNDABOUT_SHARP_LEFT))
-        assertEquals(TurnIcon.LIGHT_RIGHT, map(ROUNDABOUT_SLIGHT_RIGHT))
-        assertEquals(TurnIcon.GO_STRAIGHT, map(ROUNDABOUT_STRAIGHT))
+    @Test fun roundaboutUTurnIsPlainArrow() {
+        // Product decision: a roundabout U-turn shows the plain U-turn arrow.
         assertEquals(TurnIcon.UTURN_RIGHT, map(ROUNDABOUT_UTURN, RoundaboutRotation.CLOCKWISE))
         assertEquals(TurnIcon.UTURN_LEFT, map(ROUNDABOUT_UTURN, RoundaboutRotation.COUNTERCLOCKWISE))
-        assertEquals(TurnIcon.UNDEFINED, map(ROUNDABOUT_GENERIC))
     }
 
-    @Test fun roundaboutStraightWithExitStillUsesSection() {
-        // A known exit is the richest representation regardless of shape.
-        assertEquals(TurnIcon.RAB_SECT_3_RH, map(ROUNDABOUT_STRAIGHT, RoundaboutRotation.CLOCKWISE, exit = 3))
+    @Test fun roundaboutGenericHasNoArrow() {
+        assertEquals(TurnIcon.UNDEFINED, map(ROUNDABOUT_GENERIC))
     }
 
     @Test fun everyManeuverMapsWithoutThrowing() {

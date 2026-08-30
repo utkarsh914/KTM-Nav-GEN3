@@ -241,7 +241,9 @@ bike; the Nav SDK `Simulator` is billable, so prefer the replay harness for rout
 - 16 KB native-lib alignment (`libtensorflowlite_jni.so`, `libandroidx.graphics.path.so`).
 - BLE-layer deprecation warnings (`getDefaultAdapter`, GATT callback overrides) — left in the
   frozen layer.
-- Roundabout RH/LH hardware verification (reverse-engineered default).
+- Roundabout RH/LH + section→angle mapping: **hardware-verified** (RH = clockwise; `RAB_SECT_N`
+  is an exit-angle glyph, `turnAngle = (8−N)·22.5°`); glyph now chosen by exit angle, not the
+  ordinal exit count.
 - Off-main-thread TFLite in the notification path; migrate the in-app UI to read normalized
   state; units hardcoded metric in the SDK provider; automatic provider selection is
   toggle-gated but not location/region aware.

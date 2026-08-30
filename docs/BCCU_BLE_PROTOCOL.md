@@ -89,9 +89,13 @@ From `BccuProtocol.kt`.
 `RAB_SECT_1_RH(26)`…`RAB_SECT_16_RH(41)` (right-hand roundabout sections),
 `RAB_SECT_1_LH(42)`…`RAB_SECT_16_LH(57)` (left-hand roundabout sections).
 
-Roundabout section `n` = base + (n−1); RH base 26, LH base 42; `n` clamped 1..16. Unknown
-codes do not render — the dash draws its own glyphs, so we never emit a wrong arrow (map
-UNKNOWN → `UNDEFINED`).
+Roundabout section `n` = base + (n−1); RH base 26, LH base 42; `n` clamped 1..16. **Confirmed
+on hardware:** `n` is the exit **angle** (a fixed glyph per code), *not* an ordinal exit
+count — RH sweeps counter-clockwise as `n` grows (n=1 sharpest right, n=8 straight-through,
+n=16 U-turn), so `turnAngle = (8 − n)·22.5°`; LH is mirrored. RH = clockwise circulation. The
+app selects `n` from the exit's turn angle (see `KtmManeuverMapping.roundaboutSection`).
+Unknown codes do not render — the dash draws its own glyphs, so we never emit a wrong arrow
+(map UNKNOWN → `UNDEFINED`).
 
 ### 2.2 `NotificationIcon` (byte)
 `UNKNOWN(0)`, `NOTIFICATION_REROUTING(1)`, `NOTIFICATION_WAYPOINT(2)`, `TARGET_REACHED(3)`,

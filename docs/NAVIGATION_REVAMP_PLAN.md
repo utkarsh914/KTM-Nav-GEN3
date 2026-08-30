@@ -319,9 +319,9 @@ the 58 KTM codes.
 | OFF_RAMP_LEFT / *_SLIGHT_LEFT / *_SHARP_LEFT | LEAVE_HIGHWAY_LEFT_LANE(17) |
 | OFF_RAMP_RIGHT / *_SLIGHT_RIGHT / *_SHARP_RIGHT | LEAVE_HIGHWAY_RIGHT_LANE(16) |
 | UTURN_LEFT / UTURN_RIGHT / ROUNDABOUT_UTURN | UTURN_LEFT(4) / UTURN_RIGHT(3) (by rotation) |
-| ROUNDABOUT_* + rotation CW  + exit n | RAB_SECT_{n}_RH (26–41), n clamped 1..16 |
-| ROUNDABOUT_* + rotation CCW + exit n | RAB_SECT_{n}_LH (42–57), n clamped 1..16 |
-| ROUNDABOUT_* with exit null/-1 | fallback by shape → nearest graded turn (see below) |
+| ROUNDABOUT_* (by exit **angle**, rotation CW) | RAB_SECT_{N}_RH, N = 8 − angle/22.5 (see below) |
+| ROUNDABOUT_* (by exit **angle**, rotation CCW) | RAB_SECT_{N}_LH, N = 8 + angle/22.5 (mirrored) |
+| ROUNDABOUT_GENERIC (rotation known, exit unknown) | UNDEFINED(1) — no direction to show |
 | DESTINATION / DESTINATION_LEFT / DESTINATION_RIGHT | END(21) |
 | FERRY_BOAT / FERRY_TRAIN | FERRY(22) |
 | UNKNOWN / anything unmapped | UNDEFINED(1) — never emit a wrong arrow |
@@ -331,18 +331,22 @@ guessing: left-hand-traffic (India) → clockwise roundabouts. `roundaboutRotati
 from the SDK maneuver's own clockwise/counterclockwise label; `drivingSide` is the tie-break
 when a provider doesn't supply rotation.
 
-**RH/LH is Reverse-engineered** and must be verified on hardware. The repo already emits
-`RAB_SECT_{n}_RH` for Indian riders (`TurnIconHeuristic.kt:141`) and renders `_LH` as
-"exits left" (`TurnIconGlyph.kt:167`). Theory (LHT→clockwise, and `_LH`≈left-hand traffic)
-suggests `_LH` for India, i.e. the opposite — so **empirical wins**: push both variants to
-the dash via `SymbolTestScreen.kt:97` / `TurnCalibrationScreen.kt:131` and lock the mapping
-to what actually renders correctly. Overridable via the existing Turn-icon Calibration
-screen regardless.
+**RH/LH + section→angle are HARDWARE-VERIFIED (updated).** Confirmed on a KTM 390 Adventure
+by pushing `RAB_SECT_1..16_RH` to the dash via `SymbolTestScreen`:
+- **RH = clockwise** circulation (matches LHT→clockwise); `_LH` is the mirrored block.
+- `RAB_SECT_N` is an **exit-angle** glyph, **not** an ordinal exit count — the dash renders a
+  fixed glyph per code. The RH exit arrow sweeps **counter-clockwise as N increases**:
+  N=1 sharpest right, **N=4 = 90° right, N=8 = straight-through, N=12 = left, N=16 = U-turn**,
+  i.e. `turnAngle = (8 − N)·22.5°`. LH is mirrored.
 
-**Roundabout-without-exit fallback.** KTM has no generic roundabout glyph; every
-`RAB_SECT_n` needs an `n`. When exit is null/-1 we do **not** invent one — we map by the
-roundabout's shape to the nearest graded turn (`ROUNDABOUT_SHARP_LEFT`→HEAVY_LEFT, etc.),
-or `GO_STRAIGHT` for `ROUNDABOUT_STRAIGHT`, or `UNDEFINED` for `ROUNDABOUT_GENERIC`.
+**Exit selection is by ANGLE, not ordinal (bug fix).** The earlier design mapped Google's
+ordinal `roundaboutTurnNumber` onto `RAB_SECT_{n}` — wrong, because the dash can't represent
+an ordinal. We now pick the section from the exit's **turn angle**, taken from the SDK
+maneuver bucket at 45° resolution (`ROUNDABOUT_SLIGHT/ /SHARP _LEFT/RIGHT`, `_STRAIGHT`,
+`_EXIT`). Resulting RH sections: SHARP_RIGHT→2, RIGHT→4, SLIGHT_RIGHT→6, STRAIGHT/EXIT→8,
+SLIGHT_LEFT→10, LEFT→12, SHARP_LEFT→14 (LH mirrored). `ROUNDABOUT_UTURN` shows the plain
+`UTURN_LEFT/RIGHT` arrow (product decision), `ROUNDABOUT_GENERIC` → `UNDEFINED`. The ordinal
+`roundaboutExit` is still captured for logging but does not drive the glyph.
 
 **Newly-assigned KTM codes** (previously unused): `KEEP_MIDDLE(9)`,
 `HIGHWAY_KEEP_LEFT(19)` / `HIGHWAY_KEEP_RIGHT(18)` (used for highway keep/fork variants when

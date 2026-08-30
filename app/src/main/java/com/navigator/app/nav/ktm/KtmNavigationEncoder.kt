@@ -102,7 +102,6 @@ class KtmNavigationEncoder(
                         KtmManeuverMapping.toTurnIcon(
                             maneuver = state.maneuver,
                             rotation = state.roundaboutRotation,
-                            exit = state.roundaboutExit,
                             drivingSide = state.drivingSide,
                         )
                     } else {

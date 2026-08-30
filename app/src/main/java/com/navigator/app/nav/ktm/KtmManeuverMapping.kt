@@ -4,6 +4,7 @@ import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.model.DrivingSide
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.RoundaboutRotation
+import kotlin.math.roundToInt
 
 /**
  * The single, lossy reduction from the rich [NormalizedManeuver] vocabulary to
@@ -13,24 +14,17 @@ import com.navigator.app.nav.model.RoundaboutRotation
  * [NormalizedManeuver] will fail to compile here until it is mapped - a
  * tripwire so new SDK maneuvers can never silently fall through to a wrong arrow.
  *
- * Roundabout RH/LH selection is **reverse-engineered** (default clockwise->RH)
- * and overridable via the existing Turn-icon Calibration screen; verify on
- * hardware (see the revamp plan §5.3).
+ * Roundabout RH/LH selection and the section->angle law are **hardware-verified**
+ * (see [roundaboutSection] and the revamp plan §5.3): RH = clockwise circulation.
  */
 object KtmManeuverMapping {
 
     fun toTurnIcon(
         maneuver: NormalizedManeuver,
         rotation: RoundaboutRotation = RoundaboutRotation.UNKNOWN,
-        exit: Int? = null,
         drivingSide: DrivingSide = DrivingSide.UNKNOWN,
     ): TurnIcon {
         val clockwise = resolveClockwise(rotation, drivingSide)
-
-        // For any roundabout: prefer the exact section+exit glyph when we know
-        // the exit; otherwise fall back to the closest graded shape.
-        fun rab(shapeFallback: TurnIcon): TurnIcon =
-            if (exit != null && exit >= 1) roundaboutIcon(exit, clockwise) else shapeFallback
 
         return when (maneuver) {
             NormalizedManeuver.DEPART -> TurnIcon.START
@@ -79,17 +73,25 @@ object KtmManeuverMapping {
             NormalizedManeuver.UTURN_LEFT -> TurnIcon.UTURN_LEFT
             NormalizedManeuver.UTURN_RIGHT -> TurnIcon.UTURN_RIGHT
 
-            NormalizedManeuver.ROUNDABOUT_SLIGHT_LEFT -> rab(TurnIcon.LIGHT_LEFT)
-            NormalizedManeuver.ROUNDABOUT_LEFT -> rab(TurnIcon.QUITE_LEFT)
-            NormalizedManeuver.ROUNDABOUT_SHARP_LEFT -> rab(TurnIcon.HEAVY_LEFT)
-            NormalizedManeuver.ROUNDABOUT_SLIGHT_RIGHT -> rab(TurnIcon.LIGHT_RIGHT)
-            NormalizedManeuver.ROUNDABOUT_RIGHT -> rab(TurnIcon.QUITE_RIGHT)
-            NormalizedManeuver.ROUNDABOUT_SHARP_RIGHT -> rab(TurnIcon.HEAVY_RIGHT)
-            NormalizedManeuver.ROUNDABOUT_STRAIGHT -> rab(TurnIcon.GO_STRAIGHT)
-            NormalizedManeuver.ROUNDABOUT_EXIT -> rab(TurnIcon.GO_STRAIGHT)
+            // Roundabout exits: the section glyph is chosen by the exit's TURN
+            // ANGLE (right = +, left = -, straight = 0), not Google's ordinal exit
+            // count - the dash renders a fixed glyph per code and can't show an
+            // ordinal. Buckets come at 45deg resolution from the SDK maneuver.
+            NormalizedManeuver.ROUNDABOUT_SLIGHT_LEFT -> roundaboutSection(-45, clockwise)
+            NormalizedManeuver.ROUNDABOUT_LEFT -> roundaboutSection(-90, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SHARP_LEFT -> roundaboutSection(-135, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SLIGHT_RIGHT -> roundaboutSection(45, clockwise)
+            NormalizedManeuver.ROUNDABOUT_RIGHT -> roundaboutSection(90, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SHARP_RIGHT -> roundaboutSection(135, clockwise)
+            NormalizedManeuver.ROUNDABOUT_STRAIGHT -> roundaboutSection(0, clockwise)
+            NormalizedManeuver.ROUNDABOUT_EXIT -> roundaboutSection(0, clockwise)
+            // A roundabout U-turn shows the plain U-turn arrow (product decision),
+            // not a roundabout-section glyph.
             NormalizedManeuver.ROUNDABOUT_UTURN ->
-                rab(if (clockwise) TurnIcon.UTURN_RIGHT else TurnIcon.UTURN_LEFT)
-            NormalizedManeuver.ROUNDABOUT_GENERIC -> rab(TurnIcon.UNDEFINED)
+                if (clockwise) TurnIcon.UTURN_RIGHT else TurnIcon.UTURN_LEFT
+            // Rotation known but exit direction unknown: no arrow (the dash has no
+            // generic roundabout glyph, and we won't invent a direction).
+            NormalizedManeuver.ROUNDABOUT_GENERIC -> TurnIcon.UNDEFINED
 
             NormalizedManeuver.DESTINATION,
             NormalizedManeuver.DESTINATION_LEFT,
@@ -121,11 +123,22 @@ object KtmManeuverMapping {
         }
 
     /**
-     * Section glyph for a roundabout exit. RH block is binary 26..41
-     * (RAB_SECT_1_RH..16_RH), LH block is 42..57. Exit clamped to 1..16.
+     * Section glyph for a roundabout exit, chosen by the exit's TURN ANGLE
+     * ([turnAngleDeg]: right = +, left = -, straight = 0, U-turn = ±180) - NOT by
+     * Google's ordinal exit count (the dash renders a fixed glyph per code and has
+     * no route geometry, so `RAB_SECT_1..16` can only be 16 fixed exit-angle
+     * glyphs, ~22.5° apart).
+     *
+     * Hardware-verified on the RH block (binary 26..41): the exit arrow rotates
+     * counter-clockwise as N increases - N=1 sharpest right, N=4 = 90° right,
+     * N=8 = straight through, N=12 = left, N=16 = U-turn - i.e.
+     *   turnAngle = (8 - N) * 22.5°   ⟹   N = 8 - turnAngle / 22.5
+     * The LH block (42..57) is mirrored (N = 8 + turnAngle / 22.5). RH vs LH is the
+     * clockwise choice from [resolveClockwise] (RH = clockwise). N clamped 1..16.
      */
-    private fun roundaboutIcon(exit: Int, clockwise: Boolean): TurnIcon {
-        val n = exit.coerceIn(1, 16)
+    private fun roundaboutSection(turnAngleDeg: Int, clockwise: Boolean): TurnIcon {
+        val steps = (turnAngleDeg / 22.5).roundToInt() // 22.5° per section
+        val n = (if (clockwise) 8 - steps else 8 + steps).coerceIn(1, 16)
         val base = if (clockwise) 26 else 42
         return TurnIcon.fromBinary(base + (n - 1))
     }

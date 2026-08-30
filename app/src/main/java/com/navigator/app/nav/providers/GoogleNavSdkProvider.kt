@@ -145,7 +145,11 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         val step = navInfo.currentStep
         val mapped = step?.let { GoogleNavManeuverMap.toNormalized(it.maneuver) }
             ?: MappedManeuver(NormalizedManeuver.UNKNOWN)
+        // Ordinal exit count. Retained for logging/diagnostics only: the dash
+        // renders roundabout glyphs by exit ANGLE (from the maneuver bucket), not
+        // by ordinal, so this does not drive the icon (see KtmManeuverMapping).
         val exit = step?.roundaboutTurnNumber?.let { if (it >= 1) it else null }
+        if (exit != null) AppLogger.log("Nav", "roundabout exit #$exit (maneuver=${mapped.maneuver}, rot=${mapped.rotation})")
         val side = step?.let { GoogleNavManeuverMap.drivingSide(it.drivingSide) } ?: DrivingSide.UNKNOWN
         val road = step?.let { it.simpleRoadName ?: it.fullRoadName }
 
