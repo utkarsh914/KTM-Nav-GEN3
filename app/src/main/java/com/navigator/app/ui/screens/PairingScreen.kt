@@ -96,7 +96,10 @@ fun PairingScreen(settings: AppSettings, onPaired: () -> Unit, onOpenLogs: () ->
         }
     }
 
-    val adapter = remember { context.getSystemService(BluetoothManager::class.java).adapter }
+    // Nullable: getSystemService can be null on a device without Bluetooth, and
+    // getAdapter() is itself nullable - keeping the type nullable makes the ?. calls
+    // below correct rather than "unnecessary safe call" warnings.
+    val adapter: BluetoothAdapter? = remember { context.getSystemService(BluetoothManager::class.java)?.adapter }
 
     // Whether we may scan; without this the scanner call throws a
     // SecurityException and crashed the app on launch. Re-checked after the
@@ -131,7 +134,9 @@ fun PairingScreen(settings: AppSettings, onPaired: () -> Unit, onOpenLogs: () ->
         // listing bonds lets the rider pick their bike directly ("use my saved
         // bike"). KTM-named ones sort to the top in the UI.
         try {
-            adapter?.bondedDevices?.forEach { dev ->
+            // adapter is smart-cast non-null here: line 129's `?: return` guarantees it.
+            // (bondedDevices itself is still nullable, hence the ?. stays on it.)
+            adapter.bondedDevices?.forEach { dev ->
                 if (foundDevices.none { it.device.address == dev.address }) {
                     foundDevices.add(FoundDevice(dev, 0))
                 }

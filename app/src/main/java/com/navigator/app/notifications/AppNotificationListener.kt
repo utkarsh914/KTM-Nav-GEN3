@@ -66,7 +66,11 @@ class AppNotificationListener : NotificationListenerService() {
             // Downloads copy, so raw values must never be emitted in a release.
             if (com.navigator.app.BuildConfig.DEBUG) {
                 for (key in extras.keySet()) {
-                    AppLogger.log("Notif", "  extra[$key] = ${extras.get(key)}")
+                    // Bundle.get(String) is deprecated (no typed replacement exists for a
+                    // dump of arbitrary-type extras); fine for this debug-only diagnostic.
+                    @Suppress("DEPRECATION")
+                    val value = extras.get(key)
+                    AppLogger.log("Notif", "  extra[$key] = $value")
                 }
             }
             NotificationRepository.updateNavText(packageName, navText)

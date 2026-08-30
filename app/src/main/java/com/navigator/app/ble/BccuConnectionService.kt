@@ -12,6 +12,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -564,8 +565,9 @@ class BccuConnectionService : LifecycleService() {
         _connectionState.value = ConnectionState.CONNECTING
         connectingSinceMs = System.currentTimeMillis()
         pendingAutoConnect = autoConnect
-        val adapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-            ?: BluetoothAdapter.getDefaultAdapter()
+        // getSystemService(BluetoothManager) is the non-deprecated path (getDefaultAdapter()
+        // is deprecated since API 31); on any BLE-capable minSdk-26 device this is non-null.
+        val adapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
         if (adapter == null || !adapter.isEnabled) {
             // Bluetooth is off; stay CONNECTING and let the AutoConnectReceiver's
             // adapter-on broadcast (or the next onStartCommand) retry.
@@ -790,7 +792,10 @@ class BccuConnectionService : LifecycleService() {
             }
         }
 
-        @Suppress("DEPRECATION")
+        // Legacy dispatch path for API < 33 (the value-carrying overload below is
+        // used on 33+). OVERRIDE_DEPRECATION covers "overrides a deprecated member";
+        // DEPRECATION covers the c.value (getValue()) read inside.
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic) {
             try {
                 handleIncoming(c.uuid, c.value ?: ByteArray(0))
@@ -811,7 +816,8 @@ class BccuConnectionService : LifecycleService() {
             if (status == BluetoothGatt.GATT_SUCCESS) _signalRssi.value = rssi
         }
 
-        @Suppress("DEPRECATION")
+        // Legacy dispatch path for API < 33 (value-carrying overload below on 33+).
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
         override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
             try {
                 val data = c.value ?: ByteArray(0)
@@ -1559,10 +1565,18 @@ class BccuConnectionService : LifecycleService() {
                 BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
             else
                 BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            @Suppress("DEPRECATION")
-            descriptor.value = value
-            @Suppress("DEPRECATION")
-            val accepted = g.writeDescriptor(descriptor)
+            // API 33+ takes the value as an argument (returns a status code); the
+            // pre-33 setValue()+writeDescriptor() path is deprecated, kept only as
+            // the minSdk-26..32 fallback.
+            val accepted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeDescriptor(descriptor, value) == BluetoothStatusCodes.SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    descriptor.value = value
+                    g.writeDescriptor(descriptor)
+                }
+            }
             AppLogger.log("BLE", "writeDescriptor CCCD for $uuid (${if (indication) "indication" else "notification"}) queued=$accepted")
             if (!accepted) {
                 gattOpFinished()
@@ -1645,7 +1659,6 @@ class BccuConnectionService : LifecycleService() {
      * a slow link. Never set for control-plane writes (auth replies, PRPC
      * requests) where every message matters.
      */
-    @Suppress("DEPRECATION")
     private fun writeCharacteristic(uuid: java.util.UUID, data: ByteArray, coalesce: Boolean = false) {
         enqueueGattOp(if (coalesce) uuid else null) {
             val g = gatt
@@ -1655,9 +1668,21 @@ class BccuConnectionService : LifecycleService() {
                 gattOpFinished()
                 return@enqueueGattOp
             }
-            characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            characteristic.value = data
-            val accepted = g.writeCharacteristic(characteristic)
+            // API 33+ takes the value + write type as arguments (returns a status
+            // code); the pre-33 setValue()+writeCharacteristic() path is deprecated,
+            // kept only as the minSdk-26..32 fallback.
+            val accepted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeCharacteristic(
+                    characteristic, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+                ) == BluetoothStatusCodes.SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    characteristic.value = data
+                    g.writeCharacteristic(characteristic)
+                }
+            }
             AppLogger.log("BLE", "writeCharacteristic $uuid (${data.size} bytes) queued=$accepted")
             if (!accepted) {
                 gattOpFinished()

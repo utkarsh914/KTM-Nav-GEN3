@@ -104,6 +104,15 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // 16 KB page-size compliance: store the bundled .so uncompressed and
+        // page-aligned in the APK (AGP 8.13 aligns to 16 KB). This is the APK-side
+        // half of the fix - the ELF LOAD segments are aligned by the libs
+        // themselves (Nav SDK / LiteRT / graphics-path are all 16 KB). It also
+        // keeps the large native libs (Nav SDK ~9 MB, LiteRT ~4 MB) out of the
+        // packager's deflate path, which is what OOM'd packageDebug.
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 }
 
@@ -136,7 +145,16 @@ dependencies {
     // On-device maneuver-icon classifier (ported from the KTM Gen-3 companion
     // app's approach): a small TFLite CNN recognises the nav app's turn-icon
     // bitmap and outputs the dash turn-icon code.
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    //
+    // LiteRT is Google's continuation of TensorFlow Lite (org.tensorflow:tensorflow-lite
+    // is frozen at 2.14.0). It's a drop-in: same libtensorflowlite_jni.so and the same
+    // org.tensorflow.lite.Interpreter API (Interpreter(ByteBuffer) + run()), so
+    // ManeuverClassifier is unchanged. The reason for the move is 16 KB page-size
+    // compliance: TFLite 2.14.0's .so has 4 KB-aligned ELF LOAD segments (align 2**12),
+    // which won't load on Android 15+ 16 KB-page devices; LiteRT's .so is 16 KB-aligned
+    // (align 2**14). All other bundled natives (Nav SDK libgmm-jni, graphics-path) are
+    // already 16 KB-aligned, and AGP 8.13 page-aligns the uncompressed .so in the APK.
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
@@ -144,6 +162,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    // Provides androidx.lifecycle.compose.LocalLifecycleOwner - the non-deprecated
+    // home of the composition local (moved out of androidx.compose.ui.platform).
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.ui:ui")

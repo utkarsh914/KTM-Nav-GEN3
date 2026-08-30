@@ -18,7 +18,10 @@ rerouting.
 **Under the hood.** Rebuilt on a modern toolchain (Kotlin 2.3 / SDK 36) and the Google
 Navigation SDK. App renamed to **KTM Navigator**. New docs:
 [`docs/architecture.md`](docs/architecture.md) and
-[`docs/BCCU_BLE_PROTOCOL.md`](docs/BCCU_BLE_PROTOCOL.md).
+[`docs/BCCU_BLE_PROTOCOL.md`](docs/BCCU_BLE_PROTOCOL.md). Now **16 KB page-size compatible**
+(required for Android 15+ devices) — the on-device turn-icon model moved from TensorFlow Lite
+to its successor LiteRT, and all bundled native code is 16 KB-aligned. Modernised the
+Bluetooth write path to the current Android APIs (no behaviour change).
 
 _Note: in-app Google navigation sends your destination and location to Google (that's how it
 routes) and needs internet. Mirroring another app stays fully on-device. See Privacy in the
