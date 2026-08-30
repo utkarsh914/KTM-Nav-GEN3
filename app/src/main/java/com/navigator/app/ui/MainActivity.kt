@@ -45,7 +45,7 @@ import com.navigator.app.ui.theme.OpenDashTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION }
 
 class MainActivity : ComponentActivity() {
 
@@ -349,6 +349,7 @@ private fun OpenDashApp(
     stateMachine: ControllerStateMachine,
     actions: ControllerStateMachine.Actions
 ) {
+    val appContext = androidx.compose.ui.platform.LocalContext.current
     var route by remember {
         mutableStateOf(
             when {
@@ -393,6 +394,7 @@ private fun OpenDashApp(
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.RIDES -> { MainActivity.importedGpx.value = null; route = AppRoute.MAIN }
+            AppRoute.DESTINATION -> route = AppRoute.MAIN
             AppRoute.MAIN -> if (!stateMachine.touchBack()) {
                 (context as? ComponentActivity)?.moveTaskToBack(true)
             }
@@ -464,7 +466,10 @@ private fun OpenDashApp(
                             settings = settings,
                             scrollIndex = uiState.notificationScrollIndex
                         )
-                        ControllerScreen.DIRECTION -> DirectionScreen(onOpenMaps = actions::openMaps)
+                        ControllerScreen.DIRECTION -> DirectionScreen(
+                            onOpenMaps = actions::openMaps,
+                            onSetDestination = { route = AppRoute.DESTINATION },
+                        )
                         else -> GridMenuScreen(
                             gridSelection = uiState.gridSelection,
                             onSelectGrid = { index ->
@@ -516,6 +521,15 @@ private fun OpenDashApp(
                     MainActivity.importedGpx.value = null
                     route = AppRoute.MAIN
                 }
+            )
+            AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(
+                onBack = { route = AppRoute.MAIN },
+                onNavigate = { dest ->
+                    (appContext as? android.app.Activity)?.let {
+                        com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
+                    }
+                    route = AppRoute.MAIN
+                },
             )
         }
         if (showGreeting) {
