@@ -112,6 +112,7 @@ fun SettingsScreen(
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
     var routeRecordEnabled by remember { mutableStateOf(settings.routeAutoRecordEnabled) }
     var waypoint by remember { mutableStateOf(settings.waypoint) }
+    var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var accessibilityGranted by remember {
         mutableStateOf(com.navigator.app.controller.RemoteControlAccessibilityService.isRunning)
     }
@@ -482,6 +483,33 @@ fun SettingsScreen(
                             settings.waypointName = null
                         },
                     ) { OutlinedPill("CLEAR") }
+                }
+            }
+
+            // ===== Navigation source =====
+            if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
+                item {
+                    GroupCard("Navigation") {
+                        SettingsRow("In-app Google navigation", showDivider = false) {
+                            KtmToggle(googleNavOn, { on ->
+                                googleNavOn = on
+                                settings.googleNavEnabled = on
+                            })
+                        }
+                        Text(
+                            if (googleNavOn) {
+                                "Enter a destination in the app and Google guides you on the dash. " +
+                                    "Needs internet; shows an extra notification while navigating."
+                            } else {
+                                "Off: the app only mirrors turn-by-turn from another nav app " +
+                                    "(e.g. Google Maps). Works offline."
+                            },
+                            color = Ktm.Muted2,
+                            fontFamily = Barlow,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp),
+                        )
+                    }
                 }
             }
 

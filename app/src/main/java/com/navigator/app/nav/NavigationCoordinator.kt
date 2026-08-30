@@ -3,6 +3,8 @@ package com.navigator.app.nav
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.nav.ktm.DashWrite
 import com.navigator.app.nav.ktm.KtmNavigationEncoder
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.NormalizedNavigationState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
@@ -30,18 +32,17 @@ interface DashOutput {
  */
 class NavigationCoordinator(
     private val scope: CoroutineScope,
-    initialProvider: NavigationProvider,
+    /** The default source (notification mirroring). Reverted to when a routing session ends. */
+    private val fallbackProvider: NavigationProvider,
     private val output: DashOutput,
     private val encoder: KtmNavigationEncoder = KtmNavigationEncoder(),
 ) {
-    private var provider: NavigationProvider = initialProvider
+    private var provider: NavigationProvider = fallbackProvider
     private var job: Job? = null
 
     fun start() {
         provider.attach()
-        job = provider.state
-            .onEach { apply(encoder.encode(it)) }
-            .launchIn(scope)
+        collect()
     }
 
     fun stop() {
@@ -62,9 +63,29 @@ class NavigationCoordinator(
         encoder.reset()
         provider = newProvider
         provider.attach()
+        collect()
+    }
+
+    private fun collect() {
         job = provider.state
-            .onEach { apply(encoder.encode(it)) }
+            .onEach { state ->
+                apply(encoder.encode(state))
+                maybeRevertToFallback(state)
+            }
             .launchIn(scope)
+    }
+
+    /**
+     * When a routing provider (Google Nav SDK) finishes a trip - ARRIVED or
+     * STOPPED - hand the dash back to the notification-mirroring fallback so
+     * mirroring keeps working afterwards. Posted to [scope] so we don't cancel
+     * the collector from inside its own emission.
+     */
+    private fun maybeRevertToFallback(state: NormalizedNavigationState) {
+        if (provider === fallbackProvider) return
+        if (state.sessionState == NavSessionState.ARRIVED || state.sessionState == NavSessionState.STOPPED) {
+            scope.launch { setProvider(fallbackProvider) }
+        }
     }
 
     /**

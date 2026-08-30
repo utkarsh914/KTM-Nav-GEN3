@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,9 +45,11 @@ import com.navigator.app.ui.theme.OpenDashIcons
  * partially present.
  */
 @Composable
-fun DirectionScreen(onOpenMaps: () -> Unit, onSetDestination: () -> Unit = {}) {
-    val context = LocalContext.current
-    val googleNavAvailable = com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)
+fun DirectionScreen(
+    onOpenMaps: () -> Unit,
+    onSetDestination: () -> Unit = {},
+    showGoogleNav: Boolean = false,
+) {
     val guidance by NotificationRepository.navGuidance.collectAsState()
     val navText by NotificationRepository.currentNavText.collectAsState()
     val navPackage by NotificationRepository.currentNavPackage.collectAsState()
@@ -92,7 +93,7 @@ fun DirectionScreen(onOpenMaps: () -> Unit, onSetDestination: () -> Unit = {}) {
             Spacer(Modifier.weight(1f))
         }
 
-        if (googleNavAvailable) {
+        if (showGoogleNav) {
             SetDestinationButton(onClick = onSetDestination)
             Spacer(Modifier.height(10.dp))
         }

@@ -296,8 +296,13 @@ class AppSettings(context: Context) {
      * Play Services + network). Consumed by provider selection in a later phase.
      */
     var navProvider: String
-        get() = pairingPrefs.getString(KEY_NAV_PROVIDER, NAV_PROVIDER_NOTIFICATION) ?: NAV_PROVIDER_NOTIFICATION
+        get() = pairingPrefs.getString(KEY_NAV_PROVIDER, NAV_PROVIDER_GOOGLE_NAV_SDK) ?: NAV_PROVIDER_GOOGLE_NAV_SDK
         set(value) = pairingPrefs.edit().putString(KEY_NAV_PROVIDER, value).apply()
+
+    /** Whether the in-app Google navigation feature is enabled (vs mirror-only). */
+    var googleNavEnabled: Boolean
+        get() = navProvider != NAV_PROVIDER_NOTIFICATION
+        set(value) { navProvider = if (value) NAV_PROVIDER_GOOGLE_NAV_SDK else NAV_PROVIDER_NOTIFICATION }
 
     /** Auto-record GPS routes to GPX, but only while the phone is charging. */
     var routeAutoRecordEnabled: Boolean

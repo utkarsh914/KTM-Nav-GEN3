@@ -59,6 +59,14 @@ class MainActivity : ComponentActivity() {
          * scratch to re-read an extra from.
          */
         val importedGpx = kotlinx.coroutines.flow.MutableStateFlow<java.io.File?>(null)
+
+        /**
+         * Text shared into the app (ACTION_SEND) that may contain a Google Maps
+         * link. Compose observes this to open the destination screen in Link
+         * mode; cleared once consumed. Flow (not an extra) for the same
+         * singleTask/onNewIntent reason as [importedGpx].
+         */
+        val sharedNavLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     }
 
     private lateinit var settings: AppSettings
@@ -213,6 +221,7 @@ class MainActivity : ComponentActivity() {
         }
 
         importGpxFromIntent(intent)
+        handleSendIntent(intent)
 
         setContent {
             OpenDashApp(settings = settings, stateMachine = stateMachine, actions = actions)
@@ -266,6 +275,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         importGpxFromIntent(intent)
+        handleSendIntent(intent)
+    }
+
+    /** ACTION_SEND text/plain (e.g. "Share" from Google Maps): capture the text for the destination screen. */
+    private fun handleSendIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        if (intent.type != "text/plain") return
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+        if (!text.isNullOrBlank()) {
+            AppLogger.log("MapsUrl", "Received shared text (${text.length} chars)")
+            sharedNavLink.value = text
+        }
     }
 
     /**
@@ -370,6 +391,21 @@ private fun OpenDashApp(
     LaunchedEffect(importedGpx) {
         if (importedGpx != null && route != AppRoute.ONBOARDING) route = AppRoute.RIDES
     }
+
+    // In-app Google navigation is offered when a key + Play Services are present
+    // AND the user hasn't switched to mirror-only in Settings.
+    val googleNavOffered = com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
+        settings.googleNavEnabled
+
+    // A Google Maps link shared into the app -> open the destination screen (Link mode).
+    val sharedLink by MainActivity.sharedNavLink.collectAsState()
+    LaunchedEffect(sharedLink) {
+        if (sharedLink != null && googleNavOffered &&
+            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+        ) {
+            route = AppRoute.DESTINATION
+        }
+    }
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
     val context = androidx.compose.ui.platform.LocalContext.current
     // Reactively observe the controller state instead of polling it - Compose
@@ -394,7 +430,7 @@ private fun OpenDashApp(
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.RIDES -> { MainActivity.importedGpx.value = null; route = AppRoute.MAIN }
-            AppRoute.DESTINATION -> route = AppRoute.MAIN
+            AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = AppRoute.MAIN }
             AppRoute.MAIN -> if (!stateMachine.touchBack()) {
                 (context as? ComponentActivity)?.moveTaskToBack(true)
             }
@@ -469,6 +505,7 @@ private fun OpenDashApp(
                         ControllerScreen.DIRECTION -> DirectionScreen(
                             onOpenMaps = actions::openMaps,
                             onSetDestination = { route = AppRoute.DESTINATION },
+                            showGoogleNav = googleNavOffered,
                         )
                         else -> GridMenuScreen(
                             gridSelection = uiState.gridSelection,
@@ -523,13 +560,18 @@ private fun OpenDashApp(
                 }
             )
             AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(
-                onBack = { route = AppRoute.MAIN },
+                onBack = {
+                    MainActivity.sharedNavLink.value = null
+                    route = AppRoute.MAIN
+                },
                 onNavigate = { dest ->
                     (appContext as? android.app.Activity)?.let {
                         com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
                     }
+                    MainActivity.sharedNavLink.value = null
                     route = AppRoute.MAIN
                 },
+                initialLink = sharedLink,
             )
         }
         if (showGreeting) {

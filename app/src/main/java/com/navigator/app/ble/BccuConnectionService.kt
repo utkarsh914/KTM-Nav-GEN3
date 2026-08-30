@@ -261,7 +261,7 @@ class BccuConnectionService : LifecycleService() {
         }
         navCoordinator = com.navigator.app.nav.NavigationCoordinator(
             scope = lifecycleScope,
-            initialProvider = com.navigator.app.nav.providers.NotificationNavProvider,
+            fallbackProvider = com.navigator.app.nav.providers.NotificationNavProvider,
             output = output,
         ).also { it.start() }
     }

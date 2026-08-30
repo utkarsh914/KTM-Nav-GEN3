@@ -37,6 +37,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     @Volatile private var navigator: Navigator? = null
     @Volatile private var serviceRegistered = false
+    @Volatile private var arrivalListenerAdded = false
 
     private val arrivalListener = Navigator.ArrivalListener {
         AppLogger.log("Nav", "Nav SDK arrival")
@@ -55,7 +56,10 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     /** Called from [GoogleNavSdkController] on NavigatorListener.onNavigatorReady. */
     fun onNavigatorReady(nav: Navigator, context: Context) {
         navigator = nav
-        nav.addArrivalListener(arrivalListener)
+        if (!arrivalListenerAdded) {
+            nav.addArrivalListener(arrivalListener)
+            arrivalListenerAdded = true
+        }
         if (!serviceRegistered) {
             serviceRegistered = nav.registerServiceForNavUpdates(
                 context.packageName,
