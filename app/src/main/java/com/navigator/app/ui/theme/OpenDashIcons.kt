@@ -192,6 +192,11 @@ object OpenDashIcons {
         lucide("Close", 1.9f, "M18 6L6 18", "M6 6l12 12")
     }
 
+    /** North needle for the map compass (rotate the whole Icon by the map bearing). */
+    val Compass: ImageVector by lazy {
+        lucideFilled("Compass", "M12 2 L16 21 L12 17 L8 21 Z")
+    }
+
     /** Crosshair / "recenter on me" control for the map. */
     val LocateFixed: ImageVector by lazy {
         lucide(

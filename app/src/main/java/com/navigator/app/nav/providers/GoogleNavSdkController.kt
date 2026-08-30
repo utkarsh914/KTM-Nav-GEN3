@@ -59,11 +59,15 @@ object GoogleNavSdkController {
             return
         }
         ensureApiKey()
+        AppLogger.log("Nav", "prepare(): requesting navigator…")
         NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
             override fun onNavigatorReady(navigator: Navigator) {
                 AppLogger.log("Nav", "prepare(): navigator ready")
-                GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext)
+                // Unblock the map first; provider wiring is best-effort (startNavigation
+                // re-obtains the navigator + registers the provider anyway).
                 onReady()
+                runCatching { GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext) }
+                    .onFailure { AppLogger.log("Nav", "!! prepare(): provider setup failed: ${it.message}") }
             }
 
             override fun onError(errorCode: Int) {

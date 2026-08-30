@@ -3,6 +3,7 @@ package com.navigator.app.nav.providers
 import android.content.Context
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavInfo
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavState
+import com.google.android.libraries.navigation.CustomRoutesOptions
 import com.google.android.libraries.navigation.Navigator
 import com.google.android.libraries.navigation.RoutingOptions
 import com.google.android.libraries.navigation.Waypoint
@@ -79,7 +80,40 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             .setLatLng(dest.lat, dest.lng)
             .also { b -> dest.label?.let { b.setTitle(it) } }
             .build()
+        val token = dest.routeToken
+        if (!token.isNullOrBlank() && guideWithToken(nav, waypoint, token, mode)) return
         setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+    }
+
+    /**
+     * Guide the exact route the user picked in the preview, using the Routes API
+     * route token via [CustomRoutesOptions]. Returns false (and the caller falls
+     * back to default routing) if the token path can't be used.
+     */
+    private fun guideWithToken(
+        nav: Navigator,
+        waypoint: Waypoint,
+        token: String,
+        mode: TravelMode,
+    ): Boolean = runCatching {
+        val options = CustomRoutesOptions.builder()
+            .setRouteToken(token)
+            .setTravelMode(CustomRoutesOptions.TravelMode.TWO_WHEELER)
+            .build()
+        AppLogger.log("Nav", "setDestinations(routeToken) -> (${waypoint.title ?: "?"})")
+        nav.setDestinations(listOf(waypoint), options).setOnResultListener { status ->
+            if (status == Navigator.RouteStatus.OK) {
+                AppLogger.log("Nav", "Route (token) OK - starting guidance")
+                nav.startGuidance()
+            } else {
+                AppLogger.log("Nav", "token route failed ($status) - default routing")
+                setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+            }
+        }
+        true
+    }.getOrElse {
+        AppLogger.log("Nav", "setDestinations(routeToken) failed: ${it.message} - default routing")
+        false
     }
 
     private fun setDestinationAndGuide(

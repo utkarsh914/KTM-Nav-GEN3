@@ -3,10 +3,13 @@ package com.navigator.app.ui.screens
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,6 +39,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,20 +63,28 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ble.BccuConnectionService
+import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlaceSuggestion
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.PlacesStore
+import com.navigator.app.nav.destination.RoutePreview
+import com.navigator.app.nav.destination.RoutesClient
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavDestination
+import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.providers.GoogleNavSdkController
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -79,9 +93,20 @@ import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import kotlin.coroutines.resume
+import kotlin.math.abs
 
-private enum class NavStage { BROWSE, SEARCH, CONFIRM }
+private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING }
+
+/** Route preview polyline colors (ARGB). */
+private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
+private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
+
+/** Top inset so the END button clears the SDK's maneuver header during guidance. */
+private val NAV_HEADER_CLEARANCE = 108.dp
 
 /**
  * Phone-first map home (UX revamp P1–P2 — see docs/NAVIGATION_UX_REVAMP.md).
@@ -99,21 +124,39 @@ fun NavigationHomeScreen(
     onStartNavigation: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? Activity
+    val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
 
     val available = remember { GoogleNavSdkController.isAvailable(context) }
     var navReady by remember { mutableStateOf(false) }
     var navError by remember { mutableStateOf(false) }
+    var prepareAttempt by remember { mutableIntStateOf(0) }
     var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
+    var mapBearing by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(Unit) {
-        if (available && activity != null) {
-            GoogleNavSdkController.prepare(
-                activity,
-                onReady = { navReady = true },
-                onError = { navError = true },
-            )
+    // Warm up the Nav SDK (key + ToS + Navigator); retriable via prepareAttempt.
+    LaunchedEffect(prepareAttempt) {
+        if (!available) return@LaunchedEffect
+        if (activity == null) {
+            AppLogger.log("Nav", "NavHome: no Activity from context (${context.javaClass.simpleName}); can't prepare map")
+            navError = true
+            return@LaunchedEffect
+        }
+        navError = false
+        GoogleNavSdkController.prepare(
+            activity,
+            onReady = { navReady = true },
+            onError = { navError = true },
+        )
+    }
+
+    // Watchdog: if neither ready nor error after a while, surface it in the log.
+    LaunchedEffect(prepareAttempt, navReady, navError) {
+        if (available && !navReady && !navError) {
+            delay(8000)
+            if (!navReady && !navError) {
+                AppLogger.log("Nav", "NavHome: map still not ready after 8s (getNavigator no callback) — tap to retry")
+            }
         }
     }
 
@@ -123,6 +166,15 @@ fun NavigationHomeScreen(
     var selected by remember { mutableStateOf<SavedPlace?>(null) }
     var recents by remember { mutableStateOf(store.recents()) }
     var favorites by remember { mutableStateOf(store.favorites()) }
+
+    // ---- Preview state ----------------------------------------------------
+    var previewRoutes by remember { mutableStateOf<List<RoutePreview>>(emptyList()) }
+    var selectedRoute by remember { mutableIntStateOf(0) }
+    var previewLoading by remember { mutableStateOf(false) }
+    var previewFailed by remember { mutableStateOf(false) }
+
+    // Active navigation session state (drives the NAVIGATING stage / arrival).
+    val navState by GoogleNavSdkProvider.state.collectAsState()
 
     // ---- Search state -----------------------------------------------------
     val auth = remember { PlacesClient.androidAuth(context) }
@@ -145,16 +197,61 @@ fun NavigationHomeScreen(
         loading = false
     }
 
-    // Reflect the current stage on the map (red pin + camera on CONFIRM).
-    LaunchedEffect(stage, selected, googleMap) {
+    // Fetch the preview routes (incl. alternates) when entering PREVIEW.
+    LaunchedEffect(stage, selected) {
+        if (stage != NavStage.PREVIEW) return@LaunchedEffect
+        val p = selected ?: return@LaunchedEffect
+        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false
+        // Compute from a FRESH fix so route-token origins match the SDK's GPS at
+        // Start (a stale origin makes the SDK snap to the nearest/fastest route).
+        previewLoading = true
+        val o = (withTimeoutOrNull(4000) { freshLocation(context) }) ?: origin ?: lastLocation(context)
+        if (o == null) { previewLoading = false; previewFailed = true; return@LaunchedEffect }
+        val routes = RoutesClient.computeRoutes(o, p.lat to p.lng, auth)
+        previewLoading = false
+        previewRoutes = routes
+        previewFailed = routes.isEmpty()
+    }
+
+    // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
+    LaunchedEffect(stage, selected, googleMap, previewRoutes, selectedRoute) {
         val gm = googleMap ?: return@LaunchedEffect
+        gm.setOnPolylineClickListener(null)
         gm.clear()
-        if (stage == NavStage.CONFIRM) {
-            selected?.let { p ->
-                val ll = LatLng(p.lat, p.lng)
+        val p = selected ?: return@LaunchedEffect
+        val ll = LatLng(p.lat, p.lng)
+        when (stage) {
+            NavStage.CONFIRM -> {
                 gm.addMarker(MarkerOptions().position(ll).title(p.label))
                 gm.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 15f))
             }
+            NavStage.PREVIEW -> {
+                gm.addMarker(MarkerOptions().position(ll).title(p.label))
+                if (previewRoutes.isNotEmpty()) {
+                    // Alternates first (gray), then the selected route (blue, on top).
+                    previewRoutes.forEachIndexed { i, r ->
+                        if (i != selectedRoute) {
+                            gm.addPolyline(
+                                PolylineOptions().addAll(r.points).color(ROUTE_ALT).width(9f),
+                            ).apply { tag = i; isClickable = true }
+                        }
+                    }
+                    val sel = previewRoutes.getOrNull(selectedRoute)
+                    if (sel != null) {
+                        gm.addPolyline(
+                            PolylineOptions().addAll(sel.points).color(ROUTE_SELECTED).width(14f),
+                        ).apply { tag = selectedRoute; isClickable = true }
+                        val b = LatLngBounds.builder()
+                        sel.points.forEach { b.include(it) }
+                        origin?.let { b.include(LatLng(it.first, it.second)) }
+                        runCatching { gm.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 120)) }
+                    }
+                    gm.setOnPolylineClickListener { poly -> (poly.tag as? Int)?.let { selectedRoute = it } }
+                } else {
+                    gm.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 14f))
+                }
+            }
+            else -> {}
         }
     }
 
@@ -167,47 +264,93 @@ fun NavigationHomeScreen(
 
     fun choose(p: SavedPlace) { selected = p; stage = NavStage.CONFIRM }
 
-    fun backToBrowse() { stage = NavStage.BROWSE; selected = null; query = "" }
+    fun backToBrowse() {
+        stage = NavStage.BROWSE; selected = null; query = ""
+        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+    }
 
     fun startTo(p: SavedPlace) {
         store.addRecent(p)
         recents = store.recents()
-        onStartNavigation(NavDestination(p.lat, p.lng, p.label))
+        val token = previewRoutes.getOrNull(selectedRoute)?.routeToken
+        onStartNavigation(NavDestination(p.lat, p.lng, p.label, token))
+        stage = NavStage.NAVIGATING
+    }
+
+    fun stopNav() {
+        GoogleNavSdkController.stop()
         backToBrowse()
     }
 
+    // Auto-return to the map once the trip ends by arrival.
+    LaunchedEffect(navState.sessionState) {
+        if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
+            backToBrowse()
+        }
+    }
+
+    // Track map bearing for the compass (shown only when rotated).
+    LaunchedEffect(googleMap) {
+        val gm = googleMap ?: return@LaunchedEffect
+        mapBearing = gm.cameraPosition.bearing
+        gm.setOnCameraMoveListener { mapBearing = gm.cameraPosition.bearing }
+    }
+
+
+
     BackHandler(enabled = stage != NavStage.BROWSE) {
-        if (stage == NavStage.CONFIRM) { stage = NavStage.SEARCH; selected = null } else backToBrowse()
+        when (stage) {
+            NavStage.PREVIEW -> stage = NavStage.CONFIRM
+            NavStage.CONFIRM -> { stage = NavStage.SEARCH; selected = null }
+            NavStage.NAVIGATING -> stopNav()
+            else -> backToBrowse()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
         // --- Map surface -----------------------------------------------------
         when {
-            available && navReady -> BrowseMap(onMap = { googleMap = it })
-            available && !navError -> MapPlaceholder("Preparing map…")
-            available && navError -> MapPlaceholder("Couldn't start the map.\nCheck connection and Google Play services.")
+            available && navReady -> BrowseMap(
+                navUiEnabled = stage == NavStage.NAVIGATING,
+                onMap = { googleMap = it },
+            )
+            available && !navError -> MapPlaceholder("Preparing map…\n\nTap to retry if this doesn't clear.") {
+                navReady = false; navError = false; prepareAttempt++
+            }
+            available && navError -> MapPlaceholder("Couldn't start the map.\nTap to retry.") {
+                navReady = false; navError = false; prepareAttempt++
+            }
             else -> MapPlaceholder("Maps need a Google API key.\nSet NAV_SDK_API_KEY in local.properties.")
         }
 
         when (stage) {
             NavStage.BROWSE -> {
-                // Top: search bar + settings.
-                Column(
+                // Search bar (leaves room on the right for the control column).
+                Box(
                     modifier = Modifier.fillMaxWidth().systemBarsPadding()
-                        .padding(horizontal = 16.dp).padding(top = 10.dp),
+                        .padding(start = 16.dp, end = 74.dp, top = 10.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        SearchBar(modifier = Modifier.weight(1f), onClick = ::openSearch)
-                        Spacer(Modifier.size(10.dp))
-                        IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
+                    SearchBar(modifier = Modifier.fillMaxWidth(), onClick = ::openSearch)
+                }
+                // Top-right control column: Settings, then Compass (only when rotated).
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                        .padding(end = 16.dp, top = 10.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
+                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
                     }
                 }
-                // Bottom-left recenter, bottom-right connect.
+                // Bottom-left recenter.
                 Box(Modifier.align(Alignment.BottomStart).systemBarsPadding().padding(16.dp)) {
                     if (available && navReady) {
                         IconPill(OpenDashIcons.LocateFixed, "Recenter") { recenter(context, googleMap) }
                     }
                 }
+                // Bottom-right connect pill.
                 Box(Modifier.align(Alignment.BottomEnd).systemBarsPadding().padding(16.dp)) {
                     ConnectPill(onClick = onOpenConnect)
                 }
@@ -245,7 +388,7 @@ fun NavigationHomeScreen(
                         place = sel,
                         origin = origin,
                         saved = savedNow,
-                        onGetDirections = { sel?.let(::startTo) },
+                        onGetDirections = { stage = NavStage.PREVIEW },
                         onToggleSave = {
                             sel?.let {
                                 if (savedNow) store.removeFavorite(it.lat, it.lng)
@@ -261,6 +404,37 @@ fun NavigationHomeScreen(
                     IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
                 }
             }
+
+            NavStage.PREVIEW -> {
+                Box(Modifier.align(Alignment.BottomCenter)) {
+                    PreviewCard(
+                        place = selected,
+                        loading = previewLoading,
+                        routes = previewRoutes,
+                        selectedIndex = selectedRoute,
+                        failed = previewFailed,
+                        onSelect = { selectedRoute = it },
+                        onStart = { selected?.let(::startTo) },
+                        onBack = { stage = NavStage.CONFIRM },
+                    )
+                }
+                Box(Modifier.align(Alignment.TopEnd).systemBarsPadding().padding(16.dp)) {
+                    IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
+                }
+            }
+
+            NavStage.NAVIGATING -> {
+                // The SDK's NavigationView renders the full guidance UI (top
+                // maneuver header + bottom ETA card + re-center + report). We only
+                // overlay a small END, placed below the header so it doesn't
+                // overlap the SDK chrome. Hardware Back also ends navigation.
+                Box(
+                    modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
+                        .padding(start = 16.dp, top = NAV_HEADER_CLEARANCE),
+                ) {
+                    CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = ::stopNav)
+                }
+            }
         }
     }
 }
@@ -268,16 +442,15 @@ fun NavigationHomeScreen(
 // ============================ Map ======================================
 
 @Composable
-private fun BrowseMap(onMap: (GoogleMap?) -> Unit) {
+private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
     val context = LocalContext.current
     val navView = rememberNavigationViewWithLifecycle()
     AndroidView(
         factory = {
-            runCatching { navView.setNavigationUiEnabled(false) }
             navView.getMapAsync { gm ->
                 onMap(gm)
                 gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
-                gm.uiSettings.isCompassEnabled = true
+                gm.uiSettings.isCompassEnabled = false          // custom controls instead
                 if (hasLocationPermission(context)) {
                     runCatching { gm.isMyLocationEnabled = true }
                 }
@@ -289,13 +462,24 @@ private fun BrowseMap(onMap: (GoogleMap?) -> Unit) {
         },
         modifier = Modifier.fillMaxSize(),
     )
+    // Show the SDK's full built-in guidance UI (header + ETA card + re-center +
+    // report) only while navigating.
+    LaunchedEffect(navUiEnabled) { runCatching { navView.setNavigationUiEnabled(navUiEnabled) } }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }
 
 @Composable
-private fun MapPlaceholder(message: String) {
-    Box(Modifier.fillMaxSize().background(Ktm.Screen), contentAlignment = Alignment.Center) {
-        Text(message, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp)
+private fun MapPlaceholder(message: String, onRetry: (() -> Unit)? = null) {
+    val base = Modifier.fillMaxSize().background(Ktm.Screen)
+    Box(
+        modifier = if (onRetry != null) base.clickable(onClick = onRetry) else base,
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            message, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp),
+        )
     }
 }
 
@@ -476,6 +660,137 @@ private fun RowCard(onClick: () -> Unit, content: @Composable androidx.compose.f
     )
 }
 
+// ============================ Preview ==================================
+
+@Composable
+private fun PreviewCard(
+    place: SavedPlace?,
+    loading: Boolean,
+    routes: List<RoutePreview>,
+    selectedIndex: Int,
+    failed: Boolean,
+    onSelect: (Int) -> Unit,
+    onStart: () -> Unit,
+    onBack: () -> Unit,
+) {
+    place ?: return
+    Column(
+        modifier = Modifier.fillMaxWidth().systemBarsPadding()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
+                modifier = Modifier.size(24.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
+            )
+            Spacer(Modifier.size(6.dp))
+            Text(place.label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1)
+        }
+        Spacer(Modifier.height(12.dp))
+        when {
+            loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = Ktm.Orange, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.size(10.dp))
+                Text("Finding routes…", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp)
+            }
+            routes.isNotEmpty() -> {
+                // One selectable chip per route (reliable vs tapping the thin line).
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    routes.forEachIndexed { i, r ->
+                        RouteChip(
+                            durationSeconds = r.durationSeconds,
+                            distanceMeters = r.distanceMeters,
+                            label = if (i == 0) "Fastest" else "Alt ${i}",
+                            selected = i == selectedIndex,
+                            modifier = Modifier.weight(1f),
+                        ) { onSelect(i) }
+                    }
+                }
+            }
+            failed -> Text(
+                "Couldn't load a route preview. You can still start navigation.",
+                color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        KtmPrimaryButton(text = "Start Navigation", onClick = onStart)
+    }
+}
+
+/** A selectable route option (duration + distance), highlighted when selected. */
+@Composable
+private fun RouteChip(
+    durationSeconds: Int,
+    distanceMeters: Int,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(if (selected) Ktm.Orange else Ktm.Screen)
+            .border(1.dp, if (selected) Ktm.Orange else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(
+            label.uppercase(),
+            color = if (selected) Ktm.OnAccent else Ktm.Muted2,
+            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp,
+        )
+        Text(
+            formatDuration(durationSeconds),
+            color = if (selected) Ktm.OnAccent else Ktm.White,
+            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+        )
+        Text(
+            DistanceFormatter.format(distanceMeters, DistanceUnits.METRIC),
+            color = if (selected) Ktm.OnAccent else Ktm.Muted2,
+            fontFamily = JetBrainsMono, fontSize = 12.sp,
+        )
+    }
+}
+
+// ============================ Active navigation ========================
+
+/** A neutral dark circular icon button (Google-style controls). */
+@Composable
+private fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(52.dp).clip(CircleShape)
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** Compass button: the north needle rotates with the map bearing; tap resets. */
+@Composable
+private fun CompassButton(bearing: Float, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(48.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            OpenDashIcons.Compass, "Reset orientation to north", tint = Ktm.Danger,
+            modifier = Modifier.size(22.dp).rotate(-bearing),
+        )
+    }
+}
+
 // ============================ Confirm ==================================
 
 @Composable
@@ -635,10 +950,31 @@ private fun rememberNavigationViewWithLifecycle(): NavigationView {
 
 // ============================ Helpers ==================================
 
+/** Unwrap the hosting Activity from a (possibly wrapped) Compose context. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+/** Format a route duration (seconds) as "M min" or "H hr M min". */
+private fun formatDuration(seconds: Int): String {
+    val mins = (seconds + 59) / 60
+    return if (mins < 60) "$mins min" else "${mins / 60} hr ${mins % 60} min"
+}
+
 private fun recenter(context: Context, gm: GoogleMap?) {
     val map = gm ?: return
     val loc = lastLocation(context) ?: return
     map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(loc.first, loc.second), 16f))
+}
+
+/** Reset the map to north-up (bearing 0, tilt 0), keeping center + zoom. */
+private fun resetBearing(gm: GoogleMap?) {
+    val map = gm ?: return
+    val cp = map.cameraPosition
+    val north = CameraPosition.Builder(cp).bearing(0f).tilt(0f).build()
+    map.animateCamera(CameraUpdateFactory.newCameraPosition(north))
 }
 
 /** Straight-line distance label from [origin] to a point, or null if unknown. */
@@ -654,6 +990,34 @@ private fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Doubl
 private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
+
+/**
+ * A fresh current-location fix (falls back to last-known). Used for the route
+ * preview so the Routes API route-token origin matches the SDK's GPS at Start,
+ * which is required for the SDK to honour the exact selected route.
+ */
+private suspend fun freshLocation(context: Context): Pair<Double, Double>? {
+    if (!hasLocationPermission(context)) return lastLocation(context)
+    val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        ?: return lastLocation(context)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return lastLocation(context)
+    val provider = when {
+        lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+        lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+        else -> return lastLocation(context)
+    }
+    return try {
+        suspendCancellableCoroutine { cont ->
+            val signal = CancellationSignal()
+            lm.getCurrentLocation(provider, signal, context.mainExecutor) { loc ->
+                cont.resume(loc?.let { it.latitude to it.longitude } ?: lastLocation(context))
+            }
+            cont.invokeOnCancellation { signal.cancel() }
+        }
+    } catch (e: SecurityException) {
+        lastLocation(context)
+    }
+}
 
 /** Best-effort last-known location for the initial camera / distances / recenter. */
 private fun lastLocation(context: Context): Pair<Double, Double>? {

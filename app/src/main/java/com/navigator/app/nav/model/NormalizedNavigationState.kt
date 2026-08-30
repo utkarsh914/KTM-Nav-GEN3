@@ -137,8 +137,20 @@ data class NormalizedNavigationState(
     }
 }
 
-/** A routing target for provider-owned navigation (Nav SDK now, Routes API later). */
-data class NavDestination(val lat: Double, val lng: Double, val label: String? = null)
+/**
+ * A routing target for provider-owned navigation.
+ *
+ * [routeToken] (optional) is a Routes API route token identifying a *specific*
+ * route the user picked in the preview; when present the Nav SDK is asked to
+ * guide that exact route via `Navigator.setDestinations(waypoints, routeToken)`
+ * (falls back to default routing if unavailable).
+ */
+data class NavDestination(
+    val lat: Double,
+    val lng: Double,
+    val label: String? = null,
+    val routeToken: String? = null,
+)
 
 /** Travel mode requested for routing. */
 enum class TravelMode { TWO_WHEELER, DRIVING }
