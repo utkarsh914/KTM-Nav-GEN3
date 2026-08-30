@@ -5,7 +5,7 @@
 <h1 align="center">Navigator Gen3</h1>
 
 <p align="center">
-  <b>Turn-by-turn navigation, notifications and ride analytics on your KTM or Husqvarna Gen-3 dashboard — free, private, and entirely on-device.</b>
+  <b>Turn-by-turn navigation, notifications and ride analytics on your KTM or Husqvarna Gen-3 dashboard — free, private by default, on-device (with an optional in-app Google navigation mode).</b>
 </p>
 
 <p align="center">
@@ -20,11 +20,11 @@
 
 ## What it does
 
-Three jobs, all on your phone, with no account and no server.
+Three jobs, all on your phone, with no account and no server of ours.
 
 | | |
 |---|---|
-| **Push to the dash** | Google Maps turn-by-turn, phone notifications, now-playing and idle info, mirrored onto the bike's own display over Bluetooth. |
+| **Push to the dash** | Turn-by-turn navigation (mirror another nav app, or enter a destination and navigate in-app with Google), phone notifications, now-playing and idle info, on the bike's own display over Bluetooth. |
 | **Pull from the handlebar** | The bike's four handlebar buttons become a controller for your phone — a D-pad over any app, or music transport. |
 | **Record and analyse the ride** | Rides record themselves as standard GPX, then come back as a map, charts, detected events, a smoothness score and a fuel estimate. |
 
@@ -132,14 +132,20 @@ remote can reach, and Settings split into eight labelled groups.
 
 ---
 
-## Privacy — nothing is collected, nothing leaves your phone
+## Privacy — private by default; one clearly-marked online mode
 
-- No accounts. No analytics. No servers. No data collection. No ads.
-- Everything runs on-device: the turn-icon model, notification handling, ride recording and analytics.
-- Your location, routes and notifications never leave the phone.
-- Two optional exceptions, both your choice: live weather for the dash idle screen (Open-Meteo, no key,
-  sends only a coarse location), and notification summaries if you add your own Gemini API key — off by
-  default.
+- No accounts of ours. No analytics. No data collection. No ads. No server of ours.
+- **By default everything runs on-device**: the turn-icon model, notification handling, ride recording
+  and analytics. When you **mirror another nav app** (e.g. Google Maps) to the dash, the app only reads
+  that app's on-screen notification and forwards the text over Bluetooth — nothing leaves the phone.
+- **Optional in-app Google navigation** *does* go online. If you enable it (needs your own Google Maps
+  Platform API key + Google Play Services) and enter a destination in the app, Google's Navigation SDK
+  runs the route — which means your **destination and location are sent to Google**, and it needs
+  internet. This is off unless you provide a key, and can be turned off any time in
+  **Settings → Navigation → In-app Google navigation** (leaving you on the offline mirroring mode). While
+  it's navigating you'll also see Google's own notification alongside the app's.
+- Other optional, opt-in online bits: live weather for the dash idle screen (Open-Meteo, no key, coarse
+  location only), and notification summaries if you add your own Gemini API key — both off by default.
 
 ---
 

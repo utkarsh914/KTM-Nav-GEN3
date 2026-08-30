@@ -115,14 +115,14 @@ risk-retirement and can be abandoned cheaply before any architecture work is inv
 - [ ] Expand `NavigationReplayTest` with real recorded sequences
 
 ## Phase 8 — Documentation
-- [ ] `docs/architecture.md` (end-state architecture + data flow + limitations incl. beta/offline)
-- [ ] `docs/BCCU_BLE_PROTOCOL.md` (fill the referenced-but-missing protocol doc)
-- [ ] Build/run instructions incl. `NAV_SDK_API_KEY` + required API enablement
-- [ ] In-app attribution/licensing text; Play data-safety disclosure
-- [ ] README privacy note (Nav SDK departs from "nothing leaves the phone"; how to stay offline)
-- [ ] Cost model documented (plan §12)
-- [ ] Test-without-bike + test-with-dash instructions
-- [ ] Update `README.md` / `CHANGELOG.md` as needed
+- [x] `docs/architecture.md` (end-state architecture + data flow + limitations incl. beta/offline)
+- [x] `docs/BCCU_BLE_PROTOCOL.md` (fill the referenced-but-missing protocol doc)
+- [x] Build/run instructions incl. `NAV_SDK_API_KEY` + required API enablement (architecture.md §6)
+- [~] In-app attribution/licensing text; Play data-safety disclosure — **documented as pending** (architecture.md §7); the actual in-app text + store disclosure are release tasks
+- [x] README privacy note (Nav SDK departs from "nothing leaves the phone"; how to stay offline)
+- [x] Cost model documented (plan §12; referenced from architecture.md §4)
+- [x] Test-without-bike + test-with-dash instructions (architecture.md §6.3/§6.4)
+- [x] Update `README.md` / `CHANGELOG.md` as needed
 
 ## Phase 9 — Final review
 - [ ] Reliability review (state correctness, stale-guard)

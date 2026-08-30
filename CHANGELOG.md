@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — Navigation revamp
+
+**Navigate with Google, in the app.** Alongside mirroring another nav app's notification, you
+can now enter a destination *inside* KTM Navigator and have Google's own navigation engine
+guide you on the dash — turn arrow, distance, road, ETA and remaining distance. Enter a
+destination three ways: **Search** (type a place, see matches with distance), **Map** (drop a
+pin), or **Link** (paste a Google Maps link, or share a place from Google Maps into the app).
+Two-wheeler routing where available. Needs your own Google Maps Platform API key + Google Play
+Services; off unless a key is present, and switchable in **Settings → Navigation**.
+
+**More reliable dash guidance.** All guidance — mirrored *and* in-app — now goes through one
+engine that de-duplicates writes, rounds distances to kill GPS jitter, keeps the ETA steady,
+never leaves a stale turn on the dash after navigation ends, and blanks the turn while
+rerouting.
+
+**Under the hood.** Rebuilt on a modern toolchain (Kotlin 2.3 / SDK 36) and the Google
+Navigation SDK. App renamed to **KTM Navigator**. New docs:
+[`docs/architecture.md`](docs/architecture.md) and
+[`docs/BCCU_BLE_PROTOCOL.md`](docs/BCCU_BLE_PROTOCOL.md).
+
+_Note: in-app Google navigation sends your destination and location to Google (that's how it
+routes) and needs internet. Mirroring another app stays fully on-device. See Privacy in the
+README._
+
 ## Unreleased (R29–R33)
 
 **The handlebar remote is now a proper controller.** Long-press UP (from any
