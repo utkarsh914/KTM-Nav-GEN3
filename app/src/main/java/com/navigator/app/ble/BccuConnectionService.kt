@@ -237,6 +237,30 @@ class BccuConnectionService : LifecycleService() {
     private var connectingSinceMs: Long = 0L
     private var pendingAutoConnect: Boolean = false
 
+    /**
+     * Bridges the navigation pipeline (provider -> encoder -> DashWrite) to this
+     * service's existing send/clear methods. The provider path adds dedup /
+     * throttle / state-machine / clear handling that the old direct calls lacked.
+     */
+    private var navCoordinator: com.navigator.app.nav.NavigationCoordinator? = null
+
+    private fun startNavigationCoordinator() {
+        val output = object : com.navigator.app.nav.DashOutput {
+            override fun setNavState(guidanceOn: Boolean, gpsIconOn: Boolean) =
+                sendNavigationState(guidanceOn, gpsIconOn)
+            override fun turnIcon(icon: BccuProtocol.TurnIcon) = sendTurnIcon(icon)
+            override fun guidance(distance: String?, road: String?, eta: String?, remaining: String?) =
+                sendGuidance(distance, road, eta, remaining)
+            override fun clearNow() = clearGuidance()
+            override fun clearDebounced() = scheduleGuidanceClear()
+        }
+        navCoordinator = com.navigator.app.nav.NavigationCoordinator(
+            scope = lifecycleScope,
+            provider = com.navigator.app.nav.providers.NotificationNavProvider,
+            output = output,
+        ).also { it.start() }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -244,6 +268,7 @@ class BccuConnectionService : LifecycleService() {
         runningInstance = this
         startReconnectWatchdog()
         registerAdapterStateReceiver()
+        startNavigationCoordinator()
         speedMonitor = com.navigator.app.location.SpeedMonitor(this).also { it.start() }
         routeRecorder = com.navigator.app.location.RouteRecorder(this).also { it.start() }
         vibrationMonitor = com.navigator.app.sensors.VibrationMonitor(this).also { it.start() }
@@ -549,6 +574,7 @@ class BccuConnectionService : LifecycleService() {
         speedMonitor?.stop(); speedMonitor = null
         routeRecorder?.stop(); routeRecorder = null
         vibrationMonitor?.destroy(); vibrationMonitor = null
+        navCoordinator?.stop(); navCoordinator = null
         stopBleScan()
         settleJob?.cancel(); settleJob = null
         mainHandler.post { modeOverlay?.hide(); modeOverlay = null }
@@ -965,6 +991,9 @@ class BccuConnectionService : LifecycleService() {
                     enableIndication(BccuProtocol.RCM_REMOTE_CONTROL)
                     enableNotification(BccuProtocol.TBT_NAV_REQUEST)
                     sendNavigationState(guidanceOn = true, gpsIconOn = true)
+                    // Re-push any active guidance snapshot so a reconnect never
+                    // leaves the TFT stale (encoder re-sends state + guidance).
+                    navCoordinator?.onReAuth()
                     startRssiPolling()
                     sendGreeting()
                     probeVehicleInfo()

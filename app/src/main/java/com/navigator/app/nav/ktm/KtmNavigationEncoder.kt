@@ -93,53 +93,67 @@ class KtmNavigationEncoder(
                 val throttled = lastEmitMs != Long.MIN_VALUE &&
                     (state.producedAtMs - lastEmitMs) < minIntervalMs
 
-                // Turn icon - hold last valid, never emit UNKNOWN as an arrow.
-                if (state.maneuver != NormalizedManeuver.UNKNOWN) {
-                    val icon = KtmManeuverMapping.toTurnIcon(
-                        maneuver = state.maneuver,
-                        rotation = state.roundaboutRotation,
-                        exit = state.roundaboutExit,
-                        drivingSide = state.drivingSide,
-                    )
-                    if (icon != TurnIcon.UNDEFINED && icon != lastIcon) {
-                        writes += DashWrite.TurnIcon(icon)
-                        lastIcon = icon
+                // Turn icon (significant - always allowed). Prefer a
+                // provider-resolved icon (notification path); else map the
+                // maneuver; else hold the last valid one (never emit
+                // UNKNOWN/UNDEFINED as an arrow).
+                val icon: TurnIcon? = state.resolvedIcon
+                    ?: if (state.maneuver != NormalizedManeuver.UNKNOWN) {
+                        KtmManeuverMapping.toTurnIcon(
+                            maneuver = state.maneuver,
+                            rotation = state.roundaboutRotation,
+                            exit = state.roundaboutExit,
+                            drivingSide = state.drivingSide,
+                        )
+                    } else {
+                        null
                     }
+                if (icon != null && icon != TurnIcon.UNDEFINED && icon != lastIcon) {
+                    writes += DashWrite.TurnIcon(icon)
+                    lastIcon = icon
                 }
 
-                // Road name (significant - always allowed through).
+                // Road name (significant - always allowed).
                 val road = state.roadName?.trim()?.takeIf { it.isNotEmpty() }
                 if (road != null && road != lastRoad) {
                     writes += DashWrite.TurnRoad(road)
                     lastRoad = road
                 }
 
-                // Distance to maneuver (throttle-eligible label).
-                val distance = state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, state.units) }
-                if (distance != null && distance != lastDistance && !throttled) {
-                    writes += DashWrite.TurnDistance(distance)
-                    lastDistance = distance
-                }
-
-                // ETA (throttle-eligible + minute-boundary deadband).
-                val remainingSecs = state.remainingTimeSeconds
-                if (remainingSecs != null && !throttled) {
-                    val candidate = EtaFormatter.etaEpochMs(remainingSecs, state.producedAtMs)
-                    if (EtaFormatter.shouldUpdate(lastEtaEpochMs, candidate, etaDeadbandMs)) {
-                        val text = EtaFormatter.format(candidate, zone)
-                        lastEtaEpochMs = candidate
-                        if (text != lastEtaText) {
-                            writes += DashWrite.Eta(text)
-                            lastEtaText = text
-                        }
+                // Throttle-eligible labels: distance / ETA / remaining. A
+                // provider-preformatted string bypasses the numeric formatter.
+                if (!throttled) {
+                    val distance = state.preformattedDistance
+                        ?: state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, state.units) }
+                    if (distance != null && distance != lastDistance) {
+                        writes += DashWrite.TurnDistance(distance)
+                        lastDistance = distance
                     }
-                }
 
-                // Remaining distance to destination (throttle-eligible label).
-                val remaining = state.remainingDistanceMeters?.let { DistanceFormatter.format(it, state.units) }
-                if (remaining != null && remaining != lastRemaining && !throttled) {
-                    writes += DashWrite.RemainingDistance(remaining)
-                    lastRemaining = remaining
+                    val eta: String? = when {
+                        state.preformattedEta != null -> state.preformattedEta
+                        state.remainingTimeSeconds != null -> {
+                            val candidate = EtaFormatter.etaEpochMs(state.remainingTimeSeconds, state.producedAtMs)
+                            if (EtaFormatter.shouldUpdate(lastEtaEpochMs, candidate, etaDeadbandMs)) {
+                                lastEtaEpochMs = candidate
+                                EtaFormatter.format(candidate, zone)
+                            } else {
+                                null
+                            }
+                        }
+                        else -> null
+                    }
+                    if (eta != null && eta != lastEtaText) {
+                        writes += DashWrite.Eta(eta)
+                        lastEtaText = eta
+                    }
+
+                    val remaining = state.preformattedRemaining
+                        ?: state.remainingDistanceMeters?.let { DistanceFormatter.format(it, state.units) }
+                    if (remaining != null && remaining != lastRemaining) {
+                        writes += DashWrite.RemainingDistance(remaining)
+                        lastRemaining = remaining
+                    }
                 }
 
                 lastSession = NavSessionState.ENROUTE

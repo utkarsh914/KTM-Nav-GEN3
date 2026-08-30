@@ -1,5 +1,7 @@
 package com.navigator.app.nav.model
 
+import com.navigator.app.ble.BccuProtocol
+
 /**
  * Provider-agnostic navigation state. Every navigation source (Google Nav SDK,
  * the notification-mirroring fallback, a future Routes API provider) is
@@ -115,6 +117,19 @@ data class NormalizedNavigationState(
     val nextManeuver: NormalizedManeuver? = null,
     val units: DistanceUnits = DistanceUnits.METRIC,
     val producedAtMs: Long = 0L,
+
+    // --- Passthrough overrides (fallback/notification provider) ---
+    // When set, these bypass the encoder's own maneuver-mapping / formatting and
+    // are sent to the dash verbatim. They let the string-based notification path
+    // stay byte-for-byte identical to today while still gaining the encoder's
+    // dedup / throttle / state-machine / clear handling. The Nav SDK provider
+    // leaves them null and uses the structured numeric fields above.
+    // DECISION TO REVISIT at the end of all phases: whether to keep these
+    // overrides or fully normalise the notification path to numeric fields.
+    val resolvedIcon: BccuProtocol.TurnIcon? = null,
+    val preformattedDistance: String? = null,
+    val preformattedEta: String? = null,
+    val preformattedRemaining: String? = null,
 ) {
     companion object {
         /** Convenience: a fully idle snapshot. */

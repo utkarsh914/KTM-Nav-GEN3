@@ -159,6 +159,57 @@ class KtmNavigationEncoderTest {
         assertTrue(w.contains(DashWrite.RemainingDistance("20 mi")))
     }
 
+    @Test fun passthroughOverrides_usedVerbatim() {
+        // The notification provider supplies pre-formatted strings + a resolved
+        // icon; the encoder should send them as-is (no formatting / mapping),
+        // while still deduping and running the state machine.
+        val enc = encoder()
+        val s = NormalizedNavigationState(
+            sessionState = NavSessionState.ENROUTE,
+            resolvedIcon = TurnIcon.UTURN_RIGHT,
+            preformattedDistance = "110 m",
+            preformattedEta = "12:45",
+            preformattedRemaining = "9.7 km",
+            roadName = "1st Cross Rd",
+            producedAtMs = 0,
+        )
+        assertEquals(
+            listOf(
+                DashWrite.SetNavState(guidanceOn = true),
+                DashWrite.TurnIcon(TurnIcon.UTURN_RIGHT),
+                DashWrite.TurnRoad("1st Cross Rd"),
+                DashWrite.TurnDistance("110 m"),
+                DashWrite.Eta("12:45"),
+                DashWrite.RemainingDistance("9.7 km"),
+            ),
+            enc.encode(s),
+        )
+        // Same values again -> fully deduped.
+        assertTrue(enc.encode(s.copy(producedAtMs = 2000)).isEmpty())
+    }
+
+    @Test fun passthroughOverrides_nullIconHoldsLast() {
+        val enc = encoder()
+        enc.encode(
+            NormalizedNavigationState(
+                sessionState = NavSessionState.ENROUTE,
+                resolvedIcon = TurnIcon.QUITE_LEFT,
+                preformattedDistance = "200 m",
+                producedAtMs = 0,
+            ),
+        )
+        // Icon unknown this tick (heuristic returned null) -> hold last icon.
+        val w = enc.encode(
+            NormalizedNavigationState(
+                sessionState = NavSessionState.ENROUTE,
+                resolvedIcon = null,
+                preformattedDistance = "150 m",
+                producedAtMs = 2000,
+            ),
+        )
+        assertEquals(listOf(DashWrite.TurnDistance("150 m")), w)
+    }
+
     @Test fun reset_reEmitsEverything() {
         val enc = encoder()
         enc.encode(enroute(0))

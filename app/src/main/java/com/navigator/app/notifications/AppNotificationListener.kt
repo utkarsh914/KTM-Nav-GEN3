@@ -6,6 +6,7 @@ import android.service.notification.StatusBarNotification
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
 
 /**
@@ -35,8 +36,11 @@ class AppNotificationListener : NotificationListenerService() {
      */
     private val dashIcon = BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
 
+    // Built once (EncryptedSharedPreferences + MasterKey are expensive); the
+    // getters read prefs live, so runtime setting changes are still reflected.
+    private val settings by lazy { AppSettings(this) }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val settings = AppSettings(this)
         val packageName = sbn.packageName
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
@@ -68,17 +72,20 @@ class AppNotificationListener : NotificationListenerService() {
             NotificationRepository.updateNavText(packageName, navText)
             val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty()
             val (etaText, remainingDistanceText) = parseEtaAndRemainingDistance(subText)
-            // title/text line up with the official app's own field split:
-            // e.g. title="110 m" (TURN_DISTANCE), text="towards 1st Cross Rd" (TURN_ROAD).
-            BccuConnectionService.sendGuidanceIfRunning(
-                title.ifBlank { null },
-                text.ifBlank { null },
-                etaText,
-                remainingDistanceText
-            )
             captureManeuverIconIfEnabled(sbn, title, text)
             val guessedIcon = TurnIconHeuristic.guessDirection(this, sbn)
-            guessedIcon?.let { BccuConnectionService.sendTurnIconIfRunning(it) }
+            // Feed the navigation pipeline instead of calling BLE directly:
+            // provider -> encoder -> coordinator applies the dedup/throttle/
+            // state-machine before it reaches the dash. title/text line up with
+            // the official app's field split: title="110 m" (TURN_DISTANCE),
+            // text="towards 1st Cross Rd" (TURN_ROAD).
+            NotificationNavProvider.pushGuidance(
+                distanceText = title.ifBlank { null },
+                roadText = text.ifBlank { null },
+                etaText = etaText,
+                remainingText = remainingDistanceText,
+                icon = guessedIcon,
+            )
             // Stereo approach beeps: left ear = left turn, right ear = right turn,
             // faster pattern as the distance (the notification title) shrinks.
             // Ducked to a background hum while the bike is provably waiting
@@ -211,14 +218,14 @@ class AppNotificationListener : NotificationListenerService() {
      * doesn't cause a flicker.
      */
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        if (isNavigationNotification(sbn, AppSettings(this))) {
+        if (isNavigationNotification(sbn, settings)) {
             AppLogger.log("Notif", "Nav notification removed from ${sbn.packageName} - scheduling guidance clear")
             // TurnBeeper.reset() deliberately NOT called here: Maps routinely
             // removes+reposts its notification mid-route, and resetting the beep
             // dedup on every raw removal made the same turn beep again on each
-            // repost. The service's debounced clearGuidance() resets it instead,
-            // only when navigation has genuinely ended.
-            BccuConnectionService.clearGuidanceIfRunning()
+            // repost. The provider debounces the removal and only emits a real
+            // end (-> encoder clear) when navigation has genuinely stopped.
+            NotificationNavProvider.pushRemoved()
             NotificationRepository.clearNav()
         }
     }

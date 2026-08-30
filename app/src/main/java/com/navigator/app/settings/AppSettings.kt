@@ -289,6 +289,16 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getString(KEY_WAYPOINT_NAME, null)
         set(value) = pairingPrefs.edit().putString(KEY_WAYPOINT_NAME, value).apply()
 
+    /**
+     * Which navigation source feeds the dash. [NAV_PROVIDER_NOTIFICATION] mirrors
+     * another nav app's notifications (offline-capable, current default);
+     * [NAV_PROVIDER_GOOGLE_NAV_SDK] runs Google's engine in-app (needs a key +
+     * Play Services + network). Consumed by provider selection in a later phase.
+     */
+    var navProvider: String
+        get() = pairingPrefs.getString(KEY_NAV_PROVIDER, NAV_PROVIDER_NOTIFICATION) ?: NAV_PROVIDER_NOTIFICATION
+        set(value) = pairingPrefs.edit().putString(KEY_NAV_PROVIDER, value).apply()
+
     /** Auto-record GPS routes to GPX, but only while the phone is charging. */
     var routeAutoRecordEnabled: Boolean
         get() = pairingPrefs.getBoolean(KEY_ROUTE_RECORD, false)
@@ -361,6 +371,9 @@ class AppSettings(context: Context) {
         const val DEFAULT_OVERSPEED_LIMIT_KMH = 80
         private const val KEY_WAYPOINT = "waypoint_latlon"
         private const val KEY_WAYPOINT_NAME = "waypoint_name"
+        private const val KEY_NAV_PROVIDER = "nav_provider"
+        const val NAV_PROVIDER_NOTIFICATION = "notification"
+        const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
         private const val KEY_ROUTE_RECORD = "route_auto_record"
         private const val KEY_PAIRED_PREFIX = "paired_before_"
         private const val KEY_SESSION_KEYS_PREFIX = "session_keys_"
