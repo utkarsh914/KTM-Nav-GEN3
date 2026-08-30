@@ -88,6 +88,7 @@ fun SettingsScreen(
     onOpenVibrationCalibration: () -> Unit = {},
     onOpenRides: () -> Unit = {},
     onChangeBrand: () -> Unit = {},
+    onOpenPlaces: () -> Unit = {},
     onRepair: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -490,7 +491,7 @@ fun SettingsScreen(
             if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
                 item {
                     GroupCard("Navigation") {
-                        SettingsRow("In-app Google navigation", showDivider = false) {
+                        SettingsRow("In-app Google navigation", showDivider = true) {
                             KtmToggle(googleNavOn, { on ->
                                 googleNavOn = on
                                 settings.googleNavEnabled = on
@@ -507,8 +508,11 @@ fun SettingsScreen(
                             color = Ktm.Muted2,
                             fontFamily = Barlow,
                             fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 12.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp).padding(vertical = 10.dp),
                         )
+                        SettingsRow("Saved places", showDivider = false, onClick = onOpenPlaces) {
+                            Text("›", color = Ktm.Dim, fontSize = 18.sp)
+                        }
                     }
                 }
             }

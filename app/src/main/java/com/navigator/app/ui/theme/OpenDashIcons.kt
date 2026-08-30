@@ -37,6 +37,28 @@ object OpenDashIcons {
         return builder.build()
     }
 
+    /** Solid (filled) variant of a lucide glyph — fill tints via [androidx.compose.material3.Icon]. */
+    private fun lucideFilled(name: String, vararg paths: String): ImageVector {
+        val builder = ImageVector.Builder(
+            name = name,
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        )
+        for (d in paths) {
+            builder.addPath(
+                pathData = PathParser().parsePathString(d).toNodes(),
+                fill = SolidColor(Color.White),
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }
+        return builder.build()
+    }
+
     // Circles expressed as path arcs so they can share the lucide() builder.
     private fun circle(cx: Float, cy: Float, r: Float): String =
         "M${cx - r},$cy a$r,$r 0 1,0 ${2 * r},0 a$r,$r 0 1,0 ${-2 * r},0 Z"
@@ -139,6 +161,35 @@ object OpenDashIcons {
             circle(11f, 11f, 7f),
             "M21 21l-4.35-4.35",
         )
+    }
+
+    /** Bookmark (save a place as a favorite). */
+    val Bookmark: ImageVector by lazy {
+        lucide("Bookmark", 1.8f, "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z")
+    }
+
+    /** Filled bookmark — "saved" state. */
+    val BookmarkFilled: ImageVector by lazy {
+        lucideFilled("BookmarkFilled", "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z")
+    }
+
+    /** Briefcase (Work favorite). */
+    val Briefcase: ImageVector by lazy {
+        lucide(
+            "Briefcase", 1.7f,
+            "M4 8h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z",
+            "M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2",
+        )
+    }
+
+    /** Clock (recent locations). */
+    val Clock: ImageVector by lazy {
+        lucide("Clock", 1.7f, circle(12f, 12f, 9f), "M12 7v5l3 2")
+    }
+
+    /** X / close. */
+    val Close: ImageVector by lazy {
+        lucide("Close", 1.9f, "M18 6L6 18", "M6 6l12 12")
     }
 
     /** Crosshair / "recenter on me" control for the map. */

@@ -45,7 +45,7 @@ import com.navigator.app.ui.theme.OpenDashTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION, PLACES }
 
 class MainActivity : ComponentActivity() {
 
@@ -440,6 +440,7 @@ private fun OpenDashApp(
             }
             AppRoute.SETTINGS -> route = settingsReturnRoute
             AppRoute.LOGS -> route = logsReturnRoute
+            AppRoute.PLACES -> route = AppRoute.SETTINGS
             AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
@@ -502,9 +503,13 @@ private fun OpenDashApp(
                 onBack = pairingReturnRoute?.let { back -> { route = back; pairingReturnRoute = null } },
             )
             AppRoute.NAV_HOME -> com.navigator.app.ui.screens.NavigationHomeScreen(
-                onOpenSearch = { destinationReturnRoute = AppRoute.NAV_HOME; route = AppRoute.DESTINATION },
                 onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; route = AppRoute.PAIRING },
                 onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; route = AppRoute.SETTINGS },
+                onStartNavigation = { dest ->
+                    (appContext as? android.app.Activity)?.let {
+                        com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
+                    }
+                },
             )
             AppRoute.MAIN -> {
                 // A single on-screen D-pad overlays every MAIN sub-screen so the
@@ -549,6 +554,7 @@ private fun OpenDashApp(
                 onOpenVibrationCalibration = { route = AppRoute.VIBRATION_CALIBRATION },
                 onOpenRides = { route = AppRoute.RIDES },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
+                onOpenPlaces = { route = AppRoute.PLACES },
                 onRepair = {
                     // Forget the pairing flag too, not just the address - otherwise
                     // re-pairing the same bike still replies GENERATE_KEYS and the
@@ -564,6 +570,9 @@ private fun OpenDashApp(
             )
             AppRoute.LOGS -> com.navigator.app.ui.screens.LogsScreen(
                 onBack = { route = logsReturnRoute }
+            )
+            AppRoute.PLACES -> com.navigator.app.ui.screens.SavedPlacesScreen(
+                onBack = { route = AppRoute.SETTINGS }
             )
             AppRoute.SYMBOL_TEST -> com.navigator.app.ui.screens.SymbolTestScreen(
                 onBack = { route = AppRoute.SETTINGS }
