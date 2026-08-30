@@ -26,6 +26,16 @@ Three independent jobs, on the phone, no account/server for the core:
 This document focuses on **(1) navigation**, which the revamp rebuilt. The other two are
 unchanged and touched only where noted.
 
+> **⚠ Being revised — phone-first UX revamp in progress.** A follow-on effort makes the
+> app **phone-first and map-centric**: a new map home (`NavigationHomeScreen`) built on the
+> Nav SDK's bundled `NavigationView`, an on-phone full active-navigation screen, and a
+> search flow with recents/favorites. Design:
+> [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md). **This architecture doc MUST be
+> updated as that revamp lands** — especially §1 (the app is becoming navigation-only; ride
+> recording and the handlebar-remote controller are slated for removal) and §3 (destination
+> entry is superseded by the new flow). Sections not yet reconciled with the revamp still
+> describe the pre-revamp state.
+
 ---
 
 ## 2. Navigation: two sources, one pipeline
@@ -105,6 +115,12 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 ---
 
 ## 3. Destination entry (`AppRoute.DESTINATION`)
+
+> **Superseded by the UX revamp** ([`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)):
+> the SEARCH/MAP/LINK `DestinationScreen` described below is being replaced by a map-first
+> `NavigationHomeScreen` (search sheet with recents/favorites, pin confirm, route preview,
+> on-phone active guidance). This section documents the pre-revamp state and will be
+> rewritten when P2–P4 land.
 
 Reached from the Direction screen's "NAVIGATE WITH GOOGLE" button (shown only when a key +
 Play Services are present and the Settings toggle is on) and from a **share-sheet** target.
