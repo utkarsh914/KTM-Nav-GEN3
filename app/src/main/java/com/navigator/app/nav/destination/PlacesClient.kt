@@ -45,6 +45,7 @@ data class AndroidClientAuth(val packageName: String, val certSha1Hex: String)
 object PlacesClient {
 
     private const val AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete"
+    private const val TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
     private const val DETAILS_BASE = "https://places.googleapis.com/v1/places/"
 
     val apiKeyPresent: Boolean get() = BuildConfig.NAV_SDK_API_KEY.isNotBlank()
@@ -154,6 +155,56 @@ object PlacesClient {
         } finally {
             conn.disconnect()
         }
+    }
+
+    /**
+     * Text Search (New): resolve a free-text place/address string to coordinates.
+     * Used to turn a Maps place name (from a resolved short link) into an exact
+     * location - far more reliable than scraping the page.
+     */
+    suspend fun textSearch(query: String, auth: AndroidClientAuth?): PlaceLocation? = withContext(Dispatchers.IO) {
+        val key = BuildConfig.NAV_SDK_API_KEY
+        if (key.isBlank() || query.isBlank()) return@withContext null
+
+        val body = JSONObject().apply {
+            put("textQuery", query)
+            put("regionCode", "in")
+            put("maxResultCount", 1)
+        }
+        val conn = (URL(TEXT_SEARCH_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("X-Goog-Api-Key", key)
+            setRequestProperty("X-Goog-FieldMask", "places.location")
+            applyAndroidAuth(auth)
+            connectTimeout = 8_000
+            readTimeout = 8_000
+            doOutput = true
+        }
+        try {
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = conn.responseCode
+            val text = readBody(conn, code)
+            if (code !in 200..299) {
+                AppLogger.log("Places", "textSearch HTTP $code: ${text.take(200)}")
+                return@withContext null
+            }
+            parseFirstPlaceLocation(text)
+        } catch (e: Exception) {
+            AppLogger.log("Places", "textSearch error: ${e.message}")
+            null
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /** First place location from a Text Search response. */
+    fun parseFirstPlaceLocation(json: String): PlaceLocation? {
+        val places = JSONObject(json).optJSONArray("places") ?: return null
+        if (places.length() == 0) return null
+        val loc = places.getJSONObject(0).optJSONObject("location") ?: return null
+        if (!loc.has("latitude") || !loc.has("longitude")) return null
+        return PlaceLocation(loc.getDouble("latitude"), loc.getDouble("longitude"))
     }
 
     /** Parse the autocomplete response. Package-visible for future JVM tests. */

@@ -62,7 +62,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-private enum class DestMode { SEARCH, MAP }
+private enum class DestMode { SEARCH, MAP, LINK }
 
 /**
  * Destination entry - Search + Map (Phase 5a/5b). Search: type a place, see
@@ -74,6 +74,7 @@ private enum class DestMode { SEARCH, MAP }
 fun DestinationScreen(
     onBack: () -> Unit,
     onNavigate: (NavDestination) -> Unit,
+    initialLink: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -88,7 +89,9 @@ fun DestinationScreen(
     var results by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var resolving by remember { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(DestMode.SEARCH) }
+    var mode by remember { mutableStateOf(if (initialLink.isNullOrBlank()) DestMode.SEARCH else DestMode.LINK) }
+    var linkText by remember { mutableStateOf(initialLink.orEmpty()) }
+    var linkError by remember { mutableStateOf<String?>(null) }
 
     // Make sure the Nav SDK has its key before the bundled map renders.
     LaunchedEffect(Unit) { GoogleNavSdkController.ensureApiKey() }
@@ -193,6 +196,52 @@ fun DestinationScreen(
                         }
                     }
 
+                    DestMode.LINK -> {
+                        OutlinedTextField(
+                            value = linkText,
+                            onValueChange = { linkText = it; linkError = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Paste a Google Maps link", color = Ktm.Dim) },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Ktm.Surface,
+                                unfocusedContainerColor = Ktm.Surface,
+                                focusedTextColor = Ktm.White,
+                                unfocusedTextColor = Ktm.White,
+                                cursorColor = Ktm.Orange,
+                                focusedIndicatorColor = Ktm.Orange,
+                                unfocusedIndicatorColor = Ktm.Border,
+                            ),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Best-effort: reads coordinates from the link. Share from " +
+                                "Google Maps, or paste a link. Not all links contain a pin.",
+                            color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 13.sp,
+                        )
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            when {
+                                resolving -> CircularProgressIndicator(
+                                    color = Ktm.Orange,
+                                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
+                                )
+                                linkError != null -> Text(
+                                    linkError!!, color = Ktm.Danger, fontFamily = BarlowCondensed, fontSize = 16.sp,
+                                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
+                                )
+                            }
+                        }
+                        NavigateHereButton(enabled = linkText.isNotBlank() && !resolving) {
+                            resolving = true
+                            linkError = null
+                            scope.launch {
+                                val dest = com.navigator.app.nav.destination.MapsUrlResolver.resolve(linkText, auth)
+                                resolving = false
+                                if (dest != null) onNavigate(dest)
+                                else linkError = "Couldn't find a location in that link."
+                            }
+                        }
+                    }
+
                     DestMode.MAP -> {
                         val mapView = rememberMapViewWithLifecycle()
                         var pin by remember { mutableStateOf<LatLng?>(null) }
@@ -244,6 +293,7 @@ private fun ModeToggle(mode: DestMode, onSelect: (DestMode) -> Unit) {
     ) {
         ModeTab("SEARCH", mode == DestMode.SEARCH, Modifier.weight(1f)) { onSelect(DestMode.SEARCH) }
         ModeTab("MAP", mode == DestMode.MAP, Modifier.weight(1f)) { onSelect(DestMode.MAP) }
+        ModeTab("LINK", mode == DestMode.LINK, Modifier.weight(1f)) { onSelect(DestMode.LINK) }
     }
 }
 
