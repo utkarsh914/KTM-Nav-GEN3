@@ -44,6 +44,35 @@ object GoogleNavSdkController {
     /** Phase-6 test entry point: navigate to Silk Board Junction. */
     fun startTest(activity: Activity) = startNavigation(activity, SILK_BOARD)
 
+    /**
+     * Warm up the Navigation SDK for the map home: sets the key, shows the Terms
+     * dialog if needed, and obtains the [Navigator] (required before a
+     * `NavigationView` can render). Does NOT switch the dash provider or start
+     * guidance - that stays in [startNavigation]. Idempotent; [onReady] fires on
+     * the main thread once the navigator is available (or immediately again on a
+     * later call, since the SDK returns the same navigator).
+     */
+    fun prepare(activity: Activity, onReady: () -> Unit = {}, onError: (Int) -> Unit = {}) {
+        if (!isAvailable(activity)) {
+            AppLogger.log("Nav", "prepare(): Google Nav SDK unavailable; skipping")
+            onError(-1)
+            return
+        }
+        ensureApiKey()
+        NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
+            override fun onNavigatorReady(navigator: Navigator) {
+                AppLogger.log("Nav", "prepare(): navigator ready")
+                GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext)
+                onReady()
+            }
+
+            override fun onError(errorCode: Int) {
+                AppLogger.log("Nav", "!! prepare(): getNavigator error=$errorCode")
+                onError(errorCode)
+            }
+        })
+    }
+
     fun startNavigation(activity: Activity, dest: NavDestination) {
         if (!isAvailable(activity)) {
             AppLogger.log("Nav", "Google Nav SDK unavailable (no key or Play services); ignoring")

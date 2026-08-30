@@ -79,7 +79,12 @@ private data class FoundDevice(val device: BluetoothDevice, val rssi: Int)
  */
 @SuppressLint("MissingPermission") // scan/connect permissions are requested in MainActivity
 @Composable
-fun PairingScreen(settings: AppSettings, onPaired: () -> Unit, onOpenLogs: () -> Unit) {
+fun PairingScreen(
+    settings: AppSettings,
+    onPaired: () -> Unit,
+    onOpenLogs: () -> Unit,
+    onBack: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val foundDevices = remember { mutableStateListOf<FoundDevice>() }
     var scanning by remember { mutableStateOf(false) }
@@ -171,8 +176,26 @@ fun PairingScreen(settings: AppSettings, onPaired: () -> Unit, onOpenLogs: () ->
             .padding(top = 8.dp, bottom = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Top-right Logs affordance (kept from the original for troubleshooting).
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        // Optional back (when reached from the map home's Connect pill) on the
+        // left; Logs affordance on the right (kept for troubleshooting).
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onBack != null) {
+                Icon(
+                    OpenDashIcons.ChevronLeft,
+                    contentDescription = "Back",
+                    tint = Ktm.TextSecondary,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onBack),
+                )
+            } else {
+                Spacer(Modifier.size(28.dp))
+            }
             Text(
                 "LOGS",
                 color = Ktm.Dim,

@@ -45,7 +45,7 @@ import com.navigator.app.ui.theme.OpenDashTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION }
 
 class MainActivity : ComponentActivity() {
 
@@ -371,6 +371,12 @@ private fun OpenDashApp(
     actions: ControllerStateMachine.Actions
 ) {
     val appContext = androidx.compose.ui.platform.LocalContext.current
+    // The primary home is the phone-first map screen when Google navigation is
+    // available (key + Play Services + enabled); otherwise the legacy grid.
+    fun homeRoute(): AppRoute =
+        if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
+            settings.googleNavEnabled
+        ) AppRoute.NAV_HOME else AppRoute.MAIN
     var route by remember {
         mutableStateOf(
             when {
@@ -378,13 +384,19 @@ private fun OpenDashApp(
                 !settings.brandChosen -> AppRoute.BRAND      // first run: pick the bike brand first
                 !settings.onboardingComplete -> AppRoute.ONBOARDING
                 settings.bondedDeviceAddress == null -> AppRoute.PAIRING
-                else -> AppRoute.MAIN
+                else -> homeRoute()
             }
         )
     }
     // Where "Change bike / brand" returns to: Settings when reached from there,
     // null (forward-only to pairing) on first run.
     var brandReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
+    // Return targets for screens reachable from more than one parent.
+    var settingsReturnRoute by remember { mutableStateOf(AppRoute.MAIN) }
+    var destinationReturnRoute by remember { mutableStateOf(AppRoute.MAIN) }
+    // Non-null when Pairing is reached from the map home's Connect pill (so it
+    // gets a back affordance); null on the forced first-run pairing step.
+    var pairingReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
     // A GPX arriving while we're already running (singleTask onNewIntent):
     // jump to the ride viewer for it.
     val importedGpx by MainActivity.importedGpx.collectAsState()
@@ -403,6 +415,7 @@ private fun OpenDashApp(
         if (sharedLink != null && googleNavOffered &&
             route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
         ) {
+            destinationReturnRoute = homeRoute()
             route = AppRoute.DESTINATION
         }
     }
@@ -415,7 +428,8 @@ private fun OpenDashApp(
     // Touch back navigation: sub-pages return to their parent instead of
     // minimizing the app (the physical RCM BACK still works independently).
     androidx.activity.compose.BackHandler(
-        enabled = route != AppRoute.PAIRING && route != AppRoute.ONBOARDING &&
+        enabled = route != AppRoute.ONBOARDING &&
+            !(route == AppRoute.PAIRING && pairingReturnRoute == null) &&
             !(route == AppRoute.BRAND && brandReturnRoute == null)
     ) {
         when (route) {
@@ -424,17 +438,19 @@ private fun OpenDashApp(
                 route = brandReturnRoute ?: AppRoute.MAIN
                 brandReturnRoute = null
             }
-            AppRoute.SETTINGS -> route = AppRoute.MAIN
+            AppRoute.SETTINGS -> route = settingsReturnRoute
             AppRoute.LOGS -> route = logsReturnRoute
             AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.RIDES -> { MainActivity.importedGpx.value = null; route = AppRoute.MAIN }
-            AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = AppRoute.MAIN }
+            AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = destinationReturnRoute }
+            AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MAIN -> if (!stateMachine.touchBack()) {
                 (context as? ComponentActivity)?.moveTaskToBack(true)
             }
-            AppRoute.PAIRING, AppRoute.ONBOARDING -> {}
+            AppRoute.PAIRING -> { route = pairingReturnRoute ?: AppRoute.MAIN; pairingReturnRoute = null }
+            AppRoute.ONBOARDING -> {}
         }
     }
 
@@ -481,8 +497,14 @@ private fun OpenDashApp(
             )
             AppRoute.PAIRING -> PairingScreen(
                 settings = settings,
-                onPaired = { route = AppRoute.MAIN },
-                onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; route = AppRoute.LOGS }
+                onPaired = { route = pairingReturnRoute ?: homeRoute(); pairingReturnRoute = null },
+                onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; route = AppRoute.LOGS },
+                onBack = pairingReturnRoute?.let { back -> { route = back; pairingReturnRoute = null } },
+            )
+            AppRoute.NAV_HOME -> com.navigator.app.ui.screens.NavigationHomeScreen(
+                onOpenSearch = { destinationReturnRoute = AppRoute.NAV_HOME; route = AppRoute.DESTINATION },
+                onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; route = AppRoute.PAIRING },
+                onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; route = AppRoute.SETTINGS },
             )
             AppRoute.MAIN -> {
                 // A single on-screen D-pad overlays every MAIN sub-screen so the
@@ -504,7 +526,7 @@ private fun OpenDashApp(
                         )
                         ControllerScreen.DIRECTION -> DirectionScreen(
                             onOpenMaps = actions::openMaps,
-                            onSetDestination = { route = AppRoute.DESTINATION },
+                            onSetDestination = { destinationReturnRoute = AppRoute.MAIN; route = AppRoute.DESTINATION },
                             showGoogleNav = googleNavOffered,
                         )
                         else -> GridMenuScreen(
@@ -512,7 +534,7 @@ private fun OpenDashApp(
                             onSelectGrid = { index ->
                                 stateMachine.touchSelectGrid(index, System.currentTimeMillis())
                             },
-                            onOpenSettings = { route = AppRoute.SETTINGS },
+                            onOpenSettings = { settingsReturnRoute = AppRoute.MAIN; route = AppRoute.SETTINGS },
                             onOpenRides = { route = AppRoute.RIDES }
                         )
                     }
@@ -520,7 +542,7 @@ private fun OpenDashApp(
             }
             AppRoute.SETTINGS -> SettingsScreen(
                 settings = settings,
-                onBack = { route = AppRoute.MAIN },
+                onBack = { route = settingsReturnRoute },
                 onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; route = AppRoute.LOGS },
                 onOpenSymbolTest = { route = AppRoute.SYMBOL_TEST },
                 onOpenTurnCalibration = { route = AppRoute.TURN_CALIBRATION },
@@ -562,14 +584,14 @@ private fun OpenDashApp(
             AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(
                 onBack = {
                     MainActivity.sharedNavLink.value = null
-                    route = AppRoute.MAIN
+                    route = destinationReturnRoute
                 },
                 onNavigate = { dest ->
                     (appContext as? android.app.Activity)?.let {
                         com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
                     }
                     MainActivity.sharedNavLink.value = null
-                    route = AppRoute.MAIN
+                    route = destinationReturnRoute
                 },
                 initialLink = sharedLink,
             )

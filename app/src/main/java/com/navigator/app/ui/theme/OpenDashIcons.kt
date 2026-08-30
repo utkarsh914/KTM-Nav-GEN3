@@ -131,4 +131,26 @@ object OpenDashIcons {
     val Check: ImageVector by lazy {
         lucide("Check", 2.2f, "M20 6L9 17l-5-5")
     }
+
+    /** Magnifier for the destination search bar. */
+    val Search: ImageVector by lazy {
+        lucide(
+            "Search", 1.8f,
+            circle(11f, 11f, 7f),
+            "M21 21l-4.35-4.35",
+        )
+    }
+
+    /** Crosshair / "recenter on me" control for the map. */
+    val LocateFixed: ImageVector by lazy {
+        lucide(
+            "LocateFixed", 1.7f,
+            "M12 2v3",
+            "M12 19v3",
+            "M2 12h3",
+            "M19 12h3",
+            circle(12f, 12f, 7f),
+            circle(12f, 12f, 3f),
+        )
+    }
 }
