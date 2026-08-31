@@ -90,40 +90,56 @@ Not part of D2's deletions, but already in place — don't redo/undo these:
   `LaunchedEffect` (402-405); `importGpxFromIntent` fn (292-318) + its calls (223,
   277); initial-route RIDES branch (383); BackHandler RIDES (447); RIDES dispatch
   (589-595); `onOpenRides` wiring (546, 558).
-- **`BccuConnectionService`:** remove `routeRecorder` field/construction/`onEngineState`
-  feed (293, 307, 324) + `reevaluateRouteRecordingIfRunning` (158-160).
+- **`BccuConnectionService`:** remove `routeRecorder` field/construction/`reevaluate`/
+  `stop`, the `routeRecorder?.onEngineState(on)` line in the engine coroutine (leave
+  the coroutine + `TurnBeeper.engineOn = on` — `VibrationMonitor` still exists until
+  Phase 2), and `reevaluateRouteRecordingIfRunning`.
 - **`AppSettings`:** remove `routeAutoRecordEnabled` + `KEY_ROUTE_RECORD`.
 - **`SettingsScreen`:** remove `onOpenRides` param, "View rides" row, "Auto-record
   routes" toggle, "Export recorded routes" + `exportRoutes()` helper,
-  `routeRecordEnabled` state.
-- **`GridMenuScreen`:** strip ride icon + `onOpenRides` +
-  `reevaluateRouteRecordingIfRunning` (keeps it compiling; screen deleted in P3).
+  `routeRecordEnabled` state; **strip only the `reevaluateRouteRecordingIfRunning`
+  call** from the "Power saver" row (the row itself is removed in Phase 2).
+- **`GridMenuScreen`:** strip ride icon + `onOpenRides`; **strip only the
+  `reevaluateRouteRecordingIfRunning` call** from the PWR SAVE chip (chip removed in
+  Phase 2; screen deleted in P3).
 - **`res/xml/file_paths.xml`:** remove `routes/` line.
 - **`AndroidManifest`:** remove GPX `ACTION_VIEW` intent-filters (65-83).
 
-## Phase 2 — Engine-detect + diagnostics
+## Phase 2 — Engine-detect + power-saver removal (keep Symbol Testing)
 
-**Delete:** `sensors/VibrationMonitor.kt`, `ui/screens/VibrationCalibrationScreen.kt`,
-`ui/screens/SymbolTestScreen.kt`.
+**Scope note:** Symbol Testing is intentionally **retained** as a hardware
+diagnostic (a deliberate deviation from the original "remove diagnostics" idea) —
+so `SymbolTestScreen`, its routing, its icon-test storage, and the ★ "confirmed
+working" badge in `TurnCalibrationScreen` all stay. Power saver only ever
+throttled ride-recording + engine-detect (both removed), so it becomes dead and
+is removed here across Settings / GridMenu / Onboarding.
 
-- **`MainActivity`:** remove `SYMBOL_TEST` + `VIBRATION_CALIBRATION` enums, back
-  branches (444, 446), dispatch (580-582, 586-588),
-  `onOpenSymbolTest`/`onOpenVibrationCalibration` wiring (555, 557).
-- **`BccuConnectionService`:** remove `vibrationMonitor` field/construction (294,
-  325), the `VibrationMonitor.engineOn.collect` coroutine (305-307),
-  `reevaluateEngineDetectIfRunning` (168).
-- **`TurnBeeper`:** remove `engineOn` field + engine-off muting (63-73) — keep the
-  beeper. **`AppNotificationListener`:** remove line 101 (TurnBeeper.engineOn feed).
-- **`AppSettings`:** remove `engineDetectEnabled`, `vibrationIdleRms`/
-  `vibrationEngineRms`, detection-sensitivity, `getIconTestResult`/
-  `setIconTestResult` + `KEY_ICON_TEST_PREFIX`.
-- **`SettingsScreen`:** remove `onOpenSymbolTest`/`onOpenVibrationCalibration`
-  params; "Symbol testing", "Calibrate engine detect", "Engine detect (vibration)"
-  toggle, "Detection sensitivity" rows; `engineDetect` state.
-  (OPEN: keep "Send test notification/guidance" rows — they exercise the retained
-  dash pipeline. Cut if desired.)
-- **`TurnCalibrationScreen`:** remove the ★ badge line reading `getIconTestResult`
-  (127).
+**Delete:** `sensors/VibrationMonitor.kt`, `ui/screens/VibrationCalibrationScreen.kt`.
+**Keep:** `ui/screens/SymbolTestScreen.kt`.
+
+- **`MainActivity`:** remove only `VIBRATION_CALIBRATION` (enum, back branch,
+  dispatch, `onOpenVibrationCalibration` wiring). **Keep all `SYMBOL_TEST` wiring**
+  (`onOpenSymbolTest`, back branch, dispatch).
+- **`BccuConnectionService`:** remove `vibrationMonitor` field/construction/destroy,
+  the `vibrationMonitor?.currentSpeedKmh` line (keep `TurnBeeper.gpsSpeedKmh`), the
+  entire `VibrationMonitor.engineOn.collect` coroutine, and
+  `reevaluateEngineDetectIfRunning`.
+- **`TurnBeeper`:** remove `engineOn` field + its `duckedNow()` engine branch — keep
+  the beeper (GPS-stationary duck stays). **`AppNotificationListener`:** remove the
+  `TurnBeeper.engineOn = VibrationMonitor.engineOn.value` feed.
+- **`AppSettings`:** remove `engineDetectEnabled`, `vibrationIdleRms`,
+  `vibrationEngineRms`, `vibrationSensitivity`, **and `powerSaveEnabled`** (+ keys).
+  **Keep** `getIconTestResult`/`setIconTestResult`/`KEY_ICON_TEST_PREFIX` (used by
+  Symbol Testing + the ★ badge).
+- **`SettingsScreen`:** remove `onOpenVibrationCalibration` param; the "Engine
+  detect (vibration)" toggle, "Calibrate engine detect", "Detection sensitivity"
+  rows (+ `engineDetect`/`vibSensitivity` states); **and the "Power saver" row**
+  (+ `powerSave` state). **Keep** `onOpenSymbolTest` + the "Symbol testing" row and
+  the "Send test notification/guidance" rows.
+- **`GridMenuScreen`:** remove the **PWR SAVE** chip + `powerSave` state.
+- **`OnboardingScreen`:** remove the **power-save** step/toggle.
+- **`TurnCalibrationScreen`:** unchanged — the ★ badge (`getIconTestResult`) stays
+  (Symbol Testing retained).
 
 ## Phase 3 — Handlebar remote / D-pad + MAIN + media/call (largest)
 
