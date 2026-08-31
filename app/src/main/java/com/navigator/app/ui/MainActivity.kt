@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,9 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.controller.ControllerScreen
 import com.navigator.app.controller.ControllerStateMachine
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.notifications.NotificationRepository
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.telephony.CallStateMonitor
@@ -43,6 +47,8 @@ import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.theme.OpenDashTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION, PLACES }
@@ -205,6 +211,20 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // While a navigation session is active (either engine), keep the screen
+        // awake and let the app show over the lock screen - like Google Maps.
+        // Cleared the moment guidance ends so we don't sit over the keyguard.
+        lifecycleScope.launch {
+            combine(
+                GoogleNavSdkProvider.state,
+                NotificationNavProvider.state,
+            ) { sdk, mirror ->
+                sdk.sessionState.isActiveNav() || mirror.sessionState.isActiveNav()
+            }.distinctUntilChanged().collect { navigating ->
+                applyNavWindowFlags(navigating)
+            }
+        }
+
         // Notification "Exit" pressed while this activity sits in the recents
         // stack: the service can't finish us, so it broadcasts and we do.
         finishReceiver = object : android.content.BroadcastReceiver() {
@@ -340,6 +360,29 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         AppForegroundState.isForeground = false
+    }
+
+    /**
+     * Keep the screen on and show over the lock screen while navigating so the
+     * rider can glance at guidance without unlocking (mirrors Google Maps).
+     * setShowWhenLocked/setTurnScreenOn is API 27+; older devices fall back to
+     * the (now-deprecated but still honoured) window flags.
+     */
+    private fun applyNavWindowFlags(active: Boolean) {
+        if (active) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(active)
+            setTurnScreenOn(active)
+        } else {
+            @Suppress("DEPRECATION")
+            val flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            if (active) window.addFlags(flags) else window.clearFlags(flags)
+        }
     }
 
     private fun requestRuntimePermissions() {

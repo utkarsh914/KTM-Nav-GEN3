@@ -34,6 +34,10 @@ enum class NavSessionState {
     STOPPED,
 }
 
+/** True while guidance is live (used to keep the screen on / show over lock screen). */
+fun NavSessionState.isActiveNav(): Boolean =
+    this == NavSessionState.ENROUTE || this == NavSessionState.REROUTING
+
 /**
  * Maneuver vocabulary. Mirrors the Google Navigation SDK `Maneuver` set closely
  * (roundabout shapes + rotation are kept separate from the exit number) so the
