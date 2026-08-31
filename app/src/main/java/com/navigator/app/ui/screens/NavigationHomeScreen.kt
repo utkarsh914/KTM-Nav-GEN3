@@ -90,7 +90,9 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.ConnectPill
+import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.theme.Barlow
@@ -106,7 +108,10 @@ import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.math.abs
 
-private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING }
+private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }
+
+/** Auto-finish the trip once we're within this many metres of the destination. */
+private const val ARRIVAL_RADIUS_M = 10
 
 /** Route preview polyline colors (ARGB). */
 private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
@@ -300,17 +305,41 @@ fun NavigationHomeScreen(
         backToBrowse()
     }
 
+    // End the trip and show the "Trip finished" confirmation instead of dropping
+    // straight back to the map. Keeps `selected` so the screen can name the
+    // destination; clears the transient search/preview state.
+    fun finishTrip() {
+        GoogleNavSdkController.stop()
+        query = ""
+        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+        stage = NavStage.TRIP_FINISHED
+    }
+
     // Keep the stage in sync with the real session:
     //  - resume the NAVIGATING view whenever a trip is live but we're not showing
     //    it (e.g. the activity was recreated, or the user tapped the notification
     //    after minimising) - the stage is local Compose state that would
     //    otherwise fall back to BROWSE;
-    //  - auto-return to the map once the trip ends by arrival.
+    //  - show the "Trip finished" screen once the SDK reports arrival.
     LaunchedEffect(navState.sessionState) {
         if (navState.sessionState.isActiveNav() && stage != NavStage.NAVIGATING) {
             stage = NavStage.NAVIGATING
         } else if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
-            backToBrowse()
+            finishTrip()
+        }
+    }
+
+    // Proximity auto-finish: end guidance and show "Trip finished" as soon as we
+    // come within ARRIVAL_RADIUS_M of the destination, rather than waiting for the
+    // SDK's own (sometimes later) arrival callback. remainingDistanceMeters is the
+    // SDK's distance to the final destination, updated ~1 Hz while en route.
+    LaunchedEffect(navState.remainingDistanceMeters, stage) {
+        val remaining = navState.remainingDistanceMeters
+        if (stage == NavStage.NAVIGATING &&
+            navState.sessionState.isActiveNav() &&
+            remaining != null && remaining <= ARRIVAL_RADIUS_M
+        ) {
+            finishTrip()
         }
     }
 
@@ -346,6 +375,7 @@ fun NavigationHomeScreen(
             NavStage.PREVIEW -> stage = NavStage.CONFIRM
             NavStage.CONFIRM -> { stage = NavStage.SEARCH; selected = null }
             NavStage.NAVIGATING -> stopNav()
+            NavStage.TRIP_FINISHED -> backToBrowse()
             NavStage.SEARCH -> backToBrowse()
             NavStage.BROWSE -> showExitConfirm = true // Back at home -> confirm full close
         }
@@ -507,6 +537,11 @@ fun NavigationHomeScreen(
                     }
                 }
             }
+
+            NavStage.TRIP_FINISHED -> TripFinishedScreen(
+                destinationLabel = selected?.label,
+                onBack = ::backToBrowse,
+            )
         }
 
         if (showExitConfirm) {
@@ -594,6 +629,61 @@ private fun BrowseMap(
         }
     }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
+}
+
+/** Full-screen confirmation shown once a trip auto-finishes on arrival. A back
+ *  button (top-left) returns to the browse map. */
+@Composable
+private fun TripFinishedScreen(destinationLabel: String?, onBack: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
+        Box(
+            modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
+                .padding(start = 16.dp, top = 10.dp),
+        ) {
+            CircleBackButton(onClick = onBack)
+        }
+        Column(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier.size(72.dp).clip(CircleShape).background(Ktm.Orange),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    OpenDashIcons.Check, contentDescription = null, tint = Ktm.OnAccent,
+                    modifier = Modifier.size(38.dp),
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+            Eyebrow("Trip finished", fontSize = 13, letterSpacing = 2.0)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Destination reached",
+                color = Ktm.TextPrimary,
+                fontFamily = BarlowCondensed,
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            if (!destinationLabel.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    destinationLabel,
+                    color = Ktm.Muted2,
+                    fontFamily = Barlow,
+                    fontSize = 16.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+            Spacer(Modifier.height(28.dp))
+            KtmPrimaryButton(
+                text = "Done",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onBack,
+            )
+        }
+    }
 }
 
 @Composable
