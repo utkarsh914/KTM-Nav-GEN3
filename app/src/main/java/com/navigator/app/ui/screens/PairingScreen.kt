@@ -184,17 +184,9 @@ fun PairingScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
-                Icon(
-                    OpenDashIcons.ChevronLeft,
-                    contentDescription = "Back",
-                    tint = Ktm.TextSecondary,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onBack),
-                )
+                com.navigator.app.ui.components.CircleBackButton(onClick = onBack)
             } else {
-                Spacer(Modifier.size(28.dp))
+                Spacer(Modifier.size(44.dp))
             }
             Text(
                 "LOGS",

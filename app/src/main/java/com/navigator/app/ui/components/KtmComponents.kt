@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,9 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.theme.OpenDashIcons
 
 /** Small uppercase, letter-spaced eyebrow/group label (Barlow Condensed 700). */
 @Composable
@@ -94,9 +99,9 @@ fun GroupCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(Ktm.RadiusRow))
+                .clip(RoundedCornerShape(Ktm.RadiusCard))
                 .background(Ktm.Surface)
-                .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow)),
+                .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard)),
         ) {
             content()
         }
@@ -193,4 +198,73 @@ fun MonoValue(text: String, color: Color = Ktm.Dim, fontSize: Int = 12) {
         fontFamily = com.navigator.app.ui.theme.JetBrainsMono,
         fontSize = fontSize.sp,
     )
+}
+
+/** Circular back button (Surface fill + soft border) — the app's standard nav-up
+ *  control, matching the map/mirror home icon buttons. */
+@Composable
+fun CircleBackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.BorderSoft, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.White,
+            modifier = Modifier.size(22.dp))
+    }
+}
+
+/** Standard secondary-screen header: circular back button + orange eyebrow label
+ *  (+ optional trailing content), matching the NavigationHome/MirrorHome idiom. */
+@Composable
+fun ScreenTopBar(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircleBackButton(onClick = onBack)
+        Eyebrow(
+            title, fontSize = 13, letterSpacing = 2.0,
+            modifier = Modifier.padding(start = 14.dp).weight(1f),
+        )
+        trailing()
+    }
+}
+
+/** Rounded connection-status pill (dot + label), tappable (e.g. to open pairing).
+ *  Shared by the mirror home and Settings. */
+@Composable
+fun ConnectionPill(
+    state: BccuConnectionService.ConnectionState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val (label, color) = when (state) {
+        BccuConnectionService.ConnectionState.AUTHENTICATED -> "Connected" to Ktm.Orange
+        BccuConnectionService.ConnectionState.CONNECTING -> "Connecting…" to Ktm.Muted2
+        BccuConnectionService.ConnectionState.DISCONNECTED -> "Not connected" to Ktm.Dim
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.size(7.dp))
+        Text(label, color = Ktm.White, fontFamily = BarlowCondensed,
+            fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    }
 }

@@ -100,23 +100,14 @@ fun SavedPlacesScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().systemBarsPadding().background(Ktm.Screen),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack).padding(8.dp).size(22.dp),
-            )
-            Text(
-                "SAVED PLACES", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic, fontSize = 28.sp, letterSpacing = 0.3.sp,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
+        com.navigator.app.ui.components.ScreenTopBar(
+            title = "Saved places",
+            onBack = onBack,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
+        )
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

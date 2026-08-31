@@ -112,7 +112,7 @@ fun MirrorHomeScreen(
                     fontSize = 12, letterSpacing = 2.0, color = if (paused) Ktm.Dim else Ktm.Orange,
                     modifier = Modifier.weight(1f),
                 )
-                ConnStatusPill(conn, onClick = onOpenConnect)
+                com.navigator.app.ui.components.ConnectionPill(conn, onClick = onOpenConnect)
                 Spacer(Modifier.size(10.dp))
                 CircleGear(onClick = onOpenSettings)
             }
@@ -201,28 +201,6 @@ private fun NotifAccessBanner(onGrant: () -> Unit) {
             "Mirror mode reads Google Maps' turn notifications. Tap to grant access.",
             color = Ktm.Muted2, fontFamily = Barlow, fontSize = 13.sp,
         )
-    }
-}
-
-@Composable
-private fun ConnStatusPill(state: BccuConnectionService.ConnectionState, onClick: () -> Unit) {
-    val (label, color) = when (state) {
-        BccuConnectionService.ConnectionState.AUTHENTICATED -> "Connected" to Ktm.Orange
-        BccuConnectionService.ConnectionState.CONNECTING -> "Connecting…" to Ktm.Muted2
-        BccuConnectionService.ConnectionState.DISCONNECTED -> "Not connected" to Ktm.Dim
-    }
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.size(7.dp))
-        Text(label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 

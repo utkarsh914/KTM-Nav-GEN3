@@ -57,22 +57,14 @@ fun SymbolTestScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = onBack).padding(8.dp).size(22.dp),
-            )
-            Text(
-                "SYMBOL TESTING", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic, fontSize = 24.sp, modifier = Modifier.padding(start = 4.dp),
-            )
-        }
+        com.navigator.app.ui.components.ScreenTopBar(
+            title = "Symbol testing",
+            onBack = onBack,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
+        )
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {

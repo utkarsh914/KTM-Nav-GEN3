@@ -80,20 +80,11 @@ fun TurnCalibrationScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = onBack).padding(8.dp).size(22.dp),
-            )
-            Text(
-                "TURN ICON CALIBRATION", color = Ktm.White, fontFamily = BarlowCondensed,
-                fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, fontSize = 21.sp,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
+        com.navigator.app.ui.components.ScreenTopBar(
+            title = "Turn icon calibration",
+            onBack = onBack,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
+        )
 
         if (icons.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {

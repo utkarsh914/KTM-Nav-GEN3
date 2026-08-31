@@ -151,24 +151,14 @@ fun SettingsScreen(
             .systemBarsPadding()
             .background(Ktm.Screen),
     ) {
-        // Header: back + title.
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = onBack).padding(8.dp).size(22.dp),
-            )
-            Text(
-                "SETTINGS", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic, fontSize = 28.sp, letterSpacing = 0.3.sp,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
+        com.navigator.app.ui.components.ScreenTopBar(
+            title = "Settings",
+            onBack = onBack,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
+        )
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -524,9 +514,9 @@ private fun OutlinedPill(text: String) {
         text, color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
         fontSize = 12.sp, letterSpacing = 1.sp,
         modifier = Modifier
-            .clip(RoundedCornerShape(7.dp))
-            .border(1.dp, Ktm.Orange, RoundedCornerShape(7.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
+            .padding(horizontal = 12.dp, vertical = 5.dp),
     )
 }
 

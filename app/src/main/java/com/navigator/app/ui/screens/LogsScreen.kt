@@ -44,24 +44,17 @@ fun LogsScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        com.navigator.app.ui.components.ScreenTopBar(
+            title = "Logs",
+            onBack = onBack,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
         ) {
-            Icon(
-                OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = onBack).padding(8.dp).size(22.dp),
-            )
-            Text(
-                "LOGS", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontStyle = FontStyle.Italic, fontSize = 28.sp, modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
             Text(
                 "SHARE", color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
                 fontSize = 13.sp, letterSpacing = 1.sp,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
-                    .border(1.dp, Ktm.Orange, RoundedCornerShape(7.dp))
+                    .clip(RoundedCornerShape(Ktm.RadiusButton))
+                    .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
                     .clickable {
                         val file = AppLogger.currentLogFile() ?: return@clickable
                         val uri = FileProvider.getUriForFile(context, "com.navigator.app.fileprovider", file)
@@ -72,11 +65,11 @@ fun LogsScreen(onBack: () -> Unit) {
                         }
                         context.startActivity(Intent.createChooser(intent, "Share KTM Navigator log"))
                     }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             items(lines) { line ->

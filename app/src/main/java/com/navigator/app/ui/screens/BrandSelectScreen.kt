@@ -86,14 +86,7 @@ fun BrandSelectScreen(
             )
             Column {
                 if (onBack != null) {
-                    Icon(
-                        OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.Muted,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(onClick = onBack)
-                            .padding(6.dp)
-                            .size(24.dp),
-                    )
+                    com.navigator.app.ui.components.CircleBackButton(onClick = onBack)
                     Spacer(Modifier.height(6.dp))
                 }
                 Text("NAVIGATOR GEN3", color = Ktm.Muted, fontFamily = JetBrainsMono,
