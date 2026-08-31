@@ -22,8 +22,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,9 +56,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -74,6 +80,7 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.libraries.navigation.ForceNightMode
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ble.BccuConnectionService
+import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
@@ -84,9 +91,15 @@ import com.navigator.app.nav.destination.RoutePreview
 import com.navigator.app.nav.destination.RoutesClient
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.DistanceFormatter
+import com.navigator.app.nav.ktm.EtaFormatter
+import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
+import com.navigator.app.nav.model.LaneInfo
+import com.navigator.app.nav.model.LaneShape
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.NormalizedManeuver
+import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
@@ -95,6 +108,8 @@ import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmPrimaryButton
+import com.navigator.app.ui.components.TurnIconGlyph
+import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.JetBrainsMono
@@ -116,9 +131,6 @@ private const val ARRIVAL_RADIUS_M = 10
 /** Route preview polyline colors (ARGB). */
 private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
-
-/** Top inset so the END button clears the SDK's maneuver header during guidance. */
-private val NAV_HEADER_CLEARANCE = 108.dp
 
 /**
  * Phone-first map home (UX revamp P1–P2 — see docs/NAVIGATION_UX_REVAMP.md).
@@ -182,6 +194,10 @@ fun NavigationHomeScreen(
     var selected by remember { mutableStateOf<SavedPlace?>(null) }
     var recents by remember { mutableStateOf(store.recents()) }
     var favorites by remember { mutableStateOf(store.favorites()) }
+
+    // Live GPS speed (km/h) for the guidance speedometer; null when no recent fix.
+    // Sourced independently of the BLE service so it works during standalone nav.
+    val navSpeedKmh = rememberNavSpeedKmh(active = stage == NavStage.NAVIGATING)
 
     // ---- Preview state ----------------------------------------------------
     var previewRoutes by remember { mutableStateOf<List<RoutePreview>>(emptyList()) }
@@ -516,24 +532,58 @@ fun NavigationHomeScreen(
             }
 
             NavStage.NAVIGATING -> {
-                // The SDK's NavigationView renders the full guidance UI (top
-                // maneuver header + bottom ETA card + re-center + report). We only
-                // overlay a small END, placed below the header so it doesn't
-                // overlap the SDK chrome. Hardware Back also ends navigation.
-                Box(
-                    modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
-                        .padding(start = 16.dp, top = NAV_HEADER_CLEARANCE),
+                // Custom guidance chrome (most SDK chrome disabled in BrowseMap; the
+                // SDK re-center button is kept and pops up on pan, bottom-left). Our
+                // overlays: header + lane row top-centre; ETA bar bottom-centre;
+                // compass bottom-right; speedometer mid-left. Distinct zones.
+                val showLanes = navState.lanes.isNotEmpty() &&
+                    (navState.distanceToManeuverMeters ?: Int.MAX_VALUE) <= LANE_HINT_DISTANCE_M
+
+                // Top: maneuver header, then lane guidance directly beneath it.
+                Column(
+                    modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = ::stopNav)
+                    NavGuidanceHeader(
+                        nav = navState,
+                        // Safeguard: while lanes show, drop the "Then" chip so the
+                        // top cluster can't grow tall enough to crowd other elements.
+                        hideNextHint = showLanes,
+                    )
+                    if (showLanes) {
+                        Spacer(Modifier.height(8.dp))
+                        LaneGuidance(lanes = navState.lanes)
+                    }
                 }
-                // Compass reset (only when the map is rotated off north), placed
-                // below the SDK's maneuver header so it clears the stock chrome.
+
+                // Mid-left: speedometer (hidden until we have a GPS fix).
+                navSpeedKmh?.let { kmh ->
+                    Speedometer(
+                        kmh = kmh,
+                        modifier = Modifier.align(Alignment.CenterStart).systemBarsPadding()
+                            .padding(start = 16.dp),
+                    )
+                }
+
+                // Bottom ETA bar (full width, anchored bottom-centre).
+                NavGuidanceBottomBar(
+                    nav = navState,
+                    onEnd = ::stopNav,
+                    modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                )
+                // Compass at bottom-right (only when the map is rotated). The
+                // re-center button is the SDK's own (kept in BrowseMap), which pops
+                // up on pan at the bottom-left, above our ETA bar (via map padding).
                 if (available && navReady && abs(mapBearing) > 0.5f) {
                     Box(
-                        modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
-                            .padding(end = 16.dp, top = NAV_HEADER_CLEARANCE),
+                        modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
+                            .padding(end = 16.dp, bottom = 104.dp),
                     ) {
-                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                        CompassButton(bearing = mapBearing, cornerRadius = Ktm.RadiusCard) {
+                            resetBearing(googleMap)
+                        }
                     }
                 }
             }
@@ -583,6 +633,12 @@ private fun BrowseMap(
     // Light/Dark/System setting also drives the map and the SDK guidance UI.
     val dark = Ktm.current.isDark
     var mapRef by remember { mutableStateOf<GoogleMap?>(null) }
+    // Bottom map padding while navigating so the SDK's re-center button (which pops
+    // up bottom-left on pan) sits ABOVE our custom ETA bar, on the same level as the
+    // bottom-right compass (which is systemBars + 100dp above the raw bottom).
+    val density = LocalDensity.current
+    val sysBottomPx = WindowInsets.systemBars.getBottom(density)
+    val navBottomPadPx = sysBottomPx + with(density) { 92.dp.roundToPx() }
     AndroidView(
         // The retained view may still be attached to a previous parent when we
         // re-enter; detach before AndroidView re-adds it to avoid an IAE.
@@ -613,10 +669,11 @@ private fun BrowseMap(
             }
         }
     }
-    // Show the SDK's full built-in guidance UI (header + ETA card + re-center +
-    // report) only while navigating. Force the browse/preview map colour scheme
-    // and the guidance map's night mode from the app theme (the SDK otherwise
-    // defaults to the system setting / time-of-day night mode).
+    // Enable the SDK's guidance engine while navigating (route line + follow
+    // camera + turn-by-turn feed) and keep its built-in RE-CENTER button (it pops
+    // up on pan and reliably re-engages follow), but suppress the rest of the
+    // chrome — we render our own header, ETA bar and (no) report. Force the map's
+    // day/night from the app theme (the SDK otherwise follows the system).
     LaunchedEffect(navUiEnabled, dark, mapRef) {
         runCatching {
             mapRef?.mapColorScheme = if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT
@@ -627,6 +684,16 @@ private fun BrowseMap(
                 if (dark) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY,
             )
         }
+        // Hide the stock guidance chrome we replace, but KEEP the re-center button.
+        // Wrapped individually so an API mismatch degrades gracefully.
+        runCatching { navView.setHeaderEnabled(false) }
+        runCatching { navView.setEtaCardEnabled(false) }
+        runCatching { navView.setRecenterButtonEnabled(true) }
+        runCatching { navView.setReportIncidentButtonEnabled(false) }
+        runCatching { navView.setSpeedometerEnabled(false) }
+        runCatching { navView.setTrafficIncidentCardsEnabled(false) }
+        // Lift the SDK re-center button above our custom ETA bar while navigating.
+        runCatching { mapRef?.setPadding(0, 0, 0, if (navUiEnabled) navBottomPadPx else 0) }
     }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }
@@ -683,6 +750,257 @@ private fun TripFinishedScreen(destinationLabel: String?, onBack: () -> Unit) {
                 onClick = onBack,
             )
         }
+    }
+}
+
+/** Google-style dark teal-green used for the custom maneuver header. */
+private val NAV_GREEN = Color(0xFF0E6E5B)
+private val NAV_GREEN_DIM = Color(0xFF0A5648)
+
+/** Show lane guidance only within this distance of the maneuver (like Google). */
+private const val LANE_HINT_DISTANCE_M = 400
+
+/**
+ * Custom top maneuver header replacing the SDK's green banner. Renders below the
+ * status bar (caller applies systemBarsPadding). Shows the current turn icon,
+ * distance-to-maneuver, the instruction/road, an optional exit-number chip, and a
+ * compact "Then <icon>" hint for the following step. During REROUTING it shows a
+ * "Rerouting…" label with the retained maneuver dimmed. Corner radius matches the
+ * other nav controls (RadiusCard).
+ *
+ * @param hideNextHint suppress the "Then" chip (used while the lane row is shown,
+ *   so the top cluster can't grow tall enough to crowd other elements).
+ */
+@Composable
+private fun NavGuidanceHeader(
+    nav: NormalizedNavigationState,
+    hideNextHint: Boolean = false,
+) {
+    val rerouting = nav.sessionState == NavSessionState.REROUTING
+    val contentAlpha = if (rerouting) 0.45f else 1f
+    val icon = KtmManeuverMapping.toTurnIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide)
+    val distance = nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, nav.units) }
+    // Prefer the SDK's full instruction; fall back to the plain road name.
+    val instruction = nav.fullInstruction?.takeIf { it.isNotBlank() } ?: nav.roadName
+    val exitLabel = when {
+        !nav.exitNumber.isNullOrBlank() -> "Exit ${nav.exitNumber}"
+        nav.roundaboutExit != null -> "Exit ${nav.roundaboutExit}"
+        else -> null
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(Ktm.RadiusCard))
+                .background(NAV_GREEN)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TurnIconRef(icon, size = 44.dp, color = Color.White.copy(alpha = contentAlpha))
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                if (rerouting) {
+                    Text(
+                        "Rerouting…", color = Color.White, fontFamily = BarlowCondensed,
+                        fontWeight = FontWeight.Bold, fontSize = 22.sp,
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (distance != null) {
+                            Text(
+                                distance, color = Color.White, fontFamily = BarlowCondensed,
+                                fontWeight = FontWeight.Bold, fontSize = 24.sp,
+                            )
+                        }
+                        if (exitLabel != null) {
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                exitLabel,
+                                color = NAV_GREEN,
+                                fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.White)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
+                if (!instruction.isNullOrBlank()) {
+                    Text(
+                        instruction,
+                        color = Color.White.copy(alpha = 0.92f * contentAlpha), fontFamily = Barlow,
+                        fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        val next = nav.nextManeuver
+        if (!hideNextHint && !rerouting && next != null && next != NormalizedManeuver.UNKNOWN) {
+            Row(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .clip(RoundedCornerShape(bottomStart = Ktm.RadiusCard, bottomEnd = Ktm.RadiusCard))
+                    .background(NAV_GREEN_DIM)
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Then", color = Color.White.copy(alpha = 0.9f), fontFamily = Barlow,
+                    fontSize = 16.sp,
+                )
+                Spacer(Modifier.width(10.dp))
+                TurnIconRef(KtmManeuverMapping.toTurnIcon(next), size = 26.dp, color = Color.White)
+            }
+        }
+    }
+}
+
+/**
+ * Lane guidance strip shown under the header near a maneuver. Recommended lanes
+ * (those that lead to the upcoming turn) are drawn bright; the rest are dimmed.
+ */
+@Composable
+private fun LaneGuidance(lanes: List<LaneInfo>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        lanes.forEach { lane ->
+            val tint = if (lane.recommended) Ktm.White else Ktm.Dim
+            // A lane may allow several directions; show each as a small arrow.
+            Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                val shapes = lane.directions.ifEmpty { listOf(LaneShape.STRAIGHT) }
+                shapes.forEach { shape ->
+                    TurnIconGlyph(laneShapeIcon(shape), size = 22.dp, color = tint)
+                }
+            }
+        }
+    }
+}
+
+/** Map a [LaneShape] to the closest dash [TurnIcon] arrow glyph. */
+private fun laneShapeIcon(shape: LaneShape): TurnIcon = when (shape) {
+    LaneShape.STRAIGHT -> TurnIcon.GO_STRAIGHT
+    LaneShape.SLIGHT_LEFT -> TurnIcon.LIGHT_LEFT
+    LaneShape.LEFT -> TurnIcon.QUITE_LEFT
+    LaneShape.SHARP_LEFT -> TurnIcon.HEAVY_LEFT
+    LaneShape.UTURN_LEFT -> TurnIcon.UTURN_LEFT
+    LaneShape.SLIGHT_RIGHT -> TurnIcon.LIGHT_RIGHT
+    LaneShape.RIGHT -> TurnIcon.QUITE_RIGHT
+    LaneShape.SHARP_RIGHT -> TurnIcon.HEAVY_RIGHT
+    LaneShape.UTURN_RIGHT -> TurnIcon.UTURN_RIGHT
+    LaneShape.UNKNOWN -> TurnIcon.GO_STRAIGHT
+}
+
+/**
+ * Live GPS speed (km/h) while [active], from a self-contained GPS listener. Works
+ * independently of the BLE overspeed service (which only runs when connected), so
+ * the guidance speedometer is available during standalone navigation too. Returns
+ * null until the first fix with a speed arrives.
+ */
+@Composable
+private fun rememberNavSpeedKmh(active: Boolean): Float? {
+    val context = LocalContext.current
+    var speed by remember { mutableStateOf<Float?>(null) }
+    DisposableEffect(active) {
+        if (!active || !hasLocationPermission(context)) {
+            speed = null
+            return@DisposableEffect onDispose { }
+        }
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        // Full LocationListener impl (not a SAM lambda): pre-API-30 the extra
+        // callbacks are abstract, so a lambda would AbstractMethodError at runtime.
+        val listener = object : android.location.LocationListener {
+            override fun onLocationChanged(loc: Location) {
+                if (loc.hasSpeed()) speed = loc.speed * 3.6f
+            }
+            @Deprecated("Deprecated in API 29 but still abstract on older devices")
+            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+            override fun onProviderEnabled(provider: String) {}
+            override fun onProviderDisabled(provider: String) { speed = null }
+        }
+        runCatching {
+            lm?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
+        }
+        onDispose {
+            runCatching { lm?.removeUpdates(listener) }
+            speed = null
+        }
+    }
+    return speed
+}
+
+/** Small speedometer pill: current speed in km/h. */
+@Composable
+private fun Speedometer(kmh: Float, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            kmh.toInt().coerceAtLeast(0).toString(),
+            color = Ktm.TextPrimary, fontFamily = BarlowCondensed,
+            fontWeight = FontWeight.Bold, fontSize = 28.sp,
+        )
+        Text(
+            "km/h", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+        )
+    }
+}
+
+/**
+ * Custom bottom guidance bar replacing the SDK's ETA card. The END (X) button
+ * sits inside the bar on the left; remaining time / distance / arrival are
+ * left-aligned beside it. Corner radius matches the header and controls.
+ */
+@Composable
+private fun NavGuidanceBottomBar(
+    nav: NormalizedNavigationState,
+    onEnd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val remainingTime = nav.remainingTimeSeconds
+    val duration = remainingTime?.let { formatDuration(it) }
+    val eta = remainingTime?.let { EtaFormatter.format(it, System.currentTimeMillis()) }
+    val remDist = nav.remainingDistanceMeters?.let { DistanceFormatter.format(it, nav.units) }
+    val sub = listOfNotNull(remDist, eta).joinToString("  ·  ")
+    Row(
+        modifier = modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = onEnd)
+        // Centered info: the END button on the left is balanced by an equal-width
+        // spacer on the right so the text is centered within the whole bar.
+        Column(
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                duration ?: "On the way",
+                color = Ktm.TextPrimary, fontFamily = BarlowCondensed,
+                fontWeight = FontWeight.Bold, fontSize = 27.sp,
+            )
+            if (sub.isNotBlank()) {
+                Text(
+                    sub, color = Ktm.TextSecondary, fontFamily = BarlowCondensed,
+                    fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                )
+            }
+        }
+        Spacer(Modifier.width(Ktm.ControlHeight)) // balances the 52dp END button
     }
 }
 
@@ -1050,7 +1368,7 @@ private fun CircleIconButton(icon: ImageVector, contentDescription: String, onCl
     Box(
         modifier = Modifier.size(52.dp).clip(CircleShape)
             .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, CircleShape)
+            .border(2.dp, Ktm.BorderSoft, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -1058,14 +1376,19 @@ private fun CircleIconButton(icon: ImageVector, contentDescription: String, onCl
     }
 }
 
-/** Compass button: the north needle rotates with the map bearing; tap resets. */
+/** Compass button: the north needle rotates with the map bearing; tap resets.
+ *  [cornerRadius] lets the guidance chrome match its 16dp bars. */
 @Composable
-private fun CompassButton(bearing: Float, onClick: () -> Unit) {
+private fun CompassButton(
+    bearing: Float,
+    cornerRadius: androidx.compose.ui.unit.Dp = Ktm.RadiusButton,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier.size(Ktm.ControlHeight)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .clip(RoundedCornerShape(cornerRadius))
             .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .border(1.dp, Ktm.Border, RoundedCornerShape(cornerRadius))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

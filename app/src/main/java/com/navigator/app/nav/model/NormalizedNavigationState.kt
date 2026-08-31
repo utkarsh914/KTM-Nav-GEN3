@@ -97,6 +97,23 @@ enum class DrivingSide { LEFT, RIGHT, UNKNOWN }
 /** Distance unit system for formatting. */
 enum class DistanceUnits { METRIC, IMPERIAL }
 
+/** A single arrow direction a lane can lead to (from the SDK's lane guidance). */
+enum class LaneShape {
+    STRAIGHT,
+    SLIGHT_LEFT, LEFT, SHARP_LEFT, UTURN_LEFT,
+    SLIGHT_RIGHT, RIGHT, SHARP_RIGHT, UTURN_RIGHT,
+    UNKNOWN,
+}
+
+/**
+ * One lane's guidance: the [directions] it allows, and whether it is
+ * [recommended] for the current maneuver (i.e. leads to the upcoming turn).
+ */
+data class LaneInfo(
+    val directions: List<LaneShape>,
+    val recommended: Boolean,
+)
+
 /**
  * A single normalised navigation snapshot.
  *
@@ -121,6 +138,14 @@ data class NormalizedNavigationState(
     val nextManeuver: NormalizedManeuver? = null,
     val units: DistanceUnits = DistanceUnits.METRIC,
     val producedAtMs: Long = 0L,
+
+    // --- Richer guidance detail (Nav SDK provider; used by the phone UI only) ---
+    /** Full turn instruction text, HTML stripped (e.g. "Turn right onto Foo St"). */
+    val fullInstruction: String? = null,
+    /** Highway/ramp exit number for the current step (e.g. "12A"), when present. */
+    val exitNumber: String? = null,
+    /** Lane guidance for the current step; empty when the SDK reports none. */
+    val lanes: List<LaneInfo> = emptyList(),
 
     // --- Passthrough overrides (fallback/notification provider) ---
     // When set, these bypass the encoder's own maneuver-mapping / formatting and

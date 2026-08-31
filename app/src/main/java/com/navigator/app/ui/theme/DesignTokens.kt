@@ -96,6 +96,24 @@ enum class ThemeMode(val id: String) {
 }
 
 /**
+ * How the navigation (map) screen chooses light/dark, independent of the app's
+ * [ThemeMode]. [APP] mirrors the app selection; [DAY_NIGHT] is dark at night
+ * (18:00–06:00) and light during the day.
+ */
+enum class NavThemeMode(val id: String) {
+    APP("app"),
+    DAY_NIGHT("day_night");
+
+    companion object {
+        fun fromId(id: String?): NavThemeMode = entries.firstOrNull { it.id == id } ?: DAY_NIGHT
+    }
+}
+
+/** True when the local wall-clock time is "night" for nav theming (18:00–06:00). */
+fun isNightTime(hourOfDay: Int = java.time.LocalTime.now().hour): Boolean =
+    hourOfDay < 6 || hourOfDay >= 18
+
+/**
  * The neutral (non-accent) half of a theme: backgrounds, surfaces, borders, text
  * and the contrast-tuned semantic colours. Light/dark is chosen here; the brand
  * only layers its accent on top (see [BrandIdentity]/[resolve]).

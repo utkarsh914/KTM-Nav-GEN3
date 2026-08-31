@@ -320,14 +320,22 @@ private fun OpenDashApp(
     // night setting, so LIGHT/DARK force and SYSTEM follows the phone. Re-applied
     // whenever either changes, re-theming the whole app live.
     var themeMode by remember { mutableStateOf(settings.themeMode) }
+    var navThemeMode by remember { mutableStateOf(settings.navThemeMode) }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val effectiveDark = when (themeMode) {
         com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
         com.navigator.app.ui.theme.ThemeMode.DARK -> true
         com.navigator.app.ui.theme.ThemeMode.SYSTEM -> systemDark
     }
-    LaunchedEffect(effectiveDark) {
-        com.navigator.app.ui.theme.Ktm.apply(settings.brand, effectiveDark)
+    // Re-evaluate day/night roughly once a minute so the map home flips at
+    // 06:00 / 18:00 while the app stays open.
+    val nightNow by androidx.compose.runtime.produceState(
+        initialValue = com.navigator.app.ui.theme.isNightTime(),
+    ) {
+        while (true) {
+            value = com.navigator.app.ui.theme.isNightTime()
+            delay(60_000)
+        }
     }
 
     // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
@@ -346,6 +354,17 @@ private fun OpenDashApp(
             }
         )
     }
+    // Apply the effective light/dark, re-theming the whole app live. Day/Night
+    // applies ONLY while actively navigating on the map home (turn-by-turn
+    // guidance) — the browse map and every other screen follow the app's own theme.
+    val navSession by GoogleNavSdkProvider.state.collectAsState()
+    val activelyNavigating = route == AppRoute.NAV_HOME && navSession.sessionState.isActiveNav()
+    val navDark = if (navThemeMode == com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT) nightNow else effectiveDark
+    val themeDark = if (activelyNavigating) navDark else effectiveDark
+    LaunchedEffect(themeDark) {
+        com.navigator.app.ui.theme.Ktm.apply(settings.brand, themeDark)
+    }
+
     // Where "Change bike / brand" returns to: Settings when reached from there,
     // null (forward-only to pairing) on first run.
     var brandReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
@@ -504,6 +523,8 @@ private fun OpenDashApp(
                 onOpenPlaces = { route = AppRoute.PLACES },
                 themeMode = themeMode,
                 onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
+                navThemeMode = navThemeMode,
+                onNavThemeModeChanged = { mode -> navThemeMode = mode; settings.navThemeMode = mode },
                 onEngineChanged = { googleNav ->
                     // Switching to the mirror engine ends any in-app SDK trip so
                     // the two engines never drive the dash at once. Return to the

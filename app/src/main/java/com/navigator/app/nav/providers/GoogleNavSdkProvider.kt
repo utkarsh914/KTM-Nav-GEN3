@@ -40,6 +40,10 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     @Volatile private var serviceRegistered = false
     @Volatile private var arrivalListenerAdded = false
 
+    /** Last ENROUTE snapshot, so a REROUTING update can keep showing the previous
+     *  turn (dimmed) on the phone instead of blanking the custom guidance header. */
+    @Volatile private var lastEnroute: NormalizedNavigationState? = null
+
     private val arrivalListener = Navigator.ArrivalListener {
         AppLogger.log("Nav", "Nav SDK arrival")
         _state.value = NormalizedNavigationState(
@@ -172,7 +176,15 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             else -> return // UNKNOWN - ignore
         }
         if (session != NavSessionState.ENROUTE) {
-            _state.value = NormalizedNavigationState(sessionState = session, producedAtMs = now)
+            // While rerouting, keep the last turn (the UI dims it) rather than
+            // blanking. The dash encoder still blanks on sessionState, unaffected.
+            _state.value = if (session == NavSessionState.REROUTING) {
+                lastEnroute?.copy(sessionState = NavSessionState.REROUTING, producedAtMs = now)
+                    ?: NormalizedNavigationState(sessionState = session, producedAtMs = now)
+            } else {
+                if (session == NavSessionState.STOPPED) lastEnroute = null
+                NormalizedNavigationState(sessionState = session, producedAtMs = now)
+            }
             return
         }
 
@@ -186,8 +198,27 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         if (exit != null) AppLogger.log("Nav", "roundabout exit #$exit (maneuver=${mapped.maneuver}, rot=${mapped.rotation})")
         val side = step?.let { GoogleNavManeuverMap.drivingSide(it.drivingSide) } ?: DrivingSide.UNKNOWN
         val road = step?.let { it.simpleRoadName ?: it.fullRoadName }
+        // The step immediately after the current one, for the "Then <icon>" hint in
+        // the custom nav header. remainingSteps starts at the next step; the service
+        // is registered for NUM_NEXT_STEPS_TO_PREVIEW previews so this is populated.
+        val nextManeuver = runCatching {
+            navInfo.remainingSteps?.firstOrNull()?.let {
+                GoogleNavManeuverMap.toNormalized(it.maneuver).maneuver
+            }
+        }.getOrNull()
+        // Richer detail for the phone guidance UI (beta getters — guarded so an SDK
+        // change degrades to "not shown" rather than crashing).
+        val fullInstruction = runCatching {
+            step?.fullInstructionText?.let { stripHtml(it) }?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+        val exitNumber = runCatching {
+            step?.exitNumber?.trim()?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+        val lanes = runCatching {
+            step?.lanes?.map { GoogleNavLaneMap.toLaneInfo(it) }.orEmpty()
+        }.getOrDefault(emptyList())
 
-        _state.value = NormalizedNavigationState(
+        val enroute = NormalizedNavigationState(
             sessionState = NavSessionState.ENROUTE,
             maneuver = mapped.maneuver,
             roundaboutRotation = mapped.rotation,
@@ -197,10 +228,25 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             roadName = road,
             remainingTimeSeconds = navInfo.timeToFinalDestinationSeconds,
             remainingDistanceMeters = navInfo.distanceToFinalDestinationMeters,
+            nextManeuver = nextManeuver,
             units = DistanceUnits.METRIC,
             producedAtMs = now,
+            fullInstruction = fullInstruction,
+            exitNumber = exitNumber,
+            lanes = lanes,
         )
+        lastEnroute = enroute
+        _state.value = enroute
     }
+
+    /** Strip HTML tags/entities from the SDK's `fullInstructionText` (which may embed
+     *  `<b>`/`<div>` markup) into plain display text. */
+    private fun stripHtml(s: String): String =
+        s.replace(Regex("<[^>]*>"), " ")
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace(Regex("\\s+"), " ")
+            .trim()
 
     private const val NUM_NEXT_STEPS_TO_PREVIEW = 3
 }

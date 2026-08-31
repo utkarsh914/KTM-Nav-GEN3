@@ -71,7 +71,7 @@ import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME }
+private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME }
 
 /**
  * Settings (screen 05) — the §5 restructure into four labelled groups
@@ -94,6 +94,8 @@ fun SettingsScreen(
     onEngineChanged: (Boolean) -> Unit = {},
     themeMode: com.navigator.app.ui.theme.ThemeMode = com.navigator.app.ui.theme.ThemeMode.SYSTEM,
     onThemeModeChanged: (com.navigator.app.ui.theme.ThemeMode) -> Unit = {},
+    navThemeMode: com.navigator.app.ui.theme.NavThemeMode = com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT,
+    onNavThemeModeChanged: (com.navigator.app.ui.theme.NavThemeMode) -> Unit = {},
     onRepair: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -244,11 +246,18 @@ fun SettingsScreen(
             // ===== Appearance =====
             item {
                 GroupCard("Appearance") {
-                    SettingsRow("Theme", showDivider = false, onClick = { dialog = SettingsDialog.THEME }) {
+                    SettingsRow("Theme", showDivider = true, onClick = { dialog = SettingsDialog.THEME }) {
                         val label = when (themeMode) {
                             com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
                             com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
                             com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
+                        }
+                        MonoValue("$label ›")
+                    }
+                    SettingsRow("Navigation theme", showDivider = false, onClick = { dialog = SettingsDialog.NAV_THEME }) {
+                        val label = when (navThemeMode) {
+                            com.navigator.app.ui.theme.NavThemeMode.APP -> "App default"
+                            com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT -> "Day / Night"
                         }
                         MonoValue("$label ›")
                     }
@@ -545,6 +554,19 @@ fun SettingsScreen(
             selected = themeMode,
             onDismiss = { dialog = SettingsDialog.NONE },
             onSelect = { onThemeModeChanged(it); dialog = SettingsDialog.NONE },
+        )
+        SettingsDialog.NAV_THEME -> SingleChoiceDialog(
+            title = "Navigation theme",
+            options = com.navigator.app.ui.theme.NavThemeMode.entries.toList(),
+            labelFor = {
+                when (it) {
+                    com.navigator.app.ui.theme.NavThemeMode.APP -> "Follow app theme"
+                    com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT -> "Day / Night (auto by time)"
+                }
+            },
+            selected = navThemeMode,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = { onNavThemeModeChanged(it); dialog = SettingsDialog.NONE },
         )
         SettingsDialog.NONE -> {}
     }

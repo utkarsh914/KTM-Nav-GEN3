@@ -89,6 +89,14 @@ class AppSettings(context: Context) {
         get() = com.navigator.app.ui.theme.ThemeMode.fromId(pairingPrefs.getString(KEY_THEME_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_THEME_MODE, value.id).apply()
 
+    /**
+     * How the navigation/map screen picks light vs dark: follow the app theme, or
+     * auto day/night by local time (default). Independent of [themeMode].
+     */
+    var navThemeMode: com.navigator.app.ui.theme.NavThemeMode
+        get() = com.navigator.app.ui.theme.NavThemeMode.fromId(pairingPrefs.getString(KEY_NAV_THEME_MODE, null))
+        set(value) = pairingPrefs.edit().putString(KEY_NAV_THEME_MODE, value.id).apply()
+
     /** Used to personalize the test notification and greeting text ("Hey <name>"). */
     var userName: String?
         get() = prefs.getString(KEY_USER_NAME, null)
@@ -275,6 +283,7 @@ class AppSettings(context: Context) {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_BRAND = "brand"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_NAV_THEME_MODE = "nav_theme_mode"
 
         private const val KEY_NOTIFICATION_APPS = "notification_source_apps"
         private const val KEY_NAV_APP_OVERRIDE = "nav_app_override"

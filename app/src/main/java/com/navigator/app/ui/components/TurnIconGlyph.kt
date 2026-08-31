@@ -186,7 +186,7 @@ private fun DrawScope.drawTurnGlyph(icon: TurnIcon, color: Color) {
             val path = Path().apply {
                 moveTo(s * 0.5f, s * 0.86f)
                 lineTo(s * 0.5f, s * bendY)
-                quadraticBezierTo(s * 0.5f, s * (bendY - 0.06f), s * sideX, s * topY)
+                quadraticTo(s * 0.5f, s * (bendY - 0.06f), s * sideX, s * topY)
             }
             drawPath(path, color, style = stroke)
             // Head direction: slight points up-ish, heavy points more sideways/down.
