@@ -98,7 +98,7 @@ fun SavedPlacesScreen(onBack: () -> Unit) {
     val saved = favorites.filter { it.slot == FavoriteSlot.OTHER }
 
     Column(
-        modifier = Modifier.fillMaxSize().systemBarsPadding().background(Ktm.Screen),
+        modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
     ) {
         com.navigator.app.ui.components.ScreenTopBar(
             title = "Saved places",
@@ -221,7 +221,7 @@ private fun PlacePicker(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().systemBarsPadding().background(Ktm.Screen)
+        modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding()
             .padding(horizontal = 16.dp).padding(top = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
