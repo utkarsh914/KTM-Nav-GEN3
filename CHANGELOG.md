@@ -1,147 +1,42 @@
 # Changelog
 
-## Unreleased — Reconnect prompt fixed for real
+## v0.3.0
 
-**The dash no longer asks to register the app on every reconnect.** Root-caused by
-decompiling the official KTM Connect app: the dash's very first handshake question is "do you
-already hold this bike's key array?", and it shows its physical "add device" prompt based
-solely on the app's status reply. We were always answering "no keys / new device", so the dash
-re-prompted and regenerated keys on every single connection. We now answer "key array
-available" whenever we hold the bike's persisted keys, so after one pairing the dash resumes
-silently — matching the official app. (The earlier session-key-persistence change was
-necessary groundwork but couldn't fix this alone: the dash's prompt is driven entirely by that
-status byte, which we were never setting correctly.)
+### Navigation
+- In-app Google Maps navigation with turn-by-turn guidance on the dash
+- Phone-first map home with live location, search bar, and bike connection pill
+- Route preview with alternate routes; on-phone guidance (maneuver, ETA, distance, speed)
+- Long-press map to drop a destination pin
+- Google Maps link resolver, paste-to-navigate, and share-to-app
+- Search with recents/favorites; saved places manager (Home/Work)
+- Auto-finish trip on arrival with Trip Finished screen
+- Day/night nav theme
 
-## Unreleased — Navigation-only lean-down
+### UX/UI
+- Navigation-only app: two engines (In-app maps / Notification mirror) in Settings
+- Notification mirror home with pause/resume sending to dash
+- Shows over lock screen + keeps screen awake while navigating
+- Tapping nav notification returns to the active nav screen
+- Consistent design language (circular back buttons, orange labels, cards/pills)
+- Light/dark theming, subtle transitions, press feedback
 
-**One focused app: navigation.** KTM Navigator is now purely a navigation app with two
-engines you pick in **Settings → Navigation engine**, kept strictly separate so only one ever
-drives the dash:
+### Bluetooth
+- Fixed dash re-prompting on every reconnect (correct AppIdKeyArrStatus reply)
+- Faster, stabler reconnect (cut settle grace, gate diagnostics probe)
 
-- **In-app maps (Google)** — the map home: search, **long-press to drop a pin**, or share a
-  Google Maps link, then preview and run turn-by-turn on the phone and dash.
-- **Notification mirror** — a clean home that mirrors Google Maps' turns to the dash, with a
-  **Pause/Resume sending to dash** control; the app guides you to grant notification access if
-  it's off.
+### Build
+- Rebrand to "KTM Navigator"
+- Modern toolchain: Kotlin 2.3 / AGP 8.13.2 / SDK 36
+- Google Navigation SDK 7.9.0
+- 16 KB page-size compliance (Android 15+); BLE API modernisation
 
-**Nicer on the bike.** The app now **shows over the lock screen and keeps the screen awake
-while navigating**, and tapping either navigation notification returns you to the live nav
-screen. It also **prompts to turn Bluetooth on** if it's off.
+### Removed
+- GPX ride recording
+- Engine detect + power saver
+- Handlebar remote / media / call handling
+- Debug/Waypoint/Gemini settings
 
-**Removed** (the app is navigation-only now): the handlebar-remote controller / on-screen
-D-pad / old grid home, GPX ride recording, accelerometer engine-detect + power-saver, phone
-call/media handling, and the unused Gemini/Waypoint/Navigation-debug settings. **Kept:** the
-notification mirror, Symbol Testing, and Turn-icon calibration diagnostics.
-
-**Consistent look.** Every screen now uses the map/mirror design language — circular back
-buttons, orange section labels, and matching cards and pills.
-
-## Unreleased — Phone-first map navigation
-
-**A real map, in the app.** KTM Navigator now opens to a full Google map you can pan and
-explore, with your live location, a **bike connection** pill, and a search bar. Search a
-place (with **Recent** and **Home/Work/Saved** shortcuts), confirm it with a pin, preview the
-route — including **alternate routes** you can pick — then **Start** to run turn-by-turn on
-the phone *and* the dash at once. The on-phone navigation uses Google's own guidance screen
-(maneuver, ETA, distance, speed), so you can glance at the phone if the dash arrows aren't
-enough. Save places and manage **Home/Work** under **Settings → Saved places**. Sharing a
-Google Maps place into the app drops you straight onto the map, ready to go.
-
-## Unreleased — Navigation revamp
-
-**Navigate with Google, in the app.** Alongside mirroring another nav app's notification, you
-can now enter a destination *inside* KTM Navigator and have Google's own navigation engine
-guide you on the dash — turn arrow, distance, road, ETA and remaining distance. Enter a
-destination three ways: **Search** (type a place, see matches with distance), **Map** (drop a
-pin), or **Link** (paste a Google Maps link, or share a place from Google Maps into the app).
-Two-wheeler routing where available. Needs your own Google Maps Platform API key + Google Play
-Services; off unless a key is present, and switchable in **Settings → Navigation**.
-
-**More reliable dash guidance.** All guidance — mirrored *and* in-app — now goes through one
-engine that de-duplicates writes, rounds distances to kill GPS jitter, keeps the ETA steady,
-never leaves a stale turn on the dash after navigation ends, and blanks the turn while
-rerouting.
-
-**Under the hood.** Rebuilt on a modern toolchain (Kotlin 2.3 / SDK 36) and the Google
-Navigation SDK. App renamed to **KTM Navigator**. New docs:
-[`docs/architecture.md`](docs/architecture.md) and
-[`docs/BCCU_BLE_PROTOCOL.md`](docs/BCCU_BLE_PROTOCOL.md). Now **16 KB page-size compatible**
-(required for Android 15+ devices) — the on-device turn-icon model moved from TensorFlow Lite
-to its successor LiteRT, and all bundled native code is 16 KB-aligned. Modernised the
-Bluetooth write path to the current Android APIs (no behaviour change).
-
-_Note: in-app Google navigation sends your destination and location to Google (that's how it
-routes) and needs internet. Mirroring another app stays fully on-device. See Privacy in the
-README._
-
-## Unreleased (R29–R33)
-
-**The handlebar remote is now a proper controller.** Long-press UP (from any
-screen) opens a mode picker — **Controller**, **Music**, or **Bike (off)** — so
-you choose what the buttons do, and "off" hands them back to the bike as normal.
-- **Controller:** UP/DOWN and left/right act as a D-pad over whatever's on
-  screen, double-click SET to select (it now reliably *opens* apps, not just
-  highlights them), long-press SET to long-click an item, double-click BACK to go
-  back. Great for driving other apps from the bars.
-- **Music:** single UP/DOWN change volume, double UP/DOWN skip to the next or
-  previous track, SET plays/pauses.
-- **Long-press DOWN opens Google Maps** from anywhere.
-- Every press registers cleanly on release, and the app tells a quick tap, a
-  double-click and a press-and-hold apart — tuned from real measurements on the
-  bike.
-
-**Now-playing on the dash.** When the song changes, the track scrolls across the
-dash's bottom bar once — e.g. "Adventure Of A Lifetime by Coldplay".
-
-**Cleaner messages on the dash.** Mirrored messages and notifications are now
-stripped of emoji and symbols the dash can't display, so they read as clean text
-instead of boxes.
-
-**Keys survive a reinstall too.** On top of surviving updates, your pairing keys
-are now included in a scoped backup, so a reinstall or a new phone won't force
-you to re-pair (your private keys like the AI summary key are deliberately left
-out of that backup).
-
-## Unreleased (R28)
-
-**No more re-pairing on every ride (fixed).** The big one. Until now, every time
-you switched the ignition off and on, the dash would ask you to "add device"
-again before navigation would reconnect — because the app wasn't remembering the
-security keys from your first pairing, so the dash saw your phone as brand new
-each time. The app now saves those keys and presents them on reconnect, so the
-dash recognises your phone and links back up **silently, with nothing to tap**.
-Verified on a real bike: after one final pairing, an ignition off/on now
-reconnects in about a second with no prompt on the dash.
-
-Note: the very first reconnect after updating will still ask once (that's when
-the app learns and stores the keys). Every ride after that is automatic.
-
-## Unreleased (R25)
-
-**Automatic bike detection.** The app now recognises which dash it is talking to
-on its own. As soon as it connects it reads the dash's model, firmware and the
-set of features it exposes, and shows the detected type right in the connection
-banner (for example "Navigator Gen 3 (BCCU)"). There is nothing to configure -
-it just identifies your bike.
-
-**Better handling of unsupported bikes.** Previously, if you connected to a dash
-that isn't a Gen-3 BCCU unit, the app would sit on "handshaking" forever with no
-explanation. It now tells you plainly that the dash isn't supported and records a
-full diagnostic log of exactly what that bike exposes. If you have a bike that
-won't pair (some 1290 / 890 reports), please connect once and send the log - that
-is what lets us add your model.
-
-**Reconnect fix.** The saved bike name now refreshes itself every time you
-connect, so it can no longer get stuck showing the wrong name (e.g. a headset)
-after an update.
-
-**A note on older models.** People have asked about support for older KTMs. Those
-bikes (the earlier "MY RIDE" system) don't use the same Bluetooth technology as
-Gen-3 at all - they use an older Bluetooth Classic connection with a completely
-different message format. Supporting them means building a whole second
-connection path, which is planned but not in this build. R25 puts the
-bike-detection groundwork in place so the app can tell the two apart and route
-each correctly once that path exists.
+---
 
 ## v0.2.0-beta - Navigator Gen3 (formerly OpenDash)
 
