@@ -133,7 +133,7 @@ private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
 
 /**
- * Phone-first map home (UX revamp P1–P2 — see docs/NAVIGATION_UX_REVAMP.md).
+ * Phone-first map home (see docs/architecture.md §3).
  *
  * A single persistent Nav SDK [NavigationView] is the map surface across every
  * stage. [NavStage.BROWSE] shows the map + search bar + Connect pill; tapping

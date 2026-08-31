@@ -209,17 +209,13 @@ training dataset is now included in the repo for anyone who wants to help improv
 
 ### Known issues
 
-1. Bluetooth auto-connect is not working reliably. After you cycle the ignition off and on, the app
-   does not silently reconnect on its own. When it does reconnect, you currently have to accept the
-   connection on the bike's dash each time. This is the top thing being worked on.
-2. First pairing still needs the physical "add device" confirmation on the dash. Expected, once per
+1. First pairing still needs the physical "add device" confirmation on the dash. Expected, once per
    bike.
-3. Turn-icon accuracy depends on your Google Maps version and your specific dash. Use the Symbol Test
+2. Turn-icon accuracy depends on your Google Maps version and your specific dash. Use the Symbol Test
    and Turn-icon Calibration screens if an icon looks wrong.
-4. Husqvarna support has not yet been verified on a physical Husqvarna. It should work on the shared
+3. Husqvarna support has not yet been verified on a physical Husqvarna. It should work on the shared
    dash protocol, but testing so far has only been on a KTM.
-5. Engine detection needs calibration and varies by phone and mount.
-6. This is a beta - if anything crashes or misbehaves, please open an issue or share your logs.
+4. This is a beta - if anything crashes or misbehaves, please open an issue or share your logs.
 
 ---
 

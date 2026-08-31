@@ -1,17 +1,18 @@
 # Architecture — KTM Navigator
 
-End-state architecture after the navigation revamp (Nav SDK phases 1–6 + destination
-entry). Companion to the design docs:
-[`NAVIGATION_REVAMP_PLAN.md`](NAVIGATION_REVAMP_PLAN.md),
-[`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md), and the wire-level
-[`BCCU_BLE_PROTOCOL.md`](BCCU_BLE_PROTOCOL.md).
+Current-state architecture of the app (phone-first navigation, two mutually-exclusive
+engines). Companion docs:
+[`BCCU_BLE_PROTOCOL.md`](BCCU_BLE_PROTOCOL.md) (wire-level BLE/BCCU protocol),
+[`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md) (non-obvious decisions and fixes behind parts
+of this architecture — worth checking before re-deriving something from scratch), and
+[`BACKLOG.md`](BACKLOG.md) (remaining/deferred work, release tasks, planned features).
 
 > **Provenance labels.** **Confirmed (Google/KTM)** = stated in vendor docs or
 > decompiled vendor source; **Reverse-engineered** = derived from this repo / live
 > GATT dumps; **Assumption** = working hypothesis to verify.
 
 App id `com.navigator.ktm` · code namespace `com.navigator.app` (kept stable; see the
-rebrand note in the checklist).
+rebrand note in [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md)).
 
 ---
 
@@ -39,9 +40,6 @@ The legacy dash-companion surface (handlebar-remote controller / on-screen D-pad
 home), GPX ride recording, accelerometer engine-detect, and media/call handling have all been
 **removed** in the D2 lean-down (commits `refactor(d2): ...`). Symbol Testing + Turn-icon
 calibration are intentionally retained as hardware diagnostics.
-
-See [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md) for the design and
-[`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) for status.
 
 ---
 
@@ -122,7 +120,7 @@ structured metres/seconds/maneuvers. Rather than lossily parse those back into n
 `preformatted{Distance,Eta,Remaining}`). When present the encoder uses them verbatim — so the
 notification path stays byte-for-byte what it sent before **but gains** the encoder's
 dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the numeric fields.
-**Decision to revisit** at the end of all phases (see checklist).
+**Decision to revisit** — tracked in [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
@@ -155,7 +153,8 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
 `NavDestination.routeToken` → `Navigator.setDestinations(waypoint, CustomRoutesOptions(token,
 TWO_WHEELER))`, with graceful fallback to default routing. Honored reliably in many cases;
 the SDK may recompute to the fastest for some alternates when stationary (road-snapping) —
-best-effort, validated on-ride (see checklist).
+best-effort; see [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md#nav-sdk-route-token-fix-customroutesoptions-needs-an-explicit-travel-mode)
+for the full investigation.
 
 **Search backends.**
 - **Autocomplete** — Places Autocomplete (New) over HTTPS with an `origin` for straight-line
@@ -184,8 +183,7 @@ See `PlacesClient.androidAuth()`.
 
 ## 4. Google Navigation SDK — findings & limitations
 
-Confirmed against Nav SDK **7.9.0**. Full investigation in the plan §2/§10; the load-bearing
-points:
+Confirmed against Nav SDK **7.9.0**. The load-bearing points:
 
 - **`NavInfo` turn-by-turn feed is a Preview/beta API** — "subject to change without
   guaranteeing backward compatibility". The SDK version is pinned; a reflection completeness
@@ -194,15 +192,16 @@ points:
   Mitigated by keeping the notification provider first-class and user-selectable.
 - **Requires Google Play Services** at runtime (+ ≥2 GB RAM, OpenGL ES 2.0). Not the Maps app.
 - **Runs its own foreground service + notification** during guidance → **two notifications**
-  today. Consolidation via `NavigationApi.initForegroundServiceManager*` is deferred to the
-  reliability pass (plan §5.8).
+  today. Consolidation via `NavigationApi.initForegroundServiceManager*` is tracked in
+  [`BACKLOG.md`](BACKLOG.md).
 - **Cannot coexist with the Maps SDK** — the Nav SDK bundles Maps; `play-services-maps` is
   excluded from all configurations. The map-pin picker uses the *bundled* Maps.
 - **Pricing** — self-serve, SKU "Navigation Request", billed per destination on
   `setDestination(s)`; free cap 1,000/mo global, 7,000/mo India. Places/Maps SKUs have large
-  India free caps. See plan §12. A single rider is effectively free.
+  India free caps. A single rider is effectively free.
 - **Two-wheeler routing** is available in India; the provider requests `TWO_WHEELER` and falls
-  back to `DRIVING` if a route can't be produced.
+  back to `DRIVING` if a route can't be produced. Starting guidance on a rider-picked alternate
+  route needed a specific fix — see [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md#nav-sdk-route-token-fix-customroutesoptions-needs-an-explicit-travel-mode).
 
 ### 4.1 What is NOT possible (investigated, ruled out)
 
@@ -235,7 +234,10 @@ points:
 
 ### 6.1 Toolchain
 Kotlin 2.3.0, AGP 8.13.2, Gradle 8.13, JDK 17+, compileSdk/targetSdk 36, core-library
-desugaring, multidex. Open in a recent Android Studio; it uses its bundled JDK (JBR).
+desugaring, multidex. Open in a recent Android Studio; it uses its bundled JDK (JBR). There are
+a couple of version-ceiling gotchas when bumping any of these — see
+[`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md#toolchain-version-constraints-kotlin-2x--agp-8132--compilesdk-36)
+before upgrading the Compose BOM or the Kotlin plugin.
 
 ### 6.2 Google Cloud setup (once)
 In one Cloud project **with billing enabled**:
@@ -276,22 +278,16 @@ billable, so prefer the replay harness for routine testing.
   departure from "nothing leaves the phone"; it is opt-in (needs a key) and user-toggleable
   (Settings → Navigation → In-app Google navigation → off = mirror-only, offline).
 - **Attribution** — Google's Terms require the Nav SDK ToS to be accepted (shown on first use)
-  and in-app attribution/licensing text. *(Pending: surface the attribution/licensing text and
-  a Play data-safety disclosure — tracked for release.)*
+  and in-app attribution/licensing text (see [`BACKLOG.md`](BACKLOG.md) — the actual in-app
+  text + Play data-safety disclosure are release tasks, not yet written).
 
 ---
 
-## 8. Known limitations & deferred items (→ reliability pass, Phase 7)
+## 8. Further reading
 
-- Verify the notification-mirroring leg of auto-revert on a bike.
-- Reconnect-after-ignition-cycle failure (observed; suspected pre-existing / targetSdk-36).
-- FGS/notification consolidation (two notifications during Google nav).
-- 16 KB native-lib alignment (`libtensorflowlite_jni.so`, `libandroidx.graphics.path.so`).
-- BLE-layer deprecation warnings (`getDefaultAdapter`, GATT callback overrides) — left in the
-  frozen layer.
-- Roundabout RH/LH + section→angle mapping: **hardware-verified** (RH = clockwise; `RAB_SECT_N`
-  is an exit-angle glyph, `turnAngle = (8−N)·22.5°`); glyph now chosen by exit angle, not the
-  ordinal exit count.
-- Off-main-thread TFLite in the notification path; migrate the in-app UI to read normalized
-  state; units hardcoded metric in the SDK provider; automatic provider selection is
-  toggle-gated but not location/region aware.
+- [`BACKLOG.md`](BACKLOG.md) — remaining/deferred work, things still to test on-device or
+  on-bike, release tasks, and planned post-v1 features.
+- [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md) — condensed write-ups of non-obvious bugs,
+  fixes, and toolchain constraints behind parts of this architecture (roundabout glyph mapping,
+  the 16 KB/LiteRT fix, the Nav SDK route-token fix, and more).
+- [`BCCU_BLE_PROTOCOL.md`](BCCU_BLE_PROTOCOL.md) — the wire-level BLE/BCCU protocol reference.

@@ -22,8 +22,8 @@ data class FavoritePlace(
 
 /**
  * Local persistence for **recent** destinations and **favorites** (Home / Work /
- * saved), backed by a private JSON `SharedPreferences` file (UX revamp P2 — see
- * docs/NAVIGATION_UX_REVAMP.md). Deliberately lightweight: no Room/DataStore.
+ * saved), backed by a private JSON `SharedPreferences` file — see docs/architecture.md
+ * §3. Deliberately lightweight: no Room/DataStore.
  *
  * Recents are de-duplicated by rounded coordinates, most-recent-first, and
  * capped at [MAX_RECENTS]. HOME/WORK favorites are unique (saving replaces the

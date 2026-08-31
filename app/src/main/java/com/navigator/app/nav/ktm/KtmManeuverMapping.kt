@@ -15,7 +15,7 @@ import kotlin.math.roundToInt
  * tripwire so new SDK maneuvers can never silently fall through to a wrong arrow.
  *
  * Roundabout RH/LH selection and the section->angle law are **hardware-verified**
- * (see [roundaboutSection] and the revamp plan §5.3): RH = clockwise circulation.
+ * (see [roundaboutSection] and docs/ENGINEERING_NOTES.md): RH = clockwise circulation.
  */
 object KtmManeuverMapping {
 

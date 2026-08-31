@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * Manage Home / Work + Saved places (UX revamp — see docs/NAVIGATION_UX_REVAMP.md).
+ * Manage Home / Work + Saved places (see docs/architecture.md §3).
  * Setting Home/Work or adding a saved place opens an inline place search that
  * reuses [PlacesClient] + persists via [PlacesStore].
  */
