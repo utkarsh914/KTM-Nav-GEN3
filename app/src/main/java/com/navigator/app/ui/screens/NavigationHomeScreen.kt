@@ -317,11 +317,19 @@ fun NavigationHomeScreen(
         if (dest != null) choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
     }
 
-    // Track map bearing for the compass (shown only when rotated).
+    // Track map bearing for the compass (shown only when rotated) and let the
+    // user long-press the map to drop a destination pin.
     LaunchedEffect(googleMap) {
         val gm = googleMap ?: return@LaunchedEffect
         mapBearing = gm.cameraPosition.bearing
         gm.setOnCameraMoveListener { mapBearing = gm.cameraPosition.bearing }
+        // Long-press anywhere (except while the SDK owns the map during guidance)
+        // drops a pin and opens the confirm card, like Google Maps.
+        gm.setOnMapLongClickListener { ll ->
+            if (stage != NavStage.NAVIGATING) {
+                choose(SavedPlace(ll.latitude, ll.longitude, "Dropped pin"))
+            }
+        }
     }
 
 
