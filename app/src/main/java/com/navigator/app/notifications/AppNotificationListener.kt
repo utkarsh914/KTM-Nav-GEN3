@@ -56,6 +56,10 @@ class AppNotificationListener : NotificationListenerService() {
         }
 
         if (isNav) {
+            // Keep the two navigation engines mutually exclusive: when the in-app
+            // Google Nav SDK is the selected engine, it owns the dash - don't also
+            // mirror another nav app's turn notifications to it.
+            if (settings.googleNavEnabled) return
             val navText = if (title.isNotBlank()) "$title $text" else text
             AppLogger.log("Notif", "Nav update from $packageName: distance=${redact(title)} road=${redact(text)}")
             // Dump every extras key so we can see, from real logs, exactly which
@@ -94,7 +98,7 @@ class AppNotificationListener : NotificationListenerService() {
             // faster pattern as the distance (the notification title) shrinks.
             // Ducked to a background hum while the bike is provably waiting
             // (GPS says stationary / vibration says the engine is off).
-            if (settings.turnBeepEnabled) {
+            if (settings.turnBeepEnabled && !NotificationNavProvider.paused.value) {
                 com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
                 com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value

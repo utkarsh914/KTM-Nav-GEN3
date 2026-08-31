@@ -34,6 +34,25 @@ object NotificationNavProvider : NavigationProvider {
     private val _state = MutableStateFlow(NormalizedNavigationState.IDLE)
     override val state: StateFlow<NormalizedNavigationState> = _state.asStateFlow()
 
+    /**
+     * User-controlled pause: when true, mirrored guidance is NOT forwarded to the
+     * dash even though a nav app is actively navigating. The phone UI can still
+     * show it. Session-scoped (a process singleton), toggled from the mirror home.
+     */
+    private val _paused = MutableStateFlow(false)
+    val paused: StateFlow<Boolean> = _paused.asStateFlow()
+
+    fun setPaused(value: Boolean) {
+        if (_paused.value == value) return
+        _paused.value = value
+        // Pausing clears the dash immediately; resuming waits for the next update.
+        if (value) {
+            endJob?.cancel()
+            endJob = null
+            _state.value = NormalizedNavigationState.IDLE
+        }
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var endJob: Job? = null
 
@@ -54,6 +73,7 @@ object NotificationNavProvider : NavigationProvider {
         icon: BccuProtocol.TurnIcon?,
         nowMs: Long = System.currentTimeMillis(),
     ) {
+        if (_paused.value) return // user paused mirroring to the dash
         endJob?.cancel()
         endJob = null
         _state.value = NormalizedNavigationState(
