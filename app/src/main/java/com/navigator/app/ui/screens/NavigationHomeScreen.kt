@@ -88,6 +88,7 @@ import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ui.components.KtmPrimaryButton
@@ -292,9 +293,16 @@ fun NavigationHomeScreen(
         backToBrowse()
     }
 
-    // Auto-return to the map once the trip ends by arrival.
+    // Keep the stage in sync with the real session:
+    //  - resume the NAVIGATING view whenever a trip is live but we're not showing
+    //    it (e.g. the activity was recreated, or the user tapped the notification
+    //    after minimising) - the stage is local Compose state that would
+    //    otherwise fall back to BROWSE;
+    //  - auto-return to the map once the trip ends by arrival.
     LaunchedEffect(navState.sessionState) {
-        if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
+        if (navState.sessionState.isActiveNav() && stage != NavStage.NAVIGATING) {
+            stage = NavStage.NAVIGATING
+        } else if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
             backToBrowse()
         }
     }

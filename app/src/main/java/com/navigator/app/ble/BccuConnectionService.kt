@@ -626,9 +626,16 @@ class BccuConnectionService : LifecycleService() {
     }
 
     private fun buildForegroundNotification(status: String): Notification {
-        val pendingIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+        // Tapping the notification fronts the existing task (launchMode=singleTask)
+        // and asks it to show the active navigation screen. REORDER_TO_FRONT keeps
+        // the live activity/state instead of relaunching a fresh instance.
+        val openIntent = Intent(this, com.navigator.app.ui.MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(com.navigator.app.ui.MainActivity.EXTRA_OPEN_NAV, true)
         }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         // A real way out from the notification: stops this service (removing
         // the ongoing notification) and closes the app task - the R20 field
         // request was an exit that actually exits, not just opens the app.

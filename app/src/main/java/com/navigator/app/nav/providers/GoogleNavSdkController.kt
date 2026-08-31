@@ -2,6 +2,7 @@ package com.navigator.app.nav.providers
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.libraries.navigation.NavigationApi
@@ -26,6 +27,34 @@ object GoogleNavSdkController {
     val SILK_BOARD = NavDestination(lat = 12.9172, lng = 77.6229, label = "Silk Board Junction")
 
     @Volatile private var apiKeySet = false
+
+    /** Notification id for the SDK's own turn-by-turn foreground notification
+     *  (distinct from the BLE service = 1 and overspeed = 42). */
+    private const val NAV_NOTIFICATION_ID = 1010
+
+    @Volatile private var navNotificationInit = false
+
+    /**
+     * Point the Nav SDK's own navigation notification (the maneuver/ETA one it
+     * shows while guiding) at our activity, so tapping it returns to the active
+     * navigation screen - matching the BLE connection notification. Must run once
+     * per process before guidance starts; the SDK throws if initialised twice, so
+     * it's guarded and wrapped defensively.
+     */
+    private fun ensureNavNotification(activity: Activity) {
+        if (navNotificationInit) return
+        runCatching {
+            val app = activity.application
+            val resumeIntent = Intent(app, com.navigator.app.ui.MainActivity::class.java).apply {
+                putExtra(com.navigator.app.ui.MainActivity.EXTRA_OPEN_NAV, true)
+                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            NavigationApi.initForegroundServiceManagerMessageAndIntent(
+                app, NAV_NOTIFICATION_ID, "Navigating", resumeIntent,
+            )
+            navNotificationInit = true
+        }.onFailure { AppLogger.log("Nav", "!! nav notification init failed: ${it.message}") }
+    }
 
     /** True when a key is compiled in and Google Play services are usable. */
     fun isAvailable(context: Context): Boolean =
@@ -59,6 +88,7 @@ object GoogleNavSdkController {
             return
         }
         ensureApiKey()
+        ensureNavNotification(activity)
         AppLogger.log("Nav", "prepare(): requesting navigator…")
         NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
             override fun onNavigatorReady(navigator: Navigator) {
@@ -86,6 +116,7 @@ object GoogleNavSdkController {
             NavigationApi.setApiKey(BuildConfig.NAV_SDK_API_KEY)
             apiKeySet = true
         }
+        ensureNavNotification(activity)
         // getNavigator(Activity, ...) shows the ToS dialog itself if not accepted.
         NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
             override fun onNavigatorReady(navigator: Navigator) {

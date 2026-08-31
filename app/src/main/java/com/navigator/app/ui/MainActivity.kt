@@ -73,6 +73,17 @@ class MainActivity : ComponentActivity() {
          * singleTask/onNewIntent reason as [importedGpx].
          */
         val sharedNavLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+        /**
+         * Set true when the foreground-service notification is tapped while a trip
+         * is running: Compose observes it to jump to the navigation home (which
+         * then resumes the NAVIGATING view). Flow (not just an extra) for the same
+         * singleTask/onNewIntent reason as [importedGpx].
+         */
+        val openNavRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+        /** Notification deep-link extra: bring up the active navigation screen. */
+        const val EXTRA_OPEN_NAV = "com.navigator.app.extra.OPEN_NAV"
     }
 
     private lateinit var settings: AppSettings
@@ -242,6 +253,7 @@ class MainActivity : ComponentActivity() {
 
         importGpxFromIntent(intent)
         handleSendIntent(intent)
+        handleOpenNavIntent(intent)
 
         setContent {
             OpenDashApp(settings = settings, stateMachine = stateMachine, actions = actions)
@@ -296,6 +308,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         importGpxFromIntent(intent)
         handleSendIntent(intent)
+        handleOpenNavIntent(intent)
+    }
+
+    /** Notification tap while navigating: ask Compose to show the nav screen. */
+    private fun handleOpenNavIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_NAV, false) == true) {
+            openNavRequest.value = true
+        }
     }
 
     /** ACTION_SEND text/plain (e.g. "Share" from Google Maps): capture the text for the destination screen. */
@@ -462,6 +482,18 @@ private fun OpenDashApp(
             route = homeRoute()
         }
     }
+    // Notification tapped while navigating -> jump to the map home, which resumes
+    // the NAVIGATING view from the live session state.
+    val openNav by MainActivity.openNavRequest.collectAsState()
+    LaunchedEffect(openNav) {
+        if (openNav &&
+            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+        ) {
+            route = homeRoute()
+        }
+        if (openNav) MainActivity.openNavRequest.value = false
+    }
+
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
     val context = androidx.compose.ui.platform.LocalContext.current
     // Reactively observe the controller state instead of polling it - Compose
