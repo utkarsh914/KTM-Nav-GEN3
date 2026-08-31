@@ -420,9 +420,17 @@ fun NavigationHomeScreen(
                         },
                     )
                 }
-                // Clear/close affordance top-right.
-                Box(Modifier.align(Alignment.TopEnd).systemBarsPadding().padding(16.dp)) {
+                // Top-right control column: Clear, then Compass (only when rotated).
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                        .padding(end = 16.dp, top = 16.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
+                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                    }
                 }
             }
 
@@ -439,8 +447,17 @@ fun NavigationHomeScreen(
                         onBack = { stage = NavStage.CONFIRM },
                     )
                 }
-                Box(Modifier.align(Alignment.TopEnd).systemBarsPadding().padding(16.dp)) {
+                // Top-right control column: Clear, then Compass (only when rotated).
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                        .padding(end = 16.dp, top = 16.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
+                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                    }
                 }
             }
 
@@ -454,6 +471,16 @@ fun NavigationHomeScreen(
                         .padding(start = 16.dp, top = NAV_HEADER_CLEARANCE),
                 ) {
                     CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = ::stopNav)
+                }
+                // Compass reset (only when the map is rotated off north), placed
+                // below the SDK's maneuver header so it clears the stock chrome.
+                if (available && navReady && abs(mapBearing) > 0.5f) {
+                    Box(
+                        modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                            .padding(end = 16.dp, top = NAV_HEADER_CLEARANCE),
+                    ) {
+                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                    }
                 }
             }
         }
