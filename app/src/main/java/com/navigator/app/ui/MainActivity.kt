@@ -51,7 +51,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION, PLACES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION, PLACES }
 
 class MainActivity : ComponentActivity() {
 
@@ -100,7 +100,15 @@ class MainActivity : ComponentActivity() {
         // grant lands - tell it to re-check location-gated features (overspeed
         // monitor, route recorder, FGS location type) now.
         BccuConnectionService.reevaluateLocationIfRunning()
+        // Now that BLUETOOTH_CONNECT may have just been granted, we can legally
+        // ask the user to turn Bluetooth on if it's off.
+        maybePromptEnableBluetooth()
     }
+
+    private var btPrompted = false
+    private val enableBtLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* user accepted or declined; nothing else to do here */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -375,6 +383,27 @@ class MainActivity : ComponentActivity() {
         // background permission - let the service (re)claim the location FGS
         // type and start any location features that were waiting on it.
         BccuConnectionService.reevaluateLocationIfRunning()
+        maybePromptEnableBluetooth()
+    }
+
+    /**
+     * If the phone's Bluetooth is off, ask the user to turn it on (the dash link
+     * needs it). Once per process, and only when we hold BLUETOOTH_CONNECT on
+     * Android 12+ (otherwise the request throws); it's re-tried right after that
+     * permission is granted.
+     */
+    private fun maybePromptEnableBluetooth() {
+        if (btPrompted) return
+        val adapter = getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return
+        if (adapter.isEnabled) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
+        btPrompted = true
+        runCatching {
+            enableBtLauncher.launch(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
+        }
     }
 
     override fun onPause() {
@@ -436,10 +465,12 @@ private fun OpenDashApp(
     val appContext = androidx.compose.ui.platform.LocalContext.current
     // The primary home is the phone-first map screen when Google navigation is
     // available (key + Play Services + enabled); otherwise the legacy grid.
+    // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
+    // available) -> the mirror home. The two engines stay mutually exclusive.
     fun homeRoute(): AppRoute =
         if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
             settings.googleNavEnabled
-        ) AppRoute.NAV_HOME else AppRoute.MAIN
+        ) AppRoute.NAV_HOME else AppRoute.MIRROR_HOME
     var route by remember {
         mutableStateOf(
             when {
@@ -522,6 +553,7 @@ private fun OpenDashApp(
             AppRoute.RIDES -> { MainActivity.importedGpx.value = null; route = AppRoute.MAIN }
             AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = destinationReturnRoute }
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
+            AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MAIN -> if (!stateMachine.touchBack()) {
                 (context as? ComponentActivity)?.moveTaskToBack(true)
             }
@@ -589,6 +621,11 @@ private fun OpenDashApp(
                 sharedLink = sharedLink,
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
             )
+            AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
+                onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.SETTINGS },
+                onOpenConnect = { pairingReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.PAIRING },
+                onExit = { actions.exitApp() },
+            )
             AppRoute.MAIN -> {
                 // A single on-screen D-pad overlays every MAIN sub-screen so the
                 // phone itself becomes a "gamepad": the same Up/Down/Set/Back
@@ -633,6 +670,13 @@ private fun OpenDashApp(
                 onOpenRides = { route = AppRoute.RIDES },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
                 onOpenPlaces = { route = AppRoute.PLACES },
+                onEngineChanged = { googleNav ->
+                    // Switching to the mirror engine ends any in-app SDK trip so
+                    // the two engines never drive the dash at once. Return to the
+                    // newly-selected engine's home when leaving Settings.
+                    if (!googleNav) com.navigator.app.nav.providers.GoogleNavSdkController.stop()
+                    settingsReturnRoute = homeRoute()
+                },
                 onRepair = {
                     // Forget the pairing flag too, not just the address - otherwise
                     // re-pairing the same bike still replies GENERATE_KEYS and the

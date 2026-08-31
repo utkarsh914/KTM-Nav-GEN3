@@ -89,6 +89,7 @@ fun SettingsScreen(
     onOpenRides: () -> Unit = {},
     onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
+    onEngineChanged: (Boolean) -> Unit = {},
     onRepair: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -487,23 +488,33 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Navigation source =====
+            // ===== Navigation engine =====
             if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
                 item {
-                    GroupCard("Navigation") {
-                        SettingsRow("In-app Google navigation", showDivider = true) {
-                            KtmToggle(googleNavOn, { on ->
-                                googleNavOn = on
-                                settings.googleNavEnabled = on
-                            })
-                        }
+                    GroupCard("Navigation engine") {
+                        SettingsRow(
+                            "In-app maps (Google)", showDivider = true,
+                            onClick = {
+                                if (!googleNavOn) {
+                                    googleNavOn = true; settings.googleNavEnabled = true; onEngineChanged(true)
+                                }
+                            },
+                        ) { if (googleNavOn) OutlinedPill("ACTIVE") }
+                        SettingsRow(
+                            "Notification mirror", showDivider = true,
+                            onClick = {
+                                if (googleNavOn) {
+                                    googleNavOn = false; settings.googleNavEnabled = false; onEngineChanged(false)
+                                }
+                            },
+                        ) { if (!googleNavOn) OutlinedPill("ACTIVE") }
                         Text(
                             if (googleNavOn) {
                                 "Enter a destination in the app and Google guides you on the dash. " +
                                     "Needs internet; shows an extra notification while navigating."
                             } else {
-                                "Off: the app only mirrors turn-by-turn from another nav app " +
-                                    "(e.g. Google Maps). Works offline."
+                                "The home mirrors turn-by-turn from another nav app (e.g. Google Maps) " +
+                                    "to the dash. Start navigation in Google Maps. Works offline."
                             },
                             color = Ktm.Muted2,
                             fontFamily = Barlow,
