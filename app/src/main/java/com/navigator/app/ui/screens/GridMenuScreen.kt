@@ -72,7 +72,6 @@ fun GridMenuScreen(
     gridSelection: Int,
     onSelectGrid: (Int) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenRides: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var notificationAccessGranted by remember {
@@ -137,16 +136,6 @@ fun GridMenuScreen(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Rides (GPX viewer) - touch-only, like the settings gear.
-                Icon(
-                    OpenDashIcons.Navigation, contentDescription = "Rides", tint = Ktm.Muted,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable(onClick = onOpenRides)
-                        .padding(6.dp)
-                        .size(22.dp),
-                )
-                Spacer(Modifier.size(2.dp))
                 Icon(
                     OpenDashIcons.Settings, contentDescription = "Settings", tint = Ktm.Muted,
                     modifier = Modifier
@@ -235,7 +224,6 @@ private fun QuickToggles() {
         }
         QuickChip("PWR SAVE", powerSave, Modifier.weight(1f)) {
             powerSave = !powerSave; settings.powerSaveEnabled = powerSave
-            BccuConnectionService.reevaluateRouteRecordingIfRunning()
             BccuConnectionService.reevaluateEngineDetectIfRunning()
         }
     }

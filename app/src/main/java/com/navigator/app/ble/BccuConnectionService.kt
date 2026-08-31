@@ -154,11 +154,6 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.sendSpeedBanner(text)
         }
 
-        /** Re-check the route-recording gate (setting toggled from the UI). */
-        fun reevaluateRouteRecordingIfRunning() {
-            runningInstance?.routeRecorder?.reevaluate()
-        }
-
         /** Re-check location permission-dependent features (permission granted / app foregrounded). */
         fun reevaluateLocationIfRunning() {
             runningInstance?.reevaluateLocationFeatures()
@@ -290,11 +285,10 @@ class BccuConnectionService : LifecycleService() {
         registerAdapterStateReceiver()
         startNavigationCoordinator()
         speedMonitor = com.navigator.app.location.SpeedMonitor(this).also { it.start() }
-        routeRecorder = com.navigator.app.location.RouteRecorder(this).also { it.start() }
         vibrationMonitor = com.navigator.app.sensors.VibrationMonitor(this).also { it.start() }
         // Keep the live movement signals flowing to their consumers continuously,
         // not just when a guidance update happens to arrive: the beeper's
-        // stationary duck and the GPX engine trace both read these.
+        // stationary duck reads this.
         lifecycleScope.launch {
             com.navigator.app.location.SpeedMonitor.speedKmh.collect { kmh ->
                 vibrationMonitor?.currentSpeedKmh = kmh
@@ -304,7 +298,6 @@ class BccuConnectionService : LifecycleService() {
         lifecycleScope.launch {
             com.navigator.app.sensors.VibrationMonitor.engineOn.collect { on ->
                 com.navigator.app.audio.TurnBeeper.engineOn = on
-                routeRecorder?.onEngineState(on)
             }
         }
         // Debug-only: `adb shell am broadcast -a com.navigator.app.DEBUG_MODE_OVERLAY`
@@ -321,7 +314,6 @@ class BccuConnectionService : LifecycleService() {
 
     private var adapterStateReceiver: android.content.BroadcastReceiver? = null
     private var speedMonitor: com.navigator.app.location.SpeedMonitor? = null
-    private var routeRecorder: com.navigator.app.location.RouteRecorder? = null
     var vibrationMonitor: com.navigator.app.sensors.VibrationMonitor? = null
         private set
 
@@ -362,7 +354,6 @@ class BccuConnectionService : LifecycleService() {
     private fun reevaluateLocationFeatures() {
         runCatching { startForegroundWithTypes(statusText) }
         speedMonitor?.start()
-        routeRecorder?.reevaluate()
     }
 
     private var statusText: String = "Connecting..."
@@ -593,7 +584,6 @@ class BccuConnectionService : LifecycleService() {
         adapterStateReceiver?.let { runCatching { unregisterReceiver(it) } }
         adapterStateReceiver = null
         speedMonitor?.stop(); speedMonitor = null
-        routeRecorder?.stop(); routeRecorder = null
         vibrationMonitor?.destroy(); vibrationMonitor = null
         navCoordinator?.stop(); navCoordinator = null
         stopBleScan()

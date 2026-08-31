@@ -62,25 +62,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Open GPX tracks from file managers / chat apps: imported into
-                 the routes folder and shown in the ride viewer. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="application/gpx+xml" />
-                <data android:mimeType="application/xml" />
-                <data android:mimeType="text/xml" />
-            </intent-filter>
-            <intent-filter>
-                <!-- File managers often send GPX as a generic stream; the
-                     importer sniffs the content and skips non-GPX files. -->
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" android:mimeType="application/octet-stream" />
-                <data android:scheme="file" android:mimeType="application/octet-stream" />
-            </intent-filter>
             <intent-filter>
                 <!-- "Share" a place from Google Maps (or any text): we sniff it
                      for a Maps link and open the destination screen in Link mode. -->

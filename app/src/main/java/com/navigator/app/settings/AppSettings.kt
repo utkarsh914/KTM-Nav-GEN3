@@ -304,11 +304,6 @@ class AppSettings(context: Context) {
         get() = navProvider != NAV_PROVIDER_NOTIFICATION
         set(value) { navProvider = if (value) NAV_PROVIDER_GOOGLE_NAV_SDK else NAV_PROVIDER_NOTIFICATION }
 
-    /** Auto-record GPS routes to GPX, but only while the phone is charging. */
-    var routeAutoRecordEnabled: Boolean
-        get() = pairingPrefs.getBoolean(KEY_ROUTE_RECORD, false)
-        set(value) = pairingPrefs.edit().putBoolean(KEY_ROUTE_RECORD, value).apply()
-
     /** Manual hardware-calibration result for one icon, from the Symbol Testing screen. "works", "wrong", or null (untested). */
     fun getIconTestResult(key: String): String? = prefs.getString(KEY_ICON_TEST_PREFIX + key, null)
 
@@ -379,7 +374,6 @@ class AppSettings(context: Context) {
         private const val KEY_NAV_PROVIDER = "nav_provider"
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
-        private const val KEY_ROUTE_RECORD = "route_auto_record"
         private const val KEY_PAIRED_PREFIX = "paired_before_"
         private const val KEY_SESSION_KEYS_PREFIX = "session_keys_"
         private const val KEY_ICON_TEST_PREFIX = "icon_test_"

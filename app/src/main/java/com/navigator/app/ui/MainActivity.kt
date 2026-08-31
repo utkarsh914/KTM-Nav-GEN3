@@ -51,26 +51,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, RIDES, DESTINATION, PLACES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, DESTINATION, PLACES }
 
 class MainActivity : ComponentActivity() {
 
     companion object {
         /**
-         * GPX handed to us via ACTION_VIEW (file manager, WhatsApp, …), already
-         * copied into the routes folder. Compose observes this to jump to the
-         * ride viewer; cleared when the viewer is left. A flow (not an intent
-         * extra) because with launchMode=singleTask a second GPX arrives via
-         * onNewIntent on the LIVE activity - there is no recomposition-from-
-         * scratch to re-read an extra from.
-         */
-        val importedGpx = kotlinx.coroutines.flow.MutableStateFlow<java.io.File?>(null)
-
-        /**
          * Text shared into the app (ACTION_SEND) that may contain a Google Maps
          * link. Compose observes this to open the destination screen in Link
-         * mode; cleared once consumed. Flow (not an extra) for the same
-         * singleTask/onNewIntent reason as [importedGpx].
+         * mode; cleared once consumed. A flow (not an intent extra) because with
+         * launchMode=singleTask a second share arrives via onNewIntent on the LIVE
+         * activity - there is no recomposition-from-scratch to re-read an extra from.
          */
         val sharedNavLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
@@ -78,7 +69,7 @@ class MainActivity : ComponentActivity() {
          * Set true when the foreground-service notification is tapped while a trip
          * is running: Compose observes it to jump to the navigation home (which
          * then resumes the NAVIGATING view). Flow (not just an extra) for the same
-         * singleTask/onNewIntent reason as [importedGpx].
+         * singleTask/onNewIntent reason as [sharedNavLink].
          */
         val openNavRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
 
@@ -259,7 +250,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        importGpxFromIntent(intent)
         handleSendIntent(intent)
         handleOpenNavIntent(intent)
 
@@ -314,7 +304,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        importGpxFromIntent(intent)
         handleSendIntent(intent)
         handleOpenNavIntent(intent)
     }
@@ -335,34 +324,6 @@ class MainActivity : ComponentActivity() {
             AppLogger.log("MapsUrl", "Received shared text (${text.length} chars)")
             sharedNavLink.value = text
         }
-    }
-
-    /**
-     * ACTION_VIEW with a GPX: copy it into the routes folder (so it lives in
-     * the ride list permanently) and publish it for the UI to open. Sniffs the
-     * content because the octet-stream manifest filter matches non-GPX too.
-     */
-    private fun importGpxFromIntent(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
-        val uri = intent.data ?: return
-        runCatching {
-            val name = contentResolver.query(uri, null, null, null, null)?.use { c ->
-                val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                if (i >= 0 && c.moveToFirst()) c.getString(i) else null
-            } ?: uri.lastPathSegment ?: "imported_${System.currentTimeMillis()}.gpx"
-            val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return
-            val head = String(bytes, 0, minOf(bytes.size, 512))
-            if (!head.contains("<gpx", ignoreCase = true) && !name.endsWith(".gpx", ignoreCase = true)) {
-                AppLogger.log("Route", "Ignoring non-GPX ACTION_VIEW: $name")
-                return
-            }
-            val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
-                .let { if (it.endsWith(".gpx", ignoreCase = true)) it else "$it.gpx" }
-            val dest = java.io.File(com.navigator.app.location.RouteRecorder.routesDir(this), safe)
-            dest.writeBytes(bytes)
-            AppLogger.log("Route", "Imported GPX \"$name\" (${bytes.size / 1024} KB) -> ${dest.name}")
-            importedGpx.value = dest
-        }.onFailure { AppLogger.log("Route", "!! GPX import failed: $it") }
     }
 
     private var maneuverExportReceiver: android.content.BroadcastReceiver? = null
@@ -474,7 +435,6 @@ private fun OpenDashApp(
     var route by remember {
         mutableStateOf(
             when {
-                MainActivity.importedGpx.value != null -> AppRoute.RIDES // opened a GPX from another app
                 !settings.brandChosen -> AppRoute.BRAND      // first run: pick the bike brand first
                 !settings.onboardingComplete -> AppRoute.ONBOARDING
                 settings.bondedDeviceAddress == null -> AppRoute.PAIRING
@@ -491,12 +451,6 @@ private fun OpenDashApp(
     // Non-null when Pairing is reached from the map home's Connect pill (so it
     // gets a back affordance); null on the forced first-run pairing step.
     var pairingReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
-    // A GPX arriving while we're already running (singleTask onNewIntent):
-    // jump to the ride viewer for it.
-    val importedGpx by MainActivity.importedGpx.collectAsState()
-    LaunchedEffect(importedGpx) {
-        if (importedGpx != null && route != AppRoute.ONBOARDING) route = AppRoute.RIDES
-    }
 
     // In-app Google navigation is offered when a key + Play Services are present
     // AND the user hasn't switched to mirror-only in Settings.
@@ -550,7 +504,6 @@ private fun OpenDashApp(
             AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
-            AppRoute.RIDES -> { MainActivity.importedGpx.value = null; route = AppRoute.MAIN }
             AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = destinationReturnRoute }
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
@@ -655,7 +608,6 @@ private fun OpenDashApp(
                                 stateMachine.touchSelectGrid(index, System.currentTimeMillis())
                             },
                             onOpenSettings = { settingsReturnRoute = AppRoute.MAIN; route = AppRoute.SETTINGS },
-                            onOpenRides = { route = AppRoute.RIDES }
                         )
                     }
                 }
@@ -667,7 +619,6 @@ private fun OpenDashApp(
                 onOpenSymbolTest = { route = AppRoute.SYMBOL_TEST },
                 onOpenTurnCalibration = { route = AppRoute.TURN_CALIBRATION },
                 onOpenVibrationCalibration = { route = AppRoute.VIBRATION_CALIBRATION },
-                onOpenRides = { route = AppRoute.RIDES },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
                 onOpenPlaces = { route = AppRoute.PLACES },
                 onEngineChanged = { googleNav ->
@@ -704,13 +655,6 @@ private fun OpenDashApp(
             )
             AppRoute.VIBRATION_CALIBRATION -> com.navigator.app.ui.screens.VibrationCalibrationScreen(
                 onBack = { route = AppRoute.SETTINGS }
-            )
-            AppRoute.RIDES -> com.navigator.app.ui.screens.RidesScreen(
-                initialFile = importedGpx,
-                onBack = {
-                    MainActivity.importedGpx.value = null
-                    route = AppRoute.MAIN
-                }
             )
             AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(
                 onBack = {

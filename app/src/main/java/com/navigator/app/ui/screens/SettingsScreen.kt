@@ -86,7 +86,6 @@ fun SettingsScreen(
     onOpenSymbolTest: () -> Unit,
     onOpenTurnCalibration: () -> Unit,
     onOpenVibrationCalibration: () -> Unit = {},
-    onOpenRides: () -> Unit = {},
     onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
     onEngineChanged: (Boolean) -> Unit = {},
@@ -112,7 +111,6 @@ fun SettingsScreen(
     var vibSensitivity by remember { mutableStateOf(settings.vibrationSensitivity) }
     var overspeedEnabled by remember { mutableStateOf(settings.overspeedEnabled) }
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
-    var routeRecordEnabled by remember { mutableStateOf(settings.routeAutoRecordEnabled) }
     var waypoint by remember { mutableStateOf(settings.waypoint) }
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var accessibilityGranted by remember {
@@ -341,12 +339,8 @@ fun SettingsScreen(
                     SettingsRow("Power saver (full rate on charge)", showDivider = true) {
                         KtmToggle(powerSave, {
                             powerSave = it; settings.powerSaveEnabled = it
-                            BccuConnectionService.reevaluateRouteRecordingIfRunning()
                             BccuConnectionService.reevaluateEngineDetectIfRunning()
                         })
-                    }
-                    SettingsRow("View rides", showDivider = true, onClick = onOpenRides) {
-                        MonoValue("${com.navigator.app.location.RouteRecorder.listRoutes(context).size} ›")
                     }
                     SettingsRow("Overspeed alert", showDivider = true) {
                         KtmToggle(overspeedEnabled, { overspeedEnabled = it; settings.overspeedEnabled = it })
@@ -418,23 +412,8 @@ fun SettingsScreen(
                             )
                         }
                     }
-                    SettingsRow("Speed limit", showDivider = true, onClick = { dialog = SettingsDialog.OVERSPEED_LIMIT }) {
+                    SettingsRow("Speed limit", showDivider = false, onClick = { dialog = SettingsDialog.OVERSPEED_LIMIT }) {
                         MonoValue("$overspeedLimit km/h ›")
-                    }
-                    SettingsRow("Auto-record routes while charging", showDivider = true) {
-                        KtmToggle(routeRecordEnabled, {
-                            routeRecordEnabled = it; settings.routeAutoRecordEnabled = it
-                            BccuConnectionService.reevaluateRouteRecordingIfRunning()
-                        })
-                    }
-                    SettingsRow(
-                        "Export recorded routes", showDivider = false,
-                        onClick = { exportRoutes(context) },
-                    ) {
-                        val count = remember(routeRecordEnabled) {
-                            com.navigator.app.location.RouteRecorder.listRoutes(context).size
-                        }
-                        MonoValue("$count GPX ›")
                     }
                 }
             }
@@ -720,24 +699,6 @@ private fun lastKnownLocation(context: android.content.Context): android.locatio
         android.location.LocationManager.PASSIVE_PROVIDER,
     ).mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
         .maxByOrNull { it.time }
-}
-
-/** Share all recorded GPX route files via the app's FileProvider. */
-private fun exportRoutes(context: android.content.Context) {
-    val files = com.navigator.app.location.RouteRecorder.listRoutes(context)
-    if (files.isEmpty()) {
-        android.widget.Toast.makeText(context, "No recorded routes yet", android.widget.Toast.LENGTH_SHORT).show()
-        return
-    }
-    val uris = ArrayList(files.map {
-        androidx.core.content.FileProvider.getUriForFile(context, "com.navigator.app.fileprovider", it)
-    })
-    val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-        type = "application/gpx+xml"
-        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    context.startActivity(Intent.createChooser(intent, "Export routes"))
 }
 
 private fun maskKey(key: String): String = when {
