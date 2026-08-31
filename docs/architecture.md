@@ -17,24 +17,23 @@ rebrand note in the checklist).
 
 ## 1. What the app does
 
-Three independent jobs, on the phone, no account/server for the core:
+The app is now **phone-first and map-centric**. The primary surface is a Google-Maps-style
+map home (`NavigationHomeScreen`) built on the Nav SDK's bundled `NavigationView`: search →
+confirm → route preview (with alternates) → on-phone turn-by-turn, while the same guidance
+is streamed to the KTM/Husqvarna Gen-3 dash over BLE.
 
-1. **Push navigation + notifications to the KTM/Husqvarna Gen-3 dash** over BLE.
-2. **Pull the handlebar buttons** into a phone controller / media remote.
-3. **Record & analyse rides** as GPX.
+Jobs, on the phone, no account/server for the core:
 
-This document focuses on **(1) navigation**, which the revamp rebuilt. The other two are
-unchanged and touched only where noted.
+1. **Navigate, phone-first** — plan and run turn-by-turn in-app, and push the same guidance
+   to the dash over BLE.
+2. **Mirror another nav app** (e.g. Google Maps) to the dash via notifications — the
+   offline-capable fallback source.
+3. **Legacy (slated for removal, see [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)
+   D2):** handlebar-button controller / media remote, and GPX ride recording. Still present
+   but no longer the focus; the app is converging on navigation-only.
 
-> **⚠ Being revised — phone-first UX revamp in progress.** A follow-on effort makes the
-> app **phone-first and map-centric**: a new map home (`NavigationHomeScreen`) built on the
-> Nav SDK's bundled `NavigationView`, an on-phone full active-navigation screen, and a
-> search flow with recents/favorites. Design:
-> [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md). **This architecture doc MUST be
-> updated as that revamp lands** — especially §1 (the app is becoming navigation-only; ride
-> recording and the handlebar-remote controller are slated for removal) and §3 (destination
-> entry is superseded by the new flow). Sections not yet reconciled with the revamp still
-> describe the pre-revamp state.
+The UX revamp (P1–P5) has landed: see [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)
+for the design and [`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) for status.
 
 ---
 
@@ -114,25 +113,45 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 
 ---
 
-## 3. Destination entry (`AppRoute.DESTINATION`)
+## 3. Map home & destination flow (`AppRoute.NAV_HOME` · `NavigationHomeScreen`)
 
-> **Superseded by the UX revamp** ([`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)):
-> the SEARCH/MAP/LINK `DestinationScreen` described below is being replaced by a map-first
-> `NavigationHomeScreen` (search sheet with recents/favorites, pin confirm, route preview,
-> on-phone active guidance). This section documents the pre-revamp state and will be
-> rewritten when P2–P4 land.
+The app's primary surface. One persistent Nav SDK `NavigationView` is the map across a small
+stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
 
-Reached from the Direction screen's "NAVIGATE WITH GOOGLE" button (shown only when a key +
-Play Services are present and the Settings toggle is on) and from a **share-sheet** target.
+- **BROWSE** — full map + location dot; top search bar; a **Connect/Connected** pill (bound
+  to `BccuConnectionService.connectionState`, tap → Pairing); recenter (bottom-left); a
+  custom compass (top-right, below Settings) shown only when the map is rotated (tap resets
+  to north). The built-in Google compass is disabled.
+- **SEARCH** — focused field + live Places Autocomplete (`PlacesClient`), plus **Recent** and
+  **Favorites** (Home/Work/Saved) quick-access when the query is empty. Backed by
+  `PlacesStore` (recents deduped + capped; favorites with unique Home/Work slots) persisted
+  as JSON in a private `SharedPreferences`.
+- **CONFIRM** — red pin + place card (name / address / straight-line distance) with **Get
+  Directions** and a **Save toggle** (brand-accent filled bookmark → Saved list; Home/Work
+  are managed in Settings → Saved places, `SavedPlacesScreen`).
+- **PREVIEW** — `RoutesClient` (Routes API `computeRoutes`, TWO_WHEELER→DRIVE, alternates)
+  draws the selected route (Google blue) + alternates (desaturated blue); a **route chip per
+  option** selects reliably. ETA/distance + **Start**. The origin is a **fresh** location fix
+  so the route-token origin matches the SDK's GPS.
+- **NAVIGATING** — `GoogleNavSdkController.startNavigation` begins guidance and the SDK's
+  stock `NavigationView` UI renders on the phone (maneuver header + ETA card + re-center +
+  report). Overlay: a circular **END** (top-left, below the header); hardware Back also ends.
+  Auto-returns to BROWSE on arrival.
 
-- **Search** — Places Autocomplete (New) over HTTPS with an `origin` for straight-line
-  `distanceMeters`; tap a result → Place Details (New) `location` field → navigate.
-- **Map** — the Nav SDK's *bundled* Maps (`MapView` in an `AndroidView`, no `mapId`); tap to
-  drop a pin → navigate.
-- **Link** — paste, or share from Google Maps. `MapsUrlResolver` reads inline coordinates
-  (`!3d!4d`, `?q=`, `destination=`, `ll=`, `geo:`), or for a short/place link follows the
-  redirect and runs a **Places Text Search** on the resolved place name for exact
-  coordinates. The `/@lat,lng` viewport is never used as the pin.
+**Start on the selected route.** The picked route's Routes API `routeToken` is passed via
+`NavDestination.routeToken` → `Navigator.setDestinations(waypoint, CustomRoutesOptions(token,
+TWO_WHEELER))`, with graceful fallback to default routing. Honored reliably in many cases;
+the SDK may recompute to the fastest for some alternates when stationary (road-snapping) —
+best-effort, validated on-ride (see checklist).
+
+**Search backends.**
+- **Autocomplete** — Places Autocomplete (New) over HTTPS with an `origin` for straight-line
+  `distanceMeters`; tap a result → Place Details (New) `location` → CONFIRM.
+- **Shared link** — a Google Maps link shared into the app routes to the map home, which
+  resolves it via `MapsUrlResolver` (inline `!3d!4d` / `?q=` / `destination=` / `ll=` /
+  `geo:` coords, else follow the short link + Places Text Search on the place name) and drops
+  into CONFIRM. (The legacy `DestinationScreen` remains only for the legacy Direction-mirror
+  screen and will be removed with the D2 lean-down.)
 
 ### 3.1 API-key authentication (important)
 

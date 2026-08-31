@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Phone-first map navigation
+
+**A real map, in the app.** KTM Navigator now opens to a full Google map you can pan and
+explore, with your live location, a **bike connection** pill, and a search bar. Search a
+place (with **Recent** and **Home/Work/Saved** shortcuts), confirm it with a pin, preview the
+route — including **alternate routes** you can pick — then **Start** to run turn-by-turn on
+the phone *and* the dash at once. The on-phone navigation uses Google's own guidance screen
+(maneuver, ETA, distance, speed), so you can glance at the phone if the dash arrows aren't
+enough. Save places and manage **Home/Work** under **Settings → Saved places**. Sharing a
+Google Maps place into the app drops you straight onto the map, ready to go.
+
 ## Unreleased — Navigation revamp
 
 **Navigate with Google, in the app.** Alongside mirroring another nav app's notification, you

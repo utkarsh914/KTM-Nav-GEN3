@@ -1,6 +1,8 @@
 # Navigation UX Revamp — Phone-First Map Experience
 
-Status: **planning complete, implementation pending**
+Status: **P1–P5 shipped** (map home, search + recents/favorites, route preview + alternates,
+on-phone active guidance, share-link fold-in). Route-token alternate-following is best-effort
+pending on-bike validation. P6 (docs) done. Remaining: D2 lean-down + planned improvements (§8).
 Target vehicle: 2026 KTM 390 Adventure X (Gen-3 "connected" BCCU dash), also KTM/Husqvarna Gen-3.
 Scope: turn the app into a **phone-first, map-centric navigation experience** (inspired by
 the Royal Enfield app's flow) on top of the *existing, working* Google Navigation SDK →
@@ -146,14 +148,14 @@ NavigationHomeScreen (START)
 
 ## 6. Phasing
 
-| Phase | Deliverable |
-|---|---|
-| **P1** | `NavigationHomeScreen` shell: live `NavigationView` map + Connect pill + search bar; ToS acceptance on entry; set as home. |
-| **P2** | Search sheet: autocomplete + **Recents/Favorites** (`PlacesStore`); CONFIRM stage (pin + place card). |
-| **P3** | Route **PREVIEW** + START (reuse `GoogleNavSdkController`). |
-| **P4** | Full on-phone active guidance via `NavigationView` + **END**. |
-| **P5** | Polish: share-link fold-in, back-stack / permissions / FGS consolidation. |
-| **P6 (docs)** | **Update the architecture documentation** to the post-revamp state (see §9). |
+| Phase | Deliverable | Status |
+|---|---|---|
+| **P1** | `NavigationHomeScreen` shell: live `NavigationView` map + Connect pill + search bar; ToS acceptance on entry; set as home. | ✅ shipped |
+| **P2** | Search sheet: autocomplete + **Recents/Favorites** (`PlacesStore`); CONFIRM stage (pin + place card). | ✅ shipped |
+| **P3** | Route **PREVIEW** (alternates, route chips, route tokens) + START. | ✅ shipped (alternate-follow best-effort) |
+| **P4** | On-phone active guidance via the SDK's stock `NavigationView` UI + **END**. | ✅ shipped |
+| **P5** | Polish: **share-link fold-in** (done). FGS/notification consolidation → deferred to Phase 7 reliability; a shared `PlaceSearch` de-dup → deferred (cosmetic). | ✅ (partial; deferrals noted) |
+| **P6 (docs)** | Reconcile `architecture.md` (§1 shape, §3 flow, banner cleared) + this doc + checklist. | ✅ done |
 
 Each phase: assistant edits; **user builds & tests** in Android Studio (JVM tests where
 applicable + on-device); commit per phase/slice on the user's go-ahead.
