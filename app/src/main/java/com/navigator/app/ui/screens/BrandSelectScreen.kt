@@ -89,7 +89,7 @@ fun BrandSelectScreen(
                     com.navigator.app.ui.components.CircleBackButton(onClick = onBack)
                     Spacer(Modifier.height(6.dp))
                 }
-                Text("NAVIGATOR GEN3", color = Ktm.Muted, fontFamily = JetBrainsMono,
+                Text("KTM NAVIGATOR", color = Ktm.Muted, fontFamily = JetBrainsMono,
                     fontSize = 11.sp, letterSpacing = 3.5.sp)
                 Text("Choose your ride", color = Ktm.Dim, fontFamily = BarlowCondensed,
                     fontWeight = FontWeight.SemiBold, fontSize = 15.sp,

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -43,11 +42,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.notifications.NotificationRepository
 import com.navigator.app.ui.OpenDashPermissions
+import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
+import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -73,7 +73,6 @@ fun MirrorHomeScreen(
     val guidance by NotificationRepository.navGuidance.collectAsState()
     val navText by NotificationRepository.currentNavText.collectAsState()
     val navPackage by NotificationRepository.currentNavPackage.collectAsState()
-    val conn by BccuConnectionService.connectionState.collectAsState()
     val paused by NotificationNavProvider.paused.collectAsState()
 
     val hasNav = navPackage != null && (guidance != null || navText != null)
@@ -105,17 +104,19 @@ fun MirrorHomeScreen(
                 .padding(horizontal = 22.dp)
                 .padding(top = 10.dp, bottom = 22.dp),
         ) {
-            // Header: label + connection pill + settings gear.
+            // Top bar: bike connection (left) + settings (right) — the same
+            // shared controls the map home uses, so the two engines match. The
+            // mirror-status label sits just below.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Eyebrow(
-                    if (paused) "Notification mirror · paused" else "Notification mirror · to dash",
-                    fontSize = 12, letterSpacing = 2.0, color = if (paused) Ktm.Dim else Ktm.Orange,
-                    modifier = Modifier.weight(1f),
-                )
-                com.navigator.app.ui.components.ConnectionPill(conn, onClick = onOpenConnect)
-                Spacer(Modifier.size(10.dp))
-                CircleGear(onClick = onOpenSettings)
+                ConnectPill(onClick = onOpenConnect)
+                Spacer(Modifier.weight(1f))
+                IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
             }
+            Spacer(Modifier.height(16.dp))
+            Eyebrow(
+                if (paused) "Notification mirror · paused" else "Notification mirror · to dash",
+                fontSize = 12, letterSpacing = 2.0, color = if (paused) Ktm.Dim else Ktm.Orange,
+            )
 
             Spacer(Modifier.height(20.dp))
 
@@ -176,7 +177,7 @@ fun MirrorHomeScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showExitConfirm = false }) { Text("CANCEL", color = Ktm.Dim) }
+                    TextButton(onClick = { showExitConfirm = false }) { Text("CANCEL", color = Ktm.TextPrimary) }
                 },
             )
         }
@@ -201,21 +202,6 @@ private fun NotifAccessBanner(onGrant: () -> Unit) {
             "Mirror mode reads Google Maps' turn notifications. Tap to grant access.",
             color = Ktm.Muted2, fontFamily = Barlow, fontSize = 13.sp,
         )
-    }
-}
-
-@Composable
-private fun CircleGear(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.BorderSoft, CircleShape)
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(OpenDashIcons.Settings, contentDescription = "Settings", tint = Ktm.White, modifier = Modifier.size(20.dp))
     }
 }
 

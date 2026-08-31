@@ -20,11 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -266,5 +268,61 @@ fun ConnectionPill(
         Spacer(Modifier.size(7.dp))
         Text(label, color = Ktm.White, fontFamily = BarlowCondensed,
             fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    }
+}
+
+/** A 52dp rounded-square icon button. Shared by both home screens (settings,
+ *  clear, recenter) so the control chrome is identical across engines and lines
+ *  up with the search bar / connection pill height. */
+@Composable
+fun IconPill(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(Ktm.ControlHeight)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** Rich bike-connection button (status dot + bike icon + device label).
+ *  Subscribes to the live connection state itself. Shared by both home screens
+ *  so the connection affordance is identical across engines. */
+@Composable
+fun ConnectPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val state by BccuConnectionService.connectionState.collectAsState()
+    val deviceName by BccuConnectionService.deviceName.collectAsState()
+
+    val connected = state == BccuConnectionService.ConnectionState.AUTHENTICATED
+    val connecting = state == BccuConnectionService.ConnectionState.CONNECTING
+    val dotColor = when {
+        connected -> Ktm.Green
+        connecting -> Ktm.Orange
+        else -> Ktm.Danger
+    }
+    val label = when {
+        connected -> deviceName ?: "Connected"
+        connecting -> "Connecting…"
+        else -> "Connect"
+    }
+
+    Row(
+        modifier = modifier
+            .height(Ktm.ControlHeight)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, if (connected) Ktm.ConnBorder else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(dotColor))
+        Spacer(Modifier.size(9.dp))
+        Icon(OpenDashIcons.Bike, null, tint = Ktm.White, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.size(8.dp))
+        Text(label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp)
     }
 }

@@ -84,18 +84,72 @@ data class BrandTheme(
     val danger: Color,
 )
 
-/** KTM — dark, "READY TO RACE". Values are the original OpenDash KTM handoff, 1:1. */
-val KtmTheme = BrandTheme(
-    brand = Brand.KTM,
+/** How the app chooses between the light and dark neutral palettes. */
+enum class ThemeMode(val id: String) {
+    SYSTEM("system"),
+    LIGHT("light"),
+    DARK("dark");
+
+    companion object {
+        fun fromId(id: String?): ThemeMode = entries.firstOrNull { it.id == id } ?: SYSTEM
+    }
+}
+
+/**
+ * The neutral (non-accent) half of a theme: backgrounds, surfaces, borders, text
+ * and the contrast-tuned semantic colours. Light/dark is chosen here; the brand
+ * only layers its accent on top (see [BrandIdentity]/[resolve]).
+ */
+data class NeutralPalette(
+    val isDark: Boolean,
+    val board: Color,
+    val screen: Color,
+    val black: Color,
+    val screenDeep: Color,
+    val surface: Color,
+    val surfaceAlt: Color,
+    val surfaceAlt2: Color,
+    val notifCard: Color,
+    val surfaceDisabled: Color,
+    val connBanner: Color,
+    val monoChip: Color,
+    val dashBanner: Color,
+    val border: Color,
+    val bezel: Color,
+    val rowDivider: Color,
+    val notifBorder: Color,
+    val connBorder: Color,
+    val monoChipBorder: Color,
+    val borderSoft: Color,
+    val head: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val muted: Color,
+    val muted2: Color,
+    val dim: Color,
+    val dim2: Color,
+    val dim3: Color,
+    val connSub: Color,
+    val green: Color,
+    val danger: Color,
+)
+
+/** The brand half of a theme: identity + accent, independent of light/dark. */
+data class BrandIdentity(
+    val brand: Brand,
+    val displayName: String,
+    val wordmark: String,
+    val tagline: String,
+    val wordmarkItalic: Boolean,
+    val wordmarkTracking: TextUnit,
+    val accent: Color,
+    val accentDeep: Color,
+    val onAccent: Color, // text/icon colour that sits ON an accent fill
+)
+
+/** Dark neutrals — the original OpenDash KTM handoff greys, 1:1. */
+val DarkNeutrals = NeutralPalette(
     isDark = true,
-    displayName = "KTM",
-    wordmark = "KTM",
-    tagline = "READY TO RACE",
-    wordmarkItalic = true,
-    wordmarkTracking = (-0.01).em,
-    accent = Color(0xFFFF6600),
-    accentDeep = Color(0xFFE05500),
-    onAccent = Color(0xFF0B0C0E),
     board = Color(0xFF08090A),
     screen = Color(0xFF0B0C0E),
     black = Color(0xFF000000),
@@ -128,10 +182,57 @@ val KtmTheme = BrandTheme(
     danger = Color(0xFFFF4438),
 )
 
-/** Husqvarna — light, "Pioneering since 1903". Blue accent on white. */
-val HusqvarnaTheme = BrandTheme(
-    brand = Brand.HUSQVARNA,
+/** Light neutrals — clean neutral greys on white, tuned to sit under any accent. */
+val LightNeutrals = NeutralPalette(
     isDark = false,
+    board = Color(0xFFE8E8EA),
+    screen = Color(0xFFF3F3F5),
+    black = Color(0xFFFFFFFF), // "max-contrast bg" → white in a light theme
+    screenDeep = Color(0xFFEAEAEC),
+    surface = Color(0xFFFFFFFF),
+    surfaceAlt = Color(0xFFF6F6F8),
+    surfaceAlt2 = Color(0xFFF2F2F4),
+    notifCard = Color(0xFFFFFFFF),
+    surfaceDisabled = Color(0xFFE2E2E5),
+    connBanner = Color(0xFFEFF6F1), // faint green card
+    monoChip = Color(0xFFEFEFF1),
+    dashBanner = Color(0xFFF1F1F3),
+    border = Color(0xFFDBDBDF),
+    bezel = Color(0xFFCBCBD1),
+    rowDivider = Color(0xFFE9E9EC),
+    notifBorder = Color(0xFFE4E4E7),
+    connBorder = Color(0xFFBFE0CC),
+    monoChipBorder = Color(0xFFDBDBDF),
+    borderSoft = Color(0xFFC5C5CC),
+    head = Color(0xFF16181C),
+    textPrimary = Color(0xFF2A2D33),
+    textSecondary = Color(0xFF4A4E56),
+    muted = Color(0xFF6D7178),
+    muted2 = Color(0xFF7C8088),
+    dim = Color(0xFF9A9EA6),
+    dim2 = Color(0xFFACB0B7),
+    dim3 = Color(0xFFBEC1C7),
+    connSub = Color(0xFF6D7178),
+    green = Color(0xFF1B9A56),
+    danger = Color(0xFFE5362B),
+)
+
+/** KTM — orange, "READY TO RACE". */
+val KtmIdentity = BrandIdentity(
+    brand = Brand.KTM,
+    displayName = "KTM",
+    wordmark = "KTM",
+    tagline = "READY TO RACE",
+    wordmarkItalic = true,
+    wordmarkTracking = (-0.01).em,
+    accent = Color(0xFFFF6600),
+    accentDeep = Color(0xFFE05500),
+    onAccent = Color(0xFF0B0C0E),
+)
+
+/** Husqvarna — blue, "Pioneering since 1903". */
+val HusqvarnaIdentity = BrandIdentity(
+    brand = Brand.HUSQVARNA,
     displayName = "Husqvarna",
     wordmark = "HUSQVARNA",
     tagline = "PIONEERING SINCE 1903",
@@ -140,42 +241,63 @@ val HusqvarnaTheme = BrandTheme(
     accent = Color(0xFF2C5CB0),
     accentDeep = Color(0xFF1E4488),
     onAccent = Color(0xFFFFFFFF),
-    board = Color(0xFFE4E9F1),
-    screen = Color(0xFFEEF1F6),
-    black = Color(0xFFFFFFFF), // "max-contrast bg" → white in a light theme
-    screenDeep = Color(0xFFE1E7F0),
-    surface = Color(0xFFFFFFFF),
-    surfaceAlt = Color(0xFFF5F7FA),
-    surfaceAlt2 = Color(0xFFF2F5F9),
-    notifCard = Color(0xFFFFFFFF),
-    surfaceDisabled = Color(0xFFDDE3EB),
-    connBanner = Color(0xFFECF6F0), // faint green card
-    monoChip = Color(0xFFEEF1F6),
-    dashBanner = Color(0xFFF0F2F5),
-    border = Color(0xFFD6DCE4),
-    bezel = Color(0xFFC6CFDA),
-    rowDivider = Color(0xFFE7EBF0),
-    notifBorder = Color(0xFFE1E6EC),
-    connBorder = Color(0xFFB9DEC9),
-    monoChipBorder = Color(0xFFD6DCE4),
-    borderSoft = Color(0xFFBFC8D3),
-    head = Color(0xFF132542),
-    textPrimary = Color(0xFF2A3852),
-    textSecondary = Color(0xFF48566E),
-    muted = Color(0xFF6C778A),
-    muted2 = Color(0xFF7A8397),
-    dim = Color(0xFF98A2B2),
-    dim2 = Color(0xFFA9B1BF),
-    dim3 = Color(0xFFBBC2CC),
-    connSub = Color(0xFF6C778A),
-    green = Color(0xFF1B9A56),
-    danger = Color(0xFFE5362B),
 )
 
-fun themeFor(brand: Brand): BrandTheme = when (brand) {
-    Brand.KTM -> KtmTheme
-    Brand.HUSQVARNA -> HusqvarnaTheme
+fun identityFor(brand: Brand): BrandIdentity = when (brand) {
+    Brand.KTM -> KtmIdentity
+    Brand.HUSQVARNA -> HusqvarnaIdentity
 }
+
+/** Combine a brand's identity with a neutral palette into a full [BrandTheme]. */
+fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = BrandTheme(
+    brand = identity.brand,
+    isDark = neutrals.isDark,
+    displayName = identity.displayName,
+    wordmark = identity.wordmark,
+    tagline = identity.tagline,
+    wordmarkItalic = identity.wordmarkItalic,
+    wordmarkTracking = identity.wordmarkTracking,
+    accent = identity.accent,
+    accentDeep = identity.accentDeep,
+    onAccent = identity.onAccent,
+    board = neutrals.board,
+    screen = neutrals.screen,
+    black = neutrals.black,
+    screenDeep = neutrals.screenDeep,
+    surface = neutrals.surface,
+    surfaceAlt = neutrals.surfaceAlt,
+    surfaceAlt2 = neutrals.surfaceAlt2,
+    notifCard = neutrals.notifCard,
+    surfaceDisabled = neutrals.surfaceDisabled,
+    connBanner = neutrals.connBanner,
+    monoChip = neutrals.monoChip,
+    dashBanner = neutrals.dashBanner,
+    border = neutrals.border,
+    bezel = neutrals.bezel,
+    rowDivider = neutrals.rowDivider,
+    notifBorder = neutrals.notifBorder,
+    connBorder = neutrals.connBorder,
+    monoChipBorder = neutrals.monoChipBorder,
+    borderSoft = neutrals.borderSoft,
+    head = neutrals.head,
+    textPrimary = neutrals.textPrimary,
+    textSecondary = neutrals.textSecondary,
+    muted = neutrals.muted,
+    muted2 = neutrals.muted2,
+    dim = neutrals.dim,
+    dim2 = neutrals.dim2,
+    dim3 = neutrals.dim3,
+    connSub = neutrals.connSub,
+    green = neutrals.green,
+    danger = neutrals.danger,
+)
+
+/** Resolve the full palette for a brand at the requested light/dark appearance. */
+fun themeFor(brand: Brand, dark: Boolean): BrandTheme =
+    resolve(identityFor(brand), if (dark) DarkNeutrals else LightNeutrals)
+
+/** Identity-only convenience (accent/displayName don't depend on light/dark). */
+fun themeFor(brand: Brand): BrandTheme = themeFor(brand, dark = Ktm.current.isDark)
 
 /**
  * Reactive theme accessor. Historically named `Ktm`; kept so the ~40 files
@@ -183,12 +305,18 @@ fun themeFor(brand: Brand): BrandTheme = when (brand) {
  * colour now resolves against the live [current] brand and is Compose-reactive.
  */
 object Ktm {
-    /** The active brand's tokens. Set via [applyBrand]; drives live re-theme. */
-    var current by mutableStateOf(KtmTheme)
+    /** The active brand's tokens. Set via [apply]/[applyBrand]; drives live re-theme. */
+    var current by mutableStateOf(themeFor(Brand.KTM, dark = true))
         private set
 
+    /** Set both the brand accent and the light/dark appearance. */
+    fun apply(brand: Brand, dark: Boolean) {
+        current = themeFor(brand, dark)
+    }
+
+    /** Switch brand while keeping the current light/dark appearance. */
     fun applyBrand(brand: Brand) {
-        current = themeFor(brand)
+        current = themeFor(brand, dark = current.isDark)
     }
 
     // Brand
@@ -241,4 +369,8 @@ object Ktm {
     val RadiusCard = 16.dp
     val RadiusButton = 12.dp
     val RadiusRow = 13.dp
+
+    /** Shared height for the floating map controls (search bar, icon buttons,
+     *  connection pill) so they line up across both home screens. */
+    val ControlHeight = 52.dp
 }

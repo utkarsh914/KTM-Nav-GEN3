@@ -40,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,8 +67,10 @@ import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT }
+private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME }
 
 /**
  * Settings (screen 05) — the §5 restructure into four labelled groups
@@ -88,6 +91,8 @@ fun SettingsScreen(
     onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
     onEngineChanged: (Boolean) -> Unit = {},
+    themeMode: com.navigator.app.ui.theme.ThemeMode = com.navigator.app.ui.theme.ThemeMode.SYSTEM,
+    onThemeModeChanged: (com.navigator.app.ui.theme.ThemeMode) -> Unit = {},
     onRepair: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -110,16 +115,25 @@ fun SettingsScreen(
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
-    val installedApps = remember {
-        pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
-            .sortedBy { pm.getApplicationLabel(it).toString() }
+    // Both of these are slow binder IPC (enumerating every installed app; the
+    // Bluetooth stack) and were previously computed synchronously inside
+    // remember{} during first composition, stalling the screen's first frame.
+    // Load them off the main thread so Settings opens instantly; the dialogs
+    // that consume them tolerate the brief empty-then-populated window.
+    val installedApps by produceState(initialValue = emptyList<android.content.pm.ApplicationInfo>()) {
+        value = withContext(Dispatchers.IO) {
+            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+                .sortedBy { pm.getApplicationLabel(it).toString() }
+        }
     }
-    val bondedAudioDevices = remember {
-        val adapter = context.getSystemService(BluetoothManager::class.java).adapter
-        adapter?.bondedDevices?.filter {
-            it.bluetoothClass?.hasService(android.bluetooth.BluetoothClass.Service.AUDIO) == true
-        } ?: emptyList()
+    val bondedAudioDevices by produceState(initialValue = emptyList<android.bluetooth.BluetoothDevice>()) {
+        value = withContext(Dispatchers.IO) {
+            val adapter = context.getSystemService(BluetoothManager::class.java).adapter
+            adapter?.bondedDevices?.filter {
+                it.bluetoothClass?.hasService(android.bluetooth.BluetoothClass.Service.AUDIO) == true
+            } ?: emptyList()
+        }
     }
 
     var notificationAccessGranted by remember {
@@ -182,6 +196,60 @@ fun SettingsScreen(
                     }
                     SettingsRow("Your name", showDivider = false, onClick = { dialog = SettingsDialog.NAME }) {
                         MonoValue(userName.ifBlank { "Set ›" })
+                    }
+                }
+            }
+
+            // ===== Navigation engine =====
+            if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
+                item {
+                    GroupCard("Navigation engine") {
+                        SettingsRow(
+                            "In-app maps (Google)", showDivider = true,
+                            onClick = {
+                                if (!googleNavOn) {
+                                    googleNavOn = true; settings.googleNavEnabled = true; onEngineChanged(true)
+                                }
+                            },
+                        ) { if (googleNavOn) OutlinedPill("ACTIVE") }
+                        SettingsRow(
+                            "Notification mirror", showDivider = true,
+                            onClick = {
+                                if (googleNavOn) {
+                                    googleNavOn = false; settings.googleNavEnabled = false; onEngineChanged(false)
+                                }
+                            },
+                        ) { if (!googleNavOn) OutlinedPill("ACTIVE") }
+                        Text(
+                            if (googleNavOn) {
+                                "Enter a destination in the app and Google guides you on the dash. " +
+                                    "Needs internet; shows an extra notification while navigating."
+                            } else {
+                                "The home mirrors turn-by-turn from another nav app (e.g. Google Maps) " +
+                                    "to the dash. Start navigation in Google Maps. Works offline."
+                            },
+                            color = Ktm.Muted2,
+                            fontFamily = Barlow,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp).padding(vertical = 10.dp),
+                        )
+                        SettingsRow("Saved places", showDivider = false, onClick = onOpenPlaces) {
+                            Text("›", color = Ktm.Dim, fontSize = 18.sp)
+                        }
+                    }
+                }
+            }
+
+            // ===== Appearance =====
+            item {
+                GroupCard("Appearance") {
+                    SettingsRow("Theme", showDivider = false, onClick = { dialog = SettingsDialog.THEME }) {
+                        val label = when (themeMode) {
+                            com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
+                            com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
+                            com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
+                        }
+                        MonoValue("$label ›")
                     }
                 }
             }
@@ -359,47 +427,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Navigation engine =====
-            if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
-                item {
-                    GroupCard("Navigation engine") {
-                        SettingsRow(
-                            "In-app maps (Google)", showDivider = true,
-                            onClick = {
-                                if (!googleNavOn) {
-                                    googleNavOn = true; settings.googleNavEnabled = true; onEngineChanged(true)
-                                }
-                            },
-                        ) { if (googleNavOn) OutlinedPill("ACTIVE") }
-                        SettingsRow(
-                            "Notification mirror", showDivider = true,
-                            onClick = {
-                                if (googleNavOn) {
-                                    googleNavOn = false; settings.googleNavEnabled = false; onEngineChanged(false)
-                                }
-                            },
-                        ) { if (!googleNavOn) OutlinedPill("ACTIVE") }
-                        Text(
-                            if (googleNavOn) {
-                                "Enter a destination in the app and Google guides you on the dash. " +
-                                    "Needs internet; shows an extra notification while navigating."
-                            } else {
-                                "The home mirrors turn-by-turn from another nav app (e.g. Google Maps) " +
-                                    "to the dash. Start navigation in Google Maps. Works offline."
-                            },
-                            color = Ktm.Muted2,
-                            fontFamily = Barlow,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp).padding(vertical = 10.dp),
-                        )
-                        SettingsRow("Saved places", showDivider = false, onClick = onOpenPlaces) {
-                            Text("›", color = Ktm.Dim, fontSize = 18.sp)
-                        }
-                    }
-                }
-            }
-
-
             // ===== Diagnostics =====
             item {
                 GroupCard("Diagnostics") {
@@ -503,6 +530,20 @@ fun SettingsScreen(
                 sourceApps = if (checked) sourceApps + pkg else sourceApps - pkg
                 settings.notificationSourceApps = sourceApps
             },
+        )
+        SettingsDialog.THEME -> SingleChoiceDialog(
+            title = "Theme",
+            options = com.navigator.app.ui.theme.ThemeMode.entries.toList(),
+            labelFor = {
+                when (it) {
+                    com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System default"
+                    com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
+                    com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
+                }
+            },
+            selected = themeMode,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = { onThemeModeChanged(it); dialog = SettingsDialog.NONE },
         )
         SettingsDialog.NONE -> {}
     }

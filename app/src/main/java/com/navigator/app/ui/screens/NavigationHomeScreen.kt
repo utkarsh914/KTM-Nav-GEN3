@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
@@ -91,6 +90,8 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.ui.components.ConnectPill
+import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -212,6 +213,11 @@ fun NavigationHomeScreen(
     LaunchedEffect(stage, selected) {
         if (stage != NavStage.PREVIEW) return@LaunchedEffect
         val p = selected ?: return@LaunchedEffect
+        // Record the recent as soon as the rider opens the preview for a place -
+        // reaching this screen is a strong signal of intent, even if they don't
+        // hit Start. addRecent de-dupes by coords, so re-adding at Start is safe.
+        store.addRecent(p)
+        recents = store.recents()
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false
         // Compute from a FRESH fix so route-token origins match the SDK's GPS at
         // Start (a stale origin makes the SDK snap to the nearest/fastest route).
@@ -530,14 +536,17 @@ fun NavigationHomeScreen(
 private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
     val context = LocalContext.current
     val navView = rememberNavigationViewWithLifecycle()
+    // Follow the app's own theme (reactive), not the phone's — so the in-app
+    // Light/Dark/System setting also drives the map and the SDK guidance UI.
+    val dark = Ktm.current.isDark
+    var mapRef by remember { mutableStateOf<GoogleMap?>(null) }
     AndroidView(
         factory = {
             navView.getMapAsync { gm ->
+                mapRef = gm
                 onMap(gm)
                 gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
                 gm.uiSettings.isCompassEnabled = false          // custom controls instead
-                // Browse/preview map follows the phone's light/dark setting.
-                runCatching { gm.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM }
                 if (hasLocationPermission(context)) {
                     runCatching { gm.isMyLocationEnabled = true }
                 }
@@ -550,13 +559,17 @@ private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
         modifier = Modifier.fillMaxSize(),
     )
     // Show the SDK's full built-in guidance UI (header + ETA card + re-center +
-    // report) only while navigating; make the guidance map follow the phone's
-    // light/dark mode too (the SDK otherwise defaults to time-of-day night mode).
-    LaunchedEffect(navUiEnabled) {
+    // report) only while navigating. Force the browse/preview map colour scheme
+    // and the guidance map's night mode from the app theme (the SDK otherwise
+    // defaults to the system setting / time-of-day night mode).
+    LaunchedEffect(navUiEnabled, dark, mapRef) {
+        runCatching {
+            mapRef?.mapColorScheme = if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT
+        }
         runCatching {
             navView.setNavigationUiEnabled(navUiEnabled)
             navView.setForceNightMode(
-                if (isSystemDark(context)) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY,
+                if (dark) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY,
             )
         }
     }
@@ -646,15 +659,38 @@ private fun SearchPanel(
                     val homes = favorites.filter { it.slot == FavoriteSlot.HOME }
                     val works = favorites.filter { it.slot == FavoriteSlot.WORK }
                     val saved = favorites.filter { it.slot == FavoriteSlot.OTHER }
-                    if (homes.isNotEmpty() || works.isNotEmpty()) {
+                    val home = homes.firstOrNull()
+                    val work = works.firstOrNull()
+                    if (home != null || work != null) {
                         item { SectionLabel("FAVORITES") }
-                        items(homes + works, key = { "fav-${it.slot}-${it.place.lat},${it.place.lng}" }) { f ->
-                            SavedRow(
-                                icon = if (f.slot == FavoriteSlot.HOME) OpenDashIcons.House else OpenDashIcons.Briefcase,
-                                title = if (f.slot == FavoriteSlot.HOME) "Home" else "Work",
-                                subtitle = f.place.label,
-                                origin = origin, lat = f.place.lat, lng = f.place.lng,
-                            ) { onPickSaved(f.place) }
+                        if (home != null && work != null) {
+                            // Both set: Home and Work share one row, side by side.
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    FavoriteHalfCard(
+                                        icon = OpenDashIcons.House, title = "Home", subtitle = home.place.label,
+                                        modifier = Modifier.weight(1f),
+                                    ) { onPickSaved(home.place) }
+                                    FavoriteHalfCard(
+                                        icon = OpenDashIcons.Briefcase, title = "Work", subtitle = work.place.label,
+                                        modifier = Modifier.weight(1f),
+                                    ) { onPickSaved(work.place) }
+                                }
+                            }
+                        } else {
+                            // Only one set: keep the full-width row.
+                            val only = home ?: work!!
+                            item {
+                                SavedRow(
+                                    icon = if (only.slot == FavoriteSlot.HOME) OpenDashIcons.House else OpenDashIcons.Briefcase,
+                                    title = if (only.slot == FavoriteSlot.HOME) "Home" else "Work",
+                                    subtitle = only.place.label,
+                                    origin = origin, lat = only.place.lat, lng = only.place.lng,
+                                ) { onPickSaved(only.place) }
+                            }
                         }
                     }
                     if (saved.isNotEmpty()) {
@@ -737,6 +773,35 @@ private fun SavedRow(
         distanceLabel(origin, lat, lng)?.let {
             Spacer(Modifier.size(10.dp))
             Text(it, color = Ktm.Orange, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
+}
+
+/** Compact half-width favorite card used when both Home and Work are set. */
+@Composable
+private fun FavoriteHalfCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusRow))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+    ) {
+        Icon(icon, null, tint = Ktm.TextSecondary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(8.dp))
+        Text(title, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+        subtitle?.let {
+            Text(
+                it, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 14.sp,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -865,7 +930,7 @@ private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = { Text("Close KTM Navigator?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
         text = { Text("This stops navigation to the dash and exits the app.", fontFamily = Barlow) },
         confirmButton = { TextButton(onClick = onConfirm) { Text("CLOSE", color = Ktm.Danger) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.Dim) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
     )
 }
 
@@ -887,7 +952,7 @@ private fun CircleIconButton(icon: ImageVector, contentDescription: String, onCl
 @Composable
 private fun CompassButton(bearing: Float, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.size(48.dp)
+        modifier = Modifier.size(Ktm.ControlHeight)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
@@ -963,65 +1028,17 @@ private fun SaveToggle(saved: Boolean, onClick: () -> Unit) {
 private fun SearchBar(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier = modifier
+            .height(Ktm.ControlHeight)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(OpenDashIcons.Search, null, tint = Ktm.Orange, modifier = Modifier.size(20.dp))
         Spacer(Modifier.size(10.dp))
         Text("Enter Destination", color = Ktm.Dim, fontFamily = Barlow, fontSize = 16.sp)
-    }
-}
-
-@Composable
-private fun IconPill(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
-private fun ConnectPill(onClick: () -> Unit) {
-    val state by BccuConnectionService.connectionState.collectAsState()
-    val deviceName by BccuConnectionService.deviceName.collectAsState()
-
-    val connected = state == BccuConnectionService.ConnectionState.AUTHENTICATED
-    val connecting = state == BccuConnectionService.ConnectionState.CONNECTING
-    val dotColor = when {
-        connected -> Ktm.Green
-        connecting -> Ktm.Orange
-        else -> Ktm.Danger
-    }
-    val label = when {
-        connected -> deviceName ?: "Connected"
-        connecting -> "Connecting…"
-        else -> "Connect"
-    }
-
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, if (connected) Ktm.ConnBorder else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(dotColor))
-        Spacer(Modifier.size(9.dp))
-        Icon(OpenDashIcons.Bike, null, tint = Ktm.White, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.size(8.dp))
-        Text(label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp)
     }
 }
 
@@ -1100,11 +1117,6 @@ private fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Doubl
 private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
-
-/** True when the phone's system UI is in dark mode. */
-private fun isSystemDark(context: Context): Boolean =
-    (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-        Configuration.UI_MODE_NIGHT_YES
 
 /**
  * A fresh current-location fix (falls back to last-known). Used for the route

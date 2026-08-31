@@ -1,10 +1,12 @@
 package com.navigator.app.ui.theme
 
 import android.app.Activity
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
@@ -74,6 +76,14 @@ fun OpenDashTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
-    )
+    ) {
+        // Default any un-styled Material text (text-field input, dialog buttons)
+        // to Barlow so the whole app stays on-brand — Compose's LocalTextStyle
+        // otherwise falls back to the system font for text without an explicit
+        // fontFamily (e.g. OutlinedTextField input on onboarding).
+        CompositionLocalProvider(
+            LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = Barlow),
+            content = content,
+        )
+    }
 }

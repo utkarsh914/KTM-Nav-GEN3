@@ -95,9 +95,21 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         settings = AppSettings(this)
-        // Apply the saved brand theme before the first frame so the app opens in
-        // the right skin (KTM dark / Husqvarna light) with no flash of the wrong one.
-        com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
+        // Apply the saved brand accent + light/dark appearance before the first
+        // frame so the app opens in the right skin with no flash of the wrong one.
+        // System appearance is read from the current config's night flag here;
+        // OpenDashApp keeps it in sync afterwards via isSystemInDarkTheme().
+        run {
+            val nightNow = (resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val dark = when (settings.themeMode) {
+                com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
+                com.navigator.app.ui.theme.ThemeMode.DARK -> true
+                com.navigator.app.ui.theme.ThemeMode.SYSTEM -> nightNow
+            }
+            com.navigator.app.ui.theme.Ktm.apply(settings.brand, dark)
+        }
 
         // First-run users grant permissions with context in the onboarding flow;
         // returning users get a silent top-up request for anything since revoked.
@@ -294,6 +306,21 @@ private fun OpenDashApp(
     onExit: () -> Unit,
 ) {
     val appContext = androidx.compose.ui.platform.LocalContext.current
+
+    // Appearance: the chosen mode (persisted) resolved against the live system
+    // night setting, so LIGHT/DARK force and SYSTEM follows the phone. Re-applied
+    // whenever either changes, re-theming the whole app live.
+    var themeMode by remember { mutableStateOf(settings.themeMode) }
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val effectiveDark = when (themeMode) {
+        com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
+        com.navigator.app.ui.theme.ThemeMode.DARK -> true
+        com.navigator.app.ui.theme.ThemeMode.SYSTEM -> systemDark
+    }
+    LaunchedEffect(effectiveDark) {
+        com.navigator.app.ui.theme.Ktm.apply(settings.brand, effectiveDark)
+    }
+
     // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
     // available) -> the mirror home. The two engines stay mutually exclusive.
     fun homeRoute(): AppRoute =
@@ -445,6 +472,8 @@ private fun OpenDashApp(
                 onOpenTurnCalibration = { route = AppRoute.TURN_CALIBRATION },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
                 onOpenPlaces = { route = AppRoute.PLACES },
+                themeMode = themeMode,
+                onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
                 onEngineChanged = { googleNav ->
                     // Switching to the mirror engine ends any in-app SDK trip so
                     // the two engines never drive the dash at once. Return to the

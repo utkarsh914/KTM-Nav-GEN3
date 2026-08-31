@@ -80,6 +80,15 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.contains(KEY_BRAND)
         set(value) { if (!value) pairingPrefs.edit().remove(KEY_BRAND).apply() }
 
+    /**
+     * Light / dark / follow-system appearance. Independent of brand (which now
+     * only supplies the accent). Plain store so it survives the encrypted-prefs
+     * reset, like [brand].
+     */
+    var themeMode: com.navigator.app.ui.theme.ThemeMode
+        get() = com.navigator.app.ui.theme.ThemeMode.fromId(pairingPrefs.getString(KEY_THEME_MODE, null))
+        set(value) = pairingPrefs.edit().putString(KEY_THEME_MODE, value.id).apply()
+
     /** Used to personalize the test notification and greeting text ("Hey <name>"). */
     var userName: String?
         get() = prefs.getString(KEY_USER_NAME, null)
@@ -265,6 +274,7 @@ class AppSettings(context: Context) {
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_BRAND = "brand"
+        private const val KEY_THEME_MODE = "theme_mode"
 
         private const val KEY_NOTIFICATION_APPS = "notification_source_apps"
         private const val KEY_NAV_APP_OVERRIDE = "nav_app_override"
