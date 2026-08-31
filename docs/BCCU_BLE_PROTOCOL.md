@@ -147,6 +147,11 @@ unframe(m) = drop first 16 bytes, then drop the last padLen bytes (padLen = last
 State machine in `BccuConnectionService.handleAuthMessage()`. All handshake traffic is on
 AUTH_REQUEST (bike→phone, indications) / AUTH_REPLY (phone→bike, writes).
 
+The **request type** is a byte the bike sends (byte[2] of the decrypted control message); the
+**app status** is a byte the phone sends back (byte[4] of its reply). Both are **Confirmed
+byte-exact** from the official KTM Connect SDK (`com.ktm.mobsdk.bccu.BCcuAuth` —
+`Request.Companion.fromRawValue` and `ResponseAppStatus`).
+
 ```
 1. Link up → subscribe AUTH_REQUEST.
 2. Bike → m1 (16-byte nonce).
@@ -154,21 +159,33 @@ AUTH_REQUEST (bike→phone, indications) / AUTH_REPLY (phone→bike, writes).
    Both derive the temporary IV + secret from (m1, m2):
      tempIv[0:8]  = m1[8:16]      tempIv[8:16]  = m2[0:8]
      tempSecret[0:8] = m2[8:16]   tempSecret[8:16] = m1[0:8]
-3. Bike → encrypted control message (AES-decrypt with tempSecret/tempIv). byte[2] = command:
-   - CMD_HELLO (0): echo HELLO back. The dash decides from its own bond memory whether to
-     show the physical "add device" prompt — a bonded dash answers with GENERATE_KEYS in a
-     few seconds and no prompt; a new device prompts and answers after the rider confirms
-     (~30 s). (Reverse-engineered from field logs; echoing HELLO is the only reply it acts on.)
-   - CMD_GENERATE_KEYS (1): derive the 16-key session pool (below); persist it per-MAC; reply
-     with command 2.
-   - key-select (16..31): the dash picks key index = cmd & 0x0F from the pool. Set it as the
-     active session key, reply CMD_KEY_ACK_BASE|index (16|index) → **AUTHENTICATED**.
+3. Bike → encrypted control message (AES-decrypt with tempSecret/tempIv). byte[2] = request:
+   - AppIdKeyArrStatus (0): "do you already hold this bike's 16-key array?" The phone replies
+     with an app-status byte, and THIS reply is the sole thing that decides the dash's physical
+     "add device" prompt:
+       · status validKeyArrayAvailable (1) — we hold the persisted array → dash trusts us,
+         shows NO prompt, and continues straight to AssignKeyIndex (silent resume).
+       · status initialConnection (0) — we have no array → dash prompts the rider (~30 s) and
+         issues ComputeKeyArr to build a fresh one.
+   - ComputeKeyArr (1): derive the 16-key array (below), persist it per-MAC, reply status
+     keyArrayGeneratedSuccessfully (2) [or keyArrayGenerationError (3) on failure].
+   - AssignKeyIndex (16..31): the dash picks key index = byte & 0x0F from the array. Set it as
+     the active session key, reply confirmKeyNumber = (index | 16) → **AUTHENTICATED**.
+     [invalid/absent key → status keyConfirmationError (4).] After auth the dash re-issues
+     AssignKeyIndex ~1 Hz as a heartbeat; each is ACKed the same way.
 ```
 
-Reconnect after an ignition cycle skips GENERATE_KEYS: the dash keeps the pool it derived at
-pairing and resumes by key-select alone. So the phone must **persist the pool per-MAC** (it
-does, in encrypted prefs, surviving app updates/reinstalls) or every reconnect stalls on an
-empty pool.
+App-status byte values (`ResponseAppStatus`): `initialConnection=0`, `validKeyArrayAvailable=1`,
+`keyArrayGeneratedSuccessfully=2`, `keyArrayGenerationError=3`, `keyConfirmationError=4`,
+`confirmKeyNumber(i)=i|16`.
+
+Reconnect (app close/reopen **or** an ignition cycle) always restarts at AppIdKeyArrStatus —
+the dash does not keep a live session across a link drop. The phone avoids a re-prompt purely
+by answering **validKeyArrayAvailable (1)**, which requires it to have the array, so the phone
+must **persist the array per-MAC** (it does; plain prefs, `commit()`, surviving updates/
+reinstalls). Answering initialConnection (0) — as an earlier version always did — makes the
+dash treat the phone as new and re-prompt + re-derive on *every* connection. OS-level BLE
+bonding is **not** part of this decision.
 
 ### 4.1 Session-key derivation (`deriveSessionKeys`)
 On CMD_GENERATE_KEYS, from the decrypted challenge:

@@ -109,10 +109,27 @@ object BccuProtocol {
         return triples
     }
 
-    // Handshake command codes (byte[2] of a decrypted 16-byte control message)
-    const val CMD_HELLO = 0
-    const val CMD_GENERATE_KEYS = 1
-    const val CMD_KEY_ACK_BASE = 16 // 16 | keyIndex (0-15)
+    // Handshake REQUEST codes the DASH sends (byte[2] of a decrypted 16-byte
+    // control message). Confirmed byte-exact from the official KTM Connect SDK
+    // (com.ktm.mobsdk.bccu.BCcuAuth.Request.Companion.fromRawValue):
+    //   0        -> AppIdKeyArrStatus  ("do you already have this bike's key array?")
+    //   1        -> ComputeKeyArr      ("derive + store a fresh 16-key array")
+    //   16..31   -> AssignKeyIndex     (use key index = code & 0x0F for the session)
+    const val CMD_HELLO = 0            // = AppIdKeyArrStatus request
+    const val CMD_GENERATE_KEYS = 1    // = ComputeKeyArr request
+    const val CMD_KEY_ACK_BASE = 16    // 16 | keyIndex (0-15)
+
+    // App STATUS codes WE send back (byte[4] of our reply), confirmed byte-exact
+    // from com.ktm.mobsdk.bccu.BCcuAuth.ResponseAppStatus. The dash decides
+    // whether to show its physical "add device" prompt from THIS status: reply
+    // VALID_KEY_ARRAY when we already hold the bike's key array and it resumes
+    // silently (AssignKeyIndex); reply INITIAL_CONNECTION and it prompts the
+    // rider and issues ComputeKeyArr to derive a fresh array.
+    const val STATUS_INITIAL_CONNECTION = 0
+    const val STATUS_VALID_KEY_ARRAY = 1
+    const val STATUS_KEY_ARRAY_GENERATED = 2
+    const val STATUS_KEY_ARRAY_ERROR = 3
+    const val STATUS_KEY_CONFIRMATION_ERROR = 4
 
     enum class TurnIcon(val binary: Int) {
         UNKNOWN(0), UNDEFINED(1), GO_STRAIGHT(2), UTURN_RIGHT(3), UTURN_LEFT(4),

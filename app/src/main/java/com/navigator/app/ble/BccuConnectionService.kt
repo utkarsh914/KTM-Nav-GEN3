@@ -907,33 +907,49 @@ class BccuConnectionService : LifecycleService() {
 
         when {
             cmd == BccuProtocol.CMD_HELLO -> {
-                // Always echo HELLO back. Field logs proved this dash decides
-                // whether to show its "confirm pairing" prompt entirely from its
-                // own bond memory - not from which command we reply. Echoing
-                // HELLO is the ONLY reply it acts on: to a bonded dash it answers
-                // with GENERATE_KEYS in a few seconds and no prompt; to a genuinely
-                // new device it prompts and answers once the rider confirms (~30s).
-                // The old "known bike -> reply GENERATE_KEYS to skip the prompt"
-                // shortcut was silently ignored by the dash, stalling every single
-                // reconnect and (via the recovery) forcing a spurious re-pair.
+                // This is the dash's AppIdKeyArrStatus request: "do you already
+                // hold this bike's key array?" The dash decides whether to show
+                // its physical "add device" prompt ENTIRELY from our status reply
+                // (confirmed from the official SDK's BCcuAuth.handleAuthMessage):
+                //   - reply VALID_KEY_ARRAY (1) when we have the persisted array
+                //     -> the dash trusts us, skips the prompt AND the re-derive,
+                //     and resumes by AssignKeyIndex (cmd 16..31) into that array.
+                //   - reply INITIAL_CONNECTION (0) when we don't -> the dash
+                //     prompts the rider and issues ComputeKeyArr to build a fresh
+                //     array (genuine first pairing).
+                // The old code ALWAYS replied 0 (echoing HELLO), so the dash
+                // treated us as brand-new on every connection and re-prompted +
+                // re-derived every time - THE root cause of "asks to register the
+                // app on every reconnect". (An earlier "reply GENERATE_KEYS"
+                // attempt looked ignored only because back then no key array was
+                // persisted, so the follow-up AssignKeyIndex stalled on an empty
+                // pool; we persist it now, so the resume completes.)
                 val address = currentDeviceAddress
-                val known = address != null && AppSettings(this@BccuConnectionService).hasPairedBefore(address)
-                AppLogger.log("Auth", "cmd=HELLO (${if (known) "known" else "new"} bike $address) - echoing HELLO; dash decides whether to prompt")
-                replyControl(BccuProtocol.CMD_HELLO)
+                val storedKeys = address?.let {
+                    AppSettings(this@BccuConnectionService).loadSessionKeys(it)
+                }
+                if (!storedKeys.isNullOrEmpty()) {
+                    sessionKeys = storedKeys
+                    AppLogger.log("Auth", "cmd=AppIdKeyArrStatus (known bike $address, ${storedKeys.size} keys) -> VALID_KEY_ARRAY(1); dash should resume without prompting")
+                    replyControl(BccuProtocol.STATUS_VALID_KEY_ARRAY)
+                } else {
+                    AppLogger.log("Auth", "cmd=AppIdKeyArrStatus (new bike $address, no stored keys) -> INITIAL_CONNECTION(0); dash will prompt + generate keys")
+                    replyControl(BccuProtocol.STATUS_INITIAL_CONNECTION)
+                }
             }
             cmd == BccuProtocol.CMD_GENERATE_KEYS -> {
-                AppLogger.log("Auth", "cmd=GENERATE_KEYS, deriving session keys")
+                AppLogger.log("Auth", "cmd=ComputeKeyArr, deriving session keys")
                 val mirrored = BccuCrypto.buildMirrored(decrypted)
                 val keys = BccuCrypto.deriveSessionKeys(decrypted, mirrored, iv, secret)
                 sessionKeys = keys
-                // The dash keeps this pool across ignition cycles and resumes
-                // later sessions by key-select alone (no re-derivation), so our
-                // copy must survive disconnects and process death too - persist
-                // it per-MAC or every reconnect stalls on an empty pool.
+                // Persist the freshly-derived array per-MAC. On the NEXT
+                // connection we answer AppIdKeyArrStatus with VALID_KEY_ARRAY and
+                // the dash resumes into this same array (no prompt, no re-derive),
+                // so our copy must survive disconnects and process death.
                 currentDeviceAddress?.let {
                     AppSettings(this@BccuConnectionService).storeSessionKeys(it, keys)
                 }
-                replyControl(2)
+                replyControl(BccuProtocol.STATUS_KEY_ARRAY_GENERATED)
             }
             cmd in 16..31 -> {
                 val keyIndex = cmd and 0x0F
@@ -998,9 +1014,9 @@ class BccuConnectionService : LifecycleService() {
      * still-live ACL in 78ms: no m1, no auth, dead until ignition-off.) There
      * is no retry cap - each cycle is cheap and self-paced by the dash's own
      * advertising, and capping it left a stalled dash permanently unrecovered.
-     * We deliberately do NOT clear the pairing: the dash owns the prompt
-     * decision from its own bond memory, so forgetting our flag only risks a
-     * needless "add device" prompt.
+     * We deliberately do NOT clear the persisted key array here: the dash skips
+     * its prompt only when we answer AppIdKeyArrStatus with VALID_KEY_ARRAY,
+     * which needs that array - dropping it would force a needless re-pair.
      */
     private fun startHandshakeTimeout() {
         handshakeTimeoutJob?.cancel()

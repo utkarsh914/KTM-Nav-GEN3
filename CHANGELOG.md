@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Reconnect prompt fixed for real
+
+**The dash no longer asks to register the app on every reconnect.** Root-caused by
+decompiling the official KTM Connect app: the dash's very first handshake question is "do you
+already hold this bike's key array?", and it shows its physical "add device" prompt based
+solely on the app's status reply. We were always answering "no keys / new device", so the dash
+re-prompted and regenerated keys on every single connection. We now answer "key array
+available" whenever we hold the bike's persisted keys, so after one pairing the dash resumes
+silently — matching the official app. (The earlier session-key-persistence change was
+necessary groundwork but couldn't fix this alone: the dash's prompt is driven entirely by that
+status byte, which we were never setting correctly.)
+
 ## Unreleased — Navigation-only lean-down
 
 **One focused app: navigation.** KTM Navigator is now purely a navigation app with two

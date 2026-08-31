@@ -129,19 +129,17 @@ class AppSettings(context: Context) {
 
     /**
      * Whether we've ever completed the BCCU handshake with this bike before.
-     * The bike decides whether to show its physical "confirm new pairing"
-     * prompt from its own bond memory (see the HELLO handling in
-     * BccuConnectionService). This flag persists that "known bike" state across
-     * app/service restarts so we don't re-prompt on every reconnect.
      *
-     * NOTE: contrary to an earlier assumption, the session-key pool is NOT
-     * re-derived on every connection. Field logs on a Gen-3 dash show it keeps
-     * the pool derived at pairing time across ignition cycles and resumes later
-     * sessions by key-select alone (cmd 16..31) with no GENERATE_KEYS. So the
-     * pool must persist too - see [storeSessionKeys]/[loadSessionKeys] - or the
-     * dash's key-select lands on an empty app-side pool and every reconnect
-     * stalls. That was the root cause of the "reconnect after an ignition cycle
-     * is unreliable" bug.
+     * The dash shows its physical "add device" prompt purely from the app-status
+     * we send in reply to its AppIdKeyArrStatus request (confirmed from the
+     * official SDK's BCcuAuth.handleAuthMessage): VALID_KEY_ARRAY(1) => trusted,
+     * no prompt; INITIAL_CONNECTION(0) => prompt + fresh key generation. That
+     * decision is driven by whether we hold this bike's persisted key array
+     * ([loadSessionKeys]), NOT by any OS-level BLE bond. This flag is a
+     * secondary "known bike" marker used for handshake-timeout budgeting and
+     * logging; the [storeSessionKeys]/[loadSessionKeys] array is the real
+     * credential that lets a reconnect resume by key-index alone (cmd 16..31)
+     * with no prompt and no re-derivation.
      */
     fun hasPairedBefore(deviceAddress: String): Boolean {
         val key = KEY_PAIRED_PREFIX + deviceAddress.uppercase()
