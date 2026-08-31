@@ -42,7 +42,6 @@ object BccuProtocol {
     val MYSTERY_SERVICE_0300: UUID = uuid("0300")
 
     val RCM_SERVICE: UUID = uuid("0100")
-    val RCM_REMOTE_CONTROL: UUID = uuid("0103")
 
     // Protobuf/telemetry RPC channel - confirmed from BleRpcTransport.java:
     // requests -> 0601, responses -> 0602, telemetry notifications -> 0603.
@@ -146,10 +145,6 @@ object BccuProtocol {
         }
     }
 
-    enum class HandlebarButton(val bitIndex: Int) {
-        SET(0), BACK(1), DOWN(2), UP(3)
-    }
-
     /** Confirmed from com.ktm.mob.services.etbt.Visibility.binary() - NOT a 0/1 boolean. */
     enum class Visibility(val binary: Int) {
         UNKNOWN(-1), FULL(3), HALF(2), OFF(1)
@@ -158,16 +153,6 @@ object BccuProtocol {
     /** Confirmed from com.ktm.mob.services.etbt.impl.ble.characteristics.payloads.types.OnOff. */
     enum class OnOff(val binary: Int) {
         OFF(0), ON(1)
-    }
-
-    data class RcmState(val active: Boolean, val pressed: Map<HandlebarButton, Boolean>)
-
-    /** characteristicValue must be the decrypted+unframed RCM notification payload. */
-    fun parseRcmValue(v: ByteArray): RcmState {
-        val active = v.size > 16 && v[16] == 0xFF.toByte()
-        val mask = if (v.size > 17) v[17].toInt() else 0
-        val pressed = HandlebarButton.entries.associateWith { (mask shr it.bitIndex) and 1 == 1 }
-        return RcmState(active, pressed)
     }
 
     /** Build a TURN_ICON characteristic payload: [visibility][iconByte]. */

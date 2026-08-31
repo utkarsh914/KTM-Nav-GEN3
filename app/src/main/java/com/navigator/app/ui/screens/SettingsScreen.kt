@@ -101,7 +101,6 @@ fun SettingsScreen(
     var preferredAudioAddress by remember { mutableStateOf(settings.preferredCallAudioDeviceAddress) }
     var mirrorEnabled by remember { mutableStateOf(settings.mirrorEnabled) }
     var marqueeEnabled by remember { mutableStateOf(settings.marqueeEnabled) }
-    var gamepadEnabled by remember { mutableStateOf(settings.gamepadEnabled) }
     var geminiModel by remember { mutableStateOf(settings.geminiModel) }
     var turnBeepEnabled by remember { mutableStateOf(settings.turnBeepEnabled) }
     var beepVolume by remember { mutableStateOf(settings.beepVolumePercent) }
@@ -109,9 +108,6 @@ fun SettingsScreen(
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
     var waypoint by remember { mutableStateOf(settings.waypoint) }
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
-    var accessibilityGranted by remember {
-        mutableStateOf(com.navigator.app.controller.RemoteControlAccessibilityService.isRunning)
-    }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
     val installedApps = remember {
@@ -135,7 +131,6 @@ fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationAccessGranted =
                     NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-                accessibilityGranted = com.navigator.app.controller.RemoteControlAccessibilityService.isRunning
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -485,43 +480,6 @@ fun SettingsScreen(
                             "Stop Google Nav", showDivider = false,
                             onClick = { com.navigator.app.nav.providers.GoogleNavSdkController.stop() },
                         ) { OutlinedPill("STOP") }
-                    }
-                }
-            }
-
-            // ===== Handlebar gamepad =====
-            item {
-                GroupCard("Handlebar gamepad") {
-                    SettingsRow("Control any app with the remote", showDivider = true) {
-                        KtmToggle(gamepadEnabled, { on ->
-                            gamepadEnabled = on
-                            settings.gamepadEnabled = on
-                            // remoteMode is what the button pipeline actually gates
-                            // on - without setting it this toggle did nothing (and
-                            // couldn't turn gamepad mode OFF once the handlebar
-                            // overlay had enabled it).
-                            settings.remoteMode = if (on) AppSettings.MODE_GAMEPAD else AppSettings.MODE_MEDIA
-                            // Turning it on with the service not yet enabled: send
-                            // the rider straight to the accessibility settings.
-                            if (on && !accessibilityGranted) {
-                                context.startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
-                            }
-                        })
-                    }
-                    SettingsRow(
-                        "Accessibility service", showDivider = true,
-                        onClick = { context.startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS)) },
-                    ) {
-                        MonoValue(
-                            if (accessibilityGranted) "Enabled" else "Enable ›",
-                            color = if (accessibilityGranted) Ktm.Green else Ktm.Orange,
-                        )
-                    }
-                    SettingsRow("How it works", showDivider = false) {
-                        Text(
-                            "Up/Down move · Set taps · Back",
-                            color = Ktm.Dim, fontFamily = BarlowCondensed, fontSize = 12.sp,
-                        )
                     }
                 }
             }

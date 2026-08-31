@@ -26,9 +26,7 @@ import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.AppForegroundState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.ArrayDeque
@@ -87,8 +85,6 @@ class BccuConnectionService : LifecycleService() {
         /** Cooldown before rescanning after a stalled handshake: one quickish retry, then hang back. */
         private const val RETRY_COOLDOWN_FIRST_MS = 15_000L
         private const val RETRY_COOLDOWN_LATER_MS = 45_000L
-        /** Three Up presses within this window open the handlebar mode-picker overlay. */
-        private const val TRIPLE_UP_WINDOW_MS = 1500L
         /** How often the reconnect watchdog checks that we're linked (or retries). */
         private const val RECONNECT_WATCHDOG_MS = 20_000L
         /** A foreground (direct) connect attempt stuck this long is recycled and retried. */
@@ -107,9 +103,6 @@ class BccuConnectionService : LifecycleService() {
 
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
-
-        private val _buttonEvents = MutableSharedFlow<BccuProtocol.HandlebarButton>(extraBufferCapacity = 8)
-        val buttonEvents: SharedFlow<BccuProtocol.HandlebarButton> = _buttonEvents
 
         private val _navNotificationText = MutableStateFlow<String?>(null)
         val navNotificationText: StateFlow<String?> = _navNotificationText
@@ -204,7 +197,6 @@ class BccuConnectionService : LifecycleService() {
     private var tempSecret: ByteArray? = null
     private var sessionKeys: List<ByteArray>? = null
     private var activeSessionKey: ByteArray? = null
-    private var lastRcmMask: Int = 0
     private var clearJob: Job? = null
     private var marqueeJob: Job? = null
     private var guidanceClearJob: Job? = null
@@ -218,10 +210,6 @@ class BccuConnectionService : LifecycleService() {
     private var scanCallback: android.bluetooth.le.ScanCallback? = null
     @Volatile private var scanning: Boolean = false
     @Volatile private var scanTargetAddress: String? = null
-    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var modeOverlay: com.navigator.app.controller.RemoteModeOverlay? = null
-    private val upPressTimes = ArrayDeque<Long>()
-
     private var prpcAvailable = false
     private var telemetrySchema: List<Datapoint>? = null
     private var telemetrySid: Int = 0
@@ -286,16 +274,6 @@ class BccuConnectionService : LifecycleService() {
             com.navigator.app.location.SpeedMonitor.speedKmh.collect { kmh ->
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = kmh
             }
-        }
-        // Debug-only: `adb shell am broadcast -a com.navigator.app.DEBUG_MODE_OVERLAY`
-        // shows the handlebar mode picker without a bike, to verify it renders.
-        if (com.navigator.app.BuildConfig.DEBUG) {
-            val r = object : android.content.BroadcastReceiver() {
-                override fun onReceive(c: Context?, i: Intent?) { showModeOverlay() }
-            }
-            val f = android.content.IntentFilter("com.navigator.app.DEBUG_MODE_OVERLAY")
-            if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_EXPORTED)
-            else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(r, f)
         }
     }
 
@@ -573,7 +551,6 @@ class BccuConnectionService : LifecycleService() {
         navCoordinator?.stop(); navCoordinator = null
         stopBleScan()
         settleJob?.cancel(); settleJob = null
-        mainHandler.post { modeOverlay?.hide(); modeOverlay = null }
         reconnectWatchdogJob?.cancel(); reconnectWatchdogJob = null
         gatt?.disconnect()
         gatt?.close()
@@ -845,7 +822,6 @@ class BccuConnectionService : LifecycleService() {
     private fun handleIncoming(uuid: java.util.UUID, value: ByteArray) {
         when (uuid) {
             BccuProtocol.AUTH_REQUEST -> handleAuthMessage(value)
-            BccuProtocol.RCM_REMOTE_CONTROL -> handleRcm(value)
             BccuProtocol.PRPC_NOTIFICATION -> handlePrpcNotification(value)
             BccuProtocol.PRPC_RESPONSE -> handlePrpcResponse(value)
             BccuProtocol.BASE_VIN -> {
@@ -995,7 +971,6 @@ class BccuConnectionService : LifecycleService() {
                         AppLogger.log("Auth", "markPairedBefore($it) persisted=${s.hasPairedBefore(it)}")
                     }
                     updateForegroundNotification("Connected")
-                    enableIndication(BccuProtocol.RCM_REMOTE_CONTROL)
                     enableNotification(BccuProtocol.TBT_NAV_REQUEST)
                     sendNavigationState(guidanceOn = true, gpsIconOn = true)
                     // Re-push any active guidance snapshot so a reconnect never
@@ -1056,128 +1031,6 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    private fun handleRcm(value: ByteArray) {
-        val iv = tempIv
-        val key = activeSessionKey
-        if (iv == null || key == null) return
-        // Raw AES decrypt, no unframe() - confirmed from c8.k.d() in the official app.
-        val decoded = try {
-            BccuCrypto.decryptControl(value, key, iv)
-        } catch (e: Exception) {
-            return
-        }
-        val rcm = BccuProtocol.parseRcmValue(decoded)
-        val mask = rcm.pressed.entries.fold(0) { acc, e -> if (e.value) acc or (1 shl e.key.bitIndex) else acc }
-        for (button in BccuProtocol.HandlebarButton.entries) {
-            val wasPressed = (lastRcmMask shr button.bitIndex) and 1 == 1
-            val isPressed = (mask shr button.bitIndex) and 1 == 1
-            if (!wasPressed && isPressed) {
-                AppLogger.log("RCM", "Handlebar button event: ${button.name}")
-                onHandlebarButton(button)
-            }
-        }
-        lastRcmMask = mask
-    }
-
-    /**
-     * Central routing for every handlebar press. Precedence:
-     * 1. If the mode-picker overlay is up, the buttons drive IT (Up/Down select,
-     *    Set confirm, Back close) and go nowhere else.
-     * 2. Triple-press Up (3 within [TRIPLE_UP_WINDOW_MS]) opens the mode picker.
-     * 3. Otherwise emit as normal - consumers (media/menu state machine, gamepad
-     *    accessibility service) act based on the chosen [AppSettings.remoteMode].
-     */
-    private fun onHandlebarButton(button: BccuProtocol.HandlebarButton) {
-        if (modeOverlay?.isShowing == true) {
-            mainHandler.post {
-                val ov = modeOverlay ?: return@post
-                when (button) {
-                    BccuProtocol.HandlebarButton.UP -> ov.moveSelection(-1)
-                    BccuProtocol.HandlebarButton.DOWN -> ov.moveSelection(+1)
-                    BccuProtocol.HandlebarButton.SET -> ov.confirm()
-                    BccuProtocol.HandlebarButton.BACK -> ov.hide()
-                }
-            }
-            return
-        }
-
-        if (button == BccuProtocol.HandlebarButton.UP) {
-            val now = System.currentTimeMillis()
-            upPressTimes.addLast(now)
-            while (upPressTimes.isNotEmpty() && now - upPressTimes.first() > TRIPLE_UP_WINDOW_MS) upPressTimes.removeFirst()
-            if (upPressTimes.size >= 3) {
-                upPressTimes.clear()
-                showModeOverlay()
-                return
-            }
-        } else {
-            upPressTimes.clear()
-        }
-
-        _buttonEvents.tryEmit(button)
-
-        if (button == BccuProtocol.HandlebarButton.BACK && !AppForegroundState.isForeground) {
-            // In gamepad mode, BACK falls through to the foreground app (the
-            // accessibility service makes it a global Back); otherwise bring
-            // Navigator Gen3 forward so Back opens its menu.
-            val gamepad = AppSettings(this).remoteMode == AppSettings.MODE_GAMEPAD &&
-                com.navigator.app.controller.RemoteControlAccessibilityService.isRunning
-            if (gamepad) {
-                AppLogger.log("RCM", "Gamepad mode - leaving BACK to the foreground app")
-            } else {
-                val intent = Intent(this, com.navigator.app.ui.MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                startActivity(intent)
-            }
-        }
-    }
-
-    private fun showModeOverlay() {
-        mainHandler.post {
-            if (modeOverlay == null) modeOverlay = com.navigator.app.controller.RemoteModeOverlay(this) { mode ->
-                applyRemoteMode(mode)
-            }
-            val ov = modeOverlay ?: return@post
-            if (!ov.canShow()) {
-                AppLogger.log("RCM", "Mode overlay: no draw-over-apps permission - opening settings")
-                runCatching {
-                    startActivity(
-                        Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            android.net.Uri.parse("package:$packageName"))
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                }
-                return@post
-            }
-            AppLogger.log("RCM", "Opening handlebar mode overlay")
-            ov.show(AppSettings(this).remoteMode)
-        }
-    }
-
-    private fun applyRemoteMode(mode: String) {
-        val s = AppSettings(this)
-        s.remoteMode = mode
-        AppLogger.log("RCM", "Remote mode set to $mode")
-        when (mode) {
-            AppSettings.MODE_GAMEPAD -> {
-                s.gamepadEnabled = true
-                if (!com.navigator.app.controller.RemoteControlAccessibilityService.isRunning) {
-                    runCatching {
-                        startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    }
-                }
-            }
-            AppSettings.MODE_DASH -> {
-                s.gamepadEnabled = false
-                runCatching {
-                    startActivity(Intent(this, com.navigator.app.ui.MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-                }
-            }
-            else -> s.gamepadEnabled = false // MEDIA
-        }
-    }
 
     private fun replyControl(command: Int) {
         val iv = tempIv ?: return

@@ -69,8 +69,8 @@ import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
 
 /**
- * First-run onboarding: a five-step walkthrough — brand welcome, two feature
- * highlights (dash mirroring, handlebar remote), a name step, and an explained
+ * First-run onboarding: a walkthrough — brand welcome, feature highlights
+ * (dash mirroring, ride intelligence), a name step, and an explained
  * permission checklist. Nothing is requested silently on launch: the rider
  * grants permissions here with context, which also fixes the crash where the
  * pairing screen scanned before the Bluetooth permission existed.
@@ -79,8 +79,8 @@ import com.navigator.app.ui.theme.OpenDashIcons
  * scrollable so the layout survives small screens and short aspect ratios
  * without clipping the pinned action buttons.
  */
-private const val STEP_COUNT = 6
-private const val STEP_NAME = 4
+private const val STEP_COUNT = 5
+private const val STEP_NAME = 3
 
 @Composable
 fun OnboardingScreen(settings: AppSettings, onComplete: () -> Unit) {
@@ -144,27 +144,17 @@ fun OnboardingScreen(settings: AppSettings, onComplete: () -> Unit) {
                         onBack = { step = 0 },
                         onSkip = skipAll,
                     )
-                    2 -> FeatureStep(
-                        eyebrow = "Handlebar remote",
-                        headline = "Control it\nfrom the bar.",
-                        body = "The four-button handlebar remote drives media, answers calls, and moves " +
-                            "through the menu — completely hands-free while you ride.",
-                        illustration = { RemotePreview() },
-                        onContinue = { step = 3 },
-                        onBack = { step = 1 },
-                        onSkip = skipAll,
-                    )
-                    3 -> RideIntelligenceStep(
+                    2 -> RideIntelligenceStep(
                         settings = settings,
                         onContinue = { step = STEP_NAME },
-                        onBack = { step = 2 },
+                        onBack = { step = 1 },
                         onSkip = skipAll,
                     )
                     STEP_NAME -> NameStep(
                         userName = userName,
                         onNameChange = { userName = it; settings.userName = it },
-                        onBack = { step = 3 },
-                        onContinue = { step = 5 },
+                        onBack = { step = 2 },
+                        onContinue = { step = 4 },
                     )
                     else -> PermissionsStep(
                         onBack = { step = STEP_NAME },
@@ -229,8 +219,8 @@ private fun ColumnScope.WelcomeStep(onContinue: () -> Unit, onSkip: () -> Unit) 
         )
         Spacer(Modifier.height(14.dp))
         Text(
-            "KTM Navigator mirrors your notifications and navigation to the KTM dash, and turns " +
-                "the handlebar remote into a hands-free controller for your phone.",
+            "KTM Navigator mirrors your notifications and navigation to the KTM dash — " +
+                "so your phone stays in your pocket.",
             color = Ktm.Muted2, fontFamily = Barlow, fontSize = 15.sp, lineHeight = 22.sp,
         )
         Spacer(Modifier.height(18.dp))
@@ -428,44 +418,6 @@ private fun DashPreview() {
     }
 }
 
-/** The four handlebar keys with their idle-mode actions. */
-@Composable
-private fun RemotePreview() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        RemoteRow("UP", "Next track")
-        RemoteRow("DOWN", "Previous track")
-        RemoteRow("SET", "Play / pause · answer call")
-        RemoteRow("BACK", "Open the menu")
-    }
-}
-
-@Composable
-private fun RemoteRow(key: String, action: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .width(58.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Ktm.Orange)
-                .padding(vertical = 7.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(key, color = Ktm.Screen, fontFamily = BarlowCondensed,
-                fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
-        }
-        Text(action, color = Ktm.TextSecondary, fontFamily = Barlow, fontSize = 14.sp,
-            modifier = Modifier.padding(start = 14.dp))
-    }
-}
-
 /* ----------------------------------------------------------------------- */
 /* Name + permission steps                                                 */
 /* ----------------------------------------------------------------------- */
@@ -533,9 +485,8 @@ private fun ColumnScope.PermissionsStep(
     // Read live status (tick forces recomposition after grants).
     val btGranted = tick.let { OpenDashPermissions.bluetoothGranted(context) }
     val notifPost = tick.let { OpenDashPermissions.notificationsPostGranted(context) }
-    val phone = tick.let { OpenDashPermissions.phoneGranted(context) }
     val notifAccess = tick.let { OpenDashPermissions.notificationAccessGranted(context) }
-    val runtimeAllGranted = btGranted && notifPost && phone
+    val runtimeAllGranted = btGranted && notifPost
 
     Eyebrow("Permissions", color = Ktm.Orange, fontSize = 12, letterSpacing = 2.0)
     Spacer(Modifier.height(8.dp))
@@ -568,13 +519,6 @@ private fun ColumnScope.PermissionsStep(
             desc = "Read incoming notifications so they can be mirrored to the dash.",
             granted = notifAccess,
             onGrant = { context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-        )
-        PermissionCard(
-            icon = OpenDashIcons.Phone,
-            title = "Phone & calls",
-            desc = "Answer and silence calls from the handlebar remote while riding.",
-            granted = phone,
-            onGrant = { permLauncher.launch(OpenDashPermissions.runtimePermissions()) },
         )
         PermissionCard(
             icon = OpenDashIcons.Navigation,

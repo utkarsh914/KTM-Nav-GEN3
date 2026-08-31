@@ -2,7 +2,6 @@ package com.navigator.app.ui
 
 import android.Manifest
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -27,22 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import com.navigator.app.audio.CallAudioRouter
-import com.navigator.app.audio.MediaControlBridge
 import com.navigator.app.ble.BccuConnectionService
-import com.navigator.app.ble.BccuProtocol
-import com.navigator.app.controller.ControllerScreen
-import com.navigator.app.controller.ControllerStateMachine
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.NotificationNavProvider
-import com.navigator.app.notifications.NotificationRepository
 import com.navigator.app.settings.AppSettings
-import com.navigator.app.telephony.CallStateMonitor
-import com.navigator.app.ui.screens.DirectionScreen
-import com.navigator.app.ui.screens.GridMenuScreen
-import com.navigator.app.ui.screens.NotificationScreen
 import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.theme.OpenDashTheme
@@ -51,7 +40,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, DESTINATION, PLACES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES }
 
 class MainActivity : ComponentActivity() {
 
@@ -78,11 +67,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var settings: AppSettings
-    private lateinit var mediaControl: MediaControlBridge
-    private lateinit var callAudioRouter: CallAudioRouter
-    private lateinit var callStateMonitor: CallStateMonitor
-    private lateinit var stateMachine: ControllerStateMachine
-    private lateinit var actions: ControllerStateMachine.Actions
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -114,8 +98,6 @@ class MainActivity : ComponentActivity() {
         // Apply the saved brand theme before the first frame so the app opens in
         // the right skin (KTM dark / Husqvarna light) with no flash of the wrong one.
         com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-        mediaControl = MediaControlBridge(this)
-        callAudioRouter = CallAudioRouter(this)
 
         // First-run users grant permissions with context in the onboarding flow;
         // returning users get a silent top-up request for anything since revoked.
@@ -126,100 +108,6 @@ class MainActivity : ComponentActivity() {
         // owns its own reconnect loop from there on). The AutoConnectReceiver
         // covers the "app never opened" cases (boot, bike back in range).
         settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
-
-        var callRingingState = mutableStateOf(false)
-        actions = object : ControllerStateMachine.Actions {
-            override fun playPauseMedia() = mediaControl.playPause()
-            override fun nextTrack() = mediaControl.next()
-            override fun previousTrack() = mediaControl.previous()
-            override fun answerCall() {
-                callStateMonitor.answer()
-                callAudioRouter.routeCallToPreferredDevice()
-            }
-            override fun rejectCall() = callStateMonitor.silenceRinger()
-            override fun minimizeToHome() { moveTaskToBack(true) }
-            override fun openMaps() {
-                val pkg = NotificationRepository.currentNavPackage.value
-                    ?: settings.navAppOverride
-                val launchIntent = pkg?.let { packageManager.getLaunchIntentForPackage(it) }
-                if (launchIntent != null) {
-                    startActivity(launchIntent)
-                } else {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=")))
-                }
-            }
-            override fun bringAppToForeground() {
-                if (AppForegroundState.isForeground) return
-                val intent = Intent(this@MainActivity, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-            }
-            override fun showWatchdogWarning() {
-                // NOTIFICATION_WAYPOINT is confirmed rendering on real hardware;
-                // WARNING is confirmed NOT to render - see AppNotificationListener.kt.
-                BccuConnectionService.sendNotificationIfRunning(
-                    "RMT EXIT IN 5 SEC",
-                    BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
-                )
-            }
-            override fun exitApp() {
-                // Stop the foreground service (removes its ongoing notification),
-                // cancel any of our notifications, then remove the app task entirely.
-                BccuConnectionService.stop(this@MainActivity)
-                (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).cancelAll()
-                finishAndRemoveTask()
-            }
-        }
-        stateMachine = ControllerStateMachine(actions)
-
-        callStateMonitor = CallStateMonitor(this) { ringing ->
-            callRingingState.value = ringing
-            stateMachine.isCallRinging = ringing
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            callStateMonitor.start()
-        }
-
-        // Drive the state machine from RCM button events. EXCEPTION: when the
-        // handlebar-gamepad is enabled AND OpenDash is in the background, the
-        // buttons belong to the accessibility gamepad (to control other apps) —
-        // so we must NOT also feed them to the media/menu state machine, or media
-        // would swallow Up/Down/Set and only Back would appear to work.
-        lifecycleScope.launch {
-            BccuConnectionService.buttonEvents.collect { button ->
-                try {
-                    val gamepadOwnsIt = settings.remoteMode == AppSettings.MODE_GAMEPAD &&
-                        !AppForegroundState.isForeground &&
-                        com.navigator.app.controller.RemoteControlAccessibilityService.isRunning
-                    if (gamepadOwnsIt) {
-                        AppLogger.log("Controller", "Button=$button -> gamepad mode (accessibility owns it)")
-                        return@collect
-                    }
-                    AppLogger.log("Controller", "Button=$button screen=${stateMachine.screen} callRinging=${stateMachine.isCallRinging}")
-                    stateMachine.onButton(button, System.currentTimeMillis(), NotificationRepository.entries.value.size)
-                    AppLogger.log("Controller", "-> screen=${stateMachine.screen} gridSelection=${stateMachine.gridSelection}")
-                } catch (e: Exception) {
-                    AppLogger.log("Controller", "!! Handling button=$button threw: $e")
-                }
-            }
-        }
-        // Inactivity watchdog tick.
-        lifecycleScope.launch {
-            while (true) {
-                delay(1000)
-                stateMachine.tick(System.currentTimeMillis())
-            }
-        }
-        // On disconnect, drop back to idle and let whatever was showing (e.g. Maps) remain visible.
-        lifecycleScope.launch {
-            BccuConnectionService.connectionState.collect { state ->
-                if (state == BccuConnectionService.ConnectionState.DISCONNECTED) {
-                    stateMachine.reset()
-                }
-            }
-        }
 
         // While a navigation session is active (either engine), keep the screen
         // awake and let the app show over the lock screen - like Google Maps.
@@ -254,7 +142,7 @@ class MainActivity : ComponentActivity() {
         handleOpenNavIntent(intent)
 
         setContent {
-            OpenDashApp(settings = settings, stateMachine = stateMachine, actions = actions)
+            OpenDashApp(settings = settings, onExit = { exitApp() })
         }
 
         // DEBUG-only: `adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS`
@@ -348,6 +236,17 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * Fully quit: stop the foreground service (removes its ongoing notification),
+     * cancel any of our notifications, then remove the app task entirely. Invoked
+     * from the home screens' exit-confirm dialog and the notification "Exit".
+     */
+    private fun exitApp() {
+        BccuConnectionService.stop(this)
+        (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).cancelAll()
+        finishAndRemoveTask()
+    }
+
+    /**
      * If the phone's Bluetooth is off, ask the user to turn it on (the dash link
      * needs it). Once per process, and only when we hold BLUETOOTH_CONNECT on
      * Android 12+ (otherwise the request throws); it's re-tried right after that
@@ -404,10 +303,8 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms += Manifest.permission.POST_NOTIFICATIONS
         }
-        perms += Manifest.permission.READ_PHONE_STATE
-        perms += Manifest.permission.ANSWER_PHONE_CALLS
-        // GPS: overspeed alerts, waypoints, route recording. FINE alone is
-        // silently ignored on Android 12+; COARSE must be in the same request.
+        // GPS: overspeed alerts + waypoints. FINE alone is silently ignored on
+        // Android 12+; COARSE must be in the same request.
         perms += Manifest.permission.ACCESS_FINE_LOCATION
         perms += Manifest.permission.ACCESS_COARSE_LOCATION
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -420,12 +317,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun OpenDashApp(
     settings: AppSettings,
-    stateMachine: ControllerStateMachine,
-    actions: ControllerStateMachine.Actions
+    onExit: () -> Unit,
 ) {
     val appContext = androidx.compose.ui.platform.LocalContext.current
-    // The primary home is the phone-first map screen when Google navigation is
-    // available (key + Play Services + enabled); otherwise the legacy grid.
     // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
     // available) -> the mirror home. The two engines stay mutually exclusive.
     fun homeRoute(): AppRoute =
@@ -446,8 +340,7 @@ private fun OpenDashApp(
     // null (forward-only to pairing) on first run.
     var brandReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
     // Return targets for screens reachable from more than one parent.
-    var settingsReturnRoute by remember { mutableStateOf(AppRoute.MAIN) }
-    var destinationReturnRoute by remember { mutableStateOf(AppRoute.MAIN) }
+    var settingsReturnRoute by remember { mutableStateOf(homeRoute()) }
     // Non-null when Pairing is reached from the map home's Connect pill (so it
     // gets a back affordance); null on the forced first-run pairing step.
     var pairingReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
@@ -481,12 +374,9 @@ private fun OpenDashApp(
 
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    // Reactively observe the controller state instead of polling it - Compose
-    // now recomposes only when screen/selection actually changes.
-    val uiState by stateMachine.state.collectAsState()
 
     // Touch back navigation: sub-pages return to their parent instead of
-    // minimizing the app (the physical RCM BACK still works independently).
+    // minimizing the app.
     androidx.activity.compose.BackHandler(
         enabled = route != AppRoute.ONBOARDING &&
             !(route == AppRoute.PAIRING && pairingReturnRoute == null) &&
@@ -495,7 +385,7 @@ private fun OpenDashApp(
         when (route) {
             AppRoute.BRAND -> {
                 com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-                route = brandReturnRoute ?: AppRoute.MAIN
+                route = brandReturnRoute ?: homeRoute()
                 brandReturnRoute = null
             }
             AppRoute.SETTINGS -> route = settingsReturnRoute
@@ -503,13 +393,9 @@ private fun OpenDashApp(
             AppRoute.PLACES -> route = AppRoute.SETTINGS
             AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
-            AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = destinationReturnRoute }
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
-            AppRoute.MAIN -> if (!stateMachine.touchBack()) {
-                (context as? ComponentActivity)?.moveTaskToBack(true)
-            }
-            AppRoute.PAIRING -> { route = pairingReturnRoute ?: AppRoute.MAIN; pairingReturnRoute = null }
+            AppRoute.PAIRING -> { route = pairingReturnRoute ?: homeRoute(); pairingReturnRoute = null }
             AppRoute.ONBOARDING -> {}
         }
     }
@@ -530,8 +416,7 @@ private fun OpenDashApp(
         prevConn = connState
     }
 
-    val highContrast = uiState.screen == ControllerScreen.NOTIFICATIONS
-    OpenDashTheme(highContrast = highContrast) {
+    OpenDashTheme(highContrast = false) {
       androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
         when (route) {
             AppRoute.BRAND -> com.navigator.app.ui.screens.BrandSelectScreen(
@@ -541,7 +426,7 @@ private fun OpenDashApp(
                     // From Settings → just return; on first run → continue setup.
                     route = brandReturnRoute ?: if (!settings.onboardingComplete) AppRoute.ONBOARDING
                         else if (settings.bondedDeviceAddress == null) AppRoute.PAIRING
-                        else AppRoute.MAIN
+                        else homeRoute()
                     brandReturnRoute = null
                 },
                 onBack = brandReturnRoute?.let { back -> {
@@ -569,48 +454,15 @@ private fun OpenDashApp(
                         com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
                     }
                 },
-                onExit = { actions.exitApp() },
+                onExit = onExit,
                 sharedLink = sharedLink,
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
             )
             AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
                 onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.SETTINGS },
                 onOpenConnect = { pairingReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.PAIRING },
-                onExit = { actions.exitApp() },
+                onExit = onExit,
             )
-            AppRoute.MAIN -> {
-                // A single on-screen D-pad overlays every MAIN sub-screen so the
-                // phone itself becomes a "gamepad": the same Up/Down/Set/Back
-                // pipeline as the handlebar remote, usable without the bike.
-                com.navigator.app.ui.components.RemoteDpadScaffold(
-                    onButton = { button ->
-                        stateMachine.onButton(
-                            button,
-                            System.currentTimeMillis(),
-                            NotificationRepository.entries.value.size,
-                        )
-                    },
-                ) {
-                    when (uiState.screen) {
-                        ControllerScreen.NOTIFICATIONS -> NotificationScreen(
-                            settings = settings,
-                            scrollIndex = uiState.notificationScrollIndex
-                        )
-                        ControllerScreen.DIRECTION -> DirectionScreen(
-                            onOpenMaps = actions::openMaps,
-                            onSetDestination = { destinationReturnRoute = AppRoute.MAIN; route = AppRoute.DESTINATION },
-                            showGoogleNav = googleNavOffered,
-                        )
-                        else -> GridMenuScreen(
-                            gridSelection = uiState.gridSelection,
-                            onSelectGrid = { index ->
-                                stateMachine.touchSelectGrid(index, System.currentTimeMillis())
-                            },
-                            onOpenSettings = { settingsReturnRoute = AppRoute.MAIN; route = AppRoute.SETTINGS },
-                        )
-                    }
-                }
-            }
             AppRoute.SETTINGS -> SettingsScreen(
                 settings = settings,
                 onBack = { route = settingsReturnRoute },
@@ -635,7 +487,6 @@ private fun OpenDashApp(
                     settings.bondedDeviceAddress = null
                     settings.bondedDeviceName = null
                     BccuConnectionService.stop(context)
-                    stateMachine.reset()
                     route = AppRoute.PAIRING
                 }
             )
@@ -650,20 +501,6 @@ private fun OpenDashApp(
             )
             AppRoute.TURN_CALIBRATION -> com.navigator.app.ui.screens.TurnCalibrationScreen(
                 onBack = { route = AppRoute.SETTINGS }
-            )
-            AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(
-                onBack = {
-                    MainActivity.sharedNavLink.value = null
-                    route = destinationReturnRoute
-                },
-                onNavigate = { dest ->
-                    (appContext as? android.app.Activity)?.let {
-                        com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
-                    }
-                    MainActivity.sharedNavLink.value = null
-                    route = destinationReturnRoute
-                },
-                initialLink = sharedLink,
             )
         }
         if (showGreeting) {

@@ -31,8 +31,6 @@ object OpenDashPermissions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms += Manifest.permission.POST_NOTIFICATIONS
         }
-        perms += Manifest.permission.READ_PHONE_STATE
-        perms += Manifest.permission.ANSWER_PHONE_CALLS
         return perms.toTypedArray()
     }
 
@@ -52,10 +50,6 @@ object OpenDashPermissions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             isGranted(context, Manifest.permission.POST_NOTIFICATIONS)
         } else true
-
-    fun phoneGranted(context: Context): Boolean =
-        isGranted(context, Manifest.permission.READ_PHONE_STATE) &&
-            isGranted(context, Manifest.permission.ANSWER_PHONE_CALLS)
 
     /** Special access (not a runtime permission): notification listener, granted from system settings. */
     fun notificationAccessGranted(context: Context): Boolean =
