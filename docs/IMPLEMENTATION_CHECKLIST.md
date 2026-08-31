@@ -3,6 +3,14 @@
 Companion to [`NAVIGATION_REVAMP_PLAN.md`](NAVIGATION_REVAMP_PLAN.md).
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
+> **Status (current):** the navigation revamp (P1–P6) **and** the D2 navigation-only
+> lean-down are **complete** — see [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md) and
+> [`D2_LEAN_DOWN_PLAN.md`](D2_LEAN_DOWN_PLAN.md). The app is navigation-only with two
+> mutually-exclusive engines (`NAV_HOME` map / `MIRROR_HOME`). The "do not modify
+> `BccuProtocol.kt`" rule below held throughout the revamp; the D2 lean-down then removed the
+> **unused** RCM/handlebar declarations from it as a deliberate, reviewed exception (the
+> dash-protocol handshake/crypto/TBT/telemetry paths remain untouched).
+
 Global rule: **do not modify** `BccuProtocol.kt`, `BccuCrypto.kt`, or the
 BLE/handshake/reconnect/GATT internals of `BccuConnectionService.kt`. **Additive public
 methods** on `BccuConnectionService` are permitted (immediate-clear entry point; re-auth

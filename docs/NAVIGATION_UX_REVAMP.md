@@ -1,8 +1,10 @@
 # Navigation UX Revamp — Phone-First Map Experience
 
-Status: **P1–P5 shipped** (map home, search + recents/favorites, route preview + alternates,
-on-phone active guidance, share-link fold-in). Route-token alternate-following is best-effort
-pending on-bike validation. P6 (docs) done. Remaining: D2 lean-down + planned improvements (§8).
+Status: **P1–P6 shipped** (map home, search + recents/favorites, route preview + alternates,
+on-phone active guidance, share-link fold-in, docs) **and the D2 lean-down is complete** — the
+app is now navigation-only with two mutually-exclusive engines (in-app maps / notification
+mirror). Route-token alternate-following is best-effort pending on-bike validation.
+Remaining: planned improvements (§8).
 Target vehicle: 2026 KTM 390 Adventure X (Gen-3 "connected" BCCU dash), also KTM/Husqvarna Gen-3.
 Scope: turn the app into a **phone-first, map-centric navigation experience** (inspired by
 the Royal Enfield app's flow) on top of the *existing, working* Google Navigation SDK →
@@ -67,7 +69,7 @@ on-phone active-navigation screen ("full nav screen on the app too") are largely
 | # | Decision | Rationale |
 |---|---|---|
 | D1 | **Map screen becomes the primary home.** App opens directly to the new navigation screen; landing screen after pairing. | Phone-first goal. |
-| D2 | **North-star (future, not this epic): navigation-only app.** Remove ride recording/GPX, handlebar remote + on-screen D-pad, and non-nav calibration extras. | Lean, focused app. Every decision below is "lean-compatible" so teardown is clean. |
+| D2 | **DONE — navigation-only app.** Removed ride recording/GPX, handlebar remote + on-screen D-pad + legacy 2×2 grid home, media/call handling, and engine-detect/power-saver. Kept the notification-mirror engine (with `MIRROR_HOME`), Symbol Testing, and Turn-icon calibration. See [`D2_LEAN_DOWN_PLAN.md`](D2_LEAN_DOWN_PLAN.md). | Lean, focused app. |
 | D3 | **Active on-phone nav = Nav SDK's built-in `NavigationView` full UI.** | Most faithful to Google Maps, least effort. |
 | D4 | **Use the view-based `NavigationView` (not `SupportNavigationFragment`).** | Avoids converting the pure-Compose `ComponentActivity` into a `FragmentActivity`. Embeds via `AndroidView`. |
 | D5 | **One persistent `NavigationView` across all stages** (browse → confirm → preview → guidance). | "Already running when I glance at the phone" comes for free; single surface. |
@@ -156,6 +158,8 @@ NavigationHomeScreen (START)
 | **P4** | On-phone active guidance via the SDK's stock `NavigationView` UI + **END**. | ✅ shipped |
 | **P5** | Polish: **share-link fold-in** (done). FGS/notification consolidation → deferred to Phase 7 reliability; a shared `PlaceSearch` de-dup → deferred (cosmetic). | ✅ (partial; deferrals noted) |
 | **P6 (docs)** | Reconcile `architecture.md` (§1 shape, §3 flow, banner cleared) + this doc + checklist. | ✅ done |
+| **D2** | Navigation-only lean-down: remove ride recording/GPX, handlebar remote + D-pad + legacy MAIN grid, media/call, engine-detect + power-saver. Keep notification-mirror engine (+ `MIRROR_HOME` + engine selector), Symbol Testing, Turn-icon calibration. | ✅ done ([`D2_LEAN_DOWN_PLAN.md`](D2_LEAN_DOWN_PLAN.md)) |
+| **Post-D2** | Additional cleanups: removed Navigation-debug / Waypoint / Gemini from Settings; design-language parity across secondary screens; lockscreen-while-navigating, notification deep-links, map pin-drop. | ✅ done |
 
 Each phase: assistant edits; **user builds & tests** in Android Studio (JVM tests where
 applicable + on-device); commit per phase/slice on the user's go-ahead.
@@ -184,8 +188,7 @@ applicable + on-device); commit per phase/slice on the user's go-ahead.
   (REST) fetching alternates + custom polylines for preview, then hand the chosen
   destination to the Nav SDK. Extra API cost.
 - Quick-access **categories** (Fuel / Food / …), **voice search** (mic), **weather chip**.
-- **D2 lean-down epic:** remove ride recording/GPX, handlebar remote + on-screen D-pad,
-  non-nav calibration → navigation-only app.
+- ~~D2 lean-down epic~~ — **done** (see §6 phasing + [`D2_LEAN_DOWN_PLAN.md`](D2_LEAN_DOWN_PLAN.md)).
 
 ---
 

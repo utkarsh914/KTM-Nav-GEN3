@@ -1,6 +1,11 @@
 # Navigation Revamp — Google Navigation SDK → KTM TFT
 
-Status: **planning complete, implementation pending**
+> **Historical design doc — shipped.** The Nav SDK integration (this plan) and the follow-on
+> phone-first UX revamp + D2 navigation-only lean-down have all landed. For current state see
+> [`architecture.md`](architecture.md), [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md),
+> and [`D2_LEAN_DOWN_PLAN.md`](D2_LEAN_DOWN_PLAN.md). Kept for design rationale/provenance.
+
+Status: **planning complete, implementation pending** *(historical — now shipped)*
 Target vehicle: 2026 KTM 390 Adventure X (Gen-3 "connected" BCCU dash), also KTM/Husqvarna Gen-3.
 Scope: replace brittle notification-parsing as the navigation source with an officially
 supported Google navigation source, while reusing the existing, working KTM BLE/TFT

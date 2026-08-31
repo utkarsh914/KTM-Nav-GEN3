@@ -5,7 +5,7 @@
 <h1 align="center">Navigator Gen3</h1>
 
 <p align="center">
-  <b>Turn-by-turn navigation, notifications and ride analytics on your KTM or Husqvarna Gen-3 dashboard — free, private by default, on-device (with an optional in-app Google navigation mode).</b>
+  <b>Turn-by-turn navigation and notifications on your KTM or Husqvarna Gen-3 dashboard — free, private by default, with a phone-first map and an offline notification-mirroring mode.</b>
 </p>
 
 <p align="center">
@@ -20,13 +20,15 @@
 
 ## What it does
 
-Three jobs, all on your phone, with no account and no server of ours.
+A navigation-only app, all on your phone, with no account and no server of ours. Pick one of
+two mutually-exclusive engines in **Settings → Navigation engine**:
 
 | | |
 |---|---|
-| **Push to the dash** | Turn-by-turn navigation (mirror another nav app, or enter a destination and navigate in-app with Google), phone notifications, now-playing and idle info, on the bike's own display over Bluetooth. |
-| **Pull from the handlebar** | The bike's four handlebar buttons become a controller for your phone — a D-pad over any app, or music transport. |
-| **Record and analyse the ride** | Rides record themselves as standard GPX, then come back as a map, charts, detected events, a smoothness score and a fuel estimate. |
+| **In-app maps (Google)** | A phone-first map home: search, long-press to drop a pin, or share a Google Maps link, then preview the route (with alternates) and run turn-by-turn on the phone *and* the bike's dash over Bluetooth. |
+| **Notification mirror** | Navigate in Google Maps as usual; the app mirrors its turn-by-turn to the dash (offline-capable), with a pause/resume control. Also the home when no Google API key is present. |
+
+Plus phone-notification mirroring to the dash and a rotating idle screen.
 
 ---
 
@@ -52,16 +54,13 @@ bike — KTM dark and orange, Husqvarna light and blue. You pick on first run an
 |---|---|
 | ![](docs/screenshots/brand-select-ktm.png) | ![](docs/screenshots/brand-select-husqvarna.png) |
 
-**Handlebar remote — a real controller.** Long-press **Up** from any screen opens a mode picker:
+**Phone-first map home.** Open the app to a full Google map with your live location, a bike-connection
+pill and a search bar. Find a destination by search (with Recents and Home/Work/Saved shortcuts), by
+**long-pressing the map to drop a pin**, or by sharing a Google Maps link into the app; confirm it, preview
+the route with selectable **alternates**, then Start to run turn-by-turn on the phone and the dash at once.
 
-| Mode | Up | Down | Set | Back |
-|---|---|---|---|---|
-| **Controller** | move up | move down | tap = right · double-tap = **open/select** · hold = long-press | tap = left · double-tap = back |
-| **Music** | tap = volume up · double-tap = next track | tap = volume down · double-tap = previous | play / pause | — |
-| **Bike (off)** | — | — | — | the buttons go back to the bike |
-
-Long-press **Down** opens Google Maps from anywhere. Every press is read on release, and the app tells a
-tap, a double-click and a press-and-hold apart using thresholds measured on the real hardware.
+**Shows over the lock screen.** While navigating, the app stays visible over the lock screen and keeps the
+screen awake — and tapping either navigation notification jumps straight back to the live nav screen.
 
 **Turn sounds.** Optional stereo approach beeps — left ear for a left turn, right for a right — that
 speed up as you near the corner and go quiet when you stop. Adjustable volume, swappable channels.
@@ -76,76 +75,24 @@ song instead of the road name, switching back as the turn approaches.
 **Notification mirroring** with group chats and summary notifications filtered out so only real messages
 get through, emoji and unsupported glyphs stripped so text reads cleanly, and a one-tap quick-mute.
 
-**Ride recording and analytics.** Rides save as standard GPX and come back as a real map coloured by
-speed with traffic stretches highlighted, a master time slider that scrubs the map marker and every chart
-together, harsh-acceleration / hard-braking / rough-road detection rolled into a 0–100 smoothness score,
-a fuel-cost estimate, and a traffic map that aggregates every ride into a picture of where you routinely
-lose time.
-
 **Diagnostics that earn their keep:** symbol testing and turn-icon calibration to match glyphs to your
 exact dash, a per-slot dash text playground, and shareable logs — which is how bug reports get made.
-
-| Ride tools and sounds | Engine-vibration calibration |
-|---|---|
-| ![](docs/screenshots/riding-settings.png) | ![](docs/screenshots/engine-calibration.png) |
-
----
-
-## Coming in the next build
-
-Built and running, **not yet in the download above**. Field-testing on a bike is what stands between
-these and a release.
-
-**Ride replay.** Press play and the ride runs itself at 30×: a heading-oriented marker glides along the
-route with the camera following, the trail behind it at full strength and the road ahead dimmed, and
-every chart cursor advancing in step. The charts gained smooth curves, pinch-to-zoom into a shared time
-window, and tappable peak/dip values.
-
-**Crawl vs signal traffic.** Traffic is now two distinct things, using engine state recorded per GPS
-point: creeping with the engine on is a crawl, fully stopped with the engine on is a signal, and engine
-off is never traffic — so a coffee stop stops being counted as a jam.
-
-**A traffic prediction mode** built only from your own rides: a frequency model over location ×
-weekday/weekend × time-of-day that needs at least four passes through the same spot before it will say
-anything, and always shows the sample count.
-
-**In-app music screen** laid out one-to-one with the handlebar remote, so the screen teaches the buttons.
-
-**Ride backup and restore.** Back up every ride and its sensor data to a single `.zip`, and restore it on
-a new phone — rides already on the phone are skipped, never overwritten. Switching phones no longer means
-losing your history or the traffic map built from it.
-
-**Auto-exit.** The app closes itself after 10 minutes with no bike connected, so it doesn't sit running in
-your pocket on a day you never rode. The timer resets on connect and is suspended while a ride is
-recording.
-
-**A rebuilt interface** across every screen: glove-sized targets, a focus ring on everything the handlebar
-remote can reach, and Settings split into eight labelled groups.
-
-| Home | Rides | Recording & backup |
-|---|---|---|
-| ![](docs/screenshots/next-home.png) | ![](docs/screenshots/next-rides.png) | ![](docs/screenshots/next-settings-recording.png) |
-
-| Pairing | Onboarding |
-|---|---|
-| ![](docs/screenshots/next-pairing.png) | ![](docs/screenshots/next-onboarding-rides.png) |
 
 ---
 
 ## Privacy — private by default; one clearly-marked online mode
 
 - No accounts of ours. No analytics. No data collection. No ads. No server of ours.
-- **By default everything runs on-device**: the turn-icon model, notification handling, ride recording
-  and analytics. When you **mirror another nav app** (e.g. Google Maps) to the dash, the app only reads
-  that app's on-screen notification and forwards the text over Bluetooth — nothing leaves the phone.
-- **Optional in-app Google navigation** *does* go online. If you enable it (needs your own Google Maps
-  Platform API key + Google Play Services) and enter a destination in the app, Google's Navigation SDK
-  runs the route — which means your **destination and location are sent to Google**, and it needs
-  internet. This is off unless you provide a key, and can be turned off any time in
-  **Settings → Navigation → In-app Google navigation** (leaving you on the offline mirroring mode). While
-  it's navigating you'll also see Google's own notification alongside the app's.
-- Other optional, opt-in online bits: live weather for the dash idle screen (Open-Meteo, no key, coarse
-  location only), and notification summaries if you add your own Gemini API key — both off by default.
+- The **Notification-mirror engine** runs on-device: the turn-icon model and notification handling stay
+  on the phone; when you navigate in Google Maps, the app only reads that app's on-screen notification and
+  forwards the text over Bluetooth — nothing of ours leaves the phone.
+- The **In-app maps engine** *does* go online. It needs your own Google Maps Platform API key + Google
+  Play Services; entering a destination runs Google's Navigation SDK, which means your **destination and
+  location are sent to Google**, and it needs internet. Pick the engine any time in
+  **Settings → Navigation engine** (the two are mutually exclusive). While it's navigating you'll also see
+  Google's own notification alongside the app's.
+- Other optional, opt-in online bit: live weather for the dash idle screen (Open-Meteo, no key, coarse
+  location only), off by default.
 
 ---
 
@@ -172,15 +119,13 @@ remote can reach, and Settings split into eight labelled groups.
    correct it with the Symbol Test and Turn-icon Calibration screens.
 3. Husqvarna support has never been verified on a physical Husqvarna. It runs on the same dash protocol
    and should work, but all testing so far has been on a KTM.
-4. Engine detection uses the phone's motion sensor, needs a short calibration, and varies by phone and
-   mount. Without it, traffic detection falls back to a time-based guess.
-5. Rough-road detection needs a ride recorded on v0.3.0 or later — older GPX files fall back to GPS-only
-   event detection.
-6. The full analytics map needs a free Google Maps API key added at build time (below). Without one,
-   everything still works via the built-in route sketch.
-7. Full vehicle telemetry (RPM, gear, coolant, fuel, TPMS) exists in the protocol but the dash rejects
+4. The in-app maps engine needs a Google Maps Platform API key added at build time (below) plus Google
+   Play Services; without a key the app runs in the offline notification-mirror engine.
+5. Route-token alternate selection is best-effort: when stationary the Nav SDK may road-snap and recompute
+   to the fastest route for some alternates. Expected to be reliable when actually riding.
+6. Full vehicle telemetry (RPM, gear, coolant, fuel, TPMS) exists in the protocol but the dash rejects
    the writes. It is **not** available — help welcome.
-8. This is a beta. If something crashes or misbehaves, please open an issue or share your logs from
+7. This is a beta. If something crashes or misbehaves, please open an issue or share your logs from
    Settings → Diagnostics, and include your bike model and firmware if you can.
 
 ---
@@ -210,13 +155,13 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
 
 Install to a connected phone with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
-**Optional — the full analytics map.** Get a free key at console.cloud.google.com, enable "Maps SDK for
-Android", restrict it to package `com.navigator.app` plus your keystore's SHA-1, then add
-`MAPS_API_KEY=your-key` to `local.properties` before building.
+**Optional — the in-app maps engine.** Get a free key at console.cloud.google.com, enable "Maps SDK for
+Android" (and the Navigation SDK / Routes API), restrict it to package `com.navigator.app` plus your
+keystore's SHA-1, then add `MAPS_API_KEY=your-key` (and `NAV_SDK_API_KEY=your-key`) to `local.properties`
+before building.
 
-On the phone: enable **Notification access** (required to mirror navigation and notifications); enable
-**Accessibility** only if you want the handlebar remote to control other apps; and disable battery
-optimisation so the app stays connected in the background.
+On the phone: enable **Notification access** (required to mirror navigation and notifications) and disable
+battery optimisation so the app stays connected in the background.
 
 ## The turn-icon model (`ml/`)
 

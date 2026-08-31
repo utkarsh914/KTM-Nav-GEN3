@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — Navigation-only lean-down
+
+**One focused app: navigation.** KTM Navigator is now purely a navigation app with two
+engines you pick in **Settings → Navigation engine**, kept strictly separate so only one ever
+drives the dash:
+
+- **In-app maps (Google)** — the map home: search, **long-press to drop a pin**, or share a
+  Google Maps link, then preview and run turn-by-turn on the phone and dash.
+- **Notification mirror** — a clean home that mirrors Google Maps' turns to the dash, with a
+  **Pause/Resume sending to dash** control; the app guides you to grant notification access if
+  it's off.
+
+**Nicer on the bike.** The app now **shows over the lock screen and keeps the screen awake
+while navigating**, and tapping either navigation notification returns you to the live nav
+screen. It also **prompts to turn Bluetooth on** if it's off.
+
+**Removed** (the app is navigation-only now): the handlebar-remote controller / on-screen
+D-pad / old grid home, GPX ride recording, accelerometer engine-detect + power-saver, phone
+call/media handling, and the unused Gemini/Waypoint/Navigation-debug settings. **Kept:** the
+notification mirror, Symbol Testing, and Turn-icon calibration diagnostics.
+
+**Consistent look.** Every screen now uses the map/mirror design language — circular back
+buttons, orange section labels, and matching cards and pills.
+
 ## Unreleased — Phone-first map navigation
 
 **A real map, in the app.** KTM Navigator now opens to a full Google map you can pan and

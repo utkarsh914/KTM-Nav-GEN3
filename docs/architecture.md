@@ -22,18 +22,26 @@ map home (`NavigationHomeScreen`) built on the Nav SDK's bundled `NavigationView
 confirm → route preview (with alternates) → on-phone turn-by-turn, while the same guidance
 is streamed to the KTM/Husqvarna Gen-3 dash over BLE.
 
-Jobs, on the phone, no account/server for the core:
+The app is now **navigation-only** (the D2 lean-down has landed): two mutually-exclusive
+navigation engines, selectable in Settings, each with its own home. There are only two jobs:
 
-1. **Navigate, phone-first** — plan and run turn-by-turn in-app, and push the same guidance
-   to the dash over BLE.
-2. **Mirror another nav app** (e.g. Google Maps) to the dash via notifications — the
-   offline-capable fallback source.
-3. **Legacy (slated for removal, see [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)
-   D2):** handlebar-button controller / media remote, and GPX ride recording. Still present
-   but no longer the focus; the app is converging on navigation-only.
+1. **Navigate, phone-first (In-app maps engine)** — plan and run turn-by-turn in-app on the
+   map home (`NavigationHomeScreen`), pushing the same guidance to the dash over BLE.
+2. **Mirror another nav app (Notification-mirror engine)** — mirror Google Maps' turn
+   notifications to the dash; the mirror home (`MirrorHomeScreen`) shows the same guidance.
+   Offline-capable; also the home when no Nav SDK key/Play Services is available.
 
-The UX revamp (P1–P5) has landed: see [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md)
-for the design and [`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) for status.
+The engines are **mutually exclusive**: the Settings "Navigation engine" selector picks one,
+`homeRoute()` maps it to `NAV_HOME` or `MIRROR_HOME`, and the mirror path is suppressed while
+the in-app SDK engine is selected (so both never drive the dash at once).
+
+The legacy dash-companion surface (handlebar-remote controller / on-screen D-pad / 2×2 grid
+home), GPX ride recording, accelerometer engine-detect, and media/call handling have all been
+**removed** in the D2 lean-down (commits `refactor(d2): ...`). Symbol Testing + Turn-icon
+calibration are intentionally retained as hardware diagnostics.
+
+See [`NAVIGATION_UX_REVAMP.md`](NAVIGATION_UX_REVAMP.md) for the design and
+[`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) for status.
 
 ---
 
@@ -59,9 +67,14 @@ NotificationNavProvider┼─► NormalizedNavigationState ─► KtmNavigationE
   (e.g. Google Maps) foreground notification. Passive; the app reads the notification.
 - **`RoutesApiProvider`** — not built; the abstraction is ready for it.
 
-Only one provider is active at a time. `NotificationNavProvider` is the default/fallback;
-`GoogleNavSdkProvider` takes over when the rider starts an in-app trip, and the coordinator
-**auto-reverts** to the notification provider when the trip reaches `ARRIVED`/`STOPPED`.
+Only one provider is active at a time, and the two engines are **mutually exclusive** per the
+Settings "Navigation engine" selector (`AppSettings.navProvider`/`googleNavEnabled`). With the
+in-app engine, `GoogleNavSdkProvider` runs the trip and the coordinator **auto-reverts** to
+the (idle) notification provider on `ARRIVED`/`STOPPED`; while it's selected, the mirror path
+is gated off in `AppNotificationListener` so Google Maps notifications don't also reach the
+dash. With the notification-mirror engine, `NotificationNavProvider` drives the dash and the
+in-app SDK is never started. The user can also **pause** mirror-to-dash on the mirror home
+(`NotificationNavProvider.paused`).
 
 ### 2.1 Package map (`com.navigator.app.nav`)
 
@@ -150,8 +163,9 @@ best-effort, validated on-ride (see checklist).
 - **Shared link** — a Google Maps link shared into the app routes to the map home, which
   resolves it via `MapsUrlResolver` (inline `!3d!4d` / `?q=` / `destination=` / `ll=` /
   `geo:` coords, else follow the short link + Places Text Search on the place name) and drops
-  into CONFIRM. (The legacy `DestinationScreen` remains only for the legacy Direction-mirror
-  screen and will be removed with the D2 lean-down.)
+  into CONFIRM.
+- **Drop a pin** — long-press the map to drop a destination pin (labelled "Dropped pin") and
+  jump to CONFIRM.
 
 ### 3.1 API-key authentication (important)
 
@@ -245,12 +259,11 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 Covers the maneuver maps, encoder scenarios, formatters, replay, and the Maps-URL parsing.
 
 ### 6.4 On-device / on-bike
-Build + run from Android Studio. Pair with the dash, then: Direction → NAVIGATE WITH GOOGLE →
-Search/Map/Link → a destination → confirm; verify turn arrow / distance / road / ETA /
-remaining on the TFT, reroute, and arrival. A debug trigger (Settings → "Navigation (debug)"
-in debug builds, or `adb shell am broadcast -a com.navigator.ktm.TEST_GOOGLE_NAV`) navigates
-to a fixed test destination. The pure `NavigationReplayTest` exercises the encoder without a
-bike; the Nav SDK `Simulator` is billable, so prefer the replay harness for routine testing.
+Build + run from Android Studio. Pair with the dash, then on the map home: search / long-press
+to drop a pin / share a Maps link → a destination → confirm → route preview → Start; verify
+turn arrow / distance / road / ETA / remaining on the TFT, reroute, and arrival. The pure
+`NavigationReplayTest` exercises the encoder without a bike; the Nav SDK `Simulator` is
+billable, so prefer the replay harness for routine testing.
 
 ---
 

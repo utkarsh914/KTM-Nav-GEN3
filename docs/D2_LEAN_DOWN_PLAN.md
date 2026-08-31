@@ -1,6 +1,9 @@
 # D2 Lean-Down — Navigation-Only App
 
-Status: **PLANNED** (not started). Execution deferred — other issues to be tackled first.
+Status: **DONE.** Phase 1 (ride recording/GPX), Phase 2 (engine-detect + power-saver, keeping
+Symbol Testing), and Phase 3 (handlebar remote / D-pad / legacy MAIN grid / media+call /
+DirectionScreen·NotificationScreen·DestinationScreen) all shipped. Phase 4 = this docs pass.
+The app is navigation-only with two mutually-exclusive engines (`NAV_HOME` / `MIRROR_HOME`).
 
 > **Reconciled after the pre-D2 "navigation engine" work (commits `741b531`,
 > `ddeb91e`).** That work front-loaded the mirror home: there is now a dedicated
