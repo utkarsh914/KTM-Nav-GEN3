@@ -67,7 +67,7 @@ import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
 
-private enum class SettingsDialog { NONE, NAME, GEMINI, GEMINI_MODEL, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT }
+private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT }
 
 /**
  * Settings (screen 05) — the §5 restructure into four labelled groups
@@ -93,7 +93,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val pm = context.packageManager
 
-    var geminiKey by remember { mutableStateOf(settings.geminiApiKey ?: "") }
+
     var userName by remember { mutableStateOf(settings.userName ?: "") }
     var navAutoDetect by remember { mutableStateOf(settings.navAppOverride == null) }
     var navOverride by remember { mutableStateOf(settings.navAppOverride) }
@@ -101,12 +101,12 @@ fun SettingsScreen(
     var preferredAudioAddress by remember { mutableStateOf(settings.preferredCallAudioDeviceAddress) }
     var mirrorEnabled by remember { mutableStateOf(settings.mirrorEnabled) }
     var marqueeEnabled by remember { mutableStateOf(settings.marqueeEnabled) }
-    var geminiModel by remember { mutableStateOf(settings.geminiModel) }
+
     var turnBeepEnabled by remember { mutableStateOf(settings.turnBeepEnabled) }
     var beepVolume by remember { mutableStateOf(settings.beepVolumePercent) }
     var overspeedEnabled by remember { mutableStateOf(settings.overspeedEnabled) }
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
-    var waypoint by remember { mutableStateOf(settings.waypoint) }
+
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
@@ -190,14 +190,8 @@ fun SettingsScreen(
                     SettingsRow("Change bike / brand", showDivider = true, onClick = onChangeBrand) {
                         MonoValue("${com.navigator.app.ui.theme.themeFor(settings.brand).displayName} ›")
                     }
-                    SettingsRow("Your name", showDivider = true, onClick = { dialog = SettingsDialog.NAME }) {
+                    SettingsRow("Your name", showDivider = false, onClick = { dialog = SettingsDialog.NAME }) {
                         MonoValue(userName.ifBlank { "Set ›" })
-                    }
-                    SettingsRow("Gemini API key", showDivider = true, onClick = { dialog = SettingsDialog.GEMINI }) {
-                        MonoValue(maskKey(geminiKey))
-                    }
-                    SettingsRow("Gemini model", showDivider = false, onClick = { dialog = SettingsDialog.GEMINI_MODEL }) {
-                        MonoValue("$geminiModel ›")
                     }
                 }
             }
@@ -375,55 +369,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Waypoint =====
-            item {
-                GroupCard("Waypoint") {
-                    SettingsRow("Saved waypoint", showDivider = true) {
-                        MonoValue(waypoint ?: "None")
-                    }
-                    SettingsRow(
-                        "Set to current location", showDivider = true,
-                        onClick = {
-                            val loc = lastKnownLocation(context)
-                            if (loc != null) {
-                                // Locale.US: a comma-decimal locale would corrupt the "lat,lon" format.
-                                val value = "%.6f,%.6f".format(java.util.Locale.US, loc.latitude, loc.longitude)
-                                waypoint = value
-                                settings.waypoint = value
-                                settings.waypointName = "Waypoint"
-                                BccuConnectionService.sendNotificationIfRunning(
-                                    "WAYPOINT SAVED",
-                                    BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT,
-                                )
-                            } else {
-                                android.widget.Toast.makeText(context, "No GPS fix yet", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    ) { OutlinedPill("SET") }
-                    SettingsRow(
-                        "Navigate there (Google Maps)", showDivider = true,
-                        onClick = {
-                            waypoint?.let { wp ->
-                                // google.navigation with mode=l = two-wheeler routing.
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$wp&mode=l"))
-                                    .setPackage("com.google.android.apps.maps")
-                                runCatching { context.startActivity(intent) }.onFailure {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:$wp?q=$wp")))
-                                }
-                            }
-                        },
-                    ) { OutlinedPill("GO") }
-                    SettingsRow(
-                        "Remove waypoint", showDivider = false,
-                        onClick = {
-                            waypoint = null
-                            settings.waypoint = null
-                            settings.waypointName = null
-                        },
-                    ) { OutlinedPill("CLEAR") }
-                }
-            }
-
             // ===== Navigation engine =====
             if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
                 item {
@@ -464,25 +409,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Google Nav SDK test (debug only, Phase 6) =====
-            if (com.navigator.app.BuildConfig.DEBUG) {
-                item {
-                    GroupCard("Navigation (debug)") {
-                        SettingsRow(
-                            "Test: Google Nav to Silk Board", showDivider = true,
-                            onClick = {
-                                (context as? android.app.Activity)?.let {
-                                    com.navigator.app.nav.providers.GoogleNavSdkController.startTest(it)
-                                }
-                            },
-                        ) { OutlinedPill("GO") }
-                        SettingsRow(
-                            "Stop Google Nav", showDivider = false,
-                            onClick = { com.navigator.app.nav.providers.GoogleNavSdkController.stop() },
-                        ) { OutlinedPill("STOP") }
-                    }
-                }
-            }
 
             // ===== Diagnostics =====
             item {
@@ -543,19 +469,6 @@ fun SettingsScreen(
             onDismiss = { dialog = SettingsDialog.NONE },
             onConfirm = { userName = it; settings.userName = it; dialog = SettingsDialog.NONE },
         )
-        SettingsDialog.GEMINI -> TextFieldDialog(
-            title = "Gemini API key", initial = geminiKey, label = "API key",
-            onDismiss = { dialog = SettingsDialog.NONE },
-            onConfirm = { geminiKey = it; settings.geminiApiKey = it; dialog = SettingsDialog.NONE },
-        )
-        SettingsDialog.GEMINI_MODEL -> SingleChoiceDialog(
-            title = "Gemini model",
-            options = AppSettings.GEMINI_MODELS,
-            labelFor = { it },
-            selected = geminiModel,
-            onDismiss = { dialog = SettingsDialog.NONE },
-            onSelect = { geminiModel = it; settings.geminiModel = it; dialog = SettingsDialog.NONE },
-        )
         SettingsDialog.OVERSPEED_LIMIT -> TextFieldDialog(
             title = "Overspeed limit (km/h)", initial = overspeedLimit.toString(), label = "km/h",
             onDismiss = { dialog = SettingsDialog.NONE },
@@ -603,28 +516,6 @@ fun SettingsScreen(
         )
         SettingsDialog.NONE -> {}
     }
-}
-
-/** Best-available last known fix across providers (GPS preferred). */
-@SuppressLint("MissingPermission")
-private fun lastKnownLocation(context: android.content.Context): android.location.Location? {
-    if (androidx.core.content.ContextCompat.checkSelfPermission(
-            context, android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) != PackageManager.PERMISSION_GRANTED
-    ) return null
-    val lm = context.getSystemService(android.location.LocationManager::class.java)
-    return listOf(
-        android.location.LocationManager.GPS_PROVIDER,
-        android.location.LocationManager.NETWORK_PROVIDER,
-        android.location.LocationManager.PASSIVE_PROVIDER,
-    ).mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
-        .maxByOrNull { it.time }
-}
-
-private fun maskKey(key: String): String = when {
-    key.isBlank() -> "Not set ›"
-    key.length <= 4 -> "•••• ›"
-    else -> "••••••" + key.takeLast(4)
 }
 
 @Composable

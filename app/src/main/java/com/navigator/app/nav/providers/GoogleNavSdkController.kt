@@ -17,14 +17,8 @@ import com.navigator.app.nav.model.TravelMode
  * Orchestrates the Activity-side handshake the Navigation SDK requires (API key,
  * Terms of Service, `getNavigator`), then hands the [Navigator] to
  * [GoogleNavSdkProvider] and switches the dash pipeline over to it.
- *
- * Phase 6 uses a hardcoded test destination ([SILK_BOARD]); Phase 5 will replace
- * the trigger with real destination entry.
  */
 object GoogleNavSdkController {
-
-    /** Hardcoded Phase-6 test destination: Silk Board Junction, Bengaluru. */
-    val SILK_BOARD = NavDestination(lat = 12.9172, lng = 77.6229, label = "Silk Board Junction")
 
     @Volatile private var apiKeySet = false
 
@@ -69,9 +63,6 @@ object GoogleNavSdkController {
             apiKeySet = true
         }
     }
-
-    /** Phase-6 test entry point: navigate to Silk Board Junction. */
-    fun startTest(activity: Activity) = startNavigation(activity, SILK_BOARD)
 
     /**
      * Warm up the Navigation SDK for the map home: sets the key, shows the Terms

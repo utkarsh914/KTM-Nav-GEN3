@@ -163,30 +163,6 @@ class MainActivity : ComponentActivity() {
             } else {
                 @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(maneuverExportReceiver, filter)
             }
-
-            // DEBUG-only Phase-6 trigger for Google Nav SDK end-to-end testing:
-            //   adb shell am broadcast -a com.navigator.ktm.TEST_GOOGLE_NAV   (Silk Board Junction)
-            //   adb shell am broadcast -a com.navigator.ktm.STOP_GOOGLE_NAV
-            // The app must be foregrounded (getNavigator/ToS need an Activity).
-            navTestReceiver = object : android.content.BroadcastReceiver() {
-                override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
-                    when (i?.action) {
-                        "com.navigator.ktm.TEST_GOOGLE_NAV" ->
-                            com.navigator.app.nav.providers.GoogleNavSdkController.startTest(this@MainActivity)
-                        "com.navigator.ktm.STOP_GOOGLE_NAV" ->
-                            com.navigator.app.nav.providers.GoogleNavSdkController.stop()
-                    }
-                }
-            }
-            val navFilter = android.content.IntentFilter().apply {
-                addAction("com.navigator.ktm.TEST_GOOGLE_NAV")
-                addAction("com.navigator.ktm.STOP_GOOGLE_NAV")
-            }
-            if (Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(navTestReceiver, navFilter, android.content.Context.RECEIVER_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(navTestReceiver, navFilter)
-            }
         }
     }
 
@@ -215,12 +191,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private var maneuverExportReceiver: android.content.BroadcastReceiver? = null
-    private var navTestReceiver: android.content.BroadcastReceiver? = null
     private var finishReceiver: android.content.BroadcastReceiver? = null
 
     override fun onDestroy() {
         maneuverExportReceiver?.let { runCatching { unregisterReceiver(it) } }
-        navTestReceiver?.let { runCatching { unregisterReceiver(it) } }
         finishReceiver?.let { runCatching { unregisterReceiver(it) } }
         super.onDestroy()
     }

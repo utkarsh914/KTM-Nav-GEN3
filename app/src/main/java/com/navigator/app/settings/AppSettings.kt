@@ -7,9 +7,9 @@ import androidx.security.crypto.MasterKey
 
 /**
  * Single place for all persisted app configuration: bonded bike address,
- * Gemini API key, notification source apps, nav-app override, and preferred
- * call-audio device. Backed by EncryptedSharedPreferences since the Gemini
- * key is a secret worth protecting at rest.
+ * notification source apps, nav-app override, and preferred call-audio device.
+ * Backed by EncryptedSharedPreferences (pairing keys are secrets worth
+ * protecting at rest).
  */
 class AppSettings(context: Context) {
 
@@ -60,15 +60,6 @@ class AppSettings(context: Context) {
             pairingPrefs.edit().putString(KEY_BONDED_NAME, value).commit()
             runCatching { prefs.edit().remove(KEY_BONDED_NAME).apply() }
         }
-
-    var geminiApiKey: String?
-        get() = prefs.getString(KEY_GEMINI_KEY, null)
-        set(value) = prefs.edit().putString(KEY_GEMINI_KEY, value).apply()
-
-    /** Gemini model used for notification summaries (see [GEMINI_MODELS]). */
-    var geminiModel: String
-        get() = prefs.getString(KEY_GEMINI_MODEL, DEFAULT_GEMINI_MODEL) ?: DEFAULT_GEMINI_MODEL
-        set(value) = prefs.edit().putString(KEY_GEMINI_MODEL, value).apply()
 
     /** Whether the first-run onboarding (name + permissions) has been completed. */
     var onboardingComplete: Boolean
@@ -228,15 +219,6 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getInt(KEY_OVERSPEED_LIMIT, DEFAULT_OVERSPEED_LIMIT_KMH)
         set(value) = pairingPrefs.edit().putInt(KEY_OVERSPEED_LIMIT, value).apply()
 
-    /** Saved waypoint ("lat,lon"), usable as a Google Maps navigation target. Null = none set. */
-    var waypoint: String?
-        get() = pairingPrefs.getString(KEY_WAYPOINT, null)
-        set(value) = pairingPrefs.edit().putString(KEY_WAYPOINT, value).apply()
-
-    var waypointName: String?
-        get() = pairingPrefs.getString(KEY_WAYPOINT_NAME, null)
-        set(value) = pairingPrefs.edit().putString(KEY_WAYPOINT_NAME, value).apply()
-
     /**
      * Which navigation source feeds the dash. [NAV_PROVIDER_NOTIFICATION] mirrors
      * another nav app's notifications (offline-capable, current default);
@@ -279,22 +261,11 @@ class AppSettings(context: Context) {
     companion object {
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
-        private const val KEY_GEMINI_KEY = "gemini_api_key"
-        private const val KEY_GEMINI_MODEL = "gemini_model"
+
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_BRAND = "brand"
 
-        const val DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
-
-        /** Selectable Gemini models for notification summaries. */
-        val GEMINI_MODELS = listOf(
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-        )
         private const val KEY_NOTIFICATION_APPS = "notification_source_apps"
         private const val KEY_NAV_APP_OVERRIDE = "nav_app_override"
         private const val KEY_CALL_AUDIO_DEVICE = "call_audio_device"
@@ -308,8 +279,6 @@ class AppSettings(context: Context) {
         private const val KEY_OVERSPEED_ENABLED = "overspeed_enabled"
         private const val KEY_OVERSPEED_LIMIT = "overspeed_limit_kmh"
         const val DEFAULT_OVERSPEED_LIMIT_KMH = 80
-        private const val KEY_WAYPOINT = "waypoint_latlon"
-        private const val KEY_WAYPOINT_NAME = "waypoint_name"
         private const val KEY_NAV_PROVIDER = "nav_provider"
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
