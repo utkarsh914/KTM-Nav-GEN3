@@ -9,6 +9,15 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -417,9 +426,29 @@ private fun OpenDashApp(
         prevConn = connState
     }
 
+    // Retained map surface: created lazily on first map use and kept alive across
+    // route changes so returning to the map home re-attaches an already-loaded map
+    // (no reload flash) instead of rebuilding the NavigationView each time.
+    val retainedNav = com.navigator.app.ui.screens.rememberRetainedNavigationView()
+
     OpenDashTheme(highContrast = false) {
       androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-        when (route) {
+        // Subtle cross-screen transition: a gentle fade with a small (~6%) horizontal
+        // drift, matching the onboarding pager's motion. Keeps screen changes from
+        // being a hard cut without ever feeling loud.
+        AnimatedContent(
+            targetState = route,
+            transitionSpec = {
+                val enterDur = 260
+                val exitDur = 180
+                (fadeIn(tween(enterDur, easing = FastOutSlowInEasing)) +
+                    slideInHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> w / 16 }) togetherWith
+                    (fadeOut(tween(exitDur, easing = FastOutSlowInEasing)) +
+                        slideOutHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> -w / 16 })
+            },
+            label = "route",
+        ) { r ->
+        when (r) {
             AppRoute.BRAND -> com.navigator.app.ui.screens.BrandSelectScreen(
                 onPair = { brand ->
                     settings.brand = brand
@@ -448,6 +477,7 @@ private fun OpenDashApp(
                 onBack = pairingReturnRoute?.let { back -> { route = back; pairingReturnRoute = null } },
             )
             AppRoute.NAV_HOME -> com.navigator.app.ui.screens.NavigationHomeScreen(
+                retainedNav = retainedNav,
                 onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; route = AppRoute.PAIRING },
                 onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; route = AppRoute.SETTINGS },
                 onStartNavigation = { dest ->
@@ -506,7 +536,13 @@ private fun OpenDashApp(
                 onBack = { route = AppRoute.SETTINGS }
             )
         }
-        if (showGreeting) {
+        }
+        // Soft fade for the connect greeting overlay instead of a hard pop.
+        AnimatedVisibility(
+            visible = showGreeting,
+            enter = fadeIn(tween(220, easing = FastOutSlowInEasing)),
+            exit = fadeOut(tween(220, easing = FastOutSlowInEasing)),
+        ) {
             ConnectGreeting(name = settings.userName?.trim().orEmpty())
         }
       }

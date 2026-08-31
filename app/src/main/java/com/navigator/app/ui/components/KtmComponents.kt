@@ -1,9 +1,15 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +28,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +44,24 @@ import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
+
+/** Subtle press feedback shared by the app's tappable chrome: a gentle scale-down
+ *  while held that springs back on release. Pair the passed [interaction] source with
+ *  the element's `clickable(...)` and apply the returned factor via `graphicsLayer`.
+ *  Kept intentionally small so it reads as tactile, never bouncy. */
+@Composable
+private fun rememberPressScale(
+    interaction: MutableInteractionSource,
+    pressedScale: Float = 0.97f,
+): Float {
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "pressScale",
+    )
+    return scale
+}
 
 /** Small uppercase, letter-spaced eyebrow/group label (Barlow Condensed 700). */
 @Composable
@@ -118,7 +144,21 @@ fun SettingsRow(
     onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
-    val base = Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }
+    val interaction = remember { MutableInteractionSource() }
+    // Rows are large, so a whisper of scale (0.985) reads better than the chrome default.
+    val scale = if (onClick != null) rememberPressScale(interaction, pressedScale = 0.985f) else 1f
+    val base = Modifier
+        .fillMaxWidth()
+        .let { if (onClick != null) it.graphicsLayer { scaleX = scale; scaleY = scale } else it }
+        .let {
+            if (onClick != null) {
+                it.clickable(
+                    interactionSource = interaction,
+                    indication = LocalIndication.current,
+                    onClick = onClick,
+                )
+            } else it
+        }
     Column(modifier = base) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
@@ -150,12 +190,20 @@ fun KtmPrimaryButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     androidx.compose.foundation.layout.Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .fillMaxWidth()
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(if (enabled) Ktm.Orange else Ktm.SurfaceDisabled)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -174,13 +222,21 @@ fun KtmOutlineButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     androidx.compose.foundation.layout.Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .fillMaxWidth()
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, if (enabled) Ktm.BorderSoft else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -206,13 +262,20 @@ fun MonoValue(text: String, color: Color = Ktm.Dim, fontSize: Int = 12) {
  *  control, matching the map/mirror home icon buttons. */
 @Composable
 fun CircleBackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .size(44.dp)
             .clip(CircleShape)
             .background(Ktm.Surface)
             .border(1.dp, Ktm.BorderSoft, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(OpenDashIcons.ChevronLeft, contentDescription = "Back", tint = Ktm.White,
@@ -255,12 +318,19 @@ fun ConnectionPill(
         BccuConnectionService.ConnectionState.CONNECTING -> "Connecting…" to Ktm.Muted2
         BccuConnectionService.ConnectionState.DISCONNECTED -> "Not connected" to Ktm.Dim
     }
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     Row(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -276,12 +346,20 @@ fun ConnectionPill(
  *  up with the search bar / connection pill height. */
 @Composable
 fun IconPill(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     Box(
-        modifier = Modifier.size(Ktm.ControlHeight)
+        modifier = Modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .size(Ktm.ControlHeight)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
@@ -309,13 +387,20 @@ fun ConnectPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
         else -> "Connect"
     }
 
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
     Row(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .height(Ktm.ControlHeight)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, if (connected) Ktm.ConnBorder else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -126,6 +126,7 @@ private val NAV_HEADER_CLEARANCE = 108.dp
  */
 @Composable
 fun NavigationHomeScreen(
+    retainedNav: RetainedNavigationView,
     onOpenConnect: () -> Unit,
     onOpenSettings: () -> Unit,
     onStartNavigation: (NavDestination) -> Unit,
@@ -354,6 +355,7 @@ fun NavigationHomeScreen(
         // --- Map surface -----------------------------------------------------
         when {
             available && navReady -> BrowseMap(
+                retainedNav = retainedNav,
                 navUiEnabled = stage == NavStage.NAVIGATING,
                 onMap = { googleMap = it },
             )
@@ -533,31 +535,49 @@ fun NavigationHomeScreen(
 // ============================ Map ======================================
 
 @Composable
-private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
+private fun BrowseMap(
+    retainedNav: RetainedNavigationView,
+    navUiEnabled: Boolean,
+    onMap: (GoogleMap?) -> Unit,
+) {
     val context = LocalContext.current
-    val navView = rememberNavigationViewWithLifecycle()
+    // Reuse the app-scoped NavigationView so returning to the map home re-attaches
+    // an already-loaded map instead of rebuilding it (no reload flash).
+    val navView = remember(retainedNav) { retainedNav.getOrCreate() }
     // Follow the app's own theme (reactive), not the phone's — so the in-app
     // Light/Dark/System setting also drives the map and the SDK guidance UI.
     val dark = Ktm.current.isDark
     var mapRef by remember { mutableStateOf<GoogleMap?>(null) }
     AndroidView(
+        // The retained view may still be attached to a previous parent when we
+        // re-enter; detach before AndroidView re-adds it to avoid an IAE.
         factory = {
-            navView.getMapAsync { gm ->
-                mapRef = gm
-                onMap(gm)
-                gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
-                gm.uiSettings.isCompassEnabled = false          // custom controls instead
-                if (hasLocationPermission(context)) {
-                    runCatching { gm.isMyLocationEnabled = true }
-                }
-                val start = lastLocation(context)?.let { LatLng(it.first, it.second) }
-                    ?: LatLng(12.9716, 77.5946) // Bengaluru fallback
-                gm.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 15f))
-            }
+            (navView.parent as? android.view.ViewGroup)?.removeView(navView)
             navView
         },
         modifier = Modifier.fillMaxSize(),
     )
+    // (Re)deliver the map to callers on every entry. getMapAsync returns the
+    // cached GoogleMap immediately for an already-loaded view, so this is cheap.
+    LaunchedEffect(navView) {
+        navView.getMapAsync { gm ->
+            mapRef = gm
+            onMap(gm)
+            gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
+            gm.uiSettings.isCompassEnabled = false          // custom controls instead
+            if (hasLocationPermission(context)) {
+                runCatching { gm.isMyLocationEnabled = true }
+            }
+            // Only frame the camera the first time — re-entry keeps the user's
+            // current pan/zoom instead of snapping back to the start.
+            if (!retainedNav.mapInitialized) {
+                val start = lastLocation(context)?.let { LatLng(it.first, it.second) }
+                    ?: LatLng(12.9716, 77.5946) // Bengaluru fallback
+                gm.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 15f))
+                retainedNav.mapInitialized = true
+            }
+        }
+    }
     // Show the SDK's full built-in guidance UI (header + ETA card + re-center +
     // report) only while navigating. Force the browse/preview map colour scheme
     // and the guidance map's night mode from the app theme (the SDK otherwise
@@ -1042,37 +1062,81 @@ private fun SearchBar(modifier: Modifier = Modifier, onClick: () -> Unit) {
     }
 }
 
-/** A [NavigationView] wired to the host lifecycle (see P1 crash note). */
-@Composable
-private fun rememberNavigationViewWithLifecycle(): NavigationView {
-    val context = LocalContext.current
-    val navView = remember { NavigationView(context) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, navView) {
-        var last: Lifecycle.Event? = null
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_CREATE -> navView.onCreate(Bundle())
-                Lifecycle.Event.ON_START -> navView.onStart()
-                Lifecycle.Event.ON_RESUME -> navView.onResume()
-                Lifecycle.Event.ON_PAUSE -> navView.onPause()
-                Lifecycle.Event.ON_STOP -> navView.onStop()
-                else -> {}
-            }
-            if (event != Lifecycle.Event.ON_DESTROY) last = event
+/**
+ * App-scoped holder that keeps ONE [NavigationView] alive across route changes.
+ *
+ * The map surface is expensive to spin up (blank frame + tile fetch), so tearing
+ * it down every time the user opens Settings and rebuilding it on return caused a
+ * sub-second reload flash. Instead this holder is remembered *above* the route
+ * switch: the view is created lazily on first map use and only destroyed when the
+ * host activity goes away. Returning to the map home just re-attaches the same,
+ * already-loaded view (see [rememberRetainedNavigationView]).
+ */
+class RetainedNavigationView(
+    private val context: Context,
+    private val lifecycle: Lifecycle,
+) {
+    var view: NavigationView? = null
+        private set
+
+    /** True once the one-time camera framing has run, so re-entry doesn't snap
+     *  the camera back to the starting location. */
+    var mapInitialized: Boolean = false
+
+    /** Create the view on first use, bringing it up to the current lifecycle
+     *  state; subsequent calls return the same retained instance. */
+    fun getOrCreate(): NavigationView {
+        view?.let { return it }
+        val v = NavigationView(context)
+        v.onCreate(Bundle())
+        val state = lifecycle.currentState
+        if (state.isAtLeast(Lifecycle.State.STARTED)) v.onStart()
+        if (state.isAtLeast(Lifecycle.State.RESUMED)) v.onResume()
+        view = v
+        return v
+    }
+
+    fun onLifecycleEvent(event: Lifecycle.Event) {
+        val v = view ?: return
+        when (event) {
+            Lifecycle.Event.ON_START -> v.onStart()
+            Lifecycle.Event.ON_RESUME -> v.onResume()
+            Lifecycle.Event.ON_PAUSE -> v.onPause()
+            Lifecycle.Event.ON_STOP -> v.onStop()
+            else -> {}
         }
+    }
+
+    fun destroy() {
+        val v = view ?: return
+        runCatching { v.onPause() }
+        runCatching { v.onStop() }
+        runCatching { v.onDestroy() }
+        view = null
+        mapInitialized = false
+    }
+}
+
+/**
+ * Remembers a single [RetainedNavigationView] scoped to the caller. Place this at
+ * app scope (above the route switch) so the map survives navigation. The view is
+ * only instantiated on first [RetainedNavigationView.getOrCreate], so screens that
+ * never show the map (e.g. onboarding, the notification-mirror home) pay nothing.
+ */
+@Composable
+fun rememberRetainedNavigationView(): RetainedNavigationView {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val holder = remember(context) { RetainedNavigationView(context, lifecycleOwner.lifecycle) }
+    DisposableEffect(lifecycleOwner, holder) {
+        val observer = LifecycleEventObserver { _, event -> holder.onLifecycleEvent(event) }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            when (last) {
-                Lifecycle.Event.ON_RESUME -> { navView.onPause(); navView.onStop(); navView.onDestroy() }
-                Lifecycle.Event.ON_START, Lifecycle.Event.ON_PAUSE -> { navView.onStop(); navView.onDestroy() }
-                Lifecycle.Event.ON_STOP, Lifecycle.Event.ON_CREATE -> { navView.onDestroy() }
-                else -> {}
-            }
+            holder.destroy()
         }
     }
-    return navView
+    return holder
 }
 
 // ============================ Helpers ==================================
