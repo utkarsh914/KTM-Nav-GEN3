@@ -409,14 +409,14 @@ private fun OpenDashApp(
     val googleNavOffered = com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
         settings.googleNavEnabled
 
-    // A Google Maps link shared into the app -> open the destination screen (Link mode).
+    // A Google Maps link shared into the app -> open the map home, which resolves
+    // the link and drops into the confirm stage.
     val sharedLink by MainActivity.sharedNavLink.collectAsState()
     LaunchedEffect(sharedLink) {
         if (sharedLink != null && googleNavOffered &&
             route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
         ) {
-            destinationReturnRoute = homeRoute()
-            route = AppRoute.DESTINATION
+            route = homeRoute()
         }
     }
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
@@ -510,6 +510,9 @@ private fun OpenDashApp(
                         com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
                     }
                 },
+                onExit = { actions.exitApp() },
+                sharedLink = sharedLink,
+                onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
             )
             AppRoute.MAIN -> {
                 // A single on-screen D-pad overlays every MAIN sub-screen so the

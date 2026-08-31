@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
@@ -29,10 +30,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -66,8 +69,10 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.libraries.navigation.ForceNightMode
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
@@ -122,6 +127,9 @@ fun NavigationHomeScreen(
     onOpenConnect: () -> Unit,
     onOpenSettings: () -> Unit,
     onStartNavigation: (NavDestination) -> Unit,
+    onExit: () -> Unit = {},
+    sharedLink: String? = null,
+    onSharedLinkConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -172,6 +180,8 @@ fun NavigationHomeScreen(
     var selectedRoute by remember { mutableIntStateOf(0) }
     var previewLoading by remember { mutableStateOf(false) }
     var previewFailed by remember { mutableStateOf(false) }
+    var resolvingLink by remember { mutableStateOf(false) }
+    var showExitConfirm by remember { mutableStateOf(false) }
 
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
@@ -289,6 +299,16 @@ fun NavigationHomeScreen(
         }
     }
 
+    // A Google Maps link shared into the app -> resolve it and jump to CONFIRM.
+    LaunchedEffect(sharedLink) {
+        val link = sharedLink ?: return@LaunchedEffect
+        resolvingLink = true
+        val dest = com.navigator.app.nav.destination.MapsUrlResolver.resolve(link, auth)
+        resolvingLink = false
+        onSharedLinkConsumed()
+        if (dest != null) choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
+    }
+
     // Track map bearing for the compass (shown only when rotated).
     LaunchedEffect(googleMap) {
         val gm = googleMap ?: return@LaunchedEffect
@@ -298,12 +318,13 @@ fun NavigationHomeScreen(
 
 
 
-    BackHandler(enabled = stage != NavStage.BROWSE) {
+    BackHandler {
         when (stage) {
             NavStage.PREVIEW -> stage = NavStage.CONFIRM
             NavStage.CONFIRM -> { stage = NavStage.SEARCH; selected = null }
             NavStage.NAVIGATING -> stopNav()
-            else -> backToBrowse()
+            NavStage.SEARCH -> backToBrowse()
+            NavStage.BROWSE -> showExitConfirm = true // Back at home -> confirm full close
         }
     }
 
@@ -436,6 +457,27 @@ fun NavigationHomeScreen(
                 }
             }
         }
+
+        if (showExitConfirm) {
+            ExitConfirmDialog(
+                onConfirm = { showExitConfirm = false; onExit() },
+                onDismiss = { showExitConfirm = false },
+            )
+        }
+
+        // Resolving a shared Google Maps link.
+        if (resolvingLink) {
+            Box(
+                Modifier.fillMaxSize().background(Ktm.Screen.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Ktm.Orange)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Opening shared location…", color = Ktm.White, fontFamily = BarlowCondensed, fontSize = 16.sp)
+                }
+            }
+        }
     }
 }
 
@@ -451,6 +493,8 @@ private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
                 onMap(gm)
                 gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
                 gm.uiSettings.isCompassEnabled = false          // custom controls instead
+                // Browse/preview map follows the phone's light/dark setting.
+                runCatching { gm.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM }
                 if (hasLocationPermission(context)) {
                     runCatching { gm.isMyLocationEnabled = true }
                 }
@@ -463,8 +507,16 @@ private fun BrowseMap(navUiEnabled: Boolean, onMap: (GoogleMap?) -> Unit) {
         modifier = Modifier.fillMaxSize(),
     )
     // Show the SDK's full built-in guidance UI (header + ETA card + re-center +
-    // report) only while navigating.
-    LaunchedEffect(navUiEnabled) { runCatching { navView.setNavigationUiEnabled(navUiEnabled) } }
+    // report) only while navigating; make the guidance map follow the phone's
+    // light/dark mode too (the SDK otherwise defaults to time-of-day night mode).
+    LaunchedEffect(navUiEnabled) {
+        runCatching {
+            navView.setNavigationUiEnabled(navUiEnabled)
+            navView.setForceNightMode(
+                if (isSystemDark(context)) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY,
+            )
+        }
+    }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }
 
@@ -759,6 +811,21 @@ private fun RouteChip(
 
 // ============================ Active navigation ========================
 
+/** Confirm before fully closing the app (Back at the map home). */
+@Composable
+private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        textContentColor = Ktm.TextSecondary,
+        title = { Text("Close KTM Navigator?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = { Text("This stops navigation to the dash and exits the app.", fontFamily = Barlow) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("CLOSE", color = Ktm.Danger) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.Dim) } },
+    )
+}
+
 /** A neutral dark circular icon button (Google-style controls). */
 @Composable
 private fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
@@ -990,6 +1057,11 @@ private fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Doubl
 private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
+
+/** True when the phone's system UI is in dark mode. */
+private fun isSystemDark(context: Context): Boolean =
+    (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+        Configuration.UI_MODE_NIGHT_YES
 
 /**
  * A fresh current-location fix (falls back to last-known). Used for the route
