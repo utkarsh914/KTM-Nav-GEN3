@@ -287,58 +287,26 @@ private fun ColumnScope.RideIntelligenceStep(
     onBack: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    var powerSave by remember { mutableStateOf(settings.powerSaveEnabled) }
     Column(
         modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
     ) {
         Eyebrow("Ride intelligence", color = Ktm.Orange, fontSize = 12, letterSpacing = 2.0)
         Spacer(Modifier.height(8.dp))
         Text(
-            "It listens,\nbeeps, and\nkeeps the log.",
+            "It beeps you\nthrough every\nturn.",
             color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
             fontStyle = FontStyle.Italic, fontSize = 38.sp, lineHeight = 36.sp, letterSpacing = (-0.5).sp,
         )
         Spacer(Modifier.height(14.dp))
         Text(
             "Stereo beeps count you down to every turn (left ear = left turn) and go quiet when " +
-                "you're stopped. The phone's motion sensor learns your engine's rumble - calibrate " +
-                "it later from Settings - and every ride is saved as a GPX with a speed-colored map " +
-                "that knows traffic from a chai stop.",
+                "you're stopped, so you can keep your eyes on the road.",
             color = Ktm.Muted2, fontFamily = Barlow, fontSize = 15.sp, lineHeight = 22.sp,
-        )
-        Spacer(Modifier.height(20.dp))
-        OnboardToggleCard(
-            title = "Power saver",
-            desc = "Full-rate GPS + sensors only while the phone is on bike power; gentle on battery otherwise. Turn off for full rate always.",
-            checked = powerSave,
-            onToggle = { powerSave = it; settings.powerSaveEnabled = it },
         )
     }
     Spacer(Modifier.height(14.dp))
     KtmPrimaryButton("Continue", onClick = onContinue)
     IntroFooter(onBack = onBack, onSkip = onSkip)
-}
-
-@Composable
-private fun OnboardToggleCard(title: String, desc: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Ktm.RadiusRow))
-            .background(Ktm.Surface)
-            .border(1.dp, if (checked) Ktm.ConnBorder else Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
-            .clickable { onToggle(!checked) }
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontSize = 16.sp, letterSpacing = 0.3.sp)
-            Text(desc, color = Ktm.Dim, fontFamily = Barlow, fontSize = 12.5.sp, lineHeight = 17.sp,
-                modifier = Modifier.padding(top = 2.dp))
-        }
-        com.navigator.app.ui.components.KtmToggle(checked, onToggle)
-    }
 }
 
 /** Back (left) + Skip (right) row shared by the intro steps. */

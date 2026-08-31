@@ -51,7 +51,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, VIBRATION_CALIBRATION, DESTINATION, PLACES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, MAIN, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, DESTINATION, PLACES }
 
 class MainActivity : ComponentActivity() {
 
@@ -503,7 +503,6 @@ private fun OpenDashApp(
             AppRoute.PLACES -> route = AppRoute.SETTINGS
             AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
             AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
-            AppRoute.VIBRATION_CALIBRATION -> route = AppRoute.SETTINGS
             AppRoute.DESTINATION -> { MainActivity.sharedNavLink.value = null; route = destinationReturnRoute }
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
@@ -618,7 +617,6 @@ private fun OpenDashApp(
                 onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; route = AppRoute.LOGS },
                 onOpenSymbolTest = { route = AppRoute.SYMBOL_TEST },
                 onOpenTurnCalibration = { route = AppRoute.TURN_CALIBRATION },
-                onOpenVibrationCalibration = { route = AppRoute.VIBRATION_CALIBRATION },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
                 onOpenPlaces = { route = AppRoute.PLACES },
                 onEngineChanged = { googleNav ->
@@ -651,9 +649,6 @@ private fun OpenDashApp(
                 onBack = { route = AppRoute.SETTINGS }
             )
             AppRoute.TURN_CALIBRATION -> com.navigator.app.ui.screens.TurnCalibrationScreen(
-                onBack = { route = AppRoute.SETTINGS }
-            )
-            AppRoute.VIBRATION_CALIBRATION -> com.navigator.app.ui.screens.VibrationCalibrationScreen(
                 onBack = { route = AppRoute.SETTINGS }
             )
             AppRoute.DESTINATION -> com.navigator.app.ui.screens.DestinationScreen(

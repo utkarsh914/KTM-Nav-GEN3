@@ -159,11 +159,6 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.reevaluateLocationFeatures()
         }
 
-        /** Engine-vibration detection was toggled or recalibrated: restart it with fresh thresholds. */
-        fun reevaluateEngineDetectIfRunning() {
-            runningInstance?.vibrationMonitor?.reevaluate()
-        }
-
         /** Notification action: fully quit - stop the service, drop notifications, close the app task. */
         const val ACTION_EXIT = "com.navigator.app.action.EXIT"
         /** Broadcast the running MainActivity listens for to finish its task on notification-exit. */
@@ -285,19 +280,11 @@ class BccuConnectionService : LifecycleService() {
         registerAdapterStateReceiver()
         startNavigationCoordinator()
         speedMonitor = com.navigator.app.location.SpeedMonitor(this).also { it.start() }
-        vibrationMonitor = com.navigator.app.sensors.VibrationMonitor(this).also { it.start() }
-        // Keep the live movement signals flowing to their consumers continuously,
-        // not just when a guidance update happens to arrive: the beeper's
-        // stationary duck reads this.
+        // Keep the live GPS speed flowing to the beeper's stationary duck
+        // continuously, not just when a guidance update happens to arrive.
         lifecycleScope.launch {
             com.navigator.app.location.SpeedMonitor.speedKmh.collect { kmh ->
-                vibrationMonitor?.currentSpeedKmh = kmh
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = kmh
-            }
-        }
-        lifecycleScope.launch {
-            com.navigator.app.sensors.VibrationMonitor.engineOn.collect { on ->
-                com.navigator.app.audio.TurnBeeper.engineOn = on
             }
         }
         // Debug-only: `adb shell am broadcast -a com.navigator.app.DEBUG_MODE_OVERLAY`
@@ -314,7 +301,6 @@ class BccuConnectionService : LifecycleService() {
 
     private var adapterStateReceiver: android.content.BroadcastReceiver? = null
     private var speedMonitor: com.navigator.app.location.SpeedMonitor? = null
-    var vibrationMonitor: com.navigator.app.sensors.VibrationMonitor? = null
         private set
 
     /**
@@ -584,7 +570,6 @@ class BccuConnectionService : LifecycleService() {
         adapterStateReceiver?.let { runCatching { unregisterReceiver(it) } }
         adapterStateReceiver = null
         speedMonitor?.stop(); speedMonitor = null
-        vibrationMonitor?.destroy(); vibrationMonitor = null
         navCoordinator?.stop(); navCoordinator = null
         stopBleScan()
         settleJob?.cancel(); settleJob = null

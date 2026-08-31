@@ -97,12 +97,11 @@ class AppNotificationListener : NotificationListenerService() {
             // Stereo approach beeps: left ear = left turn, right ear = right turn,
             // faster pattern as the distance (the notification title) shrinks.
             // Ducked to a background hum while the bike is provably waiting
-            // (GPS says stationary / vibration says the engine is off).
+            // (GPS says stationary).
             if (settings.turnBeepEnabled && !NotificationNavProvider.paused.value) {
                 com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
                 com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value
-                com.navigator.app.audio.TurnBeeper.engineOn = com.navigator.app.sensors.VibrationMonitor.engineOn.value
                 com.navigator.app.audio.TurnBeeper.onGuidance(title.ifBlank { null }, guessedIcon, text.ifBlank { null })
             }
             NotificationRepository.updateNavGuidance(

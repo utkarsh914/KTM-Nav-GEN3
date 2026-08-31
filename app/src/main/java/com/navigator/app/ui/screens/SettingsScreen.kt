@@ -85,7 +85,6 @@ fun SettingsScreen(
     onOpenLogs: () -> Unit,
     onOpenSymbolTest: () -> Unit,
     onOpenTurnCalibration: () -> Unit,
-    onOpenVibrationCalibration: () -> Unit = {},
     onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
     onEngineChanged: (Boolean) -> Unit = {},
@@ -106,9 +105,6 @@ fun SettingsScreen(
     var geminiModel by remember { mutableStateOf(settings.geminiModel) }
     var turnBeepEnabled by remember { mutableStateOf(settings.turnBeepEnabled) }
     var beepVolume by remember { mutableStateOf(settings.beepVolumePercent) }
-    var powerSave by remember { mutableStateOf(settings.powerSaveEnabled) }
-    var engineDetect by remember { mutableStateOf(settings.engineDetectEnabled) }
-    var vibSensitivity by remember { mutableStateOf(settings.vibrationSensitivity) }
     var overspeedEnabled by remember { mutableStateOf(settings.overspeedEnabled) }
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
     var waypoint by remember { mutableStateOf(settings.waypoint) }
@@ -308,40 +304,6 @@ fun SettingsScreen(
                             }
                         },
                     ) { MonoValue("Play ›") }
-                    SettingsRow("Engine detect (vibration)", showDivider = true) {
-                        KtmToggle(engineDetect, {
-                            engineDetect = it; settings.engineDetectEnabled = it
-                            BccuConnectionService.reevaluateEngineDetectIfRunning()
-                        })
-                    }
-                    SettingsRow("Calibrate engine detect", showDivider = true, onClick = onOpenVibrationCalibration) {
-                        val calibrated = !settings.vibrationIdleRms.isNaN()
-                        MonoValue(if (calibrated) "Calibrated ›" else "Set up ›")
-                    }
-                    SettingsRow(
-                        "Detection sensitivity", showDivider = true,
-                        onClick = {
-                            vibSensitivity = when (vibSensitivity) {
-                                -25 -> 0; 0 -> 25; else -> -25
-                            }
-                            settings.vibrationSensitivity = vibSensitivity
-                            BccuConnectionService.reevaluateEngineDetectIfRunning()
-                        },
-                    ) {
-                        MonoValue(
-                            when {
-                                vibSensitivity < 0 -> "More sensitive ›"
-                                vibSensitivity > 0 -> "Less sensitive ›"
-                                else -> "Normal ›"
-                            }
-                        )
-                    }
-                    SettingsRow("Power saver (full rate on charge)", showDivider = true) {
-                        KtmToggle(powerSave, {
-                            powerSave = it; settings.powerSaveEnabled = it
-                            BccuConnectionService.reevaluateEngineDetectIfRunning()
-                        })
-                    }
                     SettingsRow("Overspeed alert", showDivider = true) {
                         KtmToggle(overspeedEnabled, { overspeedEnabled = it; settings.overspeedEnabled = it })
                     }

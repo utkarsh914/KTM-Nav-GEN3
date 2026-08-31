@@ -59,18 +59,16 @@ object TurnBeeper {
     @Volatile var volumePercent: Int = com.navigator.app.settings.AppSettings.DEFAULT_BEEP_VOLUME
 
     /**
-     * Live inputs for the stationary duck, pushed by whoever owns them
-     * (SpeedMonitor fixes, VibrationMonitor engine state). null = unknown -
-     * unknown never ducks, so a phone without GPS/calibration keeps full beeps.
+     * Live input for the stationary duck, pushed by whoever owns it (SpeedMonitor
+     * fixes). null = unknown - unknown never ducks, so a phone without GPS keeps
+     * full beeps.
      */
     @Volatile var gpsSpeedKmh: Float? = null
-    @Volatile var engineOn: Boolean? = null
 
     /** A beep is ducked when the bike is demonstrably waiting, not riding toward the turn. */
     private fun duckedNow(): Boolean {
         val speed = gpsSpeedKmh
-        if (speed != null && speed < STATIONARY_KMH) return true
-        return engineOn == false
+        return speed != null && speed < STATIONARY_KMH
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

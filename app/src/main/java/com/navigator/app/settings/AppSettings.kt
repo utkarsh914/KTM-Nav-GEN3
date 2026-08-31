@@ -233,38 +233,6 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getInt(KEY_BEEP_VOLUME, DEFAULT_BEEP_VOLUME)
         set(value) = pairingPrefs.edit().putInt(KEY_BEEP_VOLUME, value.coerceIn(5, 100)).apply()
 
-    /**
-     * Adaptive power: high-refresh sensors/GPS only while the phone is charging
-     * (the usual state on the bike mount); duty-cycled/off on battery. Turning
-     * this OFF keeps everything high-refresh regardless of charge state.
-     */
-    var powerSaveEnabled: Boolean
-        get() = pairingPrefs.getBoolean(KEY_POWER_SAVE, true)
-        set(value) = pairingPrefs.edit().putBoolean(KEY_POWER_SAVE, value).apply()
-
-    /** Detect the engine running from the phone's accelerometer (needs calibration). */
-    var engineDetectEnabled: Boolean
-        get() = pairingPrefs.getBoolean(KEY_ENGINE_DETECT, false)
-        set(value) = pairingPrefs.edit().putBoolean(KEY_ENGINE_DETECT, value).apply()
-
-    /** Calibrated vibration RMS with the bike off / idling, from the guided calibration. NaN = uncalibrated. */
-    var vibrationIdleRms: Float
-        get() = pairingPrefs.getFloat(KEY_VIB_IDLE_RMS, Float.NaN)
-        set(value) = pairingPrefs.edit().putFloat(KEY_VIB_IDLE_RMS, value).apply()
-
-    var vibrationEngineRms: Float
-        get() = pairingPrefs.getFloat(KEY_VIB_ENGINE_RMS, Float.NaN)
-        set(value) = pairingPrefs.edit().putFloat(KEY_VIB_ENGINE_RMS, value).apply()
-
-    /**
-     * Engine-detection sensitivity trim, -50..+50 (%). Negative shifts the
-     * on/off threshold DOWN (more sensitive - detects a gentler idle), positive
-     * shifts it up (fewer false "engine on" from road rumble). 0 = calibrated midpoint.
-     */
-    var vibrationSensitivity: Int
-        get() = pairingPrefs.getInt(KEY_VIB_SENSITIVITY, 0)
-        set(value) = pairingPrefs.edit().putInt(KEY_VIB_SENSITIVITY, value.coerceIn(-50, 50)).apply()
-
     /** Swap the beep left/right channels (default on - matched the rider's headset in the field). */
     var swapBeepChannels: Boolean
         get() = pairingPrefs.getBoolean(KEY_SWAP_BEEP_CHANNELS, true)
@@ -360,11 +328,6 @@ class AppSettings(context: Context) {
         private const val KEY_TURN_BEEP = "turn_beep_enabled"
         private const val KEY_BEEP_VOLUME = "beep_volume_percent"
         const val DEFAULT_BEEP_VOLUME = 35
-        private const val KEY_POWER_SAVE = "power_save_enabled"
-        private const val KEY_ENGINE_DETECT = "engine_detect_enabled"
-        private const val KEY_VIB_IDLE_RMS = "vibration_idle_rms"
-        private const val KEY_VIB_ENGINE_RMS = "vibration_engine_rms"
-        private const val KEY_VIB_SENSITIVITY = "vibration_sensitivity"
         private const val KEY_SWAP_BEEP_CHANNELS = "swap_beep_channels"
         private const val KEY_OVERSPEED_ENABLED = "overspeed_enabled"
         private const val KEY_OVERSPEED_LIMIT = "overspeed_limit_kmh"

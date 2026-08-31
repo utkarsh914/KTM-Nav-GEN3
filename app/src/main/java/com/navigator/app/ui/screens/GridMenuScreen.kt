@@ -209,7 +209,6 @@ private fun QuickToggles() {
     val settings = remember { com.navigator.app.settings.AppSettings(context) }
     var beeps by remember { mutableStateOf(settings.turnBeepEnabled) }
     var overspeed by remember { mutableStateOf(settings.overspeedEnabled) }
-    var powerSave by remember { mutableStateOf(settings.powerSaveEnabled) }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
@@ -221,10 +220,6 @@ private fun QuickToggles() {
         }
         QuickChip("SPEED", overspeed, Modifier.weight(1f)) {
             overspeed = !overspeed; settings.overspeedEnabled = overspeed
-        }
-        QuickChip("PWR SAVE", powerSave, Modifier.weight(1f)) {
-            powerSave = !powerSave; settings.powerSaveEnabled = powerSave
-            BccuConnectionService.reevaluateEngineDetectIfRunning()
         }
     }
 }
