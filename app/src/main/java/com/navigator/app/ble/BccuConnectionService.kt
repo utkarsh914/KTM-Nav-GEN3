@@ -20,6 +20,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.navigator.app.BuildConfig
 import com.navigator.app.R
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
@@ -74,14 +75,17 @@ class BccuConnectionService : LifecycleService() {
         private const val HANDSHAKE_TIMEOUT_KNOWN_MS = 25_000L
         private const val HANDSHAKE_TIMEOUT_FIRST_PAIR_MS = 75_000L
         /**
-         * Grace between SEEING the bike advertise and actually connecting. The
-         * dash's radio wakes well before its pairing manager after ignition-on;
-         * connecting into that gap stalls the handshake and - hammered
-         * repeatedly - can push the dash into re-showing its "add device"
-         * prompt (R21 field report). Ten seconds of settling lets the dash
-         * finish waking before our first attempt.
+         * Grace between SEEING the bike advertise and actually connecting. Kept
+         * short: this used to be 10 s because connecting into a half-awake dash
+         * right after ignition-on was suspected of re-triggering its "add device"
+         * prompt (R21). That's moot now - the prompt is driven solely by our
+         * AppIdKeyArrStatus status reply, not by connection timing - so we no
+         * longer pay 10 s on every reconnect. A small grace remains so we don't
+         * connect into a not-yet-connectable advertise (status-255 churn); a dash
+         * that's genuinely still booting is covered by the handshake watchdog,
+         * which drops and rescans on a stalled auth.
          */
-        private const val CONNECT_SETTLE_MS = 10_000L
+        private const val CONNECT_SETTLE_MS = 2_000L
         /** Cooldown before rescanning after a stalled handshake: one quickish retry, then hang back. */
         private const val RETRY_COOLDOWN_FIRST_MS = 15_000L
         private const val RETRY_COOLDOWN_LATER_MS = 45_000L
@@ -994,7 +998,13 @@ class BccuConnectionService : LifecycleService() {
                     navCoordinator?.onReAuth()
                     startRssiPolling()
                     sendGreeting()
-                    probeVehicleInfo()
+                    // Diagnostics only: reads device info / VIN and probes the
+                    // undocumented 0200/0300 services, queuing ~20 serialised GATT
+                    // ops for ~10s after every auth (results are logged, never used
+                    // functionally). Field logs tied that post-auth churn - and a
+                    // status-133 mystery-char read - to spontaneous link drops, so
+                    // keep it out of release builds.
+                    if (BuildConfig.DEBUG) probeVehicleInfo()
                     if (prpcAvailable) tryStartTelemetry()
                 }
             }
