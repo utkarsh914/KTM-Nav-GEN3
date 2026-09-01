@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/logo.png" width="128" alt="Navigator Gen3 logo"/>
+  <img src="docs/logo.png" width="128" alt="KTM Navigator logo"/>
 </p>
 
-<h1 align="center">Navigator Gen3</h1>
+<h1 align="center">KTM Navigator</h1>
 
 <p align="center">
   <b>Turn-by-turn navigation and notifications on your KTM or Husqvarna Gen-3 dashboard — free, private by default, with a phone-first map and an offline notification-mirroring mode.</b>
@@ -36,8 +36,7 @@ Plus phone-notification mirroring to the dash and a rotating idle screen.
 
 **Silent auto-reconnect.** Once paired, cycling the ignition off and on reconnects on its own in about a
 second — no accepting an "add device" prompt on the dash every ride. The app remembers your pairing keys
-and re-presents them, and keeps them across app updates, reinstalls and new phones. Verified on a KTM 390
-Adventure across repeated ignition cycles.
+and re-presents them, and keeps them across app updates, reinstalls and new phones.
 
 **Google Maps turn-by-turn, on your bike's dash.** Start navigating and the Gen-3 centre display shows
 the turn arrow, distance, road name, ETA and remaining distance. The maneuver arrow — including
@@ -68,9 +67,14 @@ speed up as you near the corner and go quiet when you stop. Adjustable volume, s
 **Overspeed alert.** Plays on the alarm channel at full volume, so it's audible over wind and engine and
 sounds through Do Not Disturb.
 
-**The dash's idle screen.** When you're not navigating, the dash rotates clock and date, the current
-track, and live weather (via Open-Meteo, no API key). When the next turn is 500 m+ away it can show the
-song instead of the road name, switching back as the turn approaches.
+**The dash's idle screen.** When you're not navigating, the dash rotates clock and date, and live weather
+(via Open-Meteo, no API key).
+
+**Auto-finish on arrival.** When you reach your destination the app ends navigation automatically and shows
+a Trip Finished screen — no manual dismissal needed.
+
+**Day/night navigation theme.** The in-app map and guidance UI switch between day and night styles
+automatically based on sunrise/sunset, or you can lock them to follow your app theme.
 
 **Notification mirroring** with group chats and summary notifications filtered out so only real messages
 get through, emoji and unsupported glyphs stripped so text reads cleanly, and a one-tap quick-mute.
@@ -112,9 +116,8 @@ exact dash, a per-slot dash text playground, and shareable logs — which is how
 
 ## Known issues
 
-1. First pairing needs the physical "add device" confirmation on the dash. Expected, once per bike. (The
-   very first reconnect after installing asks once more — that's when the keys are captured — then every
-   ride after that is silent.)
+1. First pairing needs the physical "add device" confirmation on the dash. Expected, once per bike; every
+   reconnect after that is silent.
 2. Turn-icon accuracy depends on your Google Maps version and your specific dash. If an icon looks wrong,
    correct it with the Symbol Test and Turn-icon Calibration screens.
 3. Husqvarna support has never been verified on a physical Husqvarna. It runs on the same dash protocol
@@ -156,7 +159,7 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
 Install to a connected phone with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
 **Optional — the in-app maps engine.** Get a free key at console.cloud.google.com, enable "Maps SDK for
-Android" (and the Navigation SDK / Routes API), restrict it to package `com.navigator.app` plus your
+Android" (and the Navigation SDK / Routes API), restrict it to package `com.navigator.ktm` plus your
 keystore's SHA-1, then add `MAPS_API_KEY=your-key` (and `NAV_SDK_API_KEY=your-key`) to `local.properties`
 before building.
 
@@ -179,7 +182,6 @@ of these bikes or just enjoy reverse-engineering and Android/BLE work. Good plac
   rejected.
 - **Older "MY RIDE" bikes** need a second connection path (Bluetooth Classic + JSON).
 - **Test on a physical Husqvarna** and report how it goes.
-- More nav apps (Waze, OsmAnd, HERE) and notification sources.
 - Improve the turn-icon model with real captured icons.
 - Testing on other Gen-3 bikes and firmware, and reporting what works.
 - UI polish, docs, translations.
