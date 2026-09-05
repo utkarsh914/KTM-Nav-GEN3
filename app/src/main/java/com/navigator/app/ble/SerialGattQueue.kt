@@ -1,5 +1,7 @@
 package com.navigator.app.ble
 
+import java.util.ArrayDeque
+
 /**
  * Serialises GATT operations - the Android BLE stack allows only one outstanding
  * GATT op at a time, so all reads/writes/descriptor-writes funnel through here.
