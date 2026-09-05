@@ -210,6 +210,12 @@ fun NavigationHomeScreen(
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
 
+    // One-shot arrival latch for the current trip. Set the moment we finish (via
+    // proximity or the SDK's arrival callback) and reset only when a new trip
+    // starts, so continued movement past the destination can't re-run the
+    // proximity auto-finish or otherwise re-trigger arrival handling.
+    var arrivalLatched by remember { mutableStateOf(false) }
+
     // ---- Search state -----------------------------------------------------
     val auth = remember { PlacesClient.androidAuth(context) }
     val origin = remember { lastLocation(context) }
@@ -313,6 +319,7 @@ fun NavigationHomeScreen(
         recents = store.recents()
         val token = previewRoutes.getOrNull(selectedRoute)?.routeToken
         onStartNavigation(NavDestination(p.lat, p.lng, p.label, token))
+        arrivalLatched = false
         stage = NavStage.NAVIGATING
     }
 
@@ -325,6 +332,7 @@ fun NavigationHomeScreen(
     // straight back to the map. Keeps `selected` so the screen can name the
     // destination; clears the transient search/preview state.
     fun finishTrip() {
+        arrivalLatched = true
         GoogleNavSdkController.stop()
         query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
@@ -338,7 +346,12 @@ fun NavigationHomeScreen(
     //    otherwise fall back to BROWSE;
     //  - show the "Trip finished" screen once the SDK reports arrival.
     LaunchedEffect(navState.sessionState) {
-        if (navState.sessionState.isActiveNav() && stage != NavStage.NAVIGATING) {
+        if (navState.sessionState.isActiveNav() &&
+            stage != NavStage.NAVIGATING &&
+            // Don't drag the user back into navigation from the completion screen:
+            // late/continued ENROUTE frames after arrival must not resume the trip.
+            stage != NavStage.TRIP_FINISHED
+        ) {
             stage = NavStage.NAVIGATING
         } else if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
             finishTrip()
@@ -352,6 +365,7 @@ fun NavigationHomeScreen(
     LaunchedEffect(navState.remainingDistanceMeters, stage) {
         val remaining = navState.remainingDistanceMeters
         if (stage == NavStage.NAVIGATING &&
+            !arrivalLatched &&
             navState.sessionState.isActiveNav() &&
             remaining != null && remaining <= ARRIVAL_RADIUS_M
         ) {

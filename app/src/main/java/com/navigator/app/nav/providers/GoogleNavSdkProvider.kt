@@ -40,12 +40,21 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     @Volatile private var serviceRegistered = false
     @Volatile private var arrivalListenerAdded = false
 
+    /** True only while guidance is live. Set when guidance actually starts and
+     *  cleared on stop/arrival, so continued-movement NavInfo frames that arrive
+     *  after the trip ends can't flip the state back to ENROUTE (which would
+     *  otherwise resume navigation once the rider keeps moving past the
+     *  destination). See [onNavInfo]. */
+    @Volatile private var guidanceActive = false
+
     /** Last ENROUTE snapshot, so a REROUTING update can keep showing the previous
      *  turn (dimmed) on the phone instead of blanking the custom guidance header. */
     @Volatile private var lastEnroute: NormalizedNavigationState? = null
 
     private val arrivalListener = Navigator.ArrivalListener {
         AppLogger.log("Nav", "Nav SDK arrival")
+        guidanceActive = false
+        lastEnroute = null
         _state.value = NormalizedNavigationState(
             sessionState = NavSessionState.ARRIVED,
             producedAtMs = System.currentTimeMillis(),
@@ -108,6 +117,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         nav.setDestinations(listOf(waypoint), options).setOnResultListener { status ->
             if (status == Navigator.RouteStatus.OK) {
                 AppLogger.log("Nav", "Route (token) OK - starting guidance")
+                guidanceActive = true
                 nav.startGuidance()
             } else {
                 AppLogger.log("Nav", "token route failed ($status) - default routing")
@@ -138,6 +148,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             when {
                 status == Navigator.RouteStatus.OK -> {
                     AppLogger.log("Nav", "Route OK - starting guidance")
+                    guidanceActive = true
                     nav.startGuidance()
                 }
                 allowFallback -> {
@@ -156,6 +167,11 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     }
 
     override fun stopNavigation() {
+        // Stop consuming updates *before* tearing down guidance so any in-flight
+        // NavInfo frame (or one produced by continued movement) can't flip the
+        // state back to ENROUTE and resume navigation.
+        guidanceActive = false
+        lastEnroute = null
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
             runCatching { nav.clearDestinations() }
@@ -168,6 +184,11 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** Forwarded from [NavInfoReceivingService] on each ~1 Hz update. */
     fun onNavInfo(navInfo: NavInfo) {
+        // Ignore updates once the trip has ended (stopped or arrived). The SDK's
+        // NavInfo stream keeps delivering ENROUTE frames while the rider moves
+        // past the destination; without this guard those frames would overwrite
+        // the ARRIVED/STOPPED state and resume navigation.
+        if (!guidanceActive) return
         val now = System.currentTimeMillis()
         val session = when (navInfo.navState) {
             NavState.ENROUTE -> NavSessionState.ENROUTE
