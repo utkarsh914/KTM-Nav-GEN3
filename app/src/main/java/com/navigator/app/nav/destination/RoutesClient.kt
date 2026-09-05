@@ -16,6 +16,9 @@ data class RoutePreview(
     val points: List<LatLng>,
     /** Routes API route token — lets the Nav SDK guide this exact route. */
     val routeToken: String? = null,
+    /** Traffic delay in seconds: live (traffic-aware) `duration` minus the
+     *  free-flow `staticDuration`. 0 when unknown or no delay. */
+    val delaySeconds: Int = 0,
 )
 
 /**
@@ -65,7 +68,7 @@ object RoutesClient {
             setRequestProperty("X-Goog-Api-Key", key)
             setRequestProperty(
                 "X-Goog-FieldMask",
-                "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeToken",
+                "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeToken",
             )
             applyAndroidAuth(auth)
             connectTimeout = 10_000
@@ -105,12 +108,14 @@ object RoutesClient {
         for (i in 0 until routes.length()) {
             val r = routes.getJSONObject(i)
             val distance = r.optInt("distanceMeters", 0)
-            // duration comes as a protobuf duration string, e.g. "3120s".
+            // duration / staticDuration come as protobuf duration strings, e.g. "3120s".
             val durationSec = r.optString("duration").removeSuffix("s").toIntOrNull() ?: 0
+            val staticSec = r.optString("staticDuration").removeSuffix("s").toIntOrNull() ?: durationSec
+            val delaySec = (durationSec - staticSec).coerceAtLeast(0)
             val encoded = r.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty()
             val points = decodePolyline(encoded)
             val token = r.optString("routeToken").ifBlank { null }
-            if (points.isNotEmpty()) out += RoutePreview(durationSec, distance, points, token)
+            if (points.isNotEmpty()) out += RoutePreview(durationSec, distance, points, token, delaySec)
         }
         return out
     }

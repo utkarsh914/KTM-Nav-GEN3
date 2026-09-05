@@ -860,6 +860,7 @@ private fun PreviewCard(
                         RouteChip(
                             durationSeconds = r.durationSeconds,
                             distanceMeters = r.distanceMeters,
+                            delaySeconds = r.delaySeconds,
                             label = if (i == 0) "Fastest" else "Alt ${i}",
                             selected = i == selectedIndex,
                             modifier = Modifier.weight(1f),
@@ -877,11 +878,13 @@ private fun PreviewCard(
     }
 }
 
-/** A selectable route option (duration + distance), highlighted when selected. */
+/** A selectable route option (duration + distance + traffic), highlighted when
+ *  selected. Traffic shows the delay vs. free-flow with a colour-coded dot. */
 @Composable
 private fun RouteChip(
     durationSeconds: Int,
     distanceMeters: Int,
+    delaySeconds: Int,
     label: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
@@ -909,6 +912,30 @@ private fun RouteChip(
             DistanceFormatter.format(distanceMeters, DistanceUnits.METRIC),
             color = if (selected) Ktm.OnAccent else Ktm.Muted2,
             fontFamily = JetBrainsMono, fontSize = 12.sp,
+        )
+        TrafficLine(delaySeconds = delaySeconds, onAccent = selected)
+    }
+}
+
+/** Traffic delay indicator: a colour-coded dot + label. Green "On time" under a
+ *  minute, otherwise "+N min" shaded light-orange / orange / red by severity. */
+@Composable
+private fun TrafficLine(delaySeconds: Int, onAccent: Boolean) {
+    val delayMin = delaySeconds / 60
+    val dotColor = when {
+        delayMin < 1 -> Ktm.Green
+        delayMin < 15 -> Ktm.Orange
+        else -> Ktm.Danger
+    }
+    val label = if (delayMin < 1) "On time" else "+$delayMin min"
+    Spacer(Modifier.height(4.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(if (onAccent) Ktm.OnAccent else dotColor))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            label,
+            color = if (onAccent) Ktm.OnAccent else dotColor,
+            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 12.sp,
         )
     }
 }
