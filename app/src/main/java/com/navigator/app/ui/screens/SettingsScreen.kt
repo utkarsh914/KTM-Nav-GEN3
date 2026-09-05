@@ -30,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -49,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,7 +57,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.settings.AppSettings
-import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.GroupCard
 import com.navigator.app.ui.components.KtmToggle
 import com.navigator.app.ui.components.MonoValue
@@ -67,7 +64,6 @@ import com.navigator.app.ui.components.SettingsRow
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
-import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

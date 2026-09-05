@@ -79,7 +79,6 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.libraries.navigation.ForceNightMode
 import com.google.android.libraries.navigation.NavigationView
-import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.FavoritePlace

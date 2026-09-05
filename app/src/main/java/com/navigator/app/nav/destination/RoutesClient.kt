@@ -149,14 +149,4 @@ object RoutesClient {
         return poly
     }
 
-    private fun HttpURLConnection.applyAndroidAuth(auth: AndroidClientAuth?) {
-        if (auth == null || auth.certSha1Hex.isBlank()) return
-        setRequestProperty("X-Android-Package", auth.packageName)
-        setRequestProperty("X-Android-Cert", auth.certSha1Hex)
-    }
-
-    private fun readBody(conn: HttpURLConnection, code: Int): String {
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        return stream?.bufferedReader()?.use { it.readText() } ?: ""
-    }
 }

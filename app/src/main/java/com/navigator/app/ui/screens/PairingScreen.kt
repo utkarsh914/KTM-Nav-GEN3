@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.CubicBezierEasing
@@ -53,13 +52,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.navigator.app.BuildConfig
 import com.navigator.app.ble.BccuConnectionService
+import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.OpenDashPermissions
 import com.navigator.app.ui.components.KtmPrimaryButton
@@ -146,7 +145,9 @@ fun PairingScreen(
                     foundDevices.add(FoundDevice(dev, 0))
                 }
             }
-        } catch (e: SecurityException) { /* ignore */ }
+        } catch (e: SecurityException) {
+            AppLogger.log("Pairing", "bondedDevices read denied (BLUETOOTH_CONNECT missing): ${e.message}")
+        }
         scanning = true
         try {
             scanner.startScan(scanCallback)
@@ -156,7 +157,9 @@ fun PairingScreen(
             return
         }
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            try { scanner.stopScan(scanCallback) } catch (e: SecurityException) { /* ignore */ }
+            try { scanner.stopScan(scanCallback) } catch (e: SecurityException) {
+                AppLogger.log("Pairing", "stopScan denied (BLUETOOTH_SCAN missing): ${e.message}")
+            }
             scanning = false
         }, 8000)
     }

@@ -48,8 +48,6 @@ class PlacesStore(context: Context) {
         prefs.edit().putString(KEY_RECENTS, writePlaces(updated)).apply()
     }
 
-    fun clearRecents() = prefs.edit().remove(KEY_RECENTS).apply()
-
     // ---- Favorites --------------------------------------------------------
 
     fun favorites(): List<FavoritePlace> {
@@ -71,9 +69,6 @@ class PlacesStore(context: Context) {
             }
         }.getOrDefault(emptyList())
     }
-
-    fun favoriteFor(slot: FavoriteSlot): FavoritePlace? =
-        favorites().firstOrNull { it.slot == slot }
 
     /** True if this place is in the SAVED (OTHER) list (by rounded coords). */
     fun isSaved(lat: Double, lng: Double): Boolean {

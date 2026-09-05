@@ -141,8 +141,4 @@ object AppLogger {
     }
 
     fun currentLogFile(): File? = if (initialized) logFile else null
-
-    fun clear() {
-        _lines.value = emptyList()
-    }
 }

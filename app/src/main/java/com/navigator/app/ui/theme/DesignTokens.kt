@@ -48,26 +48,18 @@ data class BrandTheme(
     val accentDeep: Color,
     val onAccent: Color, // text/icon colour that sits ON an accent fill
     // Backgrounds
-    val board: Color,
     val screen: Color,
     val black: Color,
     val screenDeep: Color,
     // Surfaces
     val surface: Color,
     val surfaceAlt: Color,
-    val surfaceAlt2: Color,
-    val notifCard: Color,
     val surfaceDisabled: Color,
-    val connBanner: Color,
-    val monoChip: Color,
-    val dashBanner: Color,
     // Borders
     val border: Color,
     val bezel: Color,
     val rowDivider: Color,
-    val notifBorder: Color,
     val connBorder: Color,
-    val monoChipBorder: Color,
     val borderSoft: Color,
     // Text
     val head: Color, // strongest heading text (was "White")
@@ -76,9 +68,6 @@ data class BrandTheme(
     val muted: Color,
     val muted2: Color,
     val dim: Color,
-    val dim2: Color,
-    val dim3: Color,
-    val connSub: Color,
     // Semantic (themed for contrast, meaning fixed)
     val green: Color,
     val danger: Color,
@@ -120,24 +109,16 @@ fun isNightTime(hourOfDay: Int = java.time.LocalTime.now().hour): Boolean =
  */
 data class NeutralPalette(
     val isDark: Boolean,
-    val board: Color,
     val screen: Color,
     val black: Color,
     val screenDeep: Color,
     val surface: Color,
     val surfaceAlt: Color,
-    val surfaceAlt2: Color,
-    val notifCard: Color,
     val surfaceDisabled: Color,
-    val connBanner: Color,
-    val monoChip: Color,
-    val dashBanner: Color,
     val border: Color,
     val bezel: Color,
     val rowDivider: Color,
-    val notifBorder: Color,
     val connBorder: Color,
-    val monoChipBorder: Color,
     val borderSoft: Color,
     val head: Color,
     val textPrimary: Color,
@@ -145,9 +126,6 @@ data class NeutralPalette(
     val muted: Color,
     val muted2: Color,
     val dim: Color,
-    val dim2: Color,
-    val dim3: Color,
-    val connSub: Color,
     val green: Color,
     val danger: Color,
 )
@@ -168,24 +146,16 @@ data class BrandIdentity(
 /** Dark neutrals — the original OpenDash KTM handoff greys, 1:1. */
 val DarkNeutrals = NeutralPalette(
     isDark = true,
-    board = Color(0xFF08090A),
     screen = Color(0xFF0B0C0E),
     black = Color(0xFF000000),
     screenDeep = Color(0xFF050505),
     surface = Color(0xFF141618),
     surfaceAlt = Color(0xFF101214),
-    surfaceAlt2 = Color(0xFF101215),
-    notifCard = Color(0xFF0F0F10),
     surfaceDisabled = Color(0xFF1A1C1F),
-    connBanner = Color(0xFF0F1416),
-    monoChip = Color(0xFF191B1F),
-    dashBanner = Color(0xFF0C0C0C),
     border = Color(0xFF24272D),
     bezel = Color(0xFF2A2D33),
     rowDivider = Color(0xFF202329),
-    notifBorder = Color(0xFF1E1E20),
     connBorder = Color(0xFF1D3A2B),
-    monoChipBorder = Color(0xFF26282E),
     borderSoft = Color(0xFF3A3D44),
     head = Color(0xFFFFFFFF),
     textPrimary = Color(0xFFE6E7EA),
@@ -193,9 +163,6 @@ val DarkNeutrals = NeutralPalette(
     muted = Color(0xFF9AA0A8),
     muted2 = Color(0xFF8A8F98),
     dim = Color(0xFF6C727B),
-    dim2 = Color(0xFF5C626B),
-    dim3 = Color(0xFF4C525B),
-    connSub = Color(0xFF7B8188),
     green = Color(0xFF34D07F),
     danger = Color(0xFFFF4438),
 )
@@ -203,24 +170,16 @@ val DarkNeutrals = NeutralPalette(
 /** Light neutrals — clean neutral greys on white, tuned to sit under any accent. */
 val LightNeutrals = NeutralPalette(
     isDark = false,
-    board = Color(0xFFE8E8EA),
     screen = Color(0xFFF3F3F5),
     black = Color(0xFFFFFFFF), // "max-contrast bg" → white in a light theme
     screenDeep = Color(0xFFEAEAEC),
     surface = Color(0xFFFFFFFF),
     surfaceAlt = Color(0xFFF6F6F8),
-    surfaceAlt2 = Color(0xFFF2F2F4),
-    notifCard = Color(0xFFFFFFFF),
     surfaceDisabled = Color(0xFFE2E2E5),
-    connBanner = Color(0xFFEFF6F1), // faint green card
-    monoChip = Color(0xFFEFEFF1),
-    dashBanner = Color(0xFFF1F1F3),
     border = Color(0xFFDBDBDF),
     bezel = Color(0xFFCBCBD1),
     rowDivider = Color(0xFFE9E9EC),
-    notifBorder = Color(0xFFE4E4E7),
     connBorder = Color(0xFFBFE0CC),
-    monoChipBorder = Color(0xFFDBDBDF),
     borderSoft = Color(0xFFC5C5CC),
     head = Color(0xFF16181C),
     textPrimary = Color(0xFF2A2D33),
@@ -228,9 +187,6 @@ val LightNeutrals = NeutralPalette(
     muted = Color(0xFF6D7178),
     muted2 = Color(0xFF7C8088),
     dim = Color(0xFF9A9EA6),
-    dim2 = Color(0xFFACB0B7),
-    dim3 = Color(0xFFBEC1C7),
-    connSub = Color(0xFF6D7178),
     green = Color(0xFF1B9A56),
     danger = Color(0xFFE5362B),
 )
@@ -278,24 +234,16 @@ fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = Bra
     accent = identity.accent,
     accentDeep = identity.accentDeep,
     onAccent = identity.onAccent,
-    board = neutrals.board,
     screen = neutrals.screen,
     black = neutrals.black,
     screenDeep = neutrals.screenDeep,
     surface = neutrals.surface,
     surfaceAlt = neutrals.surfaceAlt,
-    surfaceAlt2 = neutrals.surfaceAlt2,
-    notifCard = neutrals.notifCard,
     surfaceDisabled = neutrals.surfaceDisabled,
-    connBanner = neutrals.connBanner,
-    monoChip = neutrals.monoChip,
-    dashBanner = neutrals.dashBanner,
     border = neutrals.border,
     bezel = neutrals.bezel,
     rowDivider = neutrals.rowDivider,
-    notifBorder = neutrals.notifBorder,
     connBorder = neutrals.connBorder,
-    monoChipBorder = neutrals.monoChipBorder,
     borderSoft = neutrals.borderSoft,
     head = neutrals.head,
     textPrimary = neutrals.textPrimary,
@@ -303,9 +251,6 @@ fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = Bra
     muted = neutrals.muted,
     muted2 = neutrals.muted2,
     dim = neutrals.dim,
-    dim2 = neutrals.dim2,
-    dim3 = neutrals.dim3,
-    connSub = neutrals.connSub,
     green = neutrals.green,
     danger = neutrals.danger,
 )
@@ -344,7 +289,6 @@ object Ktm {
     val OnAccent get() = current.onAccent
 
     // Backgrounds
-    val Board get() = current.board
     val Screen get() = current.screen
     val Black get() = current.black
     val ScreenDeep get() = current.screenDeep
@@ -352,20 +296,13 @@ object Ktm {
     // Surfaces / cards
     val Surface get() = current.surface
     val SurfaceAlt get() = current.surfaceAlt
-    val SurfaceAlt2 get() = current.surfaceAlt2
-    val NotifCard get() = current.notifCard
     val SurfaceDisabled get() = current.surfaceDisabled
-    val ConnBanner get() = current.connBanner
-    val MonoChip get() = current.monoChip
-    val DashBanner get() = current.dashBanner
 
     // Borders
     val Border get() = current.border
     val Bezel get() = current.bezel
     val RowDivider get() = current.rowDivider
-    val NotifBorder get() = current.notifBorder
     val ConnBorder get() = current.connBorder
-    val MonoChipBorder get() = current.monoChipBorder
     val BorderSoft get() = current.borderSoft
 
     // Text
@@ -375,9 +312,6 @@ object Ktm {
     val Muted get() = current.muted
     val Muted2 get() = current.muted2
     val Dim get() = current.dim
-    val Dim2 get() = current.dim2
-    val Dim3 get() = current.dim3
-    val ConnSub get() = current.connSub
 
     // Semantic
     val Green get() = current.green

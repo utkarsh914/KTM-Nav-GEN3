@@ -48,8 +48,6 @@ object PlacesClient {
     private const val TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
     private const val DETAILS_BASE = "https://places.googleapis.com/v1/places/"
 
-    val apiKeyPresent: Boolean get() = BuildConfig.NAV_SDK_API_KEY.isNotBlank()
-
     @Volatile private var cachedAuth: AndroidClientAuth? = null
 
     /**
@@ -239,15 +237,4 @@ object PlacesClient {
         return PlaceLocation(loc.getDouble("latitude"), loc.getDouble("longitude"))
     }
 
-    /** Attach the Android client identity so an Android-restricted key accepts the REST call. */
-    private fun HttpURLConnection.applyAndroidAuth(auth: AndroidClientAuth?) {
-        if (auth == null || auth.certSha1Hex.isBlank()) return
-        setRequestProperty("X-Android-Package", auth.packageName)
-        setRequestProperty("X-Android-Cert", auth.certSha1Hex)
-    }
-
-    private fun readBody(conn: HttpURLConnection, code: Int): String {
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        return stream?.bufferedReader()?.use { it.readText() } ?: ""
-    }
 }

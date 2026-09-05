@@ -305,42 +305,6 @@ fun ScreenTopBar(
     }
 }
 
-/** Rounded connection-status pill (dot + label), tappable (e.g. to open pairing).
- *  Shared by the mirror home and Settings. */
-@Composable
-fun ConnectionPill(
-    state: BccuConnectionService.ConnectionState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val (label, color) = when (state) {
-        BccuConnectionService.ConnectionState.AUTHENTICATED -> "Connected" to Ktm.Orange
-        BccuConnectionService.ConnectionState.CONNECTING -> "Connecting…" to Ktm.Muted2
-        BccuConnectionService.ConnectionState.DISCONNECTED -> "Not connected" to Ktm.Dim
-    }
-    val interaction = remember { MutableInteractionSource() }
-    val scale = rememberPressScale(interaction)
-    Row(
-        modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(
-                interactionSource = interaction,
-                indication = LocalIndication.current,
-                onClick = onClick,
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.size(7.dp))
-        Text(label, color = Ktm.White, fontFamily = BarlowCondensed,
-            fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-    }
-}
-
 /** A 52dp rounded-square icon button. Shared by both home screens (settings,
  *  clear, recenter) so the control chrome is identical across engines and lines
  *  up with the search bar / connection pill height. */

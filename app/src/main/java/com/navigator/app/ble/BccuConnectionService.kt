@@ -44,8 +44,6 @@ class BccuConnectionService : LifecycleService() {
 
     enum class ConnectionState { DISCONNECTED, CONNECTING, AUTHENTICATED }
 
-    data class NotificationSent(val text: String, val icon: BccuProtocol.NotificationIcon)
-
     companion object {
         private const val CHANNEL_ID = "bccu_connection"
         private const val NOTIFICATION_ID = 1
@@ -108,20 +106,9 @@ class BccuConnectionService : LifecycleService() {
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
 
-        private val _navNotificationText = MutableStateFlow<String?>(null)
-        val navNotificationText: StateFlow<String?> = _navNotificationText
-
         /** Human-readable name of the bike we're connected/connecting to (e.g. "KTM3638"). */
         private val _deviceName = MutableStateFlow<String?>(null)
         val deviceName: StateFlow<String?> = _deviceName
-
-        /** Live signal strength in dBm while authenticated, polled every few seconds; null when unknown. */
-        private val _signalRssi = MutableStateFlow<Int?>(null)
-        val signalRssi: StateFlow<Int?> = _signalRssi
-
-        /** Latest decoded vehicle telemetry values by datapoint name (e.g. "ECU_Engine_Rpm" -> "4200 rpm"). Empty if the bike doesn't expose the PRPC service. */
-        private val _telemetry = MutableStateFlow<Map<String, String>>(emptyMap())
-        val telemetry: StateFlow<Map<String, String>> = _telemetry
 
         fun start(context: Context, deviceAddress: String) {
             val intent = Intent(context, BccuConnectionService::class.java)
@@ -183,16 +170,6 @@ class BccuConnectionService : LifecycleService() {
         fun sendGuidanceIfRunning(distanceText: String?, roadText: String?, etaText: String? = null, remainingDistanceText: String? = null) {
             runningInstance?.sendGuidance(distanceText, roadText, etaText, remainingDistanceText)
         }
-
-        /**
-         * Clear the dash's center guidance view when navigation ends (the nav
-         * app's notification was removed). Debounced inside the service so a
-         * transient remove+repost (which Google Maps does routinely while
-         * navigating) doesn't blank the display for a frame.
-         */
-        fun clearGuidanceIfRunning() {
-            runningInstance?.scheduleGuidanceClear()
-        }
     }
 
     private var gatt: BluetoothGatt? = null
@@ -205,7 +182,6 @@ class BccuConnectionService : LifecycleService() {
     private var marqueeJob: Job? = null
     private var guidanceClearJob: Job? = null
     private var lastNotificationIcon: BccuProtocol.NotificationIcon = BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
-    private var rssiJob: Job? = null
     private var reconnectWatchdogJob: Job? = null
     private var handshakeTimeoutJob: Job? = null
     private var handshakeRecoveries: Int = 0
@@ -214,10 +190,6 @@ class BccuConnectionService : LifecycleService() {
     private var scanCallback: android.bluetooth.le.ScanCallback? = null
     @Volatile private var scanning: Boolean = false
     @Volatile private var scanTargetAddress: String? = null
-    private var prpcAvailable = false
-    private var telemetrySchema: List<Datapoint>? = null
-    private var telemetrySid: Int = 0
-    private fun nextSid(): Int { telemetrySid = (telemetrySid + 1) and 0xFF; return telemetrySid }
 
     // Guarded by gattQueueLock: ops are enqueued/finished on BLE binder threads
     // while teardown paths (adapter-off receiver, watchdog, handshake recovery)
@@ -345,11 +317,9 @@ class BccuConnectionService : LifecycleService() {
                         settleJob?.cancel(); settleJob = null
                         try { gatt?.disconnect(); gatt?.close() } catch (e: Exception) { /* stack is going down anyway */ }
                         gatt = null
-                        rssiJob?.cancel(); rssiJob = null
                         handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                         tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
                         clearGattQueue()
-                        _signalRssi.value = null
                         _connectionState.value = ConnectionState.DISCONNECTED
                         updateForegroundNotification("Bluetooth is off")
                     }
@@ -682,8 +652,6 @@ class BccuConnectionService : LifecycleService() {
                     // fresh retry budget, not leftovers from the last stall.
                     if (_connectionState.value == ConnectionState.AUTHENTICATED) handshakeRecoveries = 0
                     _connectionState.value = ConnectionState.DISCONNECTED
-                    _signalRssi.value = null
-                    rssiJob?.cancel(); rssiJob = null
                     handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                     tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
                     clearGattQueue()
@@ -713,9 +681,9 @@ class BccuConnectionService : LifecycleService() {
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             try {
                 AppLogger.log("BLE", "onServicesDiscovered status=$status, ${g.services.size} services")
-                dumpGattTable(g)
-                prpcAvailable = g.getService(BccuProtocol.PRPC_SERVICE) != null
-                AppLogger.log("BLE", "PRPC telemetry service (0600) present: $prpcAvailable")
+                // Diagnostic only: full per-connect GATT dump is noisy and the log
+                // is mirrored to public storage, so keep it to debug builds.
+                if (BuildConfig.DEBUG) dumpGattTable(g)
                 val mainService = g.getService(BccuProtocol.MAIN_SERVICE)
                 if (mainService == null) {
                     AppLogger.log("BLE", "!! MAIN_SERVICE not found on this device")
@@ -784,10 +752,6 @@ class BccuConnectionService : LifecycleService() {
             }
         }
 
-        override fun onReadRemoteRssi(g: BluetoothGatt, rssi: Int, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) _signalRssi.value = rssi
-        }
-
         // Legacy dispatch path for API < 33 (value-carrying overload below on 33+).
         @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
         override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
@@ -812,22 +776,9 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    /** Poll RSSI every 3s while the session is up so the Grid banner can show live signal strength. */
-    private fun startRssiPolling() {
-        rssiJob?.cancel()
-        rssiJob = lifecycleScope.launch {
-            while (true) {
-                gatt?.readRemoteRssi()
-                delay(3000)
-            }
-        }
-    }
-
     private fun handleIncoming(uuid: java.util.UUID, value: ByteArray) {
         when (uuid) {
             BccuProtocol.AUTH_REQUEST -> handleAuthMessage(value)
-            BccuProtocol.PRPC_NOTIFICATION -> handlePrpcNotification(value)
-            BccuProtocol.PRPC_RESPONSE -> handlePrpcResponse(value)
             BccuProtocol.BASE_VIN -> {
                 // VIN pushed on 0002 after we wrote the GET_VIN_REQUEST. Decrypt
                 // on the data plane (framed) and log both raw and decoded.
@@ -996,7 +947,6 @@ class BccuConnectionService : LifecycleService() {
                     // Re-push any active guidance snapshot so a reconnect never
                     // leaves the TFT stale (encoder re-sends state + guidance).
                     navCoordinator?.onReAuth()
-                    startRssiPolling()
                     sendGreeting()
                     // Diagnostics only: reads device info / VIN and probes the
                     // undocumented 0200/0300 services, queuing ~20 serialised GATT
@@ -1005,7 +955,6 @@ class BccuConnectionService : LifecycleService() {
                     // status-133 mystery-char read - to spontaneous link drops, so
                     // keep it out of release builds.
                     if (BuildConfig.DEBUG) probeVehicleInfo()
-                    if (prpcAvailable) tryStartTelemetry()
                 }
             }
         }
@@ -1066,16 +1015,30 @@ class BccuConnectionService : LifecycleService() {
         writeCharacteristic(BccuProtocol.AUTH_REPLY, encrypted)
     }
 
-    fun sendTurnIcon(icon: BccuProtocol.TurnIcon, visibility: BccuProtocol.Visibility = BccuProtocol.Visibility.FULL) {
+    /**
+     * Encrypt [payload] with the live session key/IV and write it to [uuid].
+     * Returns false (without writing) when there's no authenticated session yet,
+     * so the dash-write methods below don't each repeat the key/iv null-guard and
+     * the `BccuCrypto.encryptData(payload, key, iv)` call.
+     */
+    private fun sendEncrypted(uuid: java.util.UUID, payload: ByteArray, coalesce: Boolean = false): Boolean {
         val key = activeSessionKey
         val iv = tempIv
-        if (key == null || iv == null) {
-            AppLogger.log("Dash", "!! Cannot send TURN_ICON - not authenticated yet")
-            return
-        }
-        AppLogger.log("Dash", "Sending TURN_ICON = ${icon.name}")
+        if (key == null || iv == null) return false
+        writeCharacteristic(uuid, BccuCrypto.encryptData(payload, key, iv), coalesce = coalesce)
+        return true
+    }
+
+    /** True once the crypto handshake has produced a usable session key + IV. */
+    private fun hasSession(): Boolean = activeSessionKey != null && tempIv != null
+
+    fun sendTurnIcon(icon: BccuProtocol.TurnIcon, visibility: BccuProtocol.Visibility = BccuProtocol.Visibility.FULL) {
         val payload = BccuProtocol.buildTurnIconPayload(icon, visibility)
-        writeCharacteristic(BccuProtocol.TURN_ICON, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+        if (sendEncrypted(BccuProtocol.TURN_ICON, payload, coalesce = true)) {
+            AppLogger.log("Dash", "Sending TURN_ICON = ${icon.name}")
+        } else {
+            AppLogger.log("Dash", "!! Cannot send TURN_ICON - not authenticated yet")
+        }
     }
 
     /**
@@ -1163,10 +1126,8 @@ class BccuConnectionService : LifecycleService() {
     }
 
     private fun writeNotificationFrame(text: String, icon: BccuProtocol.NotificationIcon, visibility: BccuProtocol.Visibility) {
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
         val payload = BccuProtocol.buildNotificationPayload(icon, text, visibility)
-        writeCharacteristic(BccuProtocol.NOTIFICATION, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+        sendEncrypted(BccuProtocol.NOTIFICATION, payload, coalesce = true)
     }
 
     /**
@@ -1179,11 +1140,10 @@ class BccuConnectionService : LifecycleService() {
      */
     private fun clearNotificationDisplay() {
         bannerOwnedByMessage = false
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
-        AppLogger.log("Dash", "Clearing NOTIFICATION display (visibility OFF, icon=${lastNotificationIcon.name})")
         val payload = BccuProtocol.buildNotificationPayload(lastNotificationIcon, "", BccuProtocol.Visibility.OFF)
-        writeCharacteristic(BccuProtocol.NOTIFICATION, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+        if (sendEncrypted(BccuProtocol.NOTIFICATION, payload, coalesce = true)) {
+            AppLogger.log("Dash", "Clearing NOTIFICATION display (visibility OFF, icon=${lastNotificationIcon.name})")
+        }
     }
 
     /**
@@ -1195,18 +1155,16 @@ class BccuConnectionService : LifecycleService() {
      * (the app's own connect banner shows the walking-person icon).
      */
     private fun sendGreeting() {
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
         val name = AppSettings(this).userName?.trim()
         val text = if (!name.isNullOrBlank()) "Hi $name!" else "Welcome!"
-        AppLogger.log("Dash", "Sending connect greeting: \"$text\"")
         val full = BccuProtocol.Visibility.FULL
-        writeCharacteristic(BccuProtocol.TURN_ICON,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.START, full), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.TURN_ROAD,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnRoadPayload(text, full), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.TURN_DISTANCE,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnDistancePayload("", BccuProtocol.Visibility.OFF), key, iv), coalesce = true)
+        // Bail (without scheduling the clear job) if we're not authenticated yet.
+        if (!sendEncrypted(BccuProtocol.TURN_ICON,
+                BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.START, full), coalesce = true)) return
+        AppLogger.log("Dash", "Sending connect greeting: \"$text\"")
+        sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(text, full), coalesce = true)
+        sendEncrypted(BccuProtocol.TURN_DISTANCE,
+            BccuProtocol.buildTurnDistancePayload("", BccuProtocol.Visibility.OFF), coalesce = true)
         // Reuse the guidance-clear job: a real guidance update cancels it, so the
         // greeting is replaced seamlessly the moment navigation starts.
         guidanceClearJob?.cancel()
@@ -1217,15 +1175,12 @@ class BccuConnectionService : LifecycleService() {
     }
 
     fun sendNavigationState(guidanceOn: Boolean, gpsIconOn: Boolean, volume: Int = 255) {
-        val key = activeSessionKey
-        val iv = tempIv
-        if (key == null || iv == null) {
-            AppLogger.log("Dash", "!! Cannot send NAVIGATION_STATE - not authenticated yet")
-            return
-        }
-        AppLogger.log("Dash", "Sending NAVIGATION_STATE guidanceOn=$guidanceOn gpsIconOn=$gpsIconOn volume=$volume")
         val payload = BccuProtocol.buildNavigationStatePayload(guidanceOn, gpsIconOn, volume)
-        writeCharacteristic(BccuProtocol.NAVIGATION_STATE, BccuCrypto.encryptData(payload, key, iv))
+        if (sendEncrypted(BccuProtocol.NAVIGATION_STATE, payload)) {
+            AppLogger.log("Dash", "Sending NAVIGATION_STATE guidanceOn=$guidanceOn gpsIconOn=$gpsIconOn volume=$volume")
+        } else {
+            AppLogger.log("Dash", "!! Cannot send NAVIGATION_STATE - not authenticated yet")
+        }
     }
 
     /**
@@ -1236,9 +1191,7 @@ class BccuConnectionService : LifecycleService() {
      * characteristic unchanged.
      */
     fun sendGuidance(distanceText: String?, roadText: String?, etaText: String? = null, remainingDistanceText: String? = null) {
-        val key = activeSessionKey
-        val iv = tempIv
-        if (key == null || iv == null) {
+        if (!hasSession()) {
             AppLogger.log("Dash", "!! Cannot send guidance update - not authenticated yet")
             return
         }
@@ -1247,23 +1200,19 @@ class BccuConnectionService : LifecycleService() {
         guidanceClearJob?.cancel()
         if (distanceText != null) {
             AppLogger.log("Dash", "Sending TURN_DISTANCE = \"$distanceText\"")
-            val payload = BccuProtocol.buildTurnDistancePayload(distanceText)
-            writeCharacteristic(BccuProtocol.TURN_DISTANCE, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+            sendEncrypted(BccuProtocol.TURN_DISTANCE, BccuProtocol.buildTurnDistancePayload(distanceText), coalesce = true)
         }
         if (roadText != null) {
             AppLogger.log("Dash", "Sending TURN_ROAD = \"$roadText\"")
-            val payload = BccuProtocol.buildTurnRoadPayload(roadText)
-            writeCharacteristic(BccuProtocol.TURN_ROAD, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+            sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(roadText), coalesce = true)
         }
         if (etaText != null) {
             AppLogger.log("Dash", "Sending ETA = \"$etaText\"")
-            val payload = BccuProtocol.buildEtaPayload(etaText)
-            writeCharacteristic(BccuProtocol.ETA, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+            sendEncrypted(BccuProtocol.ETA, BccuProtocol.buildEtaPayload(etaText), coalesce = true)
         }
         if (remainingDistanceText != null) {
             AppLogger.log("Dash", "Sending REMAINING_DISTANCE = \"$remainingDistanceText\"")
-            val payload = BccuProtocol.buildRemainingDistancePayload(remainingDistanceText)
-            writeCharacteristic(BccuProtocol.REMAINING_DISTANCE, BccuCrypto.encryptData(payload, key, iv), coalesce = true)
+            sendEncrypted(BccuProtocol.REMAINING_DISTANCE, BccuProtocol.buildRemainingDistancePayload(remainingDistanceText), coalesce = true)
         }
     }
 
@@ -1292,25 +1241,18 @@ class BccuConnectionService : LifecycleService() {
         // Navigation genuinely ended (this call is debounced past Maps' routine
         // remove+repost) - let the next route's first approach beep fire again.
         com.navigator.app.audio.TurnBeeper.reset()
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
+        if (!hasSession()) return
         AppLogger.log("Dash", "Clearing center guidance (navigation ended)")
         val off = BccuProtocol.Visibility.OFF
-        writeCharacteristic(BccuProtocol.TURN_ICON,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.UNDEFINED, off), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.TURN_DISTANCE,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnDistancePayload("", off), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.TURN_INFO,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnInfoPayload("", off), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.TURN_ROAD,
-            BccuCrypto.encryptData(BccuProtocol.buildTurnRoadPayload("", off), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.ETA,
-            BccuCrypto.encryptData(BccuProtocol.buildEtaPayload("", off), key, iv), coalesce = true)
-        writeCharacteristic(BccuProtocol.REMAINING_DISTANCE,
-            BccuCrypto.encryptData(BccuProtocol.buildRemainingDistancePayload("", off), key, iv), coalesce = true)
+        sendEncrypted(BccuProtocol.TURN_ICON, BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.UNDEFINED, off), coalesce = true)
+        sendEncrypted(BccuProtocol.TURN_DISTANCE, BccuProtocol.buildTurnDistancePayload("", off), coalesce = true)
+        sendEncrypted(BccuProtocol.TURN_INFO, BccuProtocol.buildTurnInfoPayload("", off), coalesce = true)
+        sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload("", off), coalesce = true)
+        sendEncrypted(BccuProtocol.ETA, BccuProtocol.buildEtaPayload("", off), coalesce = true)
+        sendEncrypted(BccuProtocol.REMAINING_DISTANCE, BccuProtocol.buildRemainingDistancePayload("", off), coalesce = true)
     }
 
-    // --- Telemetry (PRPC) ---
+    // --- Diagnostics ---
 
     /** Log every discovered service + characteristic, so a real run reveals what this specific bike exposes (e.g. whether the PRPC telemetry service is present). */
     private fun dumpGattTable(g: BluetoothGatt) {
@@ -1330,78 +1272,6 @@ class BccuConnectionService : LifecycleService() {
             }
         }
         AppLogger.log("GATT", "=== end GATT dump ===")
-    }
-
-    /**
-     * Exploratory: if the bike exposes the PRPC service, subscribe to telemetry
-     * notifications and ask it to stream a small set of core datapoints (engine
-     * RPM, wheel speed, gear, coolant temp, fuel). Values are logged and pushed
-     * to [telemetry]. Kept to a handful of datapoints so a bike that doesn't
-     * really implement this can't be flooded; expand once confirmed working.
-     */
-    private fun tryStartTelemetry() {
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
-        val schema = telemetrySchema ?: try {
-            TelemetrySchema.load(this).also { telemetrySchema = it }
-        } catch (e: Exception) {
-            AppLogger.log("Telemetry", "!! Failed to load telemetry schema: $e")
-            return
-        }
-        val wanted = listOf(
-            "ECU_Engine_Rpm", "ABS_Display_Front_Wheel_Speed", "ECU_Gear_Position",
-            "ECU_Water_Temperature", "DASH_Fuel_Level", "bCCU_Voltage",
-        )
-        val datapoints = schema.filter { it.telemetryable && it.name in wanted }
-        AppLogger.log("Telemetry", "PRPC present - trying telemetry for ${datapoints.size} core datapoints")
-        enableNotification(BccuProtocol.PRPC_NOTIFICATION)
-        enableNotification(BccuProtocol.PRPC_RESPONSE)
-        for (dp in datapoints) {
-            val request = BccuProtocol.buildTelemetryConfigureRequest(nextSid(), dp.id, dp.sampleRateDefaultMs.coerceAtLeast(1000))
-            AppLogger.log("Telemetry", "Configuring ${dp.name} (id=${dp.id}) @${dp.sampleRateDefaultMs}ms")
-            writeCharacteristic(BccuProtocol.PRPC_REQUEST, BccuCrypto.encryptData(request, key, iv))
-        }
-        val start = BccuProtocol.buildTelemetryControlRequest(nextSid(), BccuProtocol.TELEMETRY_CMD_START)
-        AppLogger.log("Telemetry", "Sending telemetryControl(START)")
-        writeCharacteristic(BccuProtocol.PRPC_REQUEST, BccuCrypto.encryptData(start, key, iv))
-    }
-
-    private fun handlePrpcResponse(value: ByteArray) {
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
-        val decoded = try { BccuCrypto.decryptData(value, key, iv) } catch (e: Exception) {
-            AppLogger.log("Telemetry", "!! Failed to decrypt PRPC_RESPONSE: ${e.message}"); return
-        }
-        AppLogger.log("Telemetry", "PRPC_RESPONSE: ${BccuCrypto.hex(decoded)}")
-    }
-
-    private fun handlePrpcNotification(value: ByteArray) {
-        val key = activeSessionKey ?: return
-        val iv = tempIv ?: return
-        val decoded = try { BccuCrypto.decryptData(value, key, iv) } catch (e: Exception) {
-            AppLogger.log("Telemetry", "!! Failed to decrypt PRPC_NOTIFICATION: ${e.message}"); return
-        }
-        val schema = telemetrySchema
-        val triples = BccuProtocol.parseTelemetryNotification(decoded) { id ->
-            schema?.firstOrNull { it.id == id }?.let { TelemetrySchema.typeLength(it.type) } ?: 0
-        }
-        if (triples.isEmpty()) {
-            AppLogger.log("Telemetry", "PRPC_NOTIFICATION (unparsed): ${BccuCrypto.hex(decoded)}")
-            return
-        }
-        val updated = _telemetry.value.toMutableMap()
-        for (t in triples) {
-            val dp = schema?.firstOrNull { it.id == t.datapointId }
-            if (dp == null) {
-                AppLogger.log("Telemetry", "datapoint ${t.datapointId} (unknown): ${BccuCrypto.hex(t.value)}")
-                continue
-            }
-            val v = TelemetrySchema.decodeValue(dp.type, t.value)
-            val unit = if (!dp.unit.isNullOrBlank()) " ${dp.unit}" else ""
-            AppLogger.log("Telemetry", "${dp.name} = $v$unit")
-            updated[dp.name] = "$v$unit"
-        }
-        _telemetry.value = updated
     }
 
     private fun findCharacteristic(g: BluetoothGatt, uuid: java.util.UUID): BluetoothGattCharacteristic? {

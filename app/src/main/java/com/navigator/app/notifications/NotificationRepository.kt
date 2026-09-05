@@ -4,17 +4,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * In-memory queue of captured notifications, shared between
- * AppNotificationListener (the writer) and the UI / dash-writer (the
- * readers). A plain singleton object is enough here - no persistence needed,
- * this is transient "what's currently pending" state.
+ * In-memory nav-state shared between AppNotificationListener (the writer) and
+ * the UI / dash-writer (the readers). A plain singleton object is enough here -
+ * no persistence needed, this is transient "what's currently pending" state.
  */
 object NotificationRepository {
-
-    private const val MAX_ENTRIES = 30
-
-    private val _entries = MutableStateFlow<List<NotificationEntry>>(emptyList())
-    val entries: StateFlow<List<NotificationEntry>> = _entries
 
     /** Text of the most recent notification from whichever app is currently "the nav app". */
     private val _currentNavText = MutableStateFlow<String?>(null)
@@ -42,21 +36,9 @@ object NotificationRepository {
         _navGuidance.value = guidance
     }
 
-    fun addEntry(entry: NotificationEntry) {
-        _entries.value = (listOf(entry) + _entries.value).take(MAX_ENTRIES)
-        if (entry.isNavigation) {
-            _currentNavPackage.value = entry.packageName
-            _currentNavText.value = entry.text
-        }
-    }
-
     fun updateNavText(packageName: String, text: String) {
         _currentNavPackage.value = packageName
         _currentNavText.value = text
-    }
-
-    fun clear() {
-        _entries.value = emptyList()
     }
 
     /** Reset navigation state when guidance ends (nav app notification removed). */

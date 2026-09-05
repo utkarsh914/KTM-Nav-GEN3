@@ -91,7 +91,7 @@ object ManeuverClassifier {
 
     /** Classify a nav maneuver bitmap into a dash TurnIcon, or null if the model isn't confident. */
     fun classify(context: Context, bitmap: Bitmap): BccuProtocol.TurnIcon? {
-        val hash = hashOf(bitmap)
+        val hash = bitmapPixelHash(bitmap)
         cache[hash]?.let { return it }
         val model = ensureModel(context) ?: return null
         val lbls = labels(context)
@@ -145,9 +145,4 @@ object ManeuverClassifier {
         return buf
     }
 
-    private fun hashOf(bitmap: Bitmap): Int {
-        val pixels = IntArray(bitmap.width * bitmap.height)
-        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        return pixels.contentHashCode()
-    }
 }

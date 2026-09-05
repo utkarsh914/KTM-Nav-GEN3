@@ -36,6 +36,15 @@ of the shipped work.
   declarations + imports across ~49 files, FileProvider authority, broadcast action strings,
   `BuildConfig`/`R`). Cosmetic, not required for release — see
   [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md) for why the split exists today.
+- **Migrate off `androidx.security.crypto` (EncryptedSharedPreferences)** — the whole Jetpack
+  Security library is deprecated (currently pinned at `1.1.0-alpha06`) and is documented in
+  `AppSettings.kt` as prone to silent corruption/reset on some devices (the reason bonded
+  MAC/name and the "paired before" flag were already moved to a plain `SharedPreferences`
+  store). What remains in the encrypted store is non-critical config. Plan: either (a) move the
+  few genuinely-sensitive values to the Keystore directly and drop the dependency, or (b) accept
+  plain prefs for all of it since the BLE MAC/keys of record already live in the plain store.
+  Needs a one-time migration path (read-legacy-then-rewrite) so existing installs don't lose
+  settings. Deferred — behavioural change to persisted data, out of scope for the dead-code pass.
 
 ## To test / verify
 

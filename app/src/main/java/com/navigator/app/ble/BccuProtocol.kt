@@ -61,53 +61,11 @@ object BccuProtocol {
     const val TELEMETRY_CMD_START = 1
     const val TELEMETRY_CMD_RESET = 2
 
-    // Build an RPC request header+payload, confirmed byte-exact from
-    // RPCRequestBuilder / RPCConfigureRequestBuilder / RPCControlRequestBuilder:
-    // header is opcode (u16), sid (u8), payloadLength (u8), then the payload -
-    // little-endian throughout.
-    fun buildTelemetryConfigureRequest(sid: Int, datapointId: Int, sampleRateMs: Int): ByteArray {
-        val buf = java.nio.ByteBuffer.allocate(4 + 6).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        buf.putShort(RPC_OPCODE_TELEMETRY_CONFIGURE.toShort())
-        buf.put(sid.toByte())
-        buf.put(6.toByte())
-        buf.putShort(datapointId.toShort())
-        buf.putInt(sampleRateMs)
-        return buf.array()
-    }
-
-    fun buildTelemetryControlRequest(sid: Int, command: Int): ByteArray {
-        val buf = java.nio.ByteBuffer.allocate(4 + 2).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        buf.putShort(RPC_OPCODE_TELEMETRY_CONTROL.toShort())
-        buf.put(sid.toByte())
-        buf.put(2.toByte())
-        buf.putShort(command.toShort())
-        return buf.array()
-    }
-
-    data class TelemetryTriple(val timestampMs: Long, val datapointId: Int, val value: ByteArray)
-
-    // Parse a decrypted PRPC_NOTIFICATION payload, confirmed from
-    // PRpcClient.parsePRpcNotification / processNotificationTriples: header is
-    // notifyCode (u16), length (u8), then triples; notifyCode==7 is "telemetryData"
-    // and each triple is timestamp (u64), datapointId (u16), value (N bytes, N from schema).
-    fun parseTelemetryNotification(data: ByteArray, typeLengthOf: (Int) -> Int): List<TelemetryTriple> {
-        if (data.size < 4) return emptyList()
-        val buf = java.nio.ByteBuffer.wrap(data).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        val notifyCode = buf.short.toInt() and 0xFFFF
-        buf.get() // length byte, unused - we just consume until the buffer is empty
-        if (notifyCode != 7) return emptyList()
-        val triples = mutableListOf<TelemetryTriple>()
-        while (buf.remaining() >= 10) {
-            val timestamp = buf.long
-            val datapointId = buf.short.toInt() and 0xFFFF
-            val valueLen = typeLengthOf(datapointId)
-            if (valueLen <= 0 || buf.remaining() < valueLen) break
-            val value = ByteArray(valueLen)
-            buf.get(value)
-            triples.add(TelemetryTriple(timestamp, datapointId, value))
-        }
-        return triples
-    }
+    // NOTE: The PRPC/telemetry runtime (frame builders, notification parser and
+    // the on-connect streaming in BccuConnectionService) was removed as dead code
+    // - the decoded values were never surfaced. The constants/UUIDs above are kept
+    // as byte-exact wire-format reference (from RPCRequestBuilder / PRpcClient) so
+    // the feature can be reinstated later without re-reverse-engineering it.
 
     // Handshake REQUEST codes the DASH sends (byte[2] of a decrypted 16-byte
     // control message). Confirmed byte-exact from the official KTM Connect SDK

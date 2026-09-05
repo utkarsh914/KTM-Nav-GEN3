@@ -290,18 +290,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestRuntimePermissions() {
-        val perms = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            perms += Manifest.permission.BLUETOOTH_CONNECT
-            perms += Manifest.permission.BLUETOOTH_SCAN
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            perms += Manifest.permission.POST_NOTIFICATIONS
-        }
-        // GPS: overspeed alerts + waypoints. FINE alone is silently ignored on
-        // Android 12+; COARSE must be in the same request.
-        perms += Manifest.permission.ACCESS_FINE_LOCATION
-        perms += Manifest.permission.ACCESS_COARSE_LOCATION
+        // Shared source of truth (BLUETOOTH_*, location, POST_NOTIFICATIONS) plus
+        // the one extra this entry point needs: legacy storage for the log export
+        // on pre-Android-10.
+        val perms = OpenDashPermissions.runtimePermissions().toMutableList()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             perms += Manifest.permission.WRITE_EXTERNAL_STORAGE
         }

@@ -102,7 +102,7 @@ class AppNotificationListener : NotificationListenerService() {
                 com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
                 com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value
-                com.navigator.app.audio.TurnBeeper.onGuidance(title.ifBlank { null }, guessedIcon, text.ifBlank { null })
+                com.navigator.app.audio.TurnBeeper.onGuidance(title.ifBlank { null }, guessedIcon)
             }
             NotificationRepository.updateNavGuidance(
                 NotificationRepository.NavGuidance(
@@ -143,18 +143,8 @@ class AppNotificationListener : NotificationListenerService() {
 
         val combined = if (title.isNotBlank()) "$title: $text" else text
         AppLogger.log("Notif", "Captured from $packageName ($appLabel): ${redact(combined)}")
-        NotificationRepository.addEntry(
-            NotificationEntry(
-                packageName = packageName,
-                appLabel = appLabel,
-                title = title,
-                text = text,
-                postTimeMs = sbn.postTime,
-                isNavigation = false
-            )
-        )
-        // Quick-mute: still record the notification in the in-app feed, but skip
-        // pushing non-navigation notifications to the dash while mirroring is off.
+        // Quick-mute: skip pushing non-navigation notifications to the dash while
+        // mirroring is off.
         if (settings.mirrorEnabled) {
             BccuConnectionService.sendNotificationIfRunning(combined, dashIcon)
         }
@@ -251,9 +241,7 @@ class AppNotificationListener : NotificationListenerService() {
             val marker = java.io.File(dir, "CAPTURE_MANEUVERS")
             if (!marker.exists()) return
             val bitmap = TurnIconHeuristic.loadManeuverBitmap(this, sbn) ?: return
-            val pixels = IntArray(bitmap.width * bitmap.height)
-            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            val hash = pixels.contentHashCode()
+            val hash = bitmapPixelHash(bitmap)
             val label = (text.ifBlank { title }).lowercase()
                 .replace(Regex("[^a-z0-9]+"), "_").trim('_').take(40).ifBlank { "unlabeled" }
             val outDir = java.io.File(dir, "maps_capture").apply { mkdirs() }

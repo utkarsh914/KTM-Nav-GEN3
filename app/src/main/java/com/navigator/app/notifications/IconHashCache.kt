@@ -40,7 +40,7 @@ object IconHashCache {
     private val seenHashesThisSession = mutableSetOf<Int>()
 
     fun lookup(bitmap: Bitmap, context: Context): BccuProtocol.TurnIcon? {
-        val hash = hashBitmap(bitmap)
+        val hash = bitmapPixelHash(bitmap)
         val known = knownHashes[hash]
         if (known != null) {
             AppLogger.log("IconCache", "Exact hash match: $hash -> ${known.name}")
@@ -75,12 +75,6 @@ object IconHashCache {
             val hash = f.name.removePrefix("icon_").removeSuffix(".png").toIntOrNull() ?: return@mapNotNull null
             f to hash
         }
-    }
-
-    private fun hashBitmap(bitmap: Bitmap): Int {
-        val pixels = IntArray(bitmap.width * bitmap.height)
-        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        return pixels.contentHashCode()
     }
 
     private fun saveUnknownIcon(bitmap: Bitmap, hash: Int, context: Context) {
