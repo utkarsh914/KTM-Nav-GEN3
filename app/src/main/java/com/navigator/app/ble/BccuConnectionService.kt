@@ -191,17 +191,10 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var scanning: Boolean = false
     @Volatile private var scanTargetAddress: String? = null
 
-    // Guarded by gattQueueLock: ops are enqueued/finished on BLE binder threads
-    // while teardown paths (adapter-off receiver, watchdog, handshake recovery)
-    // clear the queue from the main thread - ArrayDeque is not thread-safe.
-    // coalesceKey: non-null marks a "latest value wins" write (guidance labels,
-    // marquee frames, banner) - enqueueing drops any still-pending write with
-    // the same key, so a degraded link can never build an unbounded backlog of
-    // stale frames. Control-plane ops (auth, CCCD, PRPC requests) keep null.
-    private class GattOp(val coalesceKey: java.util.UUID?, val run: () -> Unit)
-    private val gattQueueLock = Any()
-    private val gattQueue = ArrayDeque<GattOp>()
-    private var gattBusy = false
+    // Serialises all GATT reads/writes (Android allows one outstanding op at a
+    // time); coalescing keys drop stale display writes on a degraded link. See
+    // [SerialGattQueue].
+    private val gattOps = SerialGattQueue()
 
     private var connectingSinceMs: Long = 0L
     private var pendingAutoConnect: Boolean = false
@@ -319,7 +312,7 @@ class BccuConnectionService : LifecycleService() {
                         gatt = null
                         handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                         tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
-                        clearGattQueue()
+                        gattOps.clear()
                         _connectionState.value = ConnectionState.DISCONNECTED
                         updateForegroundNotification("Bluetooth is off")
                     }
@@ -380,12 +373,12 @@ class BccuConnectionService : LifecycleService() {
                         // the GATT and fall back to scanning (which reconnects when the
                         // dash is actually reachable, avoiding the status-255 churn).
                         // Clear the op queue and any leftover crypto too: a lost
-                        // in-flight op would otherwise leave gattBusy stuck true and
-                        // stall every op on the NEXT connection forever.
+                        // in-flight op would otherwise leave the queue stuck busy
+                        // and stall every op on the NEXT connection forever.
                         AppLogger.log("BLE", "Watchdog: connect stuck >${STUCK_CONNECTING_MS}ms - recycling + scanning")
                         try { gatt?.disconnect(); gatt?.close() } catch (e: Exception) { /* ignore */ }
                         gatt = null
-                        clearGattQueue()
+                        gattOps.clear()
                         handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                         tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
                         startBleScan(address)
@@ -586,40 +579,6 @@ class BccuConnectionService : LifecycleService() {
         manager.notify(NOTIFICATION_ID, buildForegroundNotification(status))
     }
 
-    // --- Serial GATT operation queue (Android allows only one outstanding op at a time) ---
-
-    private fun enqueueGattOp(coalesceKey: java.util.UUID? = null, op: () -> Unit) {
-        synchronized(gattQueueLock) {
-            if (coalesceKey != null) {
-                gattQueue.removeAll { it.coalesceKey == coalesceKey }
-            }
-            gattQueue.addLast(GattOp(coalesceKey, op))
-        }
-        runNextGattOp()
-    }
-
-    private fun runNextGattOp() {
-        val next = synchronized(gattQueueLock) {
-            if (gattBusy) return
-            val op = gattQueue.pollFirst() ?: return
-            gattBusy = true
-            op
-        }
-        next.run()
-    }
-
-    private fun gattOpFinished() {
-        synchronized(gattQueueLock) { gattBusy = false }
-        runNextGattOp()
-    }
-
-    private fun clearGattQueue() {
-        synchronized(gattQueueLock) {
-            gattQueue.clear()
-            gattBusy = false
-        }
-    }
-
     /**
      * Every override here runs try/catch-wrapped. BLE stack callbacks are a
      * classic place for a rare/edge-case exception (stale GATT reference,
@@ -654,7 +613,7 @@ class BccuConnectionService : LifecycleService() {
                     _connectionState.value = ConnectionState.DISCONNECTED
                     handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                     tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
-                    clearGattQueue()
+                    gattOps.clear()
                     // Release the old GATT client fully before requesting a new
                     // one - reusing a disconnected BluetoothGatt is a known source
                     // of silent reconnect failures (status 133).
@@ -716,7 +675,7 @@ class BccuConnectionService : LifecycleService() {
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onDescriptorWrite ${d.characteristic?.uuid} -> $statusName")
-                gattOpFinished()
+                gattOps.finish()
             } catch (e: Exception) {
                 AppLogger.log("BLE", "!! onDescriptorWrite threw: $e")
             }
@@ -726,7 +685,7 @@ class BccuConnectionService : LifecycleService() {
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onCharacteristicWrite ${c.uuid} -> $statusName")
-                gattOpFinished()
+                gattOps.finish()
             } catch (e: Exception) {
                 AppLogger.log("BLE", "!! onCharacteristicWrite threw: $e")
             }
@@ -761,7 +720,7 @@ class BccuConnectionService : LifecycleService() {
             } catch (e: Exception) {
                 AppLogger.log("Probe", "!! onCharacteristicRead threw: $e")
             } finally {
-                gattOpFinished()
+                gattOps.finish()
             }
         }
 
@@ -771,7 +730,7 @@ class BccuConnectionService : LifecycleService() {
             } catch (e: Exception) {
                 AppLogger.log("Probe", "!! onCharacteristicRead threw: $e")
             } finally {
-                gattOpFinished()
+                gattOps.finish()
             }
         }
     }
@@ -994,11 +953,11 @@ class BccuConnectionService : LifecycleService() {
             AppLogger.log("Auth", "Handshake didn't complete in ${budget}ms - dropping the link, retrying in ${cooldown / 1000}s (attempt $handshakeRecoveries; pairing kept)")
             try { gatt?.disconnect(); gatt?.close() } catch (e: Exception) { /* ignore */ }
             gatt = null
-            // Drop any op stranded in flight on the dead link - otherwise
-            // gattBusy stays true and every op on the next connection stalls
+            // Drop any op stranded in flight on the dead link - otherwise the
+            // queue stays busy and every op on the next connection stalls
             // behind it forever (the stale-GATT guard means the late
             // DISCONNECTED callback no longer clears the queue for us).
-            clearGattQueue()
+            gattOps.clear()
             tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
             _connectionState.value = ConnectionState.DISCONNECTED
             delay(cooldown)
@@ -1286,20 +1245,20 @@ class BccuConnectionService : LifecycleService() {
     private fun enableNotification(uuid: java.util.UUID) = enableCccd(uuid, indication = false)
 
     private fun enableCccd(uuid: java.util.UUID, indication: Boolean) {
-        enqueueGattOp {
+        gattOps.enqueue {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }
             if (g == null || characteristic == null) {
                 AppLogger.log("BLE", "!! Cannot enable ${if (indication) "indication" else "notification"} on $uuid - characteristic not found")
-                gattOpFinished()
-                return@enqueueGattOp
+                gattOps.finish()
+                return@enqueue
             }
             g.setCharacteristicNotification(characteristic, true)
             val descriptor = characteristic.getDescriptor(BccuProtocol.CCCD)
             if (descriptor == null) {
                 AppLogger.log("BLE", "!! Cannot enable ${if (indication) "indication" else "notification"} on $uuid - no CCCD descriptor")
-                gattOpFinished()
-                return@enqueueGattOp
+                gattOps.finish()
+                return@enqueue
             }
             val value = if (indication)
                 BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
@@ -1319,24 +1278,24 @@ class BccuConnectionService : LifecycleService() {
             }
             AppLogger.log("BLE", "writeDescriptor CCCD for $uuid (${if (indication) "indication" else "notification"}) queued=$accepted")
             if (!accepted) {
-                gattOpFinished()
+                gattOps.finish()
             }
         }
     }
 
     /** Queue a read of a single characteristic (result surfaces in onCharacteristicRead -> logProbeValue). */
     private fun readCharacteristic(uuid: java.util.UUID) {
-        enqueueGattOp {
+        gattOps.enqueue {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }
             if (g == null || characteristic == null) {
                 AppLogger.log("Probe", "read: characteristic $uuid not found, skipping")
-                gattOpFinished()
-                return@enqueueGattOp
+                gattOps.finish()
+                return@enqueue
             }
             val accepted = g.readCharacteristic(characteristic)
             AppLogger.log("Probe", "readCharacteristic $uuid queued=$accepted")
-            if (!accepted) gattOpFinished()
+            if (!accepted) gattOps.finish()
         }
     }
 
@@ -1400,13 +1359,13 @@ class BccuConnectionService : LifecycleService() {
      * requests) where every message matters.
      */
     private fun writeCharacteristic(uuid: java.util.UUID, data: ByteArray, coalesce: Boolean = false) {
-        enqueueGattOp(if (coalesce) uuid else null) {
+        gattOps.enqueue(if (coalesce) uuid else null) {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }
             if (g == null || characteristic == null) {
                 AppLogger.log("BLE", "!! Characteristic $uuid not found, cannot write")
-                gattOpFinished()
-                return@enqueueGattOp
+                gattOps.finish()
+                return@enqueue
             }
             // API 33+ takes the value + write type as arguments (returns a status
             // code); the pre-33 setValue()+writeCharacteristic() path is deprecated,
@@ -1425,7 +1384,7 @@ class BccuConnectionService : LifecycleService() {
             }
             AppLogger.log("BLE", "writeCharacteristic $uuid (${data.size} bytes) queued=$accepted")
             if (!accepted) {
-                gattOpFinished()
+                gattOps.finish()
             }
         }
     }

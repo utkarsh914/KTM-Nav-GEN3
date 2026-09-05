@@ -38,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,14 +53,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -90,14 +86,9 @@ import com.navigator.app.nav.destination.RoutePreview
 import com.navigator.app.nav.destination.RoutesClient
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.DistanceFormatter
-import com.navigator.app.nav.ktm.EtaFormatter
-import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
-import com.navigator.app.nav.model.LaneInfo
-import com.navigator.app.nav.model.LaneShape
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
-import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
@@ -107,7 +98,6 @@ import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmPrimaryButton
-import com.navigator.app.ui.components.TurnIconGlyph
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -766,257 +756,6 @@ private fun TripFinishedScreen(destinationLabel: String?, onBack: () -> Unit) {
     }
 }
 
-/** Google-style dark teal-green used for the custom maneuver header. */
-private val NAV_GREEN = Color(0xFF0E6E5B)
-private val NAV_GREEN_DIM = Color(0xFF0A5648)
-
-/** Show lane guidance only within this distance of the maneuver (like Google). */
-private const val LANE_HINT_DISTANCE_M = 400
-
-/**
- * Custom top maneuver header replacing the SDK's green banner. Renders below the
- * status bar (caller applies systemBarsPadding). Shows the current turn icon,
- * distance-to-maneuver, the instruction/road, an optional exit-number chip, and a
- * compact "Then <icon>" hint for the following step. During REROUTING it shows a
- * "Rerouting…" label with the retained maneuver dimmed. Corner radius matches the
- * other nav controls (RadiusCard).
- *
- * @param hideNextHint suppress the "Then" chip (used while the lane row is shown,
- *   so the top cluster can't grow tall enough to crowd other elements).
- */
-@Composable
-private fun NavGuidanceHeader(
-    nav: NormalizedNavigationState,
-    hideNextHint: Boolean = false,
-) {
-    val rerouting = nav.sessionState == NavSessionState.REROUTING
-    val contentAlpha = if (rerouting) 0.45f else 1f
-    val icon = KtmManeuverMapping.toTurnIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide)
-    val distance = nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, nav.units) }
-    // Prefer the SDK's full instruction; fall back to the plain road name.
-    val instruction = nav.fullInstruction?.takeIf { it.isNotBlank() } ?: nav.roadName
-    val exitLabel = when {
-        !nav.exitNumber.isNullOrBlank() -> "Exit ${nav.exitNumber}"
-        nav.roundaboutExit != null -> "Exit ${nav.roundaboutExit}"
-        else -> null
-    }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(Ktm.RadiusCard))
-                .background(NAV_GREEN)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TurnIconRef(icon, size = 44.dp, color = Color.White.copy(alpha = contentAlpha))
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                if (rerouting) {
-                    Text(
-                        "Rerouting…", color = Color.White, fontFamily = BarlowCondensed,
-                        fontWeight = FontWeight.Bold, fontSize = 22.sp,
-                    )
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (distance != null) {
-                            Text(
-                                distance, color = Color.White, fontFamily = BarlowCondensed,
-                                fontWeight = FontWeight.Bold, fontSize = 24.sp,
-                            )
-                        }
-                        if (exitLabel != null) {
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                exitLabel,
-                                color = NAV_GREEN,
-                                fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color.White)
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                            )
-                        }
-                    }
-                }
-                if (!instruction.isNullOrBlank()) {
-                    Text(
-                        instruction,
-                        color = Color.White.copy(alpha = 0.92f * contentAlpha), fontFamily = Barlow,
-                        fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-        val next = nav.nextManeuver
-        if (!hideNextHint && !rerouting && next != null && next != NormalizedManeuver.UNKNOWN) {
-            Row(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .clip(RoundedCornerShape(bottomStart = Ktm.RadiusCard, bottomEnd = Ktm.RadiusCard))
-                    .background(NAV_GREEN_DIM)
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Then", color = Color.White.copy(alpha = 0.9f), fontFamily = Barlow,
-                    fontSize = 16.sp,
-                )
-                Spacer(Modifier.width(10.dp))
-                TurnIconRef(KtmManeuverMapping.toTurnIcon(next), size = 26.dp, color = Color.White)
-            }
-        }
-    }
-}
-
-/**
- * Lane guidance strip shown under the header near a maneuver. Recommended lanes
- * (those that lead to the upcoming turn) are drawn bright; the rest are dimmed.
- */
-@Composable
-private fun LaneGuidance(lanes: List<LaneInfo>, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        lanes.forEach { lane ->
-            val tint = if (lane.recommended) Ktm.White else Ktm.Dim
-            // A lane may allow several directions; show each as a small arrow.
-            Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
-                val shapes = lane.directions.ifEmpty { listOf(LaneShape.STRAIGHT) }
-                shapes.forEach { shape ->
-                    TurnIconGlyph(laneShapeIcon(shape), size = 22.dp, color = tint)
-                }
-            }
-        }
-    }
-}
-
-/** Map a [LaneShape] to the closest dash [TurnIcon] arrow glyph. */
-private fun laneShapeIcon(shape: LaneShape): TurnIcon = when (shape) {
-    LaneShape.STRAIGHT -> TurnIcon.GO_STRAIGHT
-    LaneShape.SLIGHT_LEFT -> TurnIcon.LIGHT_LEFT
-    LaneShape.LEFT -> TurnIcon.QUITE_LEFT
-    LaneShape.SHARP_LEFT -> TurnIcon.HEAVY_LEFT
-    LaneShape.UTURN_LEFT -> TurnIcon.UTURN_LEFT
-    LaneShape.SLIGHT_RIGHT -> TurnIcon.LIGHT_RIGHT
-    LaneShape.RIGHT -> TurnIcon.QUITE_RIGHT
-    LaneShape.SHARP_RIGHT -> TurnIcon.HEAVY_RIGHT
-    LaneShape.UTURN_RIGHT -> TurnIcon.UTURN_RIGHT
-    LaneShape.UNKNOWN -> TurnIcon.GO_STRAIGHT
-}
-
-/**
- * Live GPS speed (km/h) while [active], from a self-contained GPS listener. Works
- * independently of the BLE overspeed service (which only runs when connected), so
- * the guidance speedometer is available during standalone navigation too. Returns
- * null until the first fix with a speed arrives.
- */
-@Composable
-private fun rememberNavSpeedKmh(active: Boolean): Float? {
-    val context = LocalContext.current
-    var speed by remember { mutableStateOf<Float?>(null) }
-    DisposableEffect(active) {
-        if (!active || !hasLocationPermission(context)) {
-            speed = null
-            return@DisposableEffect onDispose { }
-        }
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        // Full LocationListener impl (not a SAM lambda): pre-API-30 the extra
-        // callbacks are abstract, so a lambda would AbstractMethodError at runtime.
-        val listener = object : android.location.LocationListener {
-            override fun onLocationChanged(loc: Location) {
-                if (loc.hasSpeed()) speed = loc.speed * 3.6f
-            }
-            @Deprecated("Deprecated in API 29 but still abstract on older devices")
-            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
-            override fun onProviderEnabled(provider: String) {}
-            override fun onProviderDisabled(provider: String) { speed = null }
-        }
-        runCatching {
-            lm?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
-        }
-        onDispose {
-            runCatching { lm?.removeUpdates(listener) }
-            speed = null
-        }
-    }
-    return speed
-}
-
-/** Small speedometer pill: current speed in km/h. */
-@Composable
-private fun Speedometer(kmh: Float, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            kmh.toInt().coerceAtLeast(0).toString(),
-            color = Ktm.TextPrimary, fontFamily = BarlowCondensed,
-            fontWeight = FontWeight.Bold, fontSize = 28.sp,
-        )
-        Text(
-            "km/h", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
-        )
-    }
-}
-
-/**
- * Custom bottom guidance bar replacing the SDK's ETA card. The END (X) button
- * sits inside the bar on the left; remaining time / distance / arrival are
- * left-aligned beside it. Corner radius matches the header and controls.
- */
-@Composable
-private fun NavGuidanceBottomBar(
-    nav: NormalizedNavigationState,
-    onEnd: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val remainingTime = nav.remainingTimeSeconds
-    val duration = remainingTime?.let { formatDuration(it) }
-    val eta = remainingTime?.let { EtaFormatter.format(it, System.currentTimeMillis()) }
-    val remDist = nav.remainingDistanceMeters?.let { DistanceFormatter.format(it, nav.units) }
-    val sub = listOfNotNull(remDist, eta).joinToString("  ·  ")
-    Row(
-        modifier = modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = onEnd)
-        // Centered info: the END button on the left is balanced by an equal-width
-        // spacer on the right so the text is centered within the whole bar.
-        Column(
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                duration ?: "On the way",
-                color = Ktm.TextPrimary, fontFamily = BarlowCondensed,
-                fontWeight = FontWeight.Bold, fontSize = 27.sp,
-            )
-            if (sub.isNotBlank()) {
-                Text(
-                    sub, color = Ktm.TextSecondary, fontFamily = BarlowCondensed,
-                    fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                )
-            }
-        }
-        Spacer(Modifier.width(Ktm.ControlHeight)) // balances the 52dp END button
-    }
-}
-
 @Composable
 private fun MapPlaceholder(message: String, onRetry: (() -> Unit)? = null) {
     val base = Modifier.fillMaxSize().background(Ktm.Screen)
@@ -1030,235 +769,6 @@ private fun MapPlaceholder(message: String, onRetry: (() -> Unit)? = null) {
             modifier = Modifier.padding(horizontal = 32.dp),
         )
     }
-}
-
-// ============================ Search ===================================
-
-@Composable
-private fun SearchPanel(
-    query: String,
-    onQuery: (String) -> Unit,
-    loading: Boolean,
-    results: List<PlaceSuggestion>,
-    recents: List<SavedPlace>,
-    favorites: List<FavoritePlace>,
-    origin: Pair<Double, Double>?,
-    onBack: () -> Unit,
-    onPickSuggestion: (PlaceSuggestion) -> Unit,
-    onPickSaved: (SavedPlace) -> Unit,
-) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-
-    Column(
-        modifier = Modifier.fillMaxSize().background(Ktm.Screen)
-            .systemBarsPadding().padding(horizontal = 16.dp).padding(top = 10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
-            )
-            Spacer(Modifier.size(8.dp))
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQuery,
-                singleLine = true,
-                modifier = Modifier.weight(1f).focusRequester(focus),
-                placeholder = { Text("Enter Destination", color = Ktm.Dim) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Ktm.Surface,
-                    unfocusedContainerColor = Ktm.Surface,
-                    focusedTextColor = Ktm.White,
-                    unfocusedTextColor = Ktm.White,
-                    cursorColor = Ktm.Orange,
-                    focusedIndicatorColor = Ktm.Orange,
-                    unfocusedIndicatorColor = Ktm.Border,
-                ),
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        val showResults = query.trim().length >= 3
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                loading -> CircularProgressIndicator(
-                    color = Ktm.Orange,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
-                )
-                showResults && results.isEmpty() -> Text(
-                    "No matches", color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
-                )
-                showResults -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(results, key = { it.placeId }) { s ->
-                        SuggestionRow(s) { onPickSuggestion(s) }
-                    }
-                }
-                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val homes = favorites.filter { it.slot == FavoriteSlot.HOME }
-                    val works = favorites.filter { it.slot == FavoriteSlot.WORK }
-                    val saved = favorites.filter { it.slot == FavoriteSlot.OTHER }
-                    val home = homes.firstOrNull()
-                    val work = works.firstOrNull()
-                    if (home != null || work != null) {
-                        item { SectionLabel("FAVORITES") }
-                        if (home != null && work != null) {
-                            // Both set: Home and Work share one row, side by side.
-                            item {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    FavoriteHalfCard(
-                                        icon = OpenDashIcons.House, title = "Home", subtitle = home.place.label,
-                                        modifier = Modifier.weight(1f),
-                                    ) { onPickSaved(home.place) }
-                                    FavoriteHalfCard(
-                                        icon = OpenDashIcons.Briefcase, title = "Work", subtitle = work.place.label,
-                                        modifier = Modifier.weight(1f),
-                                    ) { onPickSaved(work.place) }
-                                }
-                            }
-                        } else {
-                            // Only one set: keep the full-width row.
-                            val only = home ?: work!!
-                            item {
-                                SavedRow(
-                                    icon = if (only.slot == FavoriteSlot.HOME) OpenDashIcons.House else OpenDashIcons.Briefcase,
-                                    title = if (only.slot == FavoriteSlot.HOME) "Home" else "Work",
-                                    subtitle = only.place.label,
-                                    origin = origin, lat = only.place.lat, lng = only.place.lng,
-                                ) { onPickSaved(only.place) }
-                            }
-                        }
-                    }
-                    if (saved.isNotEmpty()) {
-                        item { SectionLabel("SAVED") }
-                        items(saved, key = { "s-${it.place.lat},${it.place.lng}" }) { f ->
-                            SavedRow(
-                                icon = OpenDashIcons.Bookmark, title = f.place.label,
-                                subtitle = f.place.address, origin = origin,
-                                lat = f.place.lat, lng = f.place.lng,
-                            ) { onPickSaved(f.place) }
-                        }
-                    }
-                    if (recents.isNotEmpty()) {
-                        item { SectionLabel("RECENT") }
-                        items(recents, key = { "r-${it.lat},${it.lng}" }) { p ->
-                            SavedRow(
-                                icon = OpenDashIcons.Clock, title = p.label, subtitle = p.address,
-                                origin = origin, lat = p.lat, lng = p.lng,
-                            ) { onPickSaved(p) }
-                        }
-                    }
-                    if (recents.isEmpty() && favorites.isEmpty()) {
-                        item {
-                            Text(
-                                "Search for a place to get started.",
-                                color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-        fontSize = 12.sp, letterSpacing = 1.5.sp,
-        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
-    )
-}
-
-@Composable
-private fun SuggestionRow(s: PlaceSuggestion, onClick: () -> Unit) {
-    RowCard(onClick) {
-        Column(Modifier.weight(1f)) {
-            Text(s.primary, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-            s.secondary?.let { Text(it, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 14.sp) }
-        }
-        s.distanceMeters?.takeIf { it > 0 }?.let {
-            Spacer(Modifier.size(10.dp))
-            Text(
-                "~" + DistanceFormatter.format(it, DistanceUnits.METRIC),
-                color = Ktm.Orange, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SavedRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String?,
-    origin: Pair<Double, Double>?,
-    lat: Double,
-    lng: Double,
-    onClick: () -> Unit,
-) {
-    RowCard(onClick) {
-        Icon(icon, null, tint = Ktm.TextSecondary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.size(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-            subtitle?.let { Text(it, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 14.sp) }
-        }
-        distanceLabel(origin, lat, lng)?.let {
-            Spacer(Modifier.size(10.dp))
-            Text(it, color = Ktm.Orange, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        }
-    }
-}
-
-/** Compact half-width favorite card used when both Home and Work are set. */
-@Composable
-private fun FavoriteHalfCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String?,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusRow))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-    ) {
-        Icon(icon, null, tint = Ktm.TextSecondary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.size(8.dp))
-        Text(title, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-        subtitle?.let {
-            Text(
-                it, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 14.sp,
-                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RowCard(onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(Ktm.RadiusRow))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
 }
 
 // ============================ Preview ==================================
@@ -1377,7 +887,7 @@ private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 
 /** A neutral dark circular icon button (Google-style controls). */
 @Composable
-private fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+internal fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier.size(52.dp).clip(CircleShape)
             .background(Ktm.Surface)
@@ -1575,7 +1085,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 /** Format a route duration (seconds) as "M min" or "H hr M min". */
-private fun formatDuration(seconds: Int): String {
+internal fun formatDuration(seconds: Int): String {
     val mins = (seconds + 59) / 60
     return if (mins < 60) "$mins min" else "${mins / 60} hr ${mins % 60} min"
 }
@@ -1595,7 +1105,7 @@ private fun resetBearing(gm: GoogleMap?) {
 }
 
 /** Straight-line distance label from [origin] to a point, or null if unknown. */
-private fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Double): String? {
+internal fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Double): String? {
     origin ?: return null
     val out = FloatArray(1)
     Location.distanceBetween(origin.first, origin.second, lat, lng, out)
@@ -1604,7 +1114,7 @@ private fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Doubl
     return "~" + DistanceFormatter.format(meters, DistanceUnits.METRIC)
 }
 
-private fun hasLocationPermission(context: Context): Boolean =
+internal fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
