@@ -94,6 +94,7 @@ import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ui.components.CircleBackButton
+import com.navigator.app.ui.components.ConnectIconPill
 import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
@@ -576,18 +577,22 @@ fun NavigationHomeScreen(
                     modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
                         .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                 )
-                // Compass at bottom-right (only when the map is rotated). The
-                // re-center button is the SDK's own (kept in BrowseMap), which pops
-                // up on pan at the bottom-left, above our ETA bar (via map padding).
-                if (available && navReady && abs(mapBearing) > 0.5f) {
-                    Box(
-                        modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
-                            .padding(end = 16.dp, bottom = 104.dp),
-                    ) {
+                // Bottom-right control stack: compass (only when the map is rotated)
+                // above the bike-connection button. The re-center button is the SDK's
+                // own (kept in BrowseMap), which pops up on pan at the bottom-left,
+                // above our ETA bar (via map padding).
+                Column(
+                    modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
+                        .padding(end = 16.dp, bottom = 104.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (available && navReady && abs(mapBearing) > 0.5f) {
                         CompassButton(bearing = mapBearing, cornerRadius = Ktm.RadiusCard) {
                             resetBearing(googleMap)
                         }
                     }
+                    ConnectIconPill(onClick = onOpenConnect, cornerRadius = Ktm.RadiusCard)
                 }
             }
 

@@ -375,3 +375,53 @@ fun ConnectPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
         Text(label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp)
     }
 }
+
+/** Compact (52dp square) bike-connection button - the icon-only sibling of
+ *  [ConnectPill], for chrome that has no room for a label (e.g. the active
+ *  navigation control stack). Self-subscribes to the live connection state and
+ *  shows a corner status dot (green/orange/red). [cornerRadius] lets it match
+ *  neighbouring controls (e.g. the guidance chrome's card radius). */
+@Composable
+fun ConnectIconPill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    cornerRadius: androidx.compose.ui.unit.Dp = Ktm.RadiusButton,
+) {
+    val state by BccuConnectionService.connectionState.collectAsState()
+
+    val connected = state == BccuConnectionService.ConnectionState.AUTHENTICATED
+    val connecting = state == BccuConnectionService.ConnectionState.CONNECTING
+    val dotColor = when {
+        connected -> Ktm.Green
+        connecting -> Ktm.Orange
+        else -> Ktm.Danger
+    }
+
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
+    Box(
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .size(Ktm.ControlHeight)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(Ktm.Surface)
+            .border(1.dp, if (connected) Ktm.ConnBorder else Ktm.Border, RoundedCornerShape(cornerRadius))
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(OpenDashIcons.Bike, "Bike connection", tint = Ktm.White, modifier = Modifier.size(22.dp))
+        // Status dot, top-right corner.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(6.dp)
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+    }
+}
