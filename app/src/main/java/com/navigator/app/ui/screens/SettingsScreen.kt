@@ -87,6 +87,7 @@ fun SettingsScreen(
     onOpenTurnCalibration: () -> Unit,
     onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
+    onOpenRecordings: () -> Unit = {},
     onEngineChanged: (Boolean) -> Unit = {},
     themeMode: com.navigator.app.ui.theme.ThemeMode = com.navigator.app.ui.theme.ThemeMode.SYSTEM,
     onThemeModeChanged: (com.navigator.app.ui.theme.ThemeMode) -> Unit = {},
@@ -110,6 +111,10 @@ fun SettingsScreen(
     var beepVolume by remember { mutableStateOf(settings.beepVolumePercent) }
     var overspeedEnabled by remember { mutableStateOf(settings.overspeedEnabled) }
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
+
+    var rideRecordingOn by remember { mutableStateOf(settings.rideRecordingEnabled) }
+    var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
+    var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
 
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
@@ -429,6 +434,55 @@ fun SettingsScreen(
                     }
                     SettingsRow("Speed limit", showDivider = false, onClick = { dialog = SettingsDialog.OVERSPEED_LIMIT }) {
                         MonoValue("$overspeedLimit km/h ›")
+                    }
+                }
+            }
+
+            // ===== Ride recording =====
+            item {
+                GroupCard("Ride recording") {
+                    SettingsRow("Record rides", showDivider = rideRecordingOn) {
+                        KtmToggle(rideRecordingOn, { rideRecordingOn = it; settings.rideRecordingEnabled = it })
+                    }
+                    // Trivial/aborted trips shorter than BOTH cutoffs are dropped
+                    // on finish. Tap to cycle presets - glove-friendly.
+                    if (rideRecordingOn) {
+                        SettingsRow(
+                            "Min distance to keep", showDivider = true,
+                            onClick = {
+                                rideMinDist = when {
+                                    rideMinDist < 400 -> 400
+                                    rideMinDist < 800 -> 800
+                                    rideMinDist < 1500 -> 1500
+                                    else -> 200
+                                }
+                                settings.rideMinDistanceMeters = rideMinDist
+                            },
+                        ) {
+                            MonoValue(
+                                if (rideMinDist >= 1000) "%.1f km ›".format(rideMinDist / 1000f)
+                                else "$rideMinDist m ›",
+                            )
+                        }
+                        SettingsRow(
+                            "Min duration to keep", showDivider = true,
+                            onClick = {
+                                rideMinDur = when {
+                                    rideMinDur < 60 -> 60
+                                    rideMinDur < 120 -> 120
+                                    rideMinDur < 300 -> 300
+                                    else -> 30
+                                }
+                                settings.rideMinDurationSeconds = rideMinDur
+                            },
+                        ) {
+                            MonoValue(
+                                if (rideMinDur >= 60) "${rideMinDur / 60} min ›" else "$rideMinDur s ›",
+                            )
+                        }
+                    }
+                    SettingsRow("Ride recordings", showDivider = false, onClick = onOpenRecordings) {
+                        Text("›", color = Ktm.Dim, fontSize = 18.sp)
                     }
                 }
             }

@@ -51,6 +51,13 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
      *  turn (dimmed) on the phone instead of blanking the custom guidance header. */
     @Volatile private var lastEnroute: NormalizedNavigationState? = null
 
+    /** The destination of the trip currently being guided, for observers that
+     *  need to label it (e.g. ride recording). Set on [startNavigation], cleared
+     *  on stop/arrival. */
+    @Volatile
+    var currentDestination: NavDestination? = null
+        private set
+
     private val arrivalListener = Navigator.ArrivalListener {
         AppLogger.log("Nav", "Nav SDK arrival")
         guidanceActive = false
@@ -89,6 +96,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             AppLogger.log("Nav", "!! startNavigation with no navigator")
             return
         }
+        currentDestination = dest
         val waypoint = Waypoint.builder()
             .setLatLng(dest.lat, dest.lng)
             .also { b -> dest.label?.let { b.setTitle(it) } }
@@ -172,6 +180,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         // state back to ENROUTE and resume navigation.
         guidanceActive = false
         lastEnroute = null
+        currentDestination = null
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
             runCatching { nav.clearDestinations() }

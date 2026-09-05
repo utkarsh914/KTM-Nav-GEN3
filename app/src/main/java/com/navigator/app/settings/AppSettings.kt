@@ -234,6 +234,21 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getInt(KEY_OVERSPEED_LIMIT, DEFAULT_OVERSPEED_LIMIT_KMH)
         set(value) = pairingPrefs.edit().putInt(KEY_OVERSPEED_LIMIT, value).apply()
 
+    /** Record the GPS track of every navigation by default. */
+    var rideRecordingEnabled: Boolean
+        get() = pairingPrefs.getBoolean(KEY_RIDE_RECORDING, true)
+        set(value) = pairingPrefs.edit().putBoolean(KEY_RIDE_RECORDING, value).apply()
+
+    /** Minimum ride distance (m) to keep; shorter rides are discarded on finish. */
+    var rideMinDistanceMeters: Int
+        get() = pairingPrefs.getInt(KEY_RIDE_MIN_DISTANCE, DEFAULT_RIDE_MIN_DISTANCE_M)
+        set(value) = pairingPrefs.edit().putInt(KEY_RIDE_MIN_DISTANCE, value.coerceAtLeast(0)).apply()
+
+    /** Minimum ride duration (s) to keep; shorter rides are discarded on finish. */
+    var rideMinDurationSeconds: Int
+        get() = pairingPrefs.getInt(KEY_RIDE_MIN_DURATION, DEFAULT_RIDE_MIN_DURATION_S)
+        set(value) = pairingPrefs.edit().putInt(KEY_RIDE_MIN_DURATION, value.coerceAtLeast(0)).apply()
+
     /**
      * Which navigation source feeds the dash. [NAV_PROVIDER_NOTIFICATION] mirrors
      * another nav app's notifications (offline-capable, current default);
@@ -296,6 +311,11 @@ class AppSettings(context: Context) {
         private const val KEY_OVERSPEED_ENABLED = "overspeed_enabled"
         private const val KEY_OVERSPEED_LIMIT = "overspeed_limit_kmh"
         const val DEFAULT_OVERSPEED_LIMIT_KMH = 80
+        private const val KEY_RIDE_RECORDING = "ride_recording_enabled"
+        private const val KEY_RIDE_MIN_DISTANCE = "ride_min_distance_m"
+        private const val KEY_RIDE_MIN_DURATION = "ride_min_duration_s"
+        const val DEFAULT_RIDE_MIN_DISTANCE_M = 400
+        const val DEFAULT_RIDE_MIN_DURATION_S = 60
         private const val KEY_NAV_PROVIDER = "nav_provider"
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"

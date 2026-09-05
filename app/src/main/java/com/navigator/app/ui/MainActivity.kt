@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES }
+private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES, RECORDINGS, RIDE_REPLAY }
 
 class MainActivity : ComponentActivity() {
 
@@ -401,6 +401,8 @@ private fun OpenDashApp(
     }
 
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
+    // The ride selected in the history list, shown on the replay screen.
+    var selectedRideId by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // Touch back navigation: sub-pages return to their parent instead of
@@ -421,6 +423,8 @@ private fun OpenDashApp(
             AppRoute.PLACES -> goBack(AppRoute.SETTINGS)
             AppRoute.SYMBOL_TEST -> goBack(AppRoute.SETTINGS)
             AppRoute.TURN_CALIBRATION -> goBack(AppRoute.SETTINGS)
+            AppRoute.RECORDINGS -> goBack(AppRoute.SETTINGS)
+            AppRoute.RIDE_REPLAY -> goBack(AppRoute.RECORDINGS)
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.PAIRING -> { goBack(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null }
@@ -522,6 +526,7 @@ private fun OpenDashApp(
                 onOpenTurnCalibration = { goTo(AppRoute.TURN_CALIBRATION) },
                 onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.BRAND) },
                 onOpenPlaces = { goTo(AppRoute.PLACES) },
+                onOpenRecordings = { goTo(AppRoute.RECORDINGS) },
                 themeMode = themeMode,
                 onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
                 navThemeMode = navThemeMode,
@@ -556,6 +561,15 @@ private fun OpenDashApp(
             )
             AppRoute.TURN_CALIBRATION -> com.navigator.app.ui.screens.TurnCalibrationScreen(
                 onBack = { goBack(AppRoute.SETTINGS) }
+            )
+            AppRoute.RECORDINGS -> com.navigator.app.ui.screens.RideHistoryScreen(
+                onBack = { goBack(AppRoute.SETTINGS) },
+                onOpen = { id -> selectedRideId = id; goTo(AppRoute.RIDE_REPLAY) },
+            )
+            AppRoute.RIDE_REPLAY -> com.navigator.app.ui.screens.RideReplayScreen(
+                retainedNav = retainedNav,
+                rideId = selectedRideId,
+                onBack = { goBack(AppRoute.RECORDINGS) },
             )
         }
         }

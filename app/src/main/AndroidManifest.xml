@@ -72,6 +72,12 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice|location" />
 
+        <!-- Records the GPS track of a navigation trip (screen-off safe). -->
+        <service
+            android:name=".ride.RideRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <!-- Navigation SDK binds here to stream turn-by-turn NavInfo updates. -->
         <service
             android:name=".nav.providers.NavInfoReceivingService"
