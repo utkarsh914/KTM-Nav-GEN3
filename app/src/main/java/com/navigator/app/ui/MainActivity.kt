@@ -346,6 +346,13 @@ private fun OpenDashApp(
             }
         )
     }
+    // Direction-aware screen transitions: forward navigations (goTo) slide the new
+    // screen in from the right; back/up navigations (goBack) slide it in from the
+    // left. The flag is set synchronously with the route change so the transition
+    // spec reads the correct direction on the same recomposition.
+    var routeBack by remember { mutableStateOf(false) }
+    fun goTo(to: AppRoute) { routeBack = false; route = to }
+    fun goBack(to: AppRoute) { routeBack = true; route = to }
     // Apply the effective light/dark, re-theming the whole app live. Day/Night
     // applies ONLY while actively navigating on the map home (turn-by-turn
     // guidance) — the browse map and every other screen follow the app's own theme.
@@ -378,7 +385,7 @@ private fun OpenDashApp(
         if (sharedLink != null && googleNavOffered &&
             route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
         ) {
-            route = homeRoute()
+            goTo(homeRoute())
         }
     }
     // Notification tapped while navigating -> jump to the map home, which resumes
@@ -388,7 +395,7 @@ private fun OpenDashApp(
         if (openNav &&
             route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
         ) {
-            route = homeRoute()
+            goTo(homeRoute())
         }
         if (openNav) MainActivity.openNavRequest.value = false
     }
@@ -406,17 +413,17 @@ private fun OpenDashApp(
         when (route) {
             AppRoute.BRAND -> {
                 com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-                route = brandReturnRoute ?: homeRoute()
+                goBack(brandReturnRoute ?: homeRoute())
                 brandReturnRoute = null
             }
-            AppRoute.SETTINGS -> route = settingsReturnRoute
-            AppRoute.LOGS -> route = logsReturnRoute
-            AppRoute.PLACES -> route = AppRoute.SETTINGS
-            AppRoute.SYMBOL_TEST -> route = AppRoute.SETTINGS
-            AppRoute.TURN_CALIBRATION -> route = AppRoute.SETTINGS
+            AppRoute.SETTINGS -> goBack(settingsReturnRoute)
+            AppRoute.LOGS -> goBack(logsReturnRoute)
+            AppRoute.PLACES -> goBack(AppRoute.SETTINGS)
+            AppRoute.SYMBOL_TEST -> goBack(AppRoute.SETTINGS)
+            AppRoute.TURN_CALIBRATION -> goBack(AppRoute.SETTINGS)
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
-            AppRoute.PAIRING -> { route = pairingReturnRoute ?: homeRoute(); pairingReturnRoute = null }
+            AppRoute.PAIRING -> { goBack(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null }
             AppRoute.ONBOARDING -> {}
         }
     }
@@ -444,18 +451,20 @@ private fun OpenDashApp(
 
     OpenDashTheme(highContrast = false) {
       androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-        // Subtle cross-screen transition: a gentle fade with a small (~6%) horizontal
-        // drift, matching the onboarding pager's motion. Keeps screen changes from
-        // being a hard cut without ever feeling loud.
+        // Direction-aware cross-screen transition: a gentle fade with a small (~6%)
+        // horizontal drift. Forward navigations slide the new screen in from the
+        // right; back/up navigations reverse it (new screen from the left). Keeps
+        // screen changes from being a hard cut, and reads as push/pop.
         AnimatedContent(
             targetState = route,
             transitionSpec = {
                 val enterDur = 260
                 val exitDur = 180
+                val dir = if (routeBack) -1 else 1
                 (fadeIn(tween(enterDur, easing = FastOutSlowInEasing)) +
-                    slideInHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> w / 16 }) togetherWith
+                    slideInHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> dir * w / 16 }) togetherWith
                     (fadeOut(tween(exitDur, easing = FastOutSlowInEasing)) +
-                        slideOutHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> -w / 16 })
+                        slideOutHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> -dir * w / 16 })
             },
             label = "route",
         ) { r ->
@@ -465,32 +474,32 @@ private fun OpenDashApp(
                     settings.brand = brand
                     com.navigator.app.ui.theme.Ktm.applyBrand(brand)
                     // From Settings → just return; on first run → continue setup.
-                    route = brandReturnRoute ?: if (!settings.onboardingComplete) AppRoute.ONBOARDING
+                    goTo(brandReturnRoute ?: if (!settings.onboardingComplete) AppRoute.ONBOARDING
                         else if (settings.bondedDeviceAddress == null) AppRoute.PAIRING
-                        else homeRoute()
+                        else homeRoute())
                     brandReturnRoute = null
                 },
                 onBack = brandReturnRoute?.let { back -> {
                     // Cancelled: revert live preview to the persisted brand.
                     com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-                    route = back
+                    goBack(back)
                     brandReturnRoute = null
                 } },
             )
             AppRoute.ONBOARDING -> com.navigator.app.ui.screens.OnboardingScreen(
                 settings = settings,
-                onComplete = { route = AppRoute.PAIRING }
+                onComplete = { goTo(AppRoute.PAIRING) }
             )
             AppRoute.PAIRING -> PairingScreen(
                 settings = settings,
-                onPaired = { route = pairingReturnRoute ?: homeRoute(); pairingReturnRoute = null },
-                onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; route = AppRoute.LOGS },
-                onBack = pairingReturnRoute?.let { back -> { route = back; pairingReturnRoute = null } },
+                onPaired = { goTo(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null },
+                onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; goTo(AppRoute.LOGS) },
+                onBack = pairingReturnRoute?.let { back -> { goBack(back); pairingReturnRoute = null } },
             )
             AppRoute.NAV_HOME -> com.navigator.app.ui.screens.NavigationHomeScreen(
                 retainedNav = retainedNav,
-                onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; route = AppRoute.PAIRING },
-                onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; route = AppRoute.SETTINGS },
+                onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; goTo(AppRoute.PAIRING) },
+                onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; goTo(AppRoute.SETTINGS) },
                 onStartNavigation = { dest ->
                     (appContext as? android.app.Activity)?.let {
                         com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
@@ -501,18 +510,18 @@ private fun OpenDashApp(
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
             )
             AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
-                onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.SETTINGS },
-                onOpenConnect = { pairingReturnRoute = AppRoute.MIRROR_HOME; route = AppRoute.PAIRING },
+                onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.SETTINGS) },
+                onOpenConnect = { pairingReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.PAIRING) },
                 onExit = onExit,
             )
             AppRoute.SETTINGS -> SettingsScreen(
                 settings = settings,
-                onBack = { route = settingsReturnRoute },
-                onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; route = AppRoute.LOGS },
-                onOpenSymbolTest = { route = AppRoute.SYMBOL_TEST },
-                onOpenTurnCalibration = { route = AppRoute.TURN_CALIBRATION },
-                onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; route = AppRoute.BRAND },
-                onOpenPlaces = { route = AppRoute.PLACES },
+                onBack = { goBack(settingsReturnRoute) },
+                onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.LOGS) },
+                onOpenSymbolTest = { goTo(AppRoute.SYMBOL_TEST) },
+                onOpenTurnCalibration = { goTo(AppRoute.TURN_CALIBRATION) },
+                onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.BRAND) },
+                onOpenPlaces = { goTo(AppRoute.PLACES) },
                 themeMode = themeMode,
                 onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
                 navThemeMode = navThemeMode,
@@ -533,20 +542,20 @@ private fun OpenDashApp(
                     settings.bondedDeviceAddress = null
                     settings.bondedDeviceName = null
                     BccuConnectionService.stop(context)
-                    route = AppRoute.PAIRING
+                    goTo(AppRoute.PAIRING)
                 }
             )
             AppRoute.LOGS -> com.navigator.app.ui.screens.LogsScreen(
-                onBack = { route = logsReturnRoute }
+                onBack = { goBack(logsReturnRoute) }
             )
             AppRoute.PLACES -> com.navigator.app.ui.screens.SavedPlacesScreen(
-                onBack = { route = AppRoute.SETTINGS }
+                onBack = { goBack(AppRoute.SETTINGS) }
             )
             AppRoute.SYMBOL_TEST -> com.navigator.app.ui.screens.SymbolTestScreen(
-                onBack = { route = AppRoute.SETTINGS }
+                onBack = { goBack(AppRoute.SETTINGS) }
             )
             AppRoute.TURN_CALIBRATION -> com.navigator.app.ui.screens.TurnCalibrationScreen(
-                onBack = { route = AppRoute.SETTINGS }
+                onBack = { goBack(AppRoute.SETTINGS) }
             )
         }
         }

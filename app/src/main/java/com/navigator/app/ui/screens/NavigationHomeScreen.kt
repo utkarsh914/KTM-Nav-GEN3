@@ -11,6 +11,15 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -114,6 +123,26 @@ import kotlin.coroutines.resume
 import kotlin.math.abs
 
 private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }
+
+/** Transition between [NavStage] chrome. The full-screen SEARCH panel slides up
+ *  from / down to the bottom; every other stage change is a gentle fade + small
+ *  vertical drift so cards/overlays never hard-cut. */
+private fun stageTransition(initial: NavStage, target: NavStage): ContentTransform {
+    val dur = 240
+    val outDur = 160
+    val easing = FastOutSlowInEasing
+    return when {
+        target == NavStage.SEARCH ->
+            (slideInVertically(tween(dur, easing = easing)) { it } + fadeIn(tween(dur))) togetherWith
+                fadeOut(tween(outDur))
+        initial == NavStage.SEARCH ->
+            fadeIn(tween(dur)) togetherWith
+                (slideOutVertically(tween(dur, easing = easing)) { it } + fadeOut(tween(outDur)))
+        else ->
+            (fadeIn(tween(dur, easing = easing)) + slideInVertically(tween(dur, easing = easing)) { it / 12 }) togetherWith
+                (fadeOut(tween(outDur, easing = easing)) + slideOutVertically(tween(dur, easing = easing)) { -it / 12 })
+    }
+}
 
 /** Auto-finish the trip once we're within this many metres of the destination. */
 private const val ARRIVAL_RADIUS_M = 10
@@ -418,7 +447,16 @@ fun NavigationHomeScreen(
             else -> MapPlaceholder("Maps need a Google API key.\nSet NAV_SDK_API_KEY in local.properties.")
         }
 
-        when (stage) {
+        // Animated stage chrome (overlays the persistent map above). The map layer
+        // stays OUTSIDE this AnimatedContent so it never animates or duplicates.
+        AnimatedContent(
+            targetState = stage,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = { stageTransition(initialState, targetState) },
+            label = "navStage",
+        ) { s ->
+          Box(Modifier.fillMaxSize()) {
+            when (s) {
             NavStage.BROWSE -> {
                 // Search bar (leaves room on the right for the control column).
                 Box(
@@ -600,6 +638,8 @@ fun NavigationHomeScreen(
                 destinationLabel = selected?.label,
                 onBack = ::backToBrowse,
             )
+            }
+          }
         }
 
         if (showExitConfirm) {
