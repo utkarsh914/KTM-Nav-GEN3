@@ -36,7 +36,7 @@ android {
         versionCode = (System.currentTimeMillis() / 86_400_000L).toInt()
         // Public beta line, with a build stamp appended so it's easy to confirm
         // which build is actually installed on-device (Settings > Diagnostics).
-        versionName = "0.2.0-beta+" + SimpleDateFormat("MMdd-HHmm").format(Date())
+        versionName = "0.4.0+" + SimpleDateFormat("MMdd-HHmm").format(Date())
 
         // Navigation SDK / Places API key, read from local.properties (gitignored).
         // Applied at runtime via NavigationApi.setApiKey() rather than a manifest

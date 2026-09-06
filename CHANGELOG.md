@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.4.0
+
+### Ride recording & replay
+- On-device GPS ride recording, on by default — records every trip's track (position, time, speed). No API calls, no billing impact.
+- (Ride recording was removed in v0.3.0's lean-down; it's back, rebuilt from scratch and richer.)
+- Rides history screen: speed-coloured track thumbnails, per-ride stats (distance/duration/top speed), search by place, sort by field + direction, sticky day-group headers, long-press multi-select with bulk delete, and save/pin.
+- Ride Replay screen: animated playback up to 64x, tap-to-seek and drag-to-scrub, follow toggle, zoom-to-current, and north-reset compass.
+- Configurable min distance/duration cutoffs (default 400 m / 60 s) and "keep last N rides" (10–1000, default 100); saved/pinned rides are exempt from pruning.
+- Crash-safe streaming track storage with orphan recovery on launch.
+
+### Navigation
+- Offline resilience: guidance keeps running offline from the already-computed route; an offline banner shows during active nav and notes rerouting is paused until back online.
+- Per-route live traffic delay in route preview — colour-coded "+N min" on each route (no extra API calls, no billing-tier change).
+- Leave the active-navigation screen without ending the trip (Back/minimise returns to the map with a "Resume navigation" pill); confirm before ending.
+- Richer Trip Finished screen on manual end and auto-arrival: duration, avg/max speed, the ride route drawn on the map, and "Open in Replay".
+- Bike-connection button now reachable mid-trip.
+- Fixed navigation resuming after arrival while still moving (phone locked).
+
+### Connectivity
+- Process-wide online/offline detection (captive/dead Wi-Fi reads as offline).
+- Reflects offline state to the dash: flips the nav status bit in NAVIGATION_STATE and posts a one-shot "Offline" warning notification, cleared on reconnect.
+- Ride GPS track keeps recording even when the initial route can't be computed offline.
+
+### UX/UI
+- Custom app accent colour, independent of the bike brand: presets plus a full HSV colour picker (Settings → Appearance).
+- Screen and stage transition animations: direction-aware forward/back route changes, search-panel slide, and stage cross-fades.
+- Shared design system (Motion, Haptics, text-style tokens) applied across screens; consistent map controls (recenter + compass) across the map home, active navigation and ride replay.
+- Unified rides and saved-places lists (shared multi-select, delete-confirm and card chrome); Settings preserves scroll position when returning from a sub-section; reordered Settings groups.
+
+### Under the hood
+- Large refactor: split the two largest files, removed dead code and unused subsystems (~2600 lines net), and de-duplicated shared HTTP/hash/dash-write helpers.
+- New JVM unit tests: ride metrics, ride JSON round-trip, route traffic-delay math, and encoder offline-flip cases.
+
+### Known issues
+1. First pairing needs the physical "add device" confirmation on the dash. Expected, once per bike; every reconnect after that is silent.
+2. Turn-icon accuracy depends on your Google Maps version and your specific dash. Use the Symbol Test and Turn-icon Calibration screens if an icon looks wrong.
+3. Husqvarna support has never been verified on a physical Husqvarna. It runs on the same dash protocol and should work, but all testing so far has been on a KTM.
+4. Full vehicle telemetry (RPM, gear, coolant, fuel, TPMS) exists in the protocol but the dash rejects the writes — not available.
+5. This is a beta. If anything crashes or misbehaves, please open an issue or share your logs from Settings → Diagnostics.
+
+---
+
 ## v0.3.0
 
 ### Navigation

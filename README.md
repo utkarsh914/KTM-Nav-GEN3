@@ -28,7 +28,7 @@ two mutually-exclusive engines in **Settings → Navigation engine**:
 | **In-app maps (Google)** | A phone-first map home: search, long-press to drop a pin, or share a Google Maps link, then preview the route (with alternates) and run turn-by-turn on the phone *and* the bike's dash over Bluetooth. |
 | **Notification mirror** | Navigate in Google Maps as usual; the app mirrors its turn-by-turn to the dash (offline-capable), with a pause/resume control. Also the home when no Google API key is present. |
 
-Plus phone-notification mirroring to the dash and a rotating idle screen.
+Plus on-device ride recording and replay, phone-notification mirroring to the dash, and a rotating idle screen.
 
 ---
 
@@ -70,8 +70,26 @@ sounds through Do Not Disturb.
 **The dash's idle screen.** When you're not navigating, the dash rotates clock and date, and live weather
 (via Open-Meteo, no API key).
 
+**Ride recording and replay.** Every trip's GPS track is recorded on-device by default — no API calls, no
+billing. The Rides screen lists your rides with a speed-coloured track and stats (distance, duration, top
+speed), searchable and sortable, and the Replay screen plays each ride back on the map at up to 64×, with
+tap-to-seek, drag-to-scrub and a follow toggle. Recording is configurable (minimum distance/duration and a
+"keep last N rides" limit; saved rides are pinned and never pruned).
+
+**Offline resilience.** If you lose signal mid-route, guidance keeps running from the already-computed
+route. An offline banner appears during navigation, rerouting is paused until you're back online, and the
+dash is told you're offline (and cleared again on reconnect). Ride recording keeps going regardless.
+
+**Per-route traffic delay.** The route preview shows a colour-coded "+N min" on each alternate so you can
+see the live traffic hit before you start — no extra API calls.
+
 **Auto-finish on arrival.** When you reach your destination the app ends navigation automatically and shows
-a Trip Finished screen — no manual dismissal needed.
+a rich Trip Finished screen with duration, average and max speed, and your route on the map — with a one-tap
+jump into Replay. You can also leave the active-navigation screen without ending the trip: minimise back to
+the map and a "Resume navigation" pill brings you back.
+
+**Custom accent colour.** Pick the app's accent independently of your bike brand — from presets or a full
+colour picker in Settings → Appearance.
 
 **Day/night navigation theme.** The in-app map and guidance UI switch between day and night styles
 automatically based on sunrise/sunset, or you can lock them to follow your app theme.
