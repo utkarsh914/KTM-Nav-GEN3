@@ -111,6 +111,19 @@ object RideMetrics {
         minDurationSeconds: Int,
     ): Boolean = distanceMeters >= minDistanceMeters && durationSeconds >= minDurationSeconds
 
+    /**
+     * Decide which rides to prune to honour a history limit. Saved rides are kept
+     * regardless and never count toward the limit; among the unsaved rides only
+     * the newest [limit] are kept and the rest are returned for deletion (their
+     * ids). A non-positive [limit] keeps all unsaved rides (no pruning).
+     */
+    fun ridesToPrune(rides: List<RecordedRide>, limit: Int): List<String> {
+        if (limit <= 0) return emptyList()
+        val unsavedNewestFirst = rides.filterNot { it.saved }.sortedByDescending { it.startMs }
+        if (unsavedNewestFirst.size <= limit) return emptyList()
+        return unsavedNewestFirst.drop(limit).map { it.id }
+    }
+
     /** Speed bucket for colouring the replay track. */
     enum class SpeedBand { SLOW, MEDIUM, FAST, VERY_FAST }
 

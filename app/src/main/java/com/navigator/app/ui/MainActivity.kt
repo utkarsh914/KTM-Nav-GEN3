@@ -403,6 +403,10 @@ private fun OpenDashApp(
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
     // The ride selected in the history list, shown on the replay screen.
     var selectedRideId by remember { mutableStateOf<String?>(null) }
+    // Multi-select state hoisted here so it survives opening a ride and coming
+    // back (the history screen leaves composition on navigation).
+    var rideSelectionMode by remember { mutableStateOf(false) }
+    var rideSelectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // Touch back navigation: sub-pages return to their parent instead of
@@ -423,7 +427,13 @@ private fun OpenDashApp(
             AppRoute.PLACES -> goBack(AppRoute.SETTINGS)
             AppRoute.SYMBOL_TEST -> goBack(AppRoute.SETTINGS)
             AppRoute.TURN_CALIBRATION -> goBack(AppRoute.SETTINGS)
-            AppRoute.RECORDINGS -> goBack(AppRoute.SETTINGS)
+            AppRoute.RECORDINGS -> {
+                // While multi-select is active, back exits it instead of leaving.
+                if (rideSelectionMode) {
+                    rideSelectionMode = false
+                    rideSelectedIds = emptySet()
+                } else goBack(AppRoute.SETTINGS)
+            }
             AppRoute.RIDE_REPLAY -> goBack(AppRoute.RECORDINGS)
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
@@ -563,8 +573,17 @@ private fun OpenDashApp(
                 onBack = { goBack(AppRoute.SETTINGS) }
             )
             AppRoute.RECORDINGS -> com.navigator.app.ui.screens.RideHistoryScreen(
-                onBack = { goBack(AppRoute.SETTINGS) },
+                onBack = {
+                    if (rideSelectionMode) {
+                        rideSelectionMode = false
+                        rideSelectedIds = emptySet()
+                    } else goBack(AppRoute.SETTINGS)
+                },
                 onOpen = { id -> selectedRideId = id; goTo(AppRoute.RIDE_REPLAY) },
+                selectionMode = rideSelectionMode,
+                selectedIds = rideSelectedIds,
+                onSelectionModeChange = { rideSelectionMode = it },
+                onSelectedIdsChange = { rideSelectedIds = it },
             )
             AppRoute.RIDE_REPLAY -> com.navigator.app.ui.screens.RideReplayScreen(
                 retainedNav = retainedNav,

@@ -74,4 +74,41 @@ class RideMetricsTest {
         assertEquals(RideMetrics.SpeedBand.FAST, RideMetrics.band(60f))
         assertEquals(RideMetrics.SpeedBand.VERY_FAST, RideMetrics.band(100f))
     }
+
+    private fun ride(id: String, startMs: Long, saved: Boolean = false) = RecordedRide(
+        id = id, startMs = startMs, endMs = startMs + 1, distanceMeters = 1000,
+        durationSeconds = 100, saved = saved,
+    )
+
+    @Test fun ridesToPrune_underLimit_keepsAll() {
+        val rides = (1..5).map { ride("r$it", it * 1000L) }
+        assertTrue(RideMetrics.ridesToPrune(rides, 10).isEmpty())
+        assertTrue(RideMetrics.ridesToPrune(rides, 5).isEmpty())
+    }
+
+    @Test fun ridesToPrune_dropsOldestUnsavedBeyondLimit() {
+        // startMs ascending; oldest are r1, r2 ...
+        val rides = (1..5).map { ride("r$it", it * 1000L) }
+        val dropped = RideMetrics.ridesToPrune(rides, 3).toSet()
+        // Keep newest 3 (r5,r4,r3); drop oldest 2 (r1,r2).
+        assertEquals(setOf("r1", "r2"), dropped)
+    }
+
+    @Test fun ridesToPrune_savedRidesExcludedFromCountAndNeverDropped() {
+        val rides = listOf(
+            ride("old-saved", 1_000L, saved = true),
+            ride("u1", 2_000L),
+            ride("u2", 3_000L),
+            ride("u3", 4_000L),
+        )
+        // Limit 2 counts only unsaved (u1,u2,u3) -> keep newest 2 (u3,u2), drop u1.
+        val dropped = RideMetrics.ridesToPrune(rides, 2).toSet()
+        assertEquals(setOf("u1"), dropped)
+    }
+
+    @Test fun ridesToPrune_nonPositiveLimit_keepsAll() {
+        val rides = (1..5).map { ride("r$it", it * 1000L) }
+        assertTrue(RideMetrics.ridesToPrune(rides, 0).isEmpty())
+        assertTrue(RideMetrics.ridesToPrune(rides, -1).isEmpty())
+    }
 }

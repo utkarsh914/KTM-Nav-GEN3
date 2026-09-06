@@ -16,6 +16,7 @@ package com.navigator.app.ride
  * @param avgSpeedKmh average speed across fixes that carried a speed value
  * @param maxSpeedKmh peak recorded speed
  * @param pointCount number of recorded fixes
+ * @param saved pinned to keep permanently; excluded from the history-limit prune
  */
 data class RecordedRide(
     val id: String,
@@ -29,4 +30,5 @@ data class RecordedRide(
     val avgSpeedKmh: Float = 0f,
     val maxSpeedKmh: Float = 0f,
     val pointCount: Int = 0,
+    val saved: Boolean = false,
 )

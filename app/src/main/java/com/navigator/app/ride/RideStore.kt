@@ -62,6 +62,32 @@ class RideStore(context: Context) {
         runCatching { trackFile(id).delete() }
     }
 
+    /** Remove several rides at once (index entries + track files). */
+    fun deleteAll(ids: Collection<String>) {
+        val set = ids.toHashSet()
+        writeIndex(list().filterNot { it.id in set })
+        set.forEach { id -> runCatching { trackFile(id).delete() } }
+    }
+
+    /** Pin/unpin a ride to keep it permanently (excluded from the history prune). */
+    fun setSaved(id: String, saved: Boolean) {
+        writeIndex(list().map { if (it.id == id) it.copy(saved = saved) else it })
+    }
+
+    /**
+     * Enforce the history limit: keep every saved ride (they don't count) plus the
+     * newest [limit] unsaved rides, deleting the rest (index entry + track file).
+     * Returns the ids that were pruned.
+     */
+    fun pruneToLimit(limit: Int): List<String> {
+        val toDrop = RideMetrics.ridesToPrune(list(), limit)
+        if (toDrop.isNotEmpty()) {
+            deleteAll(toDrop)
+            AppLogger.log("Ride", "Pruned ${toDrop.size} ride(s) over history limit $limit")
+        }
+        return toDrop
+    }
+
     /** Delete a track file that will not be kept (no index entry created). */
     fun discardTrack(id: String) {
         runCatching { trackFile(id).delete() }

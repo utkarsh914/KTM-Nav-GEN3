@@ -124,6 +124,8 @@ class RideRecorder(private val context: Context) {
                     ),
                 )
                 AppLogger.log("Ride", "Saved ride $id: ${stats.distanceMeters}m / ${stats.durationSeconds}s")
+                // Enforce the history limit now that a new ride was added.
+                runCatching { store.pruneToLimit(settings.rideHistoryLimit) }
             } else {
                 store.discardTrack(id)
                 AppLogger.log("Ride", "Discarded short ride $id (${stats.distanceMeters}m / ${stats.durationSeconds}s)")

@@ -61,6 +61,7 @@ class RideJsonTest {
             avgSpeedKmh = 34.2f,
             maxSpeedKmh = 88.0f,
             pointCount = 601,
+            saved = true,
         )
         val back = RideJson.rideFromJson(RideJson.rideToJson(r))
         assertEquals(r.id, back.id)
@@ -74,6 +75,7 @@ class RideJsonTest {
         assertEquals(r.avgSpeedKmh, back.avgSpeedKmh, 1e-4f)
         assertEquals(r.maxSpeedKmh, back.maxSpeedKmh, 1e-4f)
         assertEquals(r.pointCount, back.pointCount)
+        assertTrue(back.saved)
     }
 
     @Test fun ride_roundTrip_noDestination() {
@@ -85,5 +87,6 @@ class RideJsonTest {
         assertNull(back.destinationLabel)
         assertNull(back.destLat)
         assertNull(back.destLng)
+        assertEquals(false, back.saved)
     }
 }

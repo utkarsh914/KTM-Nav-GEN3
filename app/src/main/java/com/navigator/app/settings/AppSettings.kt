@@ -242,12 +242,24 @@ class AppSettings(context: Context) {
     /** Minimum ride distance (m) to keep; shorter rides are discarded on finish. */
     var rideMinDistanceMeters: Int
         get() = pairingPrefs.getInt(KEY_RIDE_MIN_DISTANCE, DEFAULT_RIDE_MIN_DISTANCE_M)
-        set(value) = pairingPrefs.edit().putInt(KEY_RIDE_MIN_DISTANCE, value.coerceAtLeast(0)).apply()
+        set(value) = pairingPrefs.edit()
+            .putInt(KEY_RIDE_MIN_DISTANCE, value.coerceIn(RIDE_MIN_DISTANCE_MIN_M, RIDE_MIN_DISTANCE_MAX_M)).apply()
 
     /** Minimum ride duration (s) to keep; shorter rides are discarded on finish. */
     var rideMinDurationSeconds: Int
         get() = pairingPrefs.getInt(KEY_RIDE_MIN_DURATION, DEFAULT_RIDE_MIN_DURATION_S)
-        set(value) = pairingPrefs.edit().putInt(KEY_RIDE_MIN_DURATION, value.coerceAtLeast(0)).apply()
+        set(value) = pairingPrefs.edit()
+            .putInt(KEY_RIDE_MIN_DURATION, value.coerceIn(RIDE_MIN_DURATION_MIN_S, RIDE_MIN_DURATION_MAX_S)).apply()
+
+    /**
+     * How many (unsaved) rides to keep in history. As new rides are recorded the
+     * oldest unsaved ones beyond this count are pruned. Rides the rider explicitly
+     * saved ([RecordedRide.saved]) are kept regardless and don't count toward it.
+     */
+    var rideHistoryLimit: Int
+        get() = pairingPrefs.getInt(KEY_RIDE_HISTORY_LIMIT, DEFAULT_RIDE_HISTORY_LIMIT)
+        set(value) = pairingPrefs.edit()
+            .putInt(KEY_RIDE_HISTORY_LIMIT, value.coerceIn(RIDE_HISTORY_LIMIT_MIN, RIDE_HISTORY_LIMIT_MAX)).apply()
 
     /**
      * Which navigation source feeds the dash. [NAV_PROVIDER_NOTIFICATION] mirrors
@@ -314,8 +326,16 @@ class AppSettings(context: Context) {
         private const val KEY_RIDE_RECORDING = "ride_recording_enabled"
         private const val KEY_RIDE_MIN_DISTANCE = "ride_min_distance_m"
         private const val KEY_RIDE_MIN_DURATION = "ride_min_duration_s"
+        private const val KEY_RIDE_HISTORY_LIMIT = "ride_history_limit"
         const val DEFAULT_RIDE_MIN_DISTANCE_M = 400
         const val DEFAULT_RIDE_MIN_DURATION_S = 60
+        const val RIDE_MIN_DISTANCE_MIN_M = 50
+        const val RIDE_MIN_DISTANCE_MAX_M = 50_000
+        const val RIDE_MIN_DURATION_MIN_S = 10
+        const val RIDE_MIN_DURATION_MAX_S = 3_600
+        const val DEFAULT_RIDE_HISTORY_LIMIT = 100
+        const val RIDE_HISTORY_LIMIT_MIN = 10
+        const val RIDE_HISTORY_LIMIT_MAX = 1_000
         private const val KEY_NAV_PROVIDER = "nav_provider"
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"

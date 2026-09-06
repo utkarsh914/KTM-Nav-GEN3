@@ -36,10 +36,12 @@ class OpenDashApplication : Application() {
         appScope.launch(Dispatchers.IO) {
             runCatching {
                 val settings = AppSettings(this@OpenDashApplication)
-                RideStore(this@OpenDashApplication).recoverOrphans(
+                val store = RideStore(this@OpenDashApplication)
+                store.recoverOrphans(
                     minDistanceMeters = settings.rideMinDistanceMeters,
                     minDurationSeconds = settings.rideMinDurationSeconds,
                 )
+                store.pruneToLimit(settings.rideHistoryLimit)
             }.onFailure { AppLogger.log("Ride", "!! orphan recovery failed: $it") }
         }
     }

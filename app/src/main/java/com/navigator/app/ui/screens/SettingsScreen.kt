@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
+import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.components.GroupCard
 import com.navigator.app.ui.components.KtmToggle
@@ -67,7 +70,10 @@ import com.navigator.app.ui.theme.Ktm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class SettingsDialog { NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME }
+private enum class SettingsDialog {
+    NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME,
+    RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
+}
 
 /**
  * Settings (screen 05) — the §5 restructure into four labelled groups
@@ -115,6 +121,7 @@ fun SettingsScreen(
     var rideRecordingOn by remember { mutableStateOf(settings.rideRecordingEnabled) }
     var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
     var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
+    var rideHistoryLimit by remember { mutableStateOf(settings.rideHistoryLimit) }
 
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
@@ -180,6 +187,27 @@ fun SettingsScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // ===== Appearance =====
+            item {
+                GroupCard("Appearance") {
+                    SettingsRow("Theme", showDivider = true, onClick = { dialog = SettingsDialog.THEME }) {
+                        val label = when (themeMode) {
+                            com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
+                            com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
+                            com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
+                        }
+                        MonoValue("$label ›")
+                    }
+                    SettingsRow("Navigation theme", showDivider = false, onClick = { dialog = SettingsDialog.NAV_THEME }) {
+                        val label = when (navThemeMode) {
+                            com.navigator.app.ui.theme.NavThemeMode.APP -> "App default"
+                            com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT -> "Day / Night"
+                        }
+                        MonoValue("$label ›")
+                    }
+                }
+            }
+
             // ===== Connection =====
             item {
                 GroupCard("Connection") {
@@ -244,23 +272,41 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Appearance =====
+            // ===== Ride recording =====
             item {
-                GroupCard("Appearance") {
-                    SettingsRow("Theme", showDivider = true, onClick = { dialog = SettingsDialog.THEME }) {
-                        val label = when (themeMode) {
-                            com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
-                            com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
-                            com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
-                        }
-                        MonoValue("$label ›")
+                GroupCard("Ride recording") {
+                    SettingsRow("Record rides", showDivider = rideRecordingOn) {
+                        KtmToggle(rideRecordingOn, { rideRecordingOn = it; settings.rideRecordingEnabled = it })
                     }
-                    SettingsRow("Navigation theme", showDivider = false, onClick = { dialog = SettingsDialog.NAV_THEME }) {
-                        val label = when (navThemeMode) {
-                            com.navigator.app.ui.theme.NavThemeMode.APP -> "App default"
-                            com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT -> "Day / Night"
+                    // Trivial/aborted trips shorter than BOTH cutoffs are dropped
+                    // on finish. Tap to enter an exact value.
+                    if (rideRecordingOn) {
+                        SettingsRow(
+                            "Min distance to keep", showDivider = true,
+                            onClick = { dialog = SettingsDialog.RIDE_MIN_DISTANCE },
+                        ) {
+                            MonoValue(
+                                if (rideMinDist >= 1000) "%.1f km ›".format(rideMinDist / 1000f)
+                                else "$rideMinDist m ›",
+                            )
                         }
-                        MonoValue("$label ›")
+                        SettingsRow(
+                            "Min duration to keep", showDivider = true,
+                            onClick = { dialog = SettingsDialog.RIDE_MIN_DURATION },
+                        ) {
+                            MonoValue(
+                                if (rideMinDur >= 60) "${rideMinDur / 60} min ›" else "$rideMinDur s ›",
+                            )
+                        }
+                        SettingsRow(
+                            "Keep last N rides", showDivider = true,
+                            onClick = { dialog = SettingsDialog.RIDE_HISTORY_LIMIT },
+                        ) {
+                            MonoValue("$rideHistoryLimit ›")
+                        }
+                    }
+                    SettingsRow("Ride recordings", showDivider = false, onClick = onOpenRecordings) {
+                        Text("›", color = Ktm.Dim, fontSize = 18.sp)
                     }
                 }
             }
@@ -438,55 +484,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ===== Ride recording =====
-            item {
-                GroupCard("Ride recording") {
-                    SettingsRow("Record rides", showDivider = rideRecordingOn) {
-                        KtmToggle(rideRecordingOn, { rideRecordingOn = it; settings.rideRecordingEnabled = it })
-                    }
-                    // Trivial/aborted trips shorter than BOTH cutoffs are dropped
-                    // on finish. Tap to cycle presets - glove-friendly.
-                    if (rideRecordingOn) {
-                        SettingsRow(
-                            "Min distance to keep", showDivider = true,
-                            onClick = {
-                                rideMinDist = when {
-                                    rideMinDist < 400 -> 400
-                                    rideMinDist < 800 -> 800
-                                    rideMinDist < 1500 -> 1500
-                                    else -> 200
-                                }
-                                settings.rideMinDistanceMeters = rideMinDist
-                            },
-                        ) {
-                            MonoValue(
-                                if (rideMinDist >= 1000) "%.1f km ›".format(rideMinDist / 1000f)
-                                else "$rideMinDist m ›",
-                            )
-                        }
-                        SettingsRow(
-                            "Min duration to keep", showDivider = true,
-                            onClick = {
-                                rideMinDur = when {
-                                    rideMinDur < 60 -> 60
-                                    rideMinDur < 120 -> 120
-                                    rideMinDur < 300 -> 300
-                                    else -> 30
-                                }
-                                settings.rideMinDurationSeconds = rideMinDur
-                            },
-                        ) {
-                            MonoValue(
-                                if (rideMinDur >= 60) "${rideMinDur / 60} min ›" else "$rideMinDur s ›",
-                            )
-                        }
-                    }
-                    SettingsRow("Ride recordings", showDivider = false, onClick = onOpenRecordings) {
-                        Text("›", color = Ktm.Dim, fontSize = 18.sp)
-                    }
-                }
-            }
-
             // ===== Diagnostics =====
             item {
                 GroupCard("Diagnostics") {
@@ -554,6 +551,44 @@ fun SettingsScreen(
                     overspeedLimit = it
                     settings.overspeedLimitKmh = it
                 }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.RIDE_MIN_DISTANCE -> TextFieldDialog(
+            title = "Min distance to keep (m)",
+            initial = rideMinDist.toString(), label = "metres", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it in AppSettings.RIDE_MIN_DISTANCE_MIN_M..AppSettings.RIDE_MIN_DISTANCE_MAX_M }
+                    ?.let { rideMinDist = it; settings.rideMinDistanceMeters = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.RIDE_MIN_DURATION -> TextFieldDialog(
+            title = "Min duration to keep (s)",
+            initial = rideMinDur.toString(), label = "seconds", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it in AppSettings.RIDE_MIN_DURATION_MIN_S..AppSettings.RIDE_MIN_DURATION_MAX_S }
+                    ?.let { rideMinDur = it; settings.rideMinDurationSeconds = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.RIDE_HISTORY_LIMIT -> TextFieldDialog(
+            title = "Keep last N rides",
+            initial = rideHistoryLimit.toString(), label = "10 - 1000", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it in AppSettings.RIDE_HISTORY_LIMIT_MIN..AppSettings.RIDE_HISTORY_LIMIT_MAX }
+                    ?.let {
+                        rideHistoryLimit = it
+                        settings.rideHistoryLimit = it
+                        // Apply immediately so lowering the limit prunes now.
+                        RideStore(context).pruneToLimit(it)
+                    }
                 dialog = SettingsDialog.NONE
             },
         )
@@ -637,6 +672,7 @@ private fun OutlinedPill(text: String) {
 @Composable
 private fun TextFieldDialog(
     title: String, initial: String, label: String,
+    numeric: Boolean = false,
     onDismiss: () -> Unit, onConfirm: (String) -> Unit,
 ) {
     var value by remember { mutableStateOf(initial) }
@@ -648,8 +684,10 @@ private fun TextFieldDialog(
         title = { Text(title, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
-                value = value, onValueChange = { value = it },
+                value = value,
+                onValueChange = { new -> value = if (numeric) new.filter { it.isDigit() } else new },
                 label = { Text(label) }, singleLine = true,
+                keyboardOptions = if (numeric) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default,
                 modifier = Modifier.fillMaxWidth(),
             )
         },

@@ -68,6 +68,7 @@ object RideJson {
         put("avgSpeedKmh", r.avgSpeedKmh.toDouble())
         put("maxSpeedKmh", r.maxSpeedKmh.toDouble())
         put("pointCount", r.pointCount)
+        put("saved", r.saved)
     }
 
     fun rideFromJson(o: JSONObject): RecordedRide = RecordedRide(
@@ -82,5 +83,6 @@ object RideJson {
         avgSpeedKmh = o.optDouble("avgSpeedKmh", 0.0).toFloat(),
         maxSpeedKmh = o.optDouble("maxSpeedKmh", 0.0).toFloat(),
         pointCount = o.optInt("pointCount", 0),
+        saved = o.optBoolean("saved", false),
     )
 }
