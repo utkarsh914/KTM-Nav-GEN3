@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -38,42 +41,87 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlaceSuggestion
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.components.DeleteConfirmDialog
+import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.GroupCard
+import com.navigator.app.ui.components.PopIconButton
+import com.navigator.app.ui.components.ScreenTopBar
+import com.navigator.app.ui.components.SelectableCard
+import com.navigator.app.ui.components.SelectionTopBarActions
 import com.navigator.app.ui.components.SettingsRow
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
+import com.navigator.app.ui.theme.rememberHaptics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
  * Manage Home / Work + Saved places (see docs/architecture.md §3).
- * Setting Home/Work or adding a saved place opens an inline place search that
- * reuses [PlacesClient] + persists via [PlacesStore].
+ *
+ * The Saved list uses the same standalone [SelectableCard] chrome as the ride
+ * history: tap a card to drop its pin on the map ([onOpenOnMap]); long-press to
+ * enter multi-select (select-all + bulk delete in the top bar). Home & Work stay
+ * as one compact grouped card (two fixed slots). Every destructive action —
+ * single, bulk, or clearing Home/Work — routes through the shared confirmation
+ * dialog. Setting Home/Work or adding a saved place opens an inline place search
+ * that reuses [PlacesClient] + persists via [PlacesStore].
  */
 @Composable
-fun SavedPlacesScreen(onBack: () -> Unit) {
+fun SavedPlacesScreen(
+    onBack: () -> Unit,
+    onOpenOnMap: (SavedPlace) -> Unit = {},
+) {
     val context = LocalContext.current
     val store = remember { PlacesStore(context) }
     var favorites by remember { mutableStateOf(store.favorites()) }
     // Non-null while the inline picker is shown; the slot to write on pick.
     var picking by remember { mutableStateOf<FavoriteSlot?>(null) }
+    // Multi-select over the SAVED (OTHER) list, keyed by rounded coordinates.
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var confirmDelete by remember { mutableStateOf<PlaceDeleteTarget?>(null) }
 
     fun refresh() { favorites = store.favorites() }
 
+    val home = favorites.firstOrNull { it.slot == FavoriteSlot.HOME }
+    val work = favorites.firstOrNull { it.slot == FavoriteSlot.WORK }
+    val saved = favorites.filter { it.slot == FavoriteSlot.OTHER }
+
+    // Keep the selection consistent with the current list after deletes.
+    val allKeys = saved.map { store.favoriteKey(it.place) }.toSet()
+    val validSelected = selectedKeys.intersect(allKeys)
+
+    fun toggle(key: String) {
+        selectedKeys = if (key in selectedKeys) selectedKeys - key else selectedKeys + key
+    }
+
+    fun enterSelection(key: String) {
+        selectionMode = true
+        selectedKeys = selectedKeys + key
+    }
+
+    fun exitSelection() {
+        selectionMode = false
+        selectedKeys = emptySet()
+    }
+
     BackHandler(enabled = picking != null) { picking = null }
+    // While multi-select is active, back exits it instead of leaving the screen.
+    BackHandler(enabled = picking == null && selectionMode) { exitSelection() }
 
     if (picking != null) {
         PlacePicker(
@@ -92,83 +140,210 @@ fun SavedPlacesScreen(onBack: () -> Unit) {
         return
     }
 
-    val home = favorites.firstOrNull { it.slot == FavoriteSlot.HOME }
-    val work = favorites.firstOrNull { it.slot == FavoriteSlot.WORK }
-    val saved = favorites.filter { it.slot == FavoriteSlot.OTHER }
-
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
     ) {
-        com.navigator.app.ui.components.ScreenTopBar(
-            title = "Saved places",
-            onBack = onBack,
+        ScreenTopBar(
+            title = if (selectionMode) "${validSelected.size}/${saved.size} selected" else "Saved places",
+            onBack = { if (selectionMode) exitSelection() else onBack() },
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
-        )
+        ) {
+            if (selectionMode) {
+                SelectionTopBarActions(
+                    allSelected = saved.isNotEmpty() && validSelected.size == saved.size,
+                    hasSelection = validSelected.isNotEmpty(),
+                    onToggleSelectAll = {
+                        val allSelected = saved.isNotEmpty() && validSelected.size == saved.size
+                        selectedKeys = if (allSelected) emptySet() else allKeys
+                    },
+                    onDelete = { confirmDelete = PlaceDeleteTarget.Selected },
+                )
+            }
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp, top = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                GroupCard("Home & Work") {
-                    SlotRow(
-                        icon = OpenDashIcons.House, title = "Home",
-                        subtitle = home?.place?.label, showDivider = true,
-                        onSet = { picking = FavoriteSlot.HOME },
-                        onRemove = home?.let { { store.removeFavoriteSlot(FavoriteSlot.HOME); refresh() } },
-                    )
-                    SlotRow(
-                        icon = OpenDashIcons.Briefcase, title = "Work",
-                        subtitle = work?.place?.label, showDivider = false,
-                        onSet = { picking = FavoriteSlot.WORK },
-                        onRemove = work?.let { { store.removeFavoriteSlot(FavoriteSlot.WORK); refresh() } },
+            // Home & Work — a compact grouped card of two fixed slots. Hidden
+            // while selecting, which focuses the selection on the saved list.
+            if (!selectionMode) {
+                item {
+                    GroupCard("Home & Work") {
+                        SlotRow(
+                            title = "Home",
+                            subtitle = home?.place?.label,
+                            showDivider = true,
+                            onClick = home?.let { { onOpenOnMap(it.place) } } ?: { picking = FavoriteSlot.HOME },
+                            onRemove = home?.let { { confirmDelete = PlaceDeleteTarget.Slot(FavoriteSlot.HOME) } },
+                        )
+                        SlotRow(
+                            title = "Work",
+                            subtitle = work?.place?.label,
+                            showDivider = false,
+                            onClick = work?.let { { onOpenOnMap(it.place) } } ?: { picking = FavoriteSlot.WORK },
+                            onRemove = work?.let { { confirmDelete = PlaceDeleteTarget.Slot(FavoriteSlot.WORK) } },
+                        )
+                    }
+                }
+                item {
+                    Eyebrow(
+                        "Saved", fontSize = 11, letterSpacing = 2.0,
+                        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
                     )
                 }
             }
 
-            item {
-                GroupCard("Saved") {
-                    if (saved.isEmpty()) {
-                        SettingsRow("No saved places yet", showDivider = true) {}
-                    } else {
-                        saved.forEach { fav ->
-                            SlotRow(
-                                icon = OpenDashIcons.Bookmark,
-                                title = fav.place.label,
-                                subtitle = fav.place.address,
-                                showDivider = true,
-                                onSet = null,
-                                onRemove = { store.removeFavorite(fav.place.lat, fav.place.lng); refresh() },
-                            )
-                        }
-                    }
-                    SettingsRow("Add place", showDivider = false, onClick = { picking = FavoriteSlot.OTHER }) {
-                        Icon(OpenDashIcons.Search, null, tint = Ktm.Orange, modifier = Modifier.size(18.dp))
-                    }
+            if (saved.isEmpty() && !selectionMode) {
+                item {
+                    Text(
+                        "No saved places yet.",
+                        color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
+                    )
+                }
+            } else {
+                items(saved, key = { store.favoriteKey(it.place) }) { fav ->
+                    val key = store.favoriteKey(fav.place)
+                    SavedPlaceCard(
+                        fav = fav,
+                        selectionMode = selectionMode,
+                        selected = key in validSelected,
+                        onTap = { if (selectionMode) toggle(key) else onOpenOnMap(fav.place) },
+                        onLongPress = { if (!selectionMode) enterSelection(key) else toggle(key) },
+                        onDelete = { confirmDelete = PlaceDeleteTarget.Single(fav.place) },
+                    )
                 }
             }
+
+            if (!selectionMode) {
+                item { AddPlaceCard(onClick = { picking = FavoriteSlot.OTHER }) }
+            }
+        }
+    }
+
+    confirmDelete?.let { target ->
+        val (title, message) = when (target) {
+            is PlaceDeleteTarget.Single -> "Delete this place?" to
+                "This removes the saved place. This can't be undone."
+            PlaceDeleteTarget.Selected -> {
+                val n = validSelected.size
+                (if (n > 1) "Delete $n places?" else "Delete this place?") to
+                    "This removes the saved places. This can't be undone."
+            }
+            is PlaceDeleteTarget.Slot -> {
+                val name = if (target.slot == FavoriteSlot.HOME) "Home" else "Work"
+                "Remove $name?" to "This clears your saved $name location."
+            }
+        }
+        DeleteConfirmDialog(
+            title = title,
+            message = message,
+            confirmLabel = if (target is PlaceDeleteTarget.Slot) "REMOVE" else "DELETE",
+            onConfirm = {
+                when (target) {
+                    is PlaceDeleteTarget.Single -> store.removeFavorite(target.place.lat, target.place.lng)
+                    PlaceDeleteTarget.Selected -> {
+                        store.removeFavorites(validSelected)
+                        exitSelection()
+                    }
+                    is PlaceDeleteTarget.Slot -> store.removeFavoriteSlot(target.slot)
+                }
+                refresh()
+                confirmDelete = null
+            },
+            onDismiss = { confirmDelete = null },
+        )
+    }
+}
+
+private sealed interface PlaceDeleteTarget {
+    data class Single(val place: SavedPlace) : PlaceDeleteTarget
+    data object Selected : PlaceDeleteTarget
+    data class Slot(val slot: FavoriteSlot) : PlaceDeleteTarget
+}
+
+/** A standalone saved-place card (matches the ride cards): title + address, a
+ *  per-card delete when browsing, long-press to multi-select. */
+@Composable
+private fun SavedPlaceCard(
+    fav: FavoritePlace,
+    selectionMode: Boolean,
+    selected: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    SelectableCard(
+        selected = selected,
+        selectionMode = selectionMode,
+        onTap = onTap,
+        onLongPress = onLongPress,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                fav.place.label.ifBlank { "Saved place" },
+                color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
+                fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            fav.place.address?.let {
+                Spacer(Modifier.size(2.dp))
+                Text(
+                    it, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (!selectionMode) {
+            PopIconButton(
+                icon = Icons.Filled.Delete, desc = "Delete place", tint = Ktm.Dim,
+                boxSize = 32.dp, iconSize = 26.dp, onClick = onDelete,
+            )
         }
     }
 }
 
-/** A Home/Work/Saved row: tap to set (if [onSet] != null), trailing remove (if [onRemove] != null). */
+/** The "Add place" action, styled as a card so it sits with the saved list. */
+@Composable
+private fun AddPlaceCard(onClick: () -> Unit) {
+    val haptics = rememberHaptics()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .clickable { haptics.tap(); onClick() }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(OpenDashIcons.Search, null, tint = Ktm.Orange, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(12.dp))
+        Text(
+            "Add place", color = Ktm.TextPrimary, fontFamily = Barlow, fontSize = 14.sp,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** A Home/Work row inside the grouped card: tap to set (empty) or open on map
+ *  (set), with a trailing remove (X) that asks for confirmation. */
 @Composable
 private fun SlotRow(
-    icon: ImageVector,
     title: String,
     subtitle: String?,
     showDivider: Boolean,
-    onSet: (() -> Unit)?,
+    onClick: (() -> Unit)?,
     onRemove: (() -> Unit)?,
 ) {
-    SettingsRow(label = title, showDivider = showDivider, onClick = onSet) {
+    SettingsRow(label = title, showDivider = showDivider, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (subtitle != null) {
                 Text(
                     subtitle, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 13.sp,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 180.dp),
                 )
                 if (onRemove != null) {

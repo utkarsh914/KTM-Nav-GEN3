@@ -1,11 +1,17 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +27,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,8 +52,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -473,4 +492,155 @@ fun ConnectIconPill(
                 .background(dotColor),
         )
     }
+}
+
+/**
+ * Shared selectable list-card chrome for the rides & saved-places lists so both
+ * multi-select experiences look and feel identical: [Ktm.Surface] fill, an
+ * animated orange border on select, a subtle scale "bump" when selection flips,
+ * a leading check-circle in selection mode, and combined tap / long-press
+ * handling with haptics. Card [content] is laid out in the trailing [RowScope]
+ * (vertically centered) after the optional selection circle.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun SelectableCard(
+    selected: Boolean,
+    selectionMode: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    // Subtle bump whenever this card's selection flips (skips first composition,
+    // so it never fires on initial render or when scrolling back into view).
+    val cardScale = remember { Animatable(1f) }
+    var firstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(selected) {
+        if (firstComposition) { firstComposition = false; return@LaunchedEffect }
+        cardScale.snapTo(0.96f)
+        cardScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+    }
+    // Border grows/fades in smoothly on select (at target on first frame -> no
+    // spurious animation).
+    val borderWidth by animateDpAsState(if (selected) 2.dp else 0.dp, label = "border")
+    val borderColor by animateColorAsState(if (selected) Ktm.Orange else Color.Transparent, label = "borderColor")
+    val haptics = rememberHaptics()
+    Row(
+        modifier = modifier
+            .graphicsLayer { scaleX = cardScale.value; scaleY = cardScale.value }
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(borderWidth, borderColor, RoundedCornerShape(Ktm.RadiusCard))
+            .combinedClickable(
+                onClick = { haptics.tap(); onTap() },
+                onLongClick = { haptics.longPress(); onLongPress() },
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (selectionMode) {
+            Icon(
+                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                if (selected) "Selected" else "Not selected",
+                tint = if (selected) Ktm.Orange else Ktm.Dim,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.size(12.dp))
+        }
+        content()
+    }
+}
+
+/**
+ * An icon button with a subtle spring "pop" on tap. Shared by the multi-select
+ * top-bar actions and the per-card delete across the rides & places lists.
+ */
+@Composable
+fun PopIconButton(
+    icon: ImageVector,
+    desc: String,
+    tint: Color = Ktm.White,
+    boxSize: Dp = 40.dp,
+    iconSize: Dp = 24.dp,
+    onClick: () -> Unit,
+) {
+    val scale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    val haptics = rememberHaptics()
+    Box(
+        modifier = Modifier
+            .size(boxSize)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .clickable {
+                haptics.tap()
+                scope.launch {
+                    scale.snapTo(0.6f)
+                    scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                }
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon, desc, tint = tint,
+            modifier = Modifier
+                .size(iconSize)
+                .graphicsLayer { scaleX = scale.value; scaleY = scale.value },
+        )
+    }
+}
+
+/**
+ * The shared top-bar action cluster for a multi-select list: a select-all /
+ * deselect-all toggle followed by a bulk-delete button. Placed in the trailing
+ * slot of [ScreenTopBar] so the rides & places lists offer identical controls.
+ */
+@Composable
+fun RowScope.SelectionTopBarActions(
+    allSelected: Boolean,
+    hasSelection: Boolean,
+    onToggleSelectAll: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    PopIconButton(
+        icon = if (allSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+        desc = if (allSelected) "Deselect all" else "Select all",
+        tint = if (allSelected) Ktm.Orange else Ktm.White,
+        onClick = onToggleSelectAll,
+    )
+    Spacer(Modifier.size(6.dp))
+    PopIconButton(
+        icon = Icons.Filled.Delete,
+        desc = "Delete selected",
+        tint = if (!hasSelection) Ktm.Dim else Ktm.Danger,
+        onClick = { if (hasSelection) onDelete() },
+    )
+}
+
+/**
+ * The app's shared destructive-confirmation dialog (matches the KTM alert
+ * styling: [Ktm.Surface] container, Barlow Condensed title, [Ktm.Danger]
+ * confirm). Callers supply the [title] / [message] so it reads naturally for
+ * rides, saved places or clearing Home/Work.
+ */
+@Composable
+fun DeleteConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String = "DELETE",
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        textContentColor = Ktm.TextSecondary,
+        title = { Text(title, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = { Text(message, fontFamily = Barlow) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel, color = Ktm.Danger) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
+    )
 }

@@ -96,6 +96,16 @@ class PlacesStore(context: Context) {
         writeFavorites(favorites().filterNot { coordKey(it.place.lat, it.place.lng) == key })
     }
 
+    /** Bulk-remove favorites whose rounded coordinates match any of [coordKeys]
+     *  (see [favoriteKey]). Rewrites the list once. */
+    fun removeFavorites(coordKeys: Set<String>) {
+        if (coordKeys.isEmpty()) return
+        writeFavorites(favorites().filterNot { coordKey(it.place.lat, it.place.lng) in coordKeys })
+    }
+
+    /** Stable selection/identity key for a favorite place (rounded coords). */
+    fun favoriteKey(place: SavedPlace): String = coordKey(place.lat, place.lng)
+
     /** Remove the favorite occupying [slot] (used for HOME/WORK). */
     fun removeFavoriteSlot(slot: FavoriteSlot) {
         writeFavorites(favorites().filterNot { it.slot == slot })

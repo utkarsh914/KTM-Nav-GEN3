@@ -163,6 +163,8 @@ fun NavigationHomeScreen(
     onOpenReplay: (String) -> Unit = {},
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
+    pendingPlace: SavedPlace? = null,
+    onPendingPlaceConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -500,6 +502,14 @@ fun NavigationHomeScreen(
         resolvingLink = false
         onSharedLinkConsumed()
         if (dest != null) choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
+    }
+
+    // A saved place tapped in Saved Places -> drop its pin and open the confirm
+    // card (no network lookup needed; it already has coords).
+    LaunchedEffect(pendingPlace) {
+        val p = pendingPlace ?: return@LaunchedEffect
+        onPendingPlaceConsumed()
+        choose(p)
     }
 
     // Track map bearing for the compass (shown only when rotated) and let the

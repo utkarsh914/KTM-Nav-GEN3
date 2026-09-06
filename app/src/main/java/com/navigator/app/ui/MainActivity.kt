@@ -415,10 +415,18 @@ private fun OpenDashApp(
     var replayReturnRoute by remember { mutableStateOf(AppRoute.RECORDINGS) }
     // The ride selected in the history list, shown on the replay screen.
     var selectedRideId by remember { mutableStateOf<String?>(null) }
+    // A saved place the rider tapped in Saved Places -> dropped as a pin on the
+    // map home (consumed by NavigationHomeScreen on entry, like a shared link).
+    var pendingPlace by remember { mutableStateOf<com.navigator.app.nav.destination.SavedPlace?>(null) }
     // Multi-select state hoisted here so it survives opening a ride and coming
     // back (the history screen leaves composition on navigation).
     var rideSelectionMode by remember { mutableStateOf(false) }
     var rideSelectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Search query + sort field/direction for the history list, hoisted so they
+    // survive opening a ride and coming back (reset on app restart).
+    var rideQuery by remember { mutableStateOf("") }
+    var rideSortField by remember { mutableStateOf(com.navigator.app.ui.screens.RideSortField.DATE) }
+    var rideSortDesc by remember { mutableStateOf(true) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // Touch back navigation: sub-pages return to their parent instead of
@@ -531,6 +539,8 @@ private fun OpenDashApp(
                 },
                 sharedLink = sharedLink,
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
+                pendingPlace = pendingPlace,
+                onPendingPlaceConsumed = { pendingPlace = null },
             )
             AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
                 onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.SETTINGS) },
@@ -576,7 +586,20 @@ private fun OpenDashApp(
                 onBack = { goBack(logsReturnRoute) }
             )
             AppRoute.PLACES -> com.navigator.app.ui.screens.SavedPlacesScreen(
-                onBack = { goBack(AppRoute.SETTINGS) }
+                onBack = { goBack(AppRoute.SETTINGS) },
+                onOpenOnMap = { place ->
+                    // Only the SDK map home can show a pin; in mirror mode there's
+                    // no map surface, so fall back with a hint.
+                    if (googleNavOffered) {
+                        pendingPlace = place
+                        goTo(AppRoute.NAV_HOME)
+                    } else {
+                        android.widget.Toast.makeText(
+                            context, "Map view needs in-app navigation",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
             )
             AppRoute.SYMBOL_TEST -> com.navigator.app.ui.screens.SymbolTestScreen(
                 onBack = { goBack(AppRoute.SETTINGS) }
@@ -596,6 +619,12 @@ private fun OpenDashApp(
                 selectedIds = rideSelectedIds,
                 onSelectionModeChange = { rideSelectionMode = it },
                 onSelectedIdsChange = { rideSelectedIds = it },
+                query = rideQuery,
+                onQueryChange = { rideQuery = it },
+                sortField = rideSortField,
+                onSortFieldChange = { rideSortField = it },
+                sortDesc = rideSortDesc,
+                onSortDescChange = { rideSortDesc = it },
             )
             AppRoute.RIDE_REPLAY -> com.navigator.app.ui.screens.RideReplayScreen(
                 retainedNav = retainedNav,
