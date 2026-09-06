@@ -176,13 +176,70 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
 
 Install to a connected phone with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
-**Optional — the in-app maps engine.** Get a free key at console.cloud.google.com, enable "Maps SDK for
-Android" (and the Navigation SDK / Routes API), restrict it to package `com.navigator.ktm` plus your
-keystore's SHA-1, then add `MAPS_API_KEY=your-key` (and `NAV_SDK_API_KEY=your-key`) to `local.properties`
-before building.
-
 On the phone: enable **Notification access** (required to mirror navigation and notifications) and disable
 battery optimisation so the app stays connected in the background.
+
+## Optional: enable the in-app maps engine (Google API key)
+
+The **In-app maps** engine (full-screen map, search, route preview and Google's Navigation SDK) needs a
+Google Maps Platform API key. Without one the app still builds and runs, but only in the offline
+**Notification-mirror** engine — you navigate in Google Maps and the app forwards its turn-by-turn to the
+dash. Note this engine goes online: entering a destination sends it and your location to Google (see the
+Privacy section above).
+
+### 1. Create and enable the key
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com), create or select a project, and make
+   sure **billing is enabled** (Google Maps Platform requires a billing account, even within the free
+   tier).
+2. Enable **all four** of these APIs (APIs & Services → Library):
+   - **Navigation SDK for Android** — turn-by-turn guidance.
+   - **Maps SDK for Android** — the in-app map and the drop-a-pin picker.
+   - **Routes API** — route preview and alternates.
+   - **Places API (New)** — destination search, autocomplete and place details.
+3. Create the key under **APIs & Services → Credentials → Create credentials → API key**.
+
+### 2. Restrict the key
+
+The app calls these services with an Android-restricted identity (package name + signing certificate), so
+the key **must** be restricted to match, or the requests are rejected:
+
+- **Application restrictions → Android apps.** Add an entry with:
+  - **Package name:** `com.navigator.ktm`
+  - **SHA-1 certificate fingerprint:** the SHA-1 of the keystore that signs the APK you install (see below).
+- **API restrictions → Restrict key.** Select exactly the four APIs enabled in step 1.
+
+### 3. Getting the SHA-1
+
+The SHA-1 must match the keystore that signs the APK you actually install on the phone. A debug build
+(`assembleDebug`) is signed by the debug keystore; a release build (`assembleRelease`) is signed by your
+release keystore.
+
+```bash
+# Debug keystore (auto-created by the Android SDK; password is "android")
+keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore \
+  -storepass android -keypass android | grep SHA1
+
+# Release keystore (the one referenced by RELEASE_STORE_FILE in local.properties)
+keytool -list -v -alias <your-key-alias> -keystore /path/to/release.keystore | grep SHA1
+```
+
+Add the `SHA1:` value (e.g. `AB:CD:...:EF`) to the Android-app restriction above. You can add both the
+debug and release fingerprints to the same key so one key works for either build.
+
+### 4. Add the key to the build
+
+Put the key in `local.properties` (gitignored) as a single line:
+
+```properties
+NAV_SDK_API_KEY=your-key
+```
+
+This one key feeds both the Navigation SDK (via `BuildConfig`) and the Maps SDK (via the manifest
+placeholder) — there is no separate `MAPS_API_KEY` line to set. Rebuild after adding it.
+
+> If search or route preview returns errors while everything else works, the key's SHA-1 almost certainly
+> doesn't match the keystore that signed the installed APK.
 
 ## The turn-icon model (`ml/`)
 
