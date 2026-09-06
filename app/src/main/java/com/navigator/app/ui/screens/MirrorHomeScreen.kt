@@ -297,13 +297,14 @@ private fun MirrorStatTile(label: String, value: String, modifier: Modifier = Mo
 
 @Composable
 private fun PauseMirrorButton(paused: Boolean, onClick: () -> Unit) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Surface)
             .border(1.dp, if (paused) Ktm.Orange else Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
+            .clickable { haptics.tap(); onClick() }
             .padding(15.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -318,12 +319,13 @@ private fun PauseMirrorButton(paused: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun OpenGoogleMapsButton(onClick: () -> Unit) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Orange)
-            .clickable(onClick = onClick)
+            .clickable { haptics.confirm(); onClick() }
             .padding(15.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,

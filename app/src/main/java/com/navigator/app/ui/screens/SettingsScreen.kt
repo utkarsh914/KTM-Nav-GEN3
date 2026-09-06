@@ -11,12 +11,15 @@ import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,9 +30,12 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -46,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -71,7 +79,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private enum class SettingsDialog {
-    NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME,
+    NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME, ACCENT, ACCENT_CUSTOM,
     RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
 }
 
@@ -99,6 +107,9 @@ fun SettingsScreen(
     onThemeModeChanged: (com.navigator.app.ui.theme.ThemeMode) -> Unit = {},
     navThemeMode: com.navigator.app.ui.theme.NavThemeMode = com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT,
     onNavThemeModeChanged: (com.navigator.app.ui.theme.NavThemeMode) -> Unit = {},
+    accentColorId: String? = null,
+    onAccentColorChanged: (String?) -> Unit = {},
+    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     onRepair: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -183,6 +194,7 @@ fun SettingsScreen(
         )
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -198,12 +210,23 @@ fun SettingsScreen(
                         }
                         MonoValue("$label ›")
                     }
-                    SettingsRow("Navigation theme", showDivider = false, onClick = { dialog = SettingsDialog.NAV_THEME }) {
+                    SettingsRow("Navigation theme", showDivider = true, onClick = { dialog = SettingsDialog.NAV_THEME }) {
                         val label = when (navThemeMode) {
                             com.navigator.app.ui.theme.NavThemeMode.APP -> "App default"
                             com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT -> "Day / Night"
                         }
                         MonoValue("$label ›")
+                    }
+                    SettingsRow("Accent colour", showDivider = false, onClick = { dialog = SettingsDialog.ACCENT }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(16.dp).clip(CircleShape).background(Ktm.Orange)
+                                    .border(1.dp, Ktm.BorderSoft, CircleShape),
+                            )
+                            androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+                            val label = com.navigator.app.ui.theme.accentFor(accentColorId)?.displayName ?: "Match bike"
+                            MonoValue("$label ›")
+                        }
                     }
                 }
             }
@@ -653,7 +676,258 @@ fun SettingsScreen(
             onDismiss = { dialog = SettingsDialog.NONE },
             onSelect = { onNavThemeModeChanged(it); dialog = SettingsDialog.NONE },
         )
+        SettingsDialog.ACCENT -> AccentPickerDialog(
+            selectedId = accentColorId,
+            brandAccent = com.navigator.app.ui.theme.identityFor(settings.brand).accent,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = { id -> onAccentColorChanged(id); dialog = SettingsDialog.NONE },
+            onCustom = { dialog = SettingsDialog.ACCENT_CUSTOM },
+        )
+        SettingsDialog.ACCENT_CUSTOM -> CustomColorPickerDialog(
+            initial = com.navigator.app.ui.theme.accentFor(accentColorId)?.color ?: Ktm.Orange,
+            onCancel = { dialog = SettingsDialog.ACCENT },
+            onConfirm = { hex -> onAccentColorChanged(hex); dialog = SettingsDialog.NONE },
+        )
         SettingsDialog.NONE -> {}
+    }
+}
+
+/**
+ * Accent picker showing each option as a colour swatch. "Match bike" (null id)
+ * follows the brand's own accent; every other row overrides it app-wide.
+ */
+@Composable
+private fun AccentPickerDialog(
+    selectedId: String?,
+    brandAccent: androidx.compose.ui.graphics.Color,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit,
+    onCustom: () -> Unit,
+) {
+    // "Custom" = a stored id that isn't a known preset (a hex colour).
+    val isCustom = selectedId != null &&
+        com.navigator.app.ui.theme.AccentPalettes.none { it.id == selectedId }
+    val customColor = if (isCustom) com.navigator.app.ui.theme.accentFor(selectedId)?.color else null
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        title = { Text("Accent colour", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                AccentSwatchRow(
+                    label = "Match bike",
+                    color = brandAccent,
+                    selected = selectedId == null,
+                    onClick = { onSelect(null) },
+                )
+                com.navigator.app.ui.theme.AccentPalettes.forEach { option ->
+                    AccentSwatchRow(
+                        label = option.displayName,
+                        color = option.color,
+                        selected = selectedId == option.id,
+                        onClick = { onSelect(option.id) },
+                    )
+                }
+                // Custom colour — opens the colour picker. Its swatch shows the
+                // chosen custom colour when active, otherwise a rainbow hint.
+                CustomAccentRow(
+                    label = if (isCustom) "Custom (${selectedId})" else "Custom…",
+                    swatch = customColor,
+                    selected = isCustom,
+                    onClick = onCustom,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("DONE", color = Ktm.Orange) } },
+    )
+}
+
+/** The "Custom…" entry in the accent list: a colour-wheel hint (or the current
+ *  custom colour) that opens the full picker. */
+@Composable
+private fun CustomAccentRow(
+    label: String,
+    swatch: androidx.compose.ui.graphics.Color?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val wheel = androidx.compose.ui.graphics.Brush.sweepGradient(
+        listOf(
+            androidx.compose.ui.graphics.Color.Red,
+            androidx.compose.ui.graphics.Color.Yellow,
+            androidx.compose.ui.graphics.Color.Green,
+            androidx.compose.ui.graphics.Color.Cyan,
+            androidx.compose.ui.graphics.Color.Blue,
+            androidx.compose.ui.graphics.Color.Magenta,
+            androidx.compose.ui.graphics.Color.Red,
+        ),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Ktm.RadiusRow))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(26.dp).clip(CircleShape)
+                .then(
+                    if (swatch != null) Modifier.background(swatch) else Modifier.background(wheel),
+                )
+                .border(if (selected) 2.dp else 1.dp, if (selected) Ktm.White else Ktm.BorderSoft, CircleShape),
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+        Text(label, color = Ktm.TextPrimary, fontFamily = Barlow, modifier = Modifier.weight(1f))
+        Text("›", color = Ktm.Dim, fontSize = 18.sp)
+    }
+}
+
+/** HSV (hue 0..360, sat/value 0..1) -> opaque Compose [Color], via the platform
+ *  converter so it's version-stable. */
+private fun hsvColor(hue: Float, sat: Float, value: Float): androidx.compose.ui.graphics.Color =
+    androidx.compose.ui.graphics.Color(
+        android.graphics.Color.HSVToColor(floatArrayOf(hue.coerceIn(0f, 360f), sat.coerceIn(0f, 1f), value.coerceIn(0f, 1f))),
+    )
+
+/**
+ * Full custom-colour picker: a saturation/value panel over a hue slider, with a
+ * live preview + hex readout. Lets the rider pick ANY accent, not just a preset.
+ */
+@Composable
+private fun CustomColorPickerDialog(
+    initial: androidx.compose.ui.graphics.Color,
+    onCancel: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    val start = remember(initial) {
+        val out = FloatArray(3)
+        android.graphics.Color.colorToHSV(initial.toArgb(), out)
+        out
+    }
+    var hue by remember { mutableStateOf(start[0]) }
+    var sat by remember { mutableStateOf(start[1]) }
+    var value by remember { mutableStateOf(start[2].coerceAtLeast(0.06f)) }
+    val color = hsvColor(hue, sat, value)
+    val hex = com.navigator.app.ui.theme.hexOf(color)
+
+    AlertDialog(
+        onDismissRequest = onCancel,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        title = { Text("Custom colour", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                // Saturation (x) × value (y) panel for the current hue.
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(170.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .pointerInput(Unit) {
+                            detectTapGestures { o ->
+                                sat = (o.x / size.width).coerceIn(0f, 1f)
+                                value = (1f - o.y / size.height).coerceIn(0f, 1f)
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, _ ->
+                                sat = (change.position.x / size.width).coerceIn(0f, 1f)
+                                value = (1f - change.position.y / size.height).coerceIn(0f, 1f)
+                            }
+                        },
+                ) {
+                    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                        drawRect(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                listOf(androidx.compose.ui.graphics.Color.White, hsvColor(hue, 1f, 1f)),
+                            ),
+                        )
+                        drawRect(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black),
+                            ),
+                        )
+                        val cx = sat * size.width
+                        val cy = (1f - value) * size.height
+                        drawCircle(
+                            androidx.compose.ui.graphics.Color.White,
+                            radius = 7.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(cx, cy),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+                        )
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+                // Hue slider.
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(26.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .pointerInput(Unit) {
+                            detectTapGestures { o ->
+                                hue = (o.x / size.width * 360f).coerceIn(0f, 360f)
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, _ ->
+                                hue = (change.position.x / size.width * 360f).coerceIn(0f, 360f)
+                            }
+                        },
+                ) {
+                    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                        val spectrum = (0..6).map { hsvColor(it * 60f, 1f, 1f) }
+                        drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(spectrum))
+                        val x = (hue / 360f) * size.width
+                        drawRect(
+                            color = androidx.compose.ui.graphics.Color.White,
+                            topLeft = androidx.compose.ui.geometry.Offset(x - 2.dp.toPx(), 0f),
+                            size = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height),
+                        )
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(30.dp).clip(CircleShape).background(color)
+                            .border(1.dp, Ktm.BorderSoft, CircleShape),
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+                    Text(hex, color = Ktm.TextPrimary, fontFamily = com.navigator.app.ui.theme.JetBrainsMono, fontSize = 15.sp)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(hex) }) { Text("SELECT", color = Ktm.Orange) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("BACK", color = Ktm.Dim) } },
+    )
+}
+
+@Composable
+private fun AccentSwatchRow(
+    label: String,
+    color: androidx.compose.ui.graphics.Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Ktm.RadiusRow))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(26.dp).clip(CircleShape).background(color)
+                .border(if (selected) 2.dp else 1.dp, if (selected) Ktm.White else Ktm.BorderSoft, CircleShape),
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+        Text(
+            label, color = Ktm.TextPrimary, fontFamily = Barlow,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                Icons.Filled.Check, "Selected",
+                tint = Ktm.Orange, modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

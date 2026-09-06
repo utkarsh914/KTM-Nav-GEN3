@@ -97,6 +97,20 @@ class AppSettings(context: Context) {
         get() = com.navigator.app.ui.theme.NavThemeMode.fromId(pairingPrefs.getString(KEY_NAV_THEME_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_NAV_THEME_MODE, value.id).apply()
 
+    /**
+     * Chosen app accent, independent of the bike brand. Null (default) follows the
+     * brand's own accent (KTM orange / Husqvarna blue); a non-null id selects one
+     * of [com.navigator.app.ui.theme.AccentPalettes]. Plain store so it survives
+     * the encrypted-prefs reset, like [brand]/[themeMode].
+     */
+    var accentColorId: String?
+        get() = pairingPrefs.getString(KEY_ACCENT_COLOR, null)
+        set(value) {
+            pairingPrefs.edit().apply {
+                if (value == null) remove(KEY_ACCENT_COLOR) else putString(KEY_ACCENT_COLOR, value)
+            }.apply()
+        }
+
     /** Used to personalize the test notification and greeting text ("Hey <name>"). */
     var userName: String?
         get() = prefs.getString(KEY_USER_NAME, null)
@@ -309,6 +323,7 @@ class AppSettings(context: Context) {
         private const val KEY_BRAND = "brand"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_NAV_THEME_MODE = "nav_theme_mode"
+        private const val KEY_ACCENT_COLOR = "accent_color"
 
         private const val KEY_NOTIFICATION_APPS = "notification_source_apps"
         private const val KEY_NAV_APP_OVERRIDE = "nav_app_override"

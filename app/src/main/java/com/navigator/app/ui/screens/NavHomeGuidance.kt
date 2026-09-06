@@ -261,6 +261,7 @@ internal fun Speedometer(kmh: Float, modifier: Modifier = Modifier) {
 internal fun NavGuidanceBottomBar(
     nav: NormalizedNavigationState,
     onEnd: () -> Unit,
+    onMinimize: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remainingTime = nav.remainingTimeSeconds
@@ -277,8 +278,7 @@ internal fun NavGuidanceBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CircleIconButton(OpenDashIcons.Close, "End navigation", onClick = onEnd)
-        // Centered info: the END button on the left is balanced by an equal-width
-        // spacer on the right so the text is centered within the whole bar.
+        // Centered info, balanced by the END button (left) and minimise (right).
         Column(
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -295,6 +295,7 @@ internal fun NavGuidanceBottomBar(
                 )
             }
         }
-        Spacer(Modifier.width(Ktm.ControlHeight)) // balances the 52dp END button
+        // Step away to the map without ending the trip.
+        CircleIconButton(OpenDashIcons.ChevronDown, "Minimise to map", onClick = onMinimize)
     }
 }

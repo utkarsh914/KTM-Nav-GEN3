@@ -108,27 +108,29 @@ class RideRecorder(private val context: Context) {
             val minDist = settings.rideMinDistanceMeters
             val minDur = settings.rideMinDurationSeconds
             if (RideMetrics.meetsCutoff(stats.distanceMeters, stats.durationSeconds, minDist, minDur)) {
-                store.finalizeRide(
-                    RecordedRide(
-                        id = id,
-                        startMs = stats.startMs,
-                        endMs = stats.endMs,
-                        distanceMeters = stats.distanceMeters,
-                        durationSeconds = stats.durationSeconds,
-                        destinationLabel = destLabel,
-                        destLat = destLat,
-                        destLng = destLng,
-                        avgSpeedKmh = stats.avgSpeedKmh,
-                        maxSpeedKmh = stats.maxSpeedKmh,
-                        pointCount = stats.pointCount,
-                    ),
+                val ride = RecordedRide(
+                    id = id,
+                    startMs = stats.startMs,
+                    endMs = stats.endMs,
+                    distanceMeters = stats.distanceMeters,
+                    durationSeconds = stats.durationSeconds,
+                    destinationLabel = destLabel,
+                    destLat = destLat,
+                    destLng = destLng,
+                    avgSpeedKmh = stats.avgSpeedKmh,
+                    maxSpeedKmh = stats.maxSpeedKmh,
+                    pointCount = stats.pointCount,
                 )
+                store.finalizeRide(ride)
                 AppLogger.log("Ride", "Saved ride $id: ${stats.distanceMeters}m / ${stats.durationSeconds}s")
                 // Enforce the history limit now that a new ride was added.
                 runCatching { store.pruneToLimit(settings.rideHistoryLimit) }
+                // Let the trip-finished screen surface this ride's route + stats.
+                RideEvents.publish(RideFinish.Saved(ride))
             } else {
                 store.discardTrack(id)
                 AppLogger.log("Ride", "Discarded short ride $id (${stats.distanceMeters}m / ${stats.durationSeconds}s)")
+                RideEvents.publish(RideFinish.Discarded)
             }
             ht?.quitSafely()
         }

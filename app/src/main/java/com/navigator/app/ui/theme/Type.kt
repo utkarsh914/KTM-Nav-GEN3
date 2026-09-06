@@ -3,11 +3,13 @@
 package com.navigator.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.navigator.app.R
 
 /**
@@ -52,3 +54,39 @@ val Typography = Typography(
     bodySmall = Typography().bodySmall.copy(fontFamily = Barlow),
     labelLarge = Typography().labelLarge.copy(fontFamily = BarlowCondensed),
 )
+
+/**
+ * Named text-style tokens — the app's recurring roles in one place so sizes,
+ * families and weights stay consistent (colour is applied per call site via the
+ * theme so these carry no colour). Prefer these over ad-hoc fontFamily/fontSize.
+ */
+object AppText {
+    /** Screen/section hero heading (card titles, place names). */
+    val CardTitle = TextStyle(
+        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+    )
+
+    /** Small uppercase, letter-spaced eyebrow / group label. */
+    val SectionLabel = TextStyle(
+        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.0.sp,
+    )
+
+    /** Primary body copy. */
+    val Body = TextStyle(fontFamily = Barlow, fontSize = 14.sp)
+
+    /** Secondary/hint body copy. */
+    val BodySmall = TextStyle(fontFamily = Barlow, fontSize = 12.sp)
+
+    /** Uppercase stat label (DISTANCE, AVG …). */
+    val StatLabel = TextStyle(
+        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.0.sp,
+    )
+
+    /** Monospace numeric/technical value. */
+    val StatValue = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp)
+
+    /** Full-width action-button label. */
+    val ButtonLabel = TextStyle(
+        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.5.sp,
+    )
+}

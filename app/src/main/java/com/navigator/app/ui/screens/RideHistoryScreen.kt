@@ -223,6 +223,7 @@ private fun RideCard(
     // spurious animation).
     val borderWidth by animateDpAsState(if (selected) 2.dp else 0.dp, label = "border")
     val borderColor by animateColorAsState(if (selected) Ktm.Orange else Color.Transparent, label = "borderColor")
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Row(
         modifier = Modifier
             .graphicsLayer { scaleX = cardScale.value; scaleY = cardScale.value }
@@ -230,7 +231,10 @@ private fun RideCard(
             .clip(RoundedCornerShape(Ktm.RadiusCard))
             .background(Ktm.Surface)
             .border(borderWidth, borderColor, RoundedCornerShape(Ktm.RadiusCard))
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .combinedClickable(
+                onClick = { haptics.tap(); onTap() },
+                onLongClick = { haptics.longPress(); onLongPress() },
+            )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -299,11 +303,13 @@ private fun PopIconButton(
 ) {
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Box(
         modifier = Modifier
             .size(boxSize)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .clickable {
+                haptics.tap()
                 scope.launch {
                     scale.snapTo(0.6f)
                     scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
@@ -329,11 +335,13 @@ private fun PopIconButton(
 internal fun SaveStar(saved: Boolean, boxSize: Dp, iconSize: Dp, onToggle: () -> Unit) {
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Box(
         modifier = Modifier
             .size(boxSize)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .clickable {
+                haptics.toggle(!saved)
                 scope.launch {
                     scale.snapTo(0.6f)
                     scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))

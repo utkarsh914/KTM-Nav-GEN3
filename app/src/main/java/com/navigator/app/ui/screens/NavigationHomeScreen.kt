@@ -13,13 +13,6 @@ import android.os.CancellationSignal
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,9 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -103,20 +96,30 @@ import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.ride.RecordedRide
+import com.navigator.app.ride.RideEvents
+import com.navigator.app.ride.RideFinish
+import com.navigator.app.ride.RidePoint
+import com.navigator.app.ride.RideStore
 import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.ConnectIconPill
 import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
+import com.navigator.app.ui.components.KtmOutlineButton
 import com.navigator.app.ui.components.KtmPrimaryButton
+import com.navigator.app.ui.components.SquareMapControl
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.JetBrainsMono
 import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.theme.Motion
 import com.navigator.app.ui.theme.OpenDashIcons
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
@@ -128,21 +131,10 @@ private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP
 /** Transition between [NavStage] chrome. The full-screen SEARCH panel slides up
  *  from / down to the bottom; every other stage change is a gentle fade + small
  *  vertical drift so cards/overlays never hard-cut. */
-private fun stageTransition(initial: NavStage, target: NavStage): ContentTransform {
-    val dur = 240
-    val outDur = 160
-    val easing = FastOutSlowInEasing
-    return when {
-        target == NavStage.SEARCH ->
-            (slideInVertically(tween(dur, easing = easing)) { it } + fadeIn(tween(dur))) togetherWith
-                fadeOut(tween(outDur))
-        initial == NavStage.SEARCH ->
-            fadeIn(tween(dur)) togetherWith
-                (slideOutVertically(tween(dur, easing = easing)) { it } + fadeOut(tween(outDur)))
-        else ->
-            (fadeIn(tween(dur, easing = easing)) + slideInVertically(tween(dur, easing = easing)) { it / 12 }) togetherWith
-                (fadeOut(tween(outDur, easing = easing)) + slideOutVertically(tween(dur, easing = easing)) { -it / 12 })
-    }
+private fun stageTransition(initial: NavStage, target: NavStage): ContentTransform = when {
+    target == NavStage.SEARCH -> Motion.bottomSheetTransition(rising = true)
+    initial == NavStage.SEARCH -> Motion.bottomSheetTransition(rising = false)
+    else -> Motion.driftTransition()
 }
 
 /** Auto-finish the trip once we're within this many metres of the destination. */
@@ -168,12 +160,14 @@ fun NavigationHomeScreen(
     onOpenSettings: () -> Unit,
     onStartNavigation: (NavDestination) -> Unit,
     onExit: () -> Unit = {},
+    onOpenReplay: (String) -> Unit = {},
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     val available = remember { GoogleNavSdkController.isAvailable(context) }
     var navReady by remember { mutableStateOf(false) }
@@ -226,6 +220,24 @@ fun NavigationHomeScreen(
     var previewFailed by remember { mutableStateOf(false) }
     var resolvingLink by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
+    // The rider stepped away from the active-navigation view (Back / minimise)
+    // without ending the trip; suppresses auto-resume so they stay on the map,
+    // and drives the "Resume navigation" pill. Reset when a new trip starts or
+    // the rider explicitly resumes.
+    var leftNavManually by remember { mutableStateOf(false) }
+    // Confirm before actually ending an in-progress trip.
+    var showEndConfirm by remember { mutableStateOf(false) }
+
+    // ---- Trip-finished state ---------------------------------------------
+    val rideStore = remember { RideStore(context) }
+    var tripStartMs by remember { mutableStateOf(0L) }
+    // The just-finished ride (route + stats), its points, and whether we've
+    // learned the recording outcome yet (Saved / Discarded / no-recording).
+    var finishedRide by remember { mutableStateOf<RecordedRide?>(null) }
+    var finishedPoints by remember { mutableStateOf<List<RidePoint>?>(null) }
+    var finishResolved by remember { mutableStateOf(false) }
+    var finishCardHeightPx by remember { mutableIntStateOf(0) }
+    val rideFinish by RideEvents.lastFinish.collectAsState()
 
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
@@ -294,6 +306,8 @@ fun NavigationHomeScreen(
     // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
     LaunchedEffect(stage, selected, googleMap, previewRoutes, selectedRoute) {
         val gm = googleMap ?: return@LaunchedEffect
+        // The finished screen owns the map (draws the ride track); don't clear it.
+        if (stage == NavStage.TRIP_FINISHED) return@LaunchedEffect
         gm.setOnPolylineClickListener(null)
         gm.clear()
         val p = selected ?: return@LaunchedEffect
@@ -333,6 +347,26 @@ fun NavigationHomeScreen(
         }
     }
 
+    // Draw the just-finished ride's speed-coloured track on the map behind the
+    // summary card, framed above the card. Clears the finished padding on return.
+    LaunchedEffect(stage, googleMap, finishedPoints, finishCardHeightPx) {
+        val gm = googleMap ?: return@LaunchedEffect
+        when {
+            stage == NavStage.TRIP_FINISHED -> {
+                val pts = finishedPoints
+                if (!pts.isNullOrEmpty() && finishCardHeightPx > 0) {
+                    runCatching { gm.setPadding(0, 0, 0, finishCardHeightPx) }
+                    drawRideTrack(gm, pts)
+                    frameRideTrack(gm, pts)
+                }
+            }
+            // Only reset padding when returning to the browse map (never during
+            // NAVIGATING, whose bottom padding is owned by BrowseMap).
+            stage == NavStage.BROWSE -> runCatching { gm.setPadding(0, 0, 0, 0) }
+            else -> {}
+        }
+    }
+
     fun openSearch() {
         sessionToken = UUID.randomUUID().toString()
         query = ""; results = emptyList()
@@ -345,6 +379,8 @@ fun NavigationHomeScreen(
     fun backToBrowse() {
         stage = NavStage.BROWSE; selected = null; query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+        leftNavManually = false
+        finishedRide = null; finishedPoints = null; finishResolved = false
     }
 
     fun startTo(p: SavedPlace) {
@@ -353,22 +389,36 @@ fun NavigationHomeScreen(
         val token = previewRoutes.getOrNull(selectedRoute)?.routeToken
         onStartNavigation(NavDestination(p.lat, p.lng, p.label, token))
         arrivalLatched = false
+        leftNavManually = false
+        tripStartMs = System.currentTimeMillis()
+        // Clear any prior ride-finish result so the next emission is this trip's.
+        RideEvents.clear()
         stage = NavStage.NAVIGATING
     }
 
-    fun stopNav() {
-        GoogleNavSdkController.stop()
-        backToBrowse()
+    // Leave the active-navigation view but KEEP the trip running (foreground
+    // service + dash guidance continue). A "Resume navigation" pill brings it back.
+    fun moveAwayFromNav() {
+        leftNavManually = true
+        stage = NavStage.BROWSE
+    }
+
+    fun resumeNav() {
+        leftNavManually = false
+        stage = NavStage.NAVIGATING
     }
 
     // End the trip and show the "Trip finished" confirmation instead of dropping
     // straight back to the map. Keeps `selected` so the screen can name the
-    // destination; clears the transient search/preview state.
+    // destination; clears the transient search/preview state and resets the
+    // finished-ride state so the screen reloads this trip's result.
     fun finishTrip() {
         arrivalLatched = true
+        leftNavManually = false
         GoogleNavSdkController.stop()
         query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+        finishedRide = null; finishedPoints = null; finishResolved = false
         stage = NavStage.TRIP_FINISHED
     }
 
@@ -378,16 +428,52 @@ fun NavigationHomeScreen(
     //    after minimising) - the stage is local Compose state that would
     //    otherwise fall back to BROWSE;
     //  - show the "Trip finished" screen once the SDK reports arrival.
+    // We "own" the trip on this screen while showing guidance OR while stepped
+    // away on the map with a trip still running — arrival should finish it either way.
+    val owningTrip = stage == NavStage.NAVIGATING || (stage == NavStage.BROWSE && leftNavManually)
     LaunchedEffect(navState.sessionState) {
         if (navState.sessionState.isActiveNav() &&
             stage != NavStage.NAVIGATING &&
             // Don't drag the user back into navigation from the completion screen:
             // late/continued ENROUTE frames after arrival must not resume the trip.
-            stage != NavStage.TRIP_FINISHED
+            stage != NavStage.TRIP_FINISHED &&
+            // ...nor when the rider deliberately stepped away (they keep the map;
+            // a "Resume navigation" pill brings them back on their own terms).
+            !leftNavManually
         ) {
             stage = NavStage.NAVIGATING
-        } else if (stage == NavStage.NAVIGATING && navState.sessionState == NavSessionState.ARRIVED) {
+        } else if (owningTrip && navState.sessionState == NavSessionState.ARRIVED) {
             finishTrip()
+        }
+    }
+
+    // Notification tap while stepped-away resumes the live guidance view.
+    val openNavReq by com.navigator.app.ui.MainActivity.openNavRequest.collectAsState()
+    LaunchedEffect(openNavReq) {
+        if (openNavReq && navState.sessionState.isActiveNav()) resumeNav()
+    }
+
+    // Resolve the just-finished ride once its recording is finalised (Saved with
+    // a route + stats, or Discarded/none). A timeout covers recording-disabled so
+    // the finished screen never hangs waiting.
+    LaunchedEffect(rideFinish, stage) {
+        if (stage != NavStage.TRIP_FINISHED) return@LaunchedEffect
+        when (val f = rideFinish) {
+            is RideFinish.Saved -> {
+                finishedRide = f.ride
+                finishedPoints = withContext(Dispatchers.IO) { rideStore.points(f.ride.id) }
+                finishResolved = true
+            }
+            RideFinish.Discarded -> {
+                finishedRide = null; finishedPoints = null; finishResolved = true
+            }
+            null -> {}
+        }
+    }
+    LaunchedEffect(stage) {
+        if (stage == NavStage.TRIP_FINISHED && !finishResolved) {
+            delay(6000)
+            if (!finishResolved) finishResolved = true
         }
     }
 
@@ -397,7 +483,7 @@ fun NavigationHomeScreen(
     // SDK's distance to the final destination, updated ~1 Hz while en route.
     LaunchedEffect(navState.remainingDistanceMeters, stage) {
         val remaining = navState.remainingDistanceMeters
-        if (stage == NavStage.NAVIGATING &&
+        if (owningTrip &&
             !arrivalLatched &&
             navState.sessionState.isActiveNav() &&
             remaining != null && remaining <= ARRIVAL_RADIUS_M
@@ -437,10 +523,14 @@ fun NavigationHomeScreen(
         when (stage) {
             NavStage.PREVIEW -> stage = NavStage.CONFIRM
             NavStage.CONFIRM -> { stage = NavStage.SEARCH; selected = null }
-            NavStage.NAVIGATING -> stopNav()
+            // Back while navigating steps away to the map WITHOUT ending the trip.
+            NavStage.NAVIGATING -> moveAwayFromNav()
             NavStage.TRIP_FINISHED -> backToBrowse()
             NavStage.SEARCH -> backToBrowse()
-            NavStage.BROWSE -> showExitConfirm = true // Back at home -> confirm full close
+            // At the map: if a trip is still running in the background, Back returns
+            // to it; otherwise confirm closing the app.
+            NavStage.BROWSE ->
+                if (navState.sessionState.isActiveNav()) resumeNav() else showExitConfirm = true
         }
     }
 
@@ -472,34 +562,49 @@ fun NavigationHomeScreen(
           Box(Modifier.fillMaxSize()) {
             when (s) {
             NavStage.BROWSE -> {
-                // Search bar (leaves room on the right for the control column).
+                // Search bar (leaves room on the right for the Settings button).
                 Box(
                     modifier = Modifier.fillMaxWidth().systemBarsPadding()
                         .padding(start = 16.dp, end = 74.dp, top = 10.dp),
                 ) {
                     SearchBar(modifier = Modifier.fillMaxWidth(), onClick = ::openSearch)
                 }
-                // Top-right control column: Settings, then Compass (only when rotated).
-                Column(
+                // Top-right: Settings.
+                Box(
                     modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
                         .padding(end = 16.dp, top = 10.dp),
+                ) {
+                    IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
+                }
+                // Bottom-right control stack (the app-wide standard location):
+                // compass (only when rotated) above the recenter button.
+                Column(
+                    modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
+                        .padding(end = 16.dp, bottom = 16.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
                     if (available && navReady && abs(mapBearing) > 0.5f) {
-                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                        SquareMapControl(
+                            OpenDashIcons.Compass, "Reset orientation to north",
+                            tint = Ktm.Danger, rotation = -mapBearing,
+                        ) { resetBearing(googleMap) }
                     }
-                }
-                // Bottom-left recenter.
-                Box(Modifier.align(Alignment.BottomStart).systemBarsPadding().padding(16.dp)) {
                     if (available && navReady) {
-                        IconPill(OpenDashIcons.LocateFixed, "Recenter") { recenter(context, googleMap) }
+                        SquareMapControl(OpenDashIcons.LocateFixed, "Recenter") { recenter(context, googleMap) }
                     }
                 }
-                // Bottom-right connect pill.
-                Box(Modifier.align(Alignment.BottomEnd).systemBarsPadding().padding(16.dp)) {
+                // Bottom-left connect pill.
+                Box(Modifier.align(Alignment.BottomStart).systemBarsPadding().padding(16.dp)) {
                     ConnectPill(onClick = onOpenConnect)
+                }
+                // A trip is still running in the background -> offer to jump back.
+                if (navState.sessionState.isActiveNav()) {
+                    ResumeNavPill(
+                        onClick = ::resumeNav,
+                        modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                            .padding(bottom = 84.dp),
+                    )
                 }
             }
 
@@ -555,7 +660,10 @@ fun NavigationHomeScreen(
                 ) {
                     IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
                     if (available && navReady && abs(mapBearing) > 0.5f) {
-                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                        SquareMapControl(
+                            OpenDashIcons.Compass, "Reset orientation to north",
+                            tint = Ktm.Danger, rotation = -mapBearing,
+                        ) { resetBearing(googleMap) }
                     }
                 }
             }
@@ -582,7 +690,10 @@ fun NavigationHomeScreen(
                 ) {
                     IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
                     if (available && navReady && abs(mapBearing) > 0.5f) {
-                        CompassButton(bearing = mapBearing) { resetBearing(googleMap) }
+                        SquareMapControl(
+                            OpenDashIcons.Compass, "Reset orientation to north",
+                            tint = Ktm.Danger, rotation = -mapBearing,
+                        ) { resetBearing(googleMap) }
                     }
                 }
             }
@@ -632,10 +743,12 @@ fun NavigationHomeScreen(
                     )
                 }
 
-                // Bottom ETA bar (full width, anchored bottom-centre).
+                // Bottom ETA bar (full width, anchored bottom-centre). END asks to
+                // confirm; the minimise button steps away to the map (trip continues).
                 NavGuidanceBottomBar(
                     nav = navState,
-                    onEnd = ::stopNav,
+                    onEnd = { showEndConfirm = true },
+                    onMinimize = ::moveAwayFromNav,
                     modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
                         .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                 )
@@ -650,18 +763,41 @@ fun NavigationHomeScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     if (available && navReady && abs(mapBearing) > 0.5f) {
-                        CompassButton(bearing = mapBearing, cornerRadius = Ktm.RadiusCard) {
-                            resetBearing(googleMap)
-                        }
+                        SquareMapControl(
+                            OpenDashIcons.Compass, "Reset orientation to north",
+                            tint = Ktm.Danger, rotation = -mapBearing, cornerRadius = Ktm.RadiusCard,
+                        ) { resetBearing(googleMap) }
                     }
                     ConnectIconPill(onClick = onOpenConnect, cornerRadius = Ktm.RadiusCard)
                 }
             }
 
-            NavStage.TRIP_FINISHED -> TripFinishedScreen(
-                destinationLabel = selected?.label,
-                onBack = ::backToBrowse,
-            )
+            NavStage.TRIP_FINISHED -> {
+                // Top-left back returns to the browse map (keeps the trip's route
+                // on the map behind the summary card).
+                Box(
+                    modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
+                        .padding(start = 16.dp, top = 10.dp),
+                ) {
+                    CircleBackButton(onClick = ::backToBrowse)
+                }
+                Box(Modifier.align(Alignment.BottomCenter)) {
+                    TripFinishedCard(
+                        destinationLabel = selected?.label,
+                        ride = finishedRide,
+                        resolved = finishResolved,
+                        fallbackDurationSec = if (tripStartMs > 0L) {
+                            ((System.currentTimeMillis() - tripStartMs) / 1000).toInt()
+                        } else 0,
+                        onDone = ::backToBrowse,
+                        onOpenReplay = { finishedRide?.let { onOpenReplay(it.id) } },
+                        modifier = Modifier.onGloballyPositioned {
+                            finishCardHeightPx = it.size.height +
+                                with(density) { 28.dp.roundToPx() }
+                        },
+                    )
+                }
+            }
             }
           }
         }
@@ -670,6 +806,13 @@ fun NavigationHomeScreen(
             ExitConfirmDialog(
                 onConfirm = { showExitConfirm = false; onExit() },
                 onDismiss = { showExitConfirm = false },
+            )
+        }
+
+        if (showEndConfirm) {
+            EndNavConfirmDialog(
+                onConfirm = { showEndConfirm = false; finishTrip() },
+                onDismiss = { showEndConfirm = false },
             )
         }
 
@@ -770,58 +913,119 @@ private fun BrowseMap(
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }
 
-/** Full-screen confirmation shown once a trip auto-finishes on arrival. A back
- *  button (top-left) returns to the browse map. */
+/**
+ * "Trip finished" summary card, anchored to the bottom over the map (which shows
+ * the ride's speed-coloured route). Shows distance / duration / average speed and
+ * offers Done + Open in Replay. When there's no recording to show (recording off
+ * or the trip too short) it degrades to a duration-only card.
+ */
 @Composable
-private fun TripFinishedScreen(destinationLabel: String?, onBack: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
-        Box(
-            modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
-                .padding(start = 16.dp, top = 10.dp),
-        ) {
-            CircleBackButton(onClick = onBack)
-        }
-        Column(
-            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+private fun TripFinishedCard(
+    destinationLabel: String?,
+    ride: RecordedRide?,
+    resolved: Boolean,
+    fallbackDurationSec: Int,
+    onDone: () -> Unit,
+    onOpenReplay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().systemBarsPadding()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(72.dp).clip(CircleShape).background(Ktm.Orange),
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Ktm.Orange),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    OpenDashIcons.Check, contentDescription = null, tint = Ktm.OnAccent,
-                    modifier = Modifier.size(38.dp),
-                )
+                Icon(OpenDashIcons.Check, null, tint = Ktm.OnAccent, modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.height(20.dp))
-            Eyebrow("Trip finished", fontSize = 13, letterSpacing = 2.0)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Destination reached",
-                color = Ktm.TextPrimary,
-                fontFamily = BarlowCondensed,
-                fontWeight = FontWeight.Bold,
-                fontSize = 30.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-            if (!destinationLabel.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Eyebrow("Trip finished", fontSize = 12, letterSpacing = 2.0)
                 Text(
-                    destinationLabel,
-                    color = Ktm.Muted2,
-                    fontFamily = Barlow,
-                    fontSize = 16.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    destinationLabel?.takeIf { it.isNotBlank() } ?: "Destination reached",
+                    color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.height(28.dp))
-            KtmPrimaryButton(
-                text = "Done",
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onBack,
-            )
         }
+
+        Spacer(Modifier.height(16.dp))
+        when {
+            !resolved -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = Ktm.Orange, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Saving ride…", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp)
+            }
+            ride != null -> Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TripStat("DISTANCE", DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC))
+                TripStat("TIME", formatDuration(ride.durationSeconds))
+                TripStat("AVG", "${ride.avgSpeedKmh.toInt()} km/h")
+                TripStat("MAX", "${ride.maxSpeedKmh.toInt()} km/h")
+            }
+            else -> Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TripStat("TIME", formatDuration(fallbackDurationSec))
+                Text(
+                    "No route recorded for this trip.",
+                    color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        if (ride != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                KtmOutlineButton(text = "Open in Replay", modifier = Modifier.weight(1f), onClick = onOpenReplay)
+                Spacer(Modifier.width(12.dp))
+                KtmPrimaryButton(text = "Done", modifier = Modifier.weight(1f), onClick = onDone)
+            }
+        } else {
+            KtmPrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth(), onClick = onDone)
+        }
+    }
+}
+
+/** One labelled stat in the trip-finished / summary card. */
+@Composable
+private fun TripStat(label: String, value: String) {
+    Column {
+        Text(label, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp)
+        Text(value, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
+    }
+}
+
+/** Pill shown on the browse map while a trip keeps running in the background. */
+@Composable
+private fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Orange)
+            .clickable { haptics.confirm(); onClick() }
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(OpenDashIcons.Navigation, null, tint = Ktm.OnAccent, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            "Resume navigation", color = Ktm.OnAccent, fontFamily = BarlowCondensed,
+            fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp,
+        )
     }
 }
 
@@ -981,6 +1185,21 @@ private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
+/** Confirm before ending an in-progress trip (the END button / dash guidance). */
+@Composable
+private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        textContentColor = Ktm.TextSecondary,
+        title = { Text("End navigation?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = { Text("This stops guidance to the dash and finishes the trip.", fontFamily = Barlow) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("END", color = Ktm.Danger) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
+    )
+}
+
 /** Small pill shown under the guidance header while the device is offline:
  *  guidance keeps running from the already-computed route, but rerouting/traffic
  *  need data. Styled to read as a warning without shouting. */
@@ -1008,37 +1227,15 @@ private fun OfflineBanner(text: String) {
 /** A neutral dark circular icon button (Google-style controls). */
 @Composable
 internal fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Box(
         modifier = Modifier.size(52.dp).clip(CircleShape)
             .background(Ktm.Surface)
             .border(2.dp, Ktm.BorderSoft, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
-    }
-}
-
-/** Compass button: the north needle rotates with the map bearing; tap resets.
- *  [cornerRadius] lets the guidance chrome match its 16dp bars. */
-@Composable
-private fun CompassButton(
-    bearing: Float,
-    cornerRadius: androidx.compose.ui.unit.Dp = Ktm.RadiusButton,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier.size(Ktm.ControlHeight)
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(cornerRadius))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            OpenDashIcons.Compass, "Reset orientation to north", tint = Ktm.Danger,
-            modifier = Modifier.size(22.dp).rotate(-bearing),
-        )
     }
 }
 

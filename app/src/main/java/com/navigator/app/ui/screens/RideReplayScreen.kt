@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -50,16 +49,15 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.PolylineOptions
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
 import com.navigator.app.ui.components.CircleBackButton
+import com.navigator.app.ui.components.SquareMapControl
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.JetBrainsMono
@@ -69,13 +67,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
-
-private val BAND_COLORS = mapOf(
-    RideMetrics.SpeedBand.SLOW to 0xFF2ECC71.toInt(),      // green
-    RideMetrics.SpeedBand.MEDIUM to 0xFFF1C40F.toInt(),    // yellow
-    RideMetrics.SpeedBand.FAST to 0xFFE67E22.toInt(),      // orange
-    RideMetrics.SpeedBand.VERY_FAST to 0xFFE74C3C.toInt(), // red
-)
 
 /** Longest gap we honour between fixes during playback, so a GPS dropout doesn't
  *  freeze the marker for minutes. */
@@ -206,7 +197,7 @@ fun RideReplayScreen(
         LaunchedEffect(gm, points) {
             val map = gm ?: return@LaunchedEffect
             val pts = points ?: return@LaunchedEffect
-            drawTrack(map, pts)
+            drawRideTrack(map, pts)
             currentIndex = 0
             marker = if (pts.isNotEmpty()) {
                 map.addMarker(
@@ -225,7 +216,7 @@ fun RideReplayScreen(
             if (pts.isEmpty()) return@LaunchedEffect
             runCatching { map.setPadding(0, 0, 0, cardHeightPx) }
             if (!framed && cardHeightPx > 0) {
-                frameTrack(map, pts)
+                frameRideTrack(map, pts)
                 framed = true
             }
         }
@@ -307,9 +298,9 @@ fun RideReplayScreen(
                     ) {
                         // Reset-to-north (only when rotated) — on top after the swap.
                         if (abs(mapBearing) > 0.5f) {
-                            MapControlButton(
+                            SquareMapControl(
                                 icon = OpenDashIcons.Compass,
-                                desc = "Reset orientation to north",
+                                contentDescription = "Reset orientation to north",
                                 tint = Ktm.Danger,
                                 rotation = -mapBearing,
                                 onClick = {
@@ -323,9 +314,9 @@ fun RideReplayScreen(
                         }
                         // Zoom-to-current — hidden once already centred at follow zoom.
                         if (locateButtonVisible) {
-                            MapControlButton(
+                            SquareMapControl(
                                 icon = OpenDashIcons.LocateFixed,
-                                desc = "Zoom to current position",
+                                contentDescription = "Zoom to current position",
                                 onClick = {
                                     points?.getOrNull(currentIndex)?.let { p ->
                                         runCatching {
@@ -413,6 +404,7 @@ private fun ReplayControls(
     onScrubStart: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -496,7 +488,7 @@ private fun ReplayControls(
                         if (following) Ktm.Orange else Ktm.Border,
                         RoundedCornerShape(Ktm.RadiusButton),
                     )
-                    .clickable(onClick = onToggleFollow),
+                    .clickable { haptics.toggle(!following); onToggleFollow() },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -514,7 +506,7 @@ private fun ReplayControls(
                     .clip(RoundedCornerShape(Ktm.RadiusButton))
                     .background(Ktm.Screen)
                     .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-                    .clickable(onClick = onCycleSpeed),
+                    .clickable { haptics.tap(); onCycleSpeed() },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("${speedMult}x", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -542,85 +534,17 @@ private fun Stat(label: String, value: String) {
 
 @Composable
 private fun RoundControl(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Box(
         modifier = Modifier
             .size(44.dp)
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(Ktm.Orange)
-            .clickable(onClick = onClick),
+            .clickable { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, desc, tint = Ktm.OnAccent, modifier = Modifier.size(24.dp))
     }
 }
 
-/** A neutral rounded-square map control matching the navigation screen chrome. */
-@Composable
-private fun MapControlButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    desc: String,
-    tint: androidx.compose.ui.graphics.Color = Ktm.White,
-    rotation: Float = 0f,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier.size(Ktm.ControlHeight)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            icon, desc,
-            tint = tint,
-            modifier = Modifier.size(22.dp).rotate(rotation),
-        )
-    }
-}
 
-/** Clear the map and draw the speed-coloured track + start/end markers (no camera). */
-private fun drawTrack(map: GoogleMap, pts: List<RidePoint>) {
-    map.clear()
-    if (pts.isEmpty()) return
-    // Split into consecutive same-band runs so each is one coloured polyline.
-    var runStart = 0
-    var runBand = RideMetrics.band(pts[0].speedKmh)
-    for (i in 1..pts.lastIndex) {
-        val b = RideMetrics.band(pts[i].speedKmh)
-        if (b != runBand) {
-            addRun(map, pts.subList(runStart, i + 1), runBand)
-            runStart = i
-            runBand = b
-        }
-    }
-    addRun(map, pts.subList(runStart, pts.size), runBand)
-
-    map.addMarker(
-        MarkerOptions().position(LatLng(pts.first().lat, pts.first().lng)).title("Start")
-            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
-    )
-    map.addMarker(
-        MarkerOptions().position(LatLng(pts.last().lat, pts.last().lng)).title("End")
-            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
-    )
-}
-
-/** Frame the whole track in the (padded) viewport. */
-private fun frameTrack(map: GoogleMap, pts: List<RidePoint>) {
-    if (pts.isEmpty()) return
-    val bounds = LatLngBounds.builder()
-    pts.forEach { bounds.include(LatLng(it.lat, it.lng)) }
-    runCatching { map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), 140)) }
-}
-
-private fun addRun(map: GoogleMap, run: List<RidePoint>, band: RideMetrics.SpeedBand) {
-    if (run.size < 2) return
-    val color = BAND_COLORS[band] ?: 0xFF2ECC71.toInt()
-    map.addPolyline(
-        PolylineOptions()
-            .addAll(run.map { LatLng(it.lat, it.lng) })
-            .color(color)
-            .width(12f),
-    )
-}

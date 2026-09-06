@@ -222,8 +222,82 @@ fun identityFor(brand: Brand): BrandIdentity = when (brand) {
     Brand.HUSQVARNA -> HusqvarnaIdentity
 }
 
-/** Combine a brand's identity with a neutral palette into a full [BrandTheme]. */
-fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = BrandTheme(
+/**
+ * A selectable app accent, chosen independently of the motorcycle brand. When
+ * set it overrides the brand's own [BrandIdentity.accent] app-wide (the brand
+ * still supplies neutrals + wordmark). `null` (no selection) follows the brand.
+ */
+data class AccentOption(
+    val id: String,
+    val displayName: String,
+    val color: Color,
+    val deep: Color,
+    /** Content colour that reads on top of an [color] fill. */
+    val onAccent: Color,
+)
+
+/** Preset accents offered in Settings, in display order. Each carries a
+ *  contrast-correct [AccentOption.onAccent] (near-black on light fills, white on dark). */
+val AccentPalettes: List<AccentOption> = listOf(
+    AccentOption("orange", "Orange", Color(0xFFFF6600), Color(0xFFE05500), Color(0xFF0B0C0E)),
+    AccentOption("blue", "Blue", Color(0xFF2C7BE5), Color(0xFF1C5BB8), Color(0xFFFFFFFF)),
+    AccentOption("purple", "Purple", Color(0xFF8B5CF6), Color(0xFF6D28D9), Color(0xFFFFFFFF)),
+    AccentOption("teal", "Teal", Color(0xFF14B8A6), Color(0xFF0D9488), Color(0xFF06201C)),
+    AccentOption("green", "Green", Color(0xFF22C55E), Color(0xFF16A34A), Color(0xFF06210F)),
+    AccentOption("magenta", "Magenta", Color(0xFFEC4899), Color(0xFFBE185D), Color(0xFFFFFFFF)),
+)
+
+/**
+ * Resolve a stored accent id to an [AccentOption]:
+ *  - `null` -> null (follow the brand's own accent),
+ *  - a preset id (e.g. "blue") -> that preset,
+ *  - a hex string ("#RRGGBB" / "#AARRGGBB") -> a [customAccent] built from it.
+ */
+fun accentFor(id: String?): AccentOption? {
+    if (id.isNullOrBlank()) return null
+    AccentPalettes.firstOrNull { it.id == id }?.let { return it }
+    return parseHexColor(id)?.let { customAccent(it) }
+}
+
+/** Parse "#RRGGBB" or "#AARRGGBB" to a [Color], or null if malformed. */
+fun parseHexColor(s: String): Color? {
+    val hex = s.trim().removePrefix("#")
+    val v = hex.toLongOrNull(16) ?: return null
+    return when (hex.length) {
+        6 -> Color(0xFF000000L or v)          // opaque RRGGBB
+        8 -> Color(v and 0xFFFFFFFFL)         // AARRGGBB
+        else -> null
+    }
+}
+
+/** Canonical "#RRGGBB" for a colour (used as the stored custom-accent id). */
+fun hexOf(color: Color): String {
+    fun ch(f: Float) = (f * 255f + 0.5f).toInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(ch(color.red), ch(color.green), ch(color.blue))
+}
+
+/** Build a full accent from an arbitrary colour: a darker "deep" shade and a
+ *  contrast-correct onAccent (near-black on light colours, white on dark). Its id
+ *  is the canonical hex so it round-trips through [accentFor]. */
+fun customAccent(color: Color): AccentOption {
+    val luminance = 0.299f * color.red + 0.587f * color.green + 0.114f * color.blue
+    val deep = Color(
+        red = color.red * 0.78f,
+        green = color.green * 0.78f,
+        blue = color.blue * 0.78f,
+        alpha = 1f,
+    )
+    val onAccent = if (luminance > 0.6f) Color(0xFF0B0C0E) else Color(0xFFFFFFFF)
+    return AccentOption(id = hexOf(color), displayName = "Custom", color = color, deep = deep, onAccent = onAccent)
+}
+
+/** Combine a brand's identity with a neutral palette into a full [BrandTheme].
+ *  An optional [accent] override replaces the brand's own accent triplet. */
+fun resolve(
+    identity: BrandIdentity,
+    neutrals: NeutralPalette,
+    accent: AccentOption? = null,
+): BrandTheme = BrandTheme(
     brand = identity.brand,
     isDark = neutrals.isDark,
     displayName = identity.displayName,
@@ -231,9 +305,9 @@ fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = Bra
     tagline = identity.tagline,
     wordmarkItalic = identity.wordmarkItalic,
     wordmarkTracking = identity.wordmarkTracking,
-    accent = identity.accent,
-    accentDeep = identity.accentDeep,
-    onAccent = identity.onAccent,
+    accent = accent?.color ?: identity.accent,
+    accentDeep = accent?.deep ?: identity.accentDeep,
+    onAccent = accent?.onAccent ?: identity.onAccent,
     screen = neutrals.screen,
     black = neutrals.black,
     screenDeep = neutrals.screenDeep,
@@ -255,12 +329,14 @@ fun resolve(identity: BrandIdentity, neutrals: NeutralPalette): BrandTheme = Bra
     danger = neutrals.danger,
 )
 
-/** Resolve the full palette for a brand at the requested light/dark appearance. */
-fun themeFor(brand: Brand, dark: Boolean): BrandTheme =
-    resolve(identityFor(brand), if (dark) DarkNeutrals else LightNeutrals)
+/** Resolve the full palette for a brand at the requested light/dark appearance,
+ *  with an optional independent accent override. */
+fun themeFor(brand: Brand, dark: Boolean, accent: AccentOption? = null): BrandTheme =
+    resolve(identityFor(brand), if (dark) DarkNeutrals else LightNeutrals, accent)
 
-/** Identity-only convenience (accent/displayName don't depend on light/dark). */
-fun themeFor(brand: Brand): BrandTheme = themeFor(brand, dark = Ktm.current.isDark)
+/** Identity-only convenience (displayName doesn't depend on light/dark). Keeps
+ *  the current accent override so callers reading e.g. displayName don't reset it. */
+fun themeFor(brand: Brand): BrandTheme = themeFor(brand, dark = Ktm.current.isDark, accent = Ktm.currentAccent)
 
 /**
  * Reactive theme accessor. Historically named `Ktm`; kept so the ~40 files
@@ -272,14 +348,26 @@ object Ktm {
     var current by mutableStateOf(themeFor(Brand.KTM, dark = true))
         private set
 
-    /** Set both the brand accent and the light/dark appearance. */
-    fun apply(brand: Brand, dark: Boolean) {
-        current = themeFor(brand, dark)
+    /** The active accent override, or null when following the brand's own accent. */
+    var currentAccent: AccentOption? = null
+        private set
+
+    /** Set the brand, light/dark appearance and (optionally) the accent override.
+     *  Omitting [accent] keeps whatever override is currently active. */
+    fun apply(brand: Brand, dark: Boolean, accent: AccentOption? = currentAccent) {
+        currentAccent = accent
+        current = themeFor(brand, dark, accent)
     }
 
-    /** Switch brand while keeping the current light/dark appearance. */
+    /** Switch brand while keeping the current light/dark appearance + accent. */
     fun applyBrand(brand: Brand) {
-        current = themeFor(brand, dark = current.isDark)
+        current = themeFor(brand, dark = current.isDark, accent = currentAccent)
+    }
+
+    /** Change only the accent override (keeps brand + light/dark), driving a live re-theme. */
+    fun applyAccent(accent: AccentOption?) {
+        currentAccent = accent
+        current = themeFor(current.brand, current.isDark, accent)
     }
 
     // Brand

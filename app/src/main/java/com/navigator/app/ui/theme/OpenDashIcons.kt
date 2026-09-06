@@ -123,6 +123,11 @@ object OpenDashIcons {
         lucide("ChevronRight", 1.9f, "M9 18l6-6-6-6")
     }
 
+    /** Down chevron — used to "minimise" the active-navigation panel to the map. */
+    val ChevronDown: ImageVector by lazy {
+        lucide("ChevronDown", 1.9f, "M6 9l6 6 6-6")
+    }
+
     val Bluetooth: ImageVector by lazy {
         lucide("Bluetooth", 1.8f, "M7 7l10 10-5 5V2l5 5L7 17")
     }

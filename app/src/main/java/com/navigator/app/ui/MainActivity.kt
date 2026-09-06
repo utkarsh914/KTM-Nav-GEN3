@@ -15,13 +15,11 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clip
@@ -117,7 +115,10 @@ class MainActivity : ComponentActivity() {
                 com.navigator.app.ui.theme.ThemeMode.DARK -> true
                 com.navigator.app.ui.theme.ThemeMode.SYSTEM -> nightNow
             }
-            com.navigator.app.ui.theme.Ktm.apply(settings.brand, dark)
+            com.navigator.app.ui.theme.Ktm.apply(
+                settings.brand, dark,
+                com.navigator.app.ui.theme.accentFor(settings.accentColorId),
+            )
         }
 
         // First-run users grant permissions with context in the onboarding flow;
@@ -313,6 +314,7 @@ private fun OpenDashApp(
     // whenever either changes, re-theming the whole app live.
     var themeMode by remember { mutableStateOf(settings.themeMode) }
     var navThemeMode by remember { mutableStateOf(settings.navThemeMode) }
+    var accentColorId by remember { mutableStateOf(settings.accentColorId) }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val effectiveDark = when (themeMode) {
         com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
@@ -360,8 +362,11 @@ private fun OpenDashApp(
     val activelyNavigating = route == AppRoute.NAV_HOME && navSession.sessionState.isActiveNav()
     val navDark = if (navThemeMode == com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT) nightNow else effectiveDark
     val themeDark = if (activelyNavigating) navDark else effectiveDark
-    LaunchedEffect(themeDark) {
-        com.navigator.app.ui.theme.Ktm.apply(settings.brand, themeDark)
+    LaunchedEffect(themeDark, accentColorId) {
+        com.navigator.app.ui.theme.Ktm.apply(
+            settings.brand, themeDark,
+            com.navigator.app.ui.theme.accentFor(accentColorId),
+        )
     }
 
     // Where "Change bike / brand" returns to: Settings when reached from there,
@@ -401,6 +406,13 @@ private fun OpenDashApp(
     }
 
     var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
+    // Settings scroll position, hoisted above the route switch so opening a
+    // sub-section (and coming back) restores the exact scroll offset instead of
+    // snapping to the top (SettingsScreen leaves composition on navigation).
+    val settingsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Where RIDE_REPLAY returns to (history list by default; the map home when a
+    // finished trip is opened straight into replay).
+    var replayReturnRoute by remember { mutableStateOf(AppRoute.RECORDINGS) }
     // The ride selected in the history list, shown on the replay screen.
     var selectedRideId by remember { mutableStateOf<String?>(null) }
     // Multi-select state hoisted here so it survives opening a ride and coming
@@ -434,7 +446,7 @@ private fun OpenDashApp(
                     rideSelectedIds = emptySet()
                 } else goBack(AppRoute.SETTINGS)
             }
-            AppRoute.RIDE_REPLAY -> goBack(AppRoute.RECORDINGS)
+            AppRoute.RIDE_REPLAY -> goBack(replayReturnRoute)
             AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
             AppRoute.PAIRING -> { goBack(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null }
@@ -471,15 +483,7 @@ private fun OpenDashApp(
         // screen changes from being a hard cut, and reads as push/pop.
         AnimatedContent(
             targetState = route,
-            transitionSpec = {
-                val enterDur = 260
-                val exitDur = 180
-                val dir = if (routeBack) -1 else 1
-                (fadeIn(tween(enterDur, easing = FastOutSlowInEasing)) +
-                    slideInHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> dir * w / 16 }) togetherWith
-                    (fadeOut(tween(exitDur, easing = FastOutSlowInEasing)) +
-                        slideOutHorizontally(tween(enterDur, easing = FastOutSlowInEasing)) { w -> -dir * w / 16 })
-            },
+            transitionSpec = { com.navigator.app.ui.theme.Motion.routeTransition(routeBack) },
             label = "route",
         ) { r ->
         when (r) {
@@ -520,6 +524,11 @@ private fun OpenDashApp(
                     }
                 },
                 onExit = onExit,
+                onOpenReplay = { id ->
+                    selectedRideId = id
+                    replayReturnRoute = AppRoute.NAV_HOME
+                    goTo(AppRoute.RIDE_REPLAY)
+                },
                 sharedLink = sharedLink,
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
             )
@@ -541,6 +550,9 @@ private fun OpenDashApp(
                 onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
                 navThemeMode = navThemeMode,
                 onNavThemeModeChanged = { mode -> navThemeMode = mode; settings.navThemeMode = mode },
+                accentColorId = accentColorId,
+                onAccentColorChanged = { id -> accentColorId = id; settings.accentColorId = id },
+                listState = settingsListState,
                 onEngineChanged = { googleNav ->
                     // Switching to the mirror engine ends any in-app SDK trip so
                     // the two engines never drive the dash at once. Return to the
@@ -579,7 +591,7 @@ private fun OpenDashApp(
                         rideSelectedIds = emptySet()
                     } else goBack(AppRoute.SETTINGS)
                 },
-                onOpen = { id -> selectedRideId = id; goTo(AppRoute.RIDE_REPLAY) },
+                onOpen = { id -> selectedRideId = id; replayReturnRoute = AppRoute.RECORDINGS; goTo(AppRoute.RIDE_REPLAY) },
                 selectionMode = rideSelectionMode,
                 selectedIds = rideSelectedIds,
                 onSelectionModeChange = { rideSelectionMode = it },
@@ -588,7 +600,7 @@ private fun OpenDashApp(
             AppRoute.RIDE_REPLAY -> com.navigator.app.ui.screens.RideReplayScreen(
                 retainedNav = retainedNav,
                 rideId = selectedRideId,
-                onBack = { goBack(AppRoute.RECORDINGS) },
+                onBack = { goBack(replayReturnRoute) },
             )
         }
         }
@@ -609,7 +621,7 @@ private fun OpenDashApp(
 private fun ConnectGreeting(name: String) {
     val text = if (name.isNotBlank()) "Hi $name!" else "Welcome!"
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize().padding(top = 96.dp),
+        modifier = androidx.compose.ui.Modifier.fillMaxSize().systemBarsPadding().padding(top = 108.dp),
         contentAlignment = androidx.compose.ui.Alignment.TopCenter,
     ) {
         androidx.compose.foundation.layout.Row(

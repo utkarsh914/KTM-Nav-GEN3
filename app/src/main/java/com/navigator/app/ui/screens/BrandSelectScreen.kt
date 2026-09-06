@@ -175,9 +175,9 @@ fun BrandSelectScreen(
 
 @Composable
 private fun BrandChip(brand: Brand, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    // The chip's dot always shows THAT brand's accent, even when inactive, so the
-    // rider can see each brand's identity before selecting.
-    val chipAccent = themeFor(brand).accent
+    // The chip's dot always shows THAT brand's OWN accent (ignoring any app-accent
+    // override), even when inactive, so the rider sees each brand's identity.
+    val chipAccent = com.navigator.app.ui.theme.identityFor(brand).accent
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(13.dp))

@@ -1,9 +1,7 @@
 package com.navigator.app.ui.components
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,21 +41,23 @@ import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.theme.Motion
 import com.navigator.app.ui.theme.OpenDashIcons
+import com.navigator.app.ui.theme.rememberHaptics
 
 /** Subtle press feedback shared by the app's tappable chrome: a gentle scale-down
  *  while held that springs back on release. Pair the passed [interaction] source with
  *  the element's `clickable(...)` and apply the returned factor via `graphicsLayer`.
  *  Kept intentionally small so it reads as tactile, never bouncy. */
 @Composable
-private fun rememberPressScale(
+internal fun rememberPressScale(
     interaction: MutableInteractionSource,
-    pressedScale: Float = 0.97f,
+    pressedScale: Float = Motion.PressedScale,
 ): Float {
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) pressedScale else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = Motion.pressSpring(),
         label = "pressScale",
     )
     return scale
@@ -90,6 +90,7 @@ fun KtmToggle(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberHaptics()
     val knobOffset by animateDpAsState(if (checked) 21.dp else 3.dp, label = "knob")
     Box(
         modifier = modifier
@@ -97,7 +98,7 @@ fun KtmToggle(
             .height(24.dp)
             .clip(CircleShape)
             .background(if (checked) Ktm.Orange else Ktm.SurfaceDisabled)
-            .clickable { onCheckedChange(!checked) },
+            .clickable { haptics.toggle(!checked); onCheckedChange(!checked) },
     ) {
         Box(
             modifier = Modifier
@@ -145,6 +146,7 @@ fun SettingsRow(
     trailing: @Composable () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberHaptics()
     // Rows are large, so a whisper of scale (0.985) reads better than the chrome default.
     val scale = if (onClick != null) rememberPressScale(interaction, pressedScale = 0.985f) else 1f
     val base = Modifier
@@ -155,7 +157,7 @@ fun SettingsRow(
                 it.clickable(
                     interactionSource = interaction,
                     indication = LocalIndication.current,
-                    onClick = onClick,
+                    onClick = { haptics.tap(); onClick() },
                 )
             } else it
         }
@@ -192,6 +194,7 @@ fun KtmPrimaryButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -202,7 +205,7 @@ fun KtmPrimaryButton(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
                 enabled = enabled,
-                onClick = onClick,
+                onClick = { haptics.confirm(); onClick() },
             )
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center,
@@ -224,6 +227,7 @@ fun KtmOutlineButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -235,7 +239,7 @@ fun KtmOutlineButton(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
                 enabled = enabled,
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
             )
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center,
@@ -264,6 +268,7 @@ fun MonoValue(text: String, color: Color = Ktm.Dim, fontSize: Int = 12) {
 fun CircleBackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -274,7 +279,7 @@ fun CircleBackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -312,6 +317,7 @@ fun ScreenTopBar(
 fun IconPill(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     Box(
         modifier = Modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -322,11 +328,52 @@ fun IconPill(icon: ImageVector, contentDescription: String, onClick: () -> Unit)
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
             ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
+    }
+}
+
+/**
+ * Shared square map control (compass / recenter) — identical chrome across the
+ * map home, active navigation and the ride-replay screen so the two map buttons
+ * live in a consistent place and look the same everywhere. Optional [rotation]
+ * spins the glyph (compass needle), and [tint] lets the compass show its danger
+ * accent.
+ */
+@Composable
+fun SquareMapControl(
+    icon: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    tint: Color = Ktm.White,
+    rotation: Float = 0f,
+    cornerRadius: androidx.compose.ui.unit.Dp = Ktm.RadiusButton,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
+    Box(
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .size(Ktm.ControlHeight)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(cornerRadius))
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = { haptics.tap(); onClick() },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon, contentDescription, tint = tint,
+            modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = rotation },
+        )
     }
 }
 
@@ -353,6 +400,7 @@ fun ConnectPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     Row(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -363,7 +411,7 @@ fun ConnectPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
             )
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -399,6 +447,7 @@ fun ConnectIconPill(
 
     val interaction = remember { MutableInteractionSource() }
     val scale = rememberPressScale(interaction)
+    val haptics = rememberHaptics()
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -409,7 +458,7 @@ fun ConnectIconPill(
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = { haptics.tap(); onClick() },
             ),
         contentAlignment = Alignment.Center,
     ) {
