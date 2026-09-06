@@ -139,6 +139,12 @@ data class NormalizedNavigationState(
     val units: DistanceUnits = DistanceUnits.METRIC,
     val producedAtMs: Long = 0L,
 
+    /** True when the device has no validated internet. Merged in by the
+     *  coordinator (not the provider); drives the offline dash indicator and the
+     *  in-app offline banner. Guidance still continues offline from the already
+     *  computed route — only rerouting/traffic/tiles need data. */
+    val offline: Boolean = false,
+
     // --- Richer guidance detail (Nav SDK provider; used by the phone UI only) ---
     /** Full turn instruction text, HTML stripped (e.g. "Turn right onto Foo St"). */
     val fullInstruction: String? = null,

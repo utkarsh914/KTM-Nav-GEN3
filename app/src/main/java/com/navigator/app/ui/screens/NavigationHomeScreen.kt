@@ -98,6 +98,7 @@ import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
@@ -228,6 +229,19 @@ fun NavigationHomeScreen(
 
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
+
+    // Internet reachability, for the offline banner during active navigation.
+    val isOnline by ConnectivityMonitor.isOnline.collectAsState()
+    // After a short offline+rerouting spell, tell the rider rerouting is paused
+    // (the SDK keeps guiding the existing route but can't recompute until online).
+    var rerouteOfflinePaused by remember { mutableStateOf(false) }
+    LaunchedEffect(isOnline, navState.sessionState) {
+        rerouteOfflinePaused = false
+        if (!isOnline && navState.sessionState == NavSessionState.REROUTING) {
+            delay(5_000)
+            rerouteOfflinePaused = true
+        }
+    }
 
     // One-shot arrival latch for the current trip. Set the moment we finish (via
     // proximity or the SDK's arrival callback) and reset only when a new trip
@@ -597,6 +611,16 @@ fun NavigationHomeScreen(
                         Spacer(Modifier.height(8.dp))
                         LaneGuidance(lanes = navState.lanes)
                     }
+                    if (!isOnline) {
+                        Spacer(Modifier.height(8.dp))
+                        OfflineBanner(
+                            text = if (rerouteOfflinePaused) {
+                                "Offline · rerouting when back online"
+                            } else {
+                                "Offline · guidance continues"
+                            },
+                        )
+                    }
                 }
 
                 // Mid-left: speedometer (hidden until we have a GPS fix).
@@ -955,6 +979,30 @@ private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = onConfirm) { Text("CLOSE", color = Ktm.Danger) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
     )
+}
+
+/** Small pill shown under the guidance header while the device is offline:
+ *  guidance keeps running from the already-computed route, but rerouting/traffic
+ *  need data. Styled to read as a warning without shouting. */
+@Composable
+private fun OfflineBanner(text: String) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(Ktm.Orange))
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text,
+            color = Ktm.White,
+            fontFamily = Barlow,
+            fontSize = 13.sp,
+        )
+    }
 }
 
 /** A neutral dark circular icon button (Google-style controls). */

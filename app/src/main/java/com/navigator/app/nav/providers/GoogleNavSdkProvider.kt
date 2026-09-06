@@ -53,15 +53,17 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** The destination of the trip currently being guided, for observers that
      *  need to label it (e.g. ride recording). Set on [startNavigation], cleared
-     *  on stop/arrival. */
-    @Volatile
-    var currentDestination: NavDestination? = null
-        private set
+     *  on stop/arrival. Exposed as a flow so ride recording can start the moment
+     *  a trip is *requested* — independent of whether guidance actually reaches
+     *  ENROUTE (which needs network for the initial route). */
+    private val _currentDestination = MutableStateFlow<NavDestination?>(null)
+    val currentDestination: StateFlow<NavDestination?> = _currentDestination.asStateFlow()
 
     private val arrivalListener = Navigator.ArrivalListener {
         AppLogger.log("Nav", "Nav SDK arrival")
         guidanceActive = false
         lastEnroute = null
+        _currentDestination.value = null
         _state.value = NormalizedNavigationState(
             sessionState = NavSessionState.ARRIVED,
             producedAtMs = System.currentTimeMillis(),
@@ -96,7 +98,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             AppLogger.log("Nav", "!! startNavigation with no navigator")
             return
         }
-        currentDestination = dest
+        _currentDestination.value = dest
         val waypoint = Waypoint.builder()
             .setLatLng(dest.lat, dest.lng)
             .also { b -> dest.label?.let { b.setTitle(it) } }
@@ -180,7 +182,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         // state back to ENROUTE and resume navigation.
         guidanceActive = false
         lastEnroute = null
-        currentDestination = null
+        _currentDestination.value = null
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
             runCatching { nav.clearDestinations() }

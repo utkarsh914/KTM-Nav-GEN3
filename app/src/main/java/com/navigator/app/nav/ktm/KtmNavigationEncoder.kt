@@ -31,6 +31,10 @@ class KtmNavigationEncoder(
 ) {
     private var lastSession: NavSessionState = NavSessionState.IDLE
     private var guidanceOnDash = false
+    /** Last GPS/nav status bit sent in NAVIGATION_STATE. Flipped off while offline
+     *  so the dash shows a degraded-navigation indicator (reflection of
+     *  [NormalizedNavigationState.offline]). */
+    private var gpsIconOnDash = true
 
     private var lastIcon: TurnIcon? = null
     private var lastDistance: String? = null
@@ -63,7 +67,7 @@ class KtmNavigationEncoder(
 
             NavSessionState.ARRIVED -> {
                 if (lastSession != NavSessionState.ARRIVED) {
-                    ensureNavState(writes)
+                    ensureNavState(writes, gpsIconOn = !state.offline)
                     if (lastIcon != TurnIcon.END) {
                         writes += DashWrite.TurnIcon(TurnIcon.END)
                     }
@@ -75,7 +79,7 @@ class KtmNavigationEncoder(
             }
 
             NavSessionState.REROUTING -> {
-                ensureNavState(writes)
+                ensureNavState(writes, gpsIconOn = !state.offline)
                 // Never leave a stale turn on the dash while recalculating.
                 if (lastIcon != TurnIcon.UNDEFINED) {
                     writes += DashWrite.TurnIcon(TurnIcon.UNDEFINED)
@@ -89,7 +93,7 @@ class KtmNavigationEncoder(
             }
 
             NavSessionState.ENROUTE -> {
-                ensureNavState(writes)
+                ensureNavState(writes, gpsIconOn = !state.offline)
                 val throttled = lastEmitMs != Long.MIN_VALUE &&
                     (state.producedAtMs - lastEmitMs) < minIntervalMs
 
@@ -162,15 +166,21 @@ class KtmNavigationEncoder(
         return writes
     }
 
-    private fun ensureNavState(writes: MutableList<DashWrite>) {
+    private fun ensureNavState(writes: MutableList<DashWrite>, gpsIconOn: Boolean) {
         if (!guidanceOnDash) {
-            writes += DashWrite.SetNavState(guidanceOn = true)
+            writes += DashWrite.SetNavState(guidanceOn = true, gpsIconOn = gpsIconOn)
             guidanceOnDash = true
+            gpsIconOnDash = gpsIconOn
+        } else if (gpsIconOnDash != gpsIconOn) {
+            // Guidance already on; only the online/offline status changed.
+            writes += DashWrite.SetNavState(guidanceOn = true, gpsIconOn = gpsIconOn)
+            gpsIconOnDash = gpsIconOn
         }
     }
 
     private fun resetGuidance() {
         guidanceOnDash = false
+        gpsIconOnDash = true
         lastIcon = null
         lastDistance = null
         lastRoad = null

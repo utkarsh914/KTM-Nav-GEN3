@@ -219,4 +219,41 @@ class KtmNavigationEncoderTest {
         assertTrue(w.contains(DashWrite.TurnIcon(TurnIcon.QUITE_LEFT)))
         assertTrue(w.contains(DashWrite.TurnDistance("100 m")))
     }
+
+    // ---- Offline reflection (gpsIconOn) ----------------------------------
+
+    @Test fun offlineFirstUpdate_setsGpsIconOff() {
+        val enc = encoder()
+        val w = enc.encode(enroute(0).copy(offline = true))
+        assertEquals(DashWrite.SetNavState(guidanceOn = true, gpsIconOn = false), w.first())
+    }
+
+    @Test fun goingOffline_emitsNavStateWithGpsIconOff() {
+        val enc = encoder()
+        enc.encode(enroute(0)) // online first
+        val w = enc.encode(enroute(1000).copy(offline = true))
+        assertTrue(
+            "expected a SetNavState with gpsIconOn=false, got $w",
+            w.contains(DashWrite.SetNavState(guidanceOn = true, gpsIconOn = false)),
+        )
+    }
+
+    @Test fun comingBackOnline_restoresGpsIcon() {
+        val enc = encoder()
+        enc.encode(enroute(0))
+        enc.encode(enroute(1000).copy(offline = true))
+        val w = enc.encode(enroute(2000).copy(offline = false))
+        assertTrue(
+            "expected a SetNavState with gpsIconOn=true, got $w",
+            w.contains(DashWrite.SetNavState(guidanceOn = true, gpsIconOn = true)),
+        )
+    }
+
+    @Test fun offlineUnchanged_producesNoNavStateChurn() {
+        val enc = encoder()
+        enc.encode(enroute(0).copy(offline = true))
+        // Same values, still offline, ETA within deadband -> no writes at all.
+        val w = enc.encode(enroute(1000).copy(offline = true))
+        assertTrue("steady offline should not re-emit SetNavState, got $w", w.isEmpty())
+    }
 }

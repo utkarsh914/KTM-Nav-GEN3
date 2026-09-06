@@ -215,6 +215,7 @@ class BccuConnectionService : LifecycleService() {
                 sendGuidance(distance, road, eta, remaining)
             override fun clearNow() = clearGuidance()
             override fun clearDebounced() = scheduleGuidanceClear()
+            override fun offlineBanner(show: Boolean) = showOfflineBanner(show)
         }
         navCoordinator = com.navigator.app.nav.NavigationCoordinator(
             scope = lifecycleScope,
@@ -1080,6 +1081,27 @@ class BccuConnectionService : LifecycleService() {
         writeNotificationFrame(text, BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT, BccuProtocol.Visibility.FULL)
         clearJob = lifecycleScope.launch {
             delay(NOTIFICATION_CLEAR_DELAY_MS)
+            clearNotificationDisplay()
+        }
+    }
+
+    // True while our "Offline" heads-up is (or was last) on the banner, so a
+    // reconnect only clears the banner if it was ours to clear.
+    @Volatile private var offlineBannerShown = false
+
+    /**
+     * Show/clear the dash "Offline" alert (network dropped mid-trip). This is the
+     * human-readable heads-up; the persistent offline state is also reflected via
+     * the GPS/nav status bit in NAVIGATION_STATE (see the encoder). The banner
+     * auto-clears itself after the usual delay, so this mainly matters on the
+     * drop; on reconnect we clear it if it's still ours.
+     */
+    private fun showOfflineBanner(show: Boolean) {
+        if (show) {
+            offlineBannerShown = true
+            sendNotification("Offline", BccuProtocol.NotificationIcon.WARNING)
+        } else if (offlineBannerShown) {
+            offlineBannerShown = false
             clearNotificationDisplay()
         }
     }

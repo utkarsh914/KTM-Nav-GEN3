@@ -5,8 +5,7 @@ import android.app.Application
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.nav.model.NavSessionState
-import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideStore
@@ -23,6 +22,7 @@ class OpenDashApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppLogger.init(this)
+        ConnectivityMonitor.init(this)
         recoverOrphanRides()
         observeNavForRecording()
     }
@@ -47,33 +47,31 @@ class OpenDashApplication : Application() {
     }
 
     /**
-     * Drive ride recording off the live navigation session: start when a trip
-     * becomes active (and recording is enabled + location granted), stop when it
-     * ends. Runs for the whole process lifetime.
+     * Drive ride recording off the navigation *intent*, not the guidance state:
+     * start as soon as a trip is requested (destination set) and stop when it's
+     * cleared (arrival / stop / cancel). Keying off [GoogleNavSdkProvider.currentDestination]
+     * rather than ENROUTE means the GPS track still records even when the initial
+     * route can't be computed offline (guidance never reaches ENROUTE, but the
+     * recorder is pure device GPS and works regardless). Runs for the process life.
      */
     private fun observeNavForRecording() {
         appScope.launch {
             var recording = false
-            GoogleNavSdkProvider.state.collect { state ->
-                val active = state.sessionState.isActiveNav()
-                val ended = state.sessionState == NavSessionState.ARRIVED ||
-                    state.sessionState == NavSessionState.STOPPED ||
-                    state.sessionState == NavSessionState.IDLE
+            GoogleNavSdkProvider.currentDestination.collect { dest ->
                 when {
-                    active && !recording -> {
+                    dest != null && !recording -> {
                         val settings = AppSettings(this@OpenDashApplication)
                         if (settings.rideRecordingEnabled && hasLocationPermission()) {
-                            val dest = GoogleNavSdkProvider.currentDestination
                             RideRecordingService.start(
                                 this@OpenDashApplication,
-                                destLabel = dest?.label,
-                                destLat = dest?.lat,
-                                destLng = dest?.lng,
+                                destLabel = dest.label,
+                                destLat = dest.lat,
+                                destLng = dest.lng,
                             )
                             recording = true
                         }
                     }
-                    ended && recording -> {
+                    dest == null && recording -> {
                         RideRecordingService.stop(this@OpenDashApplication)
                         recording = false
                     }

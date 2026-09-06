@@ -5,8 +5,12 @@ import com.navigator.app.nav.ktm.DashWrite
 import com.navigator.app.nav.ktm.KtmNavigationEncoder
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
+import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.net.ConnectivityMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -22,6 +26,10 @@ interface DashOutput {
     fun guidance(distance: String?, road: String?, eta: String?, remaining: String?)
     fun clearNow()
     fun clearDebounced()
+    /** Show/clear a one-shot "Offline" alert banner on the dash (network dropped
+     *  mid-trip). Persistent offline state is also reflected via the GPS/nav
+     *  status bit in [setNavState]; this is the human-readable heads-up. */
+    fun offlineBanner(show: Boolean)
 }
 
 /**
@@ -36,9 +44,13 @@ class NavigationCoordinator(
     private val fallbackProvider: NavigationProvider,
     private val output: DashOutput,
     private val encoder: KtmNavigationEncoder = KtmNavigationEncoder(),
+    /** Internet reachability; merged into each snapshot as [NormalizedNavigationState.offline]. */
+    private val isOnline: StateFlow<Boolean> = ConnectivityMonitor.isOnline,
 ) {
     private var provider: NavigationProvider = fallbackProvider
     private var job: Job? = null
+    /** Last offline value we surfaced as a dash banner, so we only alert on change. */
+    private var lastOfflineBanner = false
 
     fun start() {
         provider.attach()
@@ -48,6 +60,7 @@ class NavigationCoordinator(
     fun stop() {
         job?.cancel()
         job = null
+        if (lastOfflineBanner) { lastOfflineBanner = false; output.offlineBanner(false) }
         provider.detach()
     }
 
@@ -67,12 +80,30 @@ class NavigationCoordinator(
     }
 
     private fun collect() {
-        job = provider.state
+        val activeProvider = provider
+        job = combine(activeProvider.state, isOnline) { state, online ->
+            state.copy(offline = !online)
+        }
             .onEach { state ->
                 apply(encoder.encode(state))
+                maybeOfflineBanner(activeProvider, state)
                 maybeRevertToFallback(state)
             }
             .launchIn(scope)
+    }
+
+    /**
+     * Fire a one-shot dash "Offline" banner when data drops during an active
+     * routing session (and nothing when it returns). Only for the routing
+     * provider — the notification-mirror fallback isn't ours to annotate.
+     */
+    private fun maybeOfflineBanner(activeProvider: NavigationProvider, state: NormalizedNavigationState) {
+        val eligible = activeProvider !== fallbackProvider && state.sessionState.isActiveNav()
+        val offline = eligible && state.offline
+        if (offline != lastOfflineBanner) {
+            lastOfflineBanner = offline
+            output.offlineBanner(offline)
+        }
     }
 
     /**
@@ -95,7 +126,7 @@ class NavigationCoordinator(
     fun onReAuth() {
         scope.launch {
             encoder.reset()
-            apply(encoder.encode(provider.state.value))
+            apply(encoder.encode(provider.state.value.copy(offline = !isOnline.value)))
         }
     }
 
