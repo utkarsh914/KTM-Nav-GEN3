@@ -103,6 +103,11 @@ fun RideReplayScreen(
 ) {
     val context = LocalContext.current
     val store = remember { RideStore(context) }
+    // Speed-band colouring scheme (Advanced settings), read once per screen entry.
+    val speedBands = remember {
+        val s = com.navigator.app.settings.AppSettings(context)
+        RideMetrics.SpeedBands(s.speedBandBaseKmh, s.speedBandStepKmh, s.speedBandCount)
+    }
     // Extra map bottom padding on top of the measured card height (its outer
     // margin + a small gap), so the framed/centred track clears the card.
     val bottomMarginPx = with(LocalDensity.current) { 28.dp.roundToPx() }
@@ -115,6 +120,15 @@ fun RideReplayScreen(
 
     var gm by remember { mutableStateOf<GoogleMap?>(null) }
     var marker by remember { mutableStateOf<Marker?>(null) }
+    // Custom compass-driven "you are here" marker (SDK puck is small + GPS-only).
+    val userMarker = remember {
+        UserLocationMarker(
+            context,
+            LocationMarkerStyle.fromId(com.navigator.app.settings.AppSettings(context).locationMarkerStyle),
+        )
+    }
+    val deviceHeading = rememberDeviceHeading()
+    val deviceLatLng = rememberDeviceLatLng()
     var currentIndex by remember(rideId) { mutableStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var speedMult by remember { mutableStateOf(1) }
@@ -156,6 +170,22 @@ fun RideReplayScreen(
         place(currentIndex)
     }
 
+    // Tap-on-track: jump playback to the recorded point nearest the tapped
+    // location (pauses playback, repositions the marker).
+    fun jumpToNearest(tapped: LatLng) {
+        val pts = points ?: return
+        if (pts.isEmpty()) return
+        var best = 0
+        var bestDist = Double.MAX_VALUE
+        for (i in pts.indices) {
+            val d = RideMetrics.haversineMeters(tapped.latitude, tapped.longitude, pts[i].lat, pts[i].lng)
+            if (d < bestDist) { bestDist = d; best = i }
+        }
+        playing = false
+        currentIndex = best
+        place(best)
+    }
+
     Box(Modifier.fillMaxSize().background(Ktm.Screen)) {
 
         // ---- Map surface (reused retained NavigationView) --------------------
@@ -173,6 +203,10 @@ fun RideReplayScreen(
                 gm = map
                 map.uiSettings.isMyLocationButtonEnabled = false
                 map.uiSettings.isCompassEnabled = false
+                // We draw our own compass-driven location marker (see below), so
+                // leave the SDK's small GPS-course-only puck off to avoid two dots.
+                // Tap anywhere on/near the track to seek playback to that point.
+                map.setOnMapClickListener { latLng -> jumpToNearest(latLng) }
                 mapBearing = map.cameraPosition.bearing
                 camTarget = map.cameraPosition.target
                 camZoom = map.cameraPosition.zoom
@@ -197,7 +231,7 @@ fun RideReplayScreen(
         LaunchedEffect(gm, points) {
             val map = gm ?: return@LaunchedEffect
             val pts = points ?: return@LaunchedEffect
-            drawRideTrack(map, pts)
+            drawRideTrack(map, pts, speedBands)
             currentIndex = 0
             marker = if (pts.isNotEmpty()) {
                 map.addMarker(
@@ -206,6 +240,18 @@ fun RideReplayScreen(
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)),
                 )
             } else null
+            // drawRideTrack() cleared the map, dropping our user marker too; drop
+            // the stale handle so the heading effect re-adds it on its next tick.
+            userMarker.remove()
+            deviceLatLng?.let { userMarker.update(map, it, deviceHeading) }
+        }
+
+        // Compass-driven "you are here" marker: follows the device location and
+        // rotates its beam with the phone's orientation (like Google Maps).
+        LaunchedEffect(gm, deviceLatLng, deviceHeading) {
+            val map = gm ?: return@LaunchedEffect
+            val ll = deviceLatLng ?: return@LaunchedEffect
+            userMarker.update(map, ll, deviceHeading)
         }
 
         // Keep the map's bottom padding equal to the control card height so the
@@ -251,6 +297,8 @@ fun RideReplayScreen(
                     gm?.setOnCameraMoveListener(null)
                     gm?.setOnCameraIdleListener(null)
                     gm?.setOnCameraMoveStartedListener(null)
+                    gm?.setOnMapClickListener(null)
+                    userMarker.remove()
                     gm?.setPadding(0, 0, 0, 0)
                     gm?.clear()
                 }
@@ -283,7 +331,9 @@ fun RideReplayScreen(
             else -> {
                 val pts = points!!
                 val r = ride!!
-                val liveSpeed = pts.getOrNull(currentIndex)?.speedKmh
+                val curP = pts.getOrNull(currentIndex)
+                val liveSpeed = curP?.speedKmh
+                val timeText = curP?.let { formatClockTime(it.timeMs) } ?: "--:--:--"
                 // Map buttons stack sits just above the info card; the card is
                 // anchored to the bottom so button visibility never shifts it.
                 Column(
@@ -338,6 +388,7 @@ fun RideReplayScreen(
                         avgSpeed = r.avgSpeedKmh.toInt(),
                         maxSpeed = r.maxSpeedKmh.toInt(),
                         liveSpeed = liveSpeed?.toInt(),
+                        timeText = timeText,
                         progress = if (pts.size > 1) currentIndex.toFloat() / pts.lastIndex else 0f,
                         playing = playing,
                         speedMult = speedMult,
@@ -390,6 +441,7 @@ private fun ReplayControls(
     avgSpeed: Int,
     maxSpeed: Int,
     liveSpeed: Int?,
+    timeText: String,
     progress: Float,
     playing: Boolean,
     speedMult: Int,
@@ -435,6 +487,25 @@ private fun ReplayControls(
         }
 
         Spacer(Modifier.size(12.dp))
+        // Current instant's wall-clock time (of the recorded fix) — updates as
+        // playback advances or the rider scrubs.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "TIME OF DAY",
+                color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
+                fontSize = 10.sp, letterSpacing = 1.sp,
+            )
+            Text(
+                timeText,
+                color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 14.sp,
+            )
+        }
+
+        Spacer(Modifier.size(8.dp))
         // Seek bar: tap to seek, drag to scrub. The touch target is tall for
         // glove use; the visible bar stays thin.
         Box(
@@ -531,6 +602,13 @@ private fun Stat(label: String, value: String) {
         Text(value, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
     }
 }
+
+/** Wall-clock time (HH:mm:ss, local) of a recorded fix's epoch millis. */
+private fun formatClockTime(epochMs: Long): String =
+    java.time.Instant.ofEpochMilli(epochMs)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalTime()
+        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))
 
 @Composable
 private fun RoundControl(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {

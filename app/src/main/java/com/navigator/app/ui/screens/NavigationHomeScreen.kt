@@ -171,6 +171,16 @@ fun NavigationHomeScreen(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
+    val appSettings = remember { com.navigator.app.settings.AppSettings(context) }
+    // Speed-band colouring scheme for the trip-finished route (Advanced settings).
+    val speedBands = remember {
+        com.navigator.app.ride.RideMetrics.SpeedBands(
+            appSettings.speedBandBaseKmh, appSettings.speedBandStepKmh, appSettings.speedBandCount,
+        )
+    }
+    // When true, active nav shows Google's stock chrome instead of our overlays.
+    val fullSdkNavUi = remember { appSettings.fullSdkNavUi }
+
     val available = remember { GoogleNavSdkController.isAvailable(context) }
     var navReady by remember { mutableStateOf(false) }
     var navError by remember { mutableStateOf(false) }
@@ -214,6 +224,32 @@ fun NavigationHomeScreen(
     // Live GPS speed (km/h) for the guidance speedometer; null when no recent fix.
     // Sourced independently of the BLE service so it works during standalone nav.
     val navSpeedKmh = rememberNavSpeedKmh(active = stage == NavStage.NAVIGATING)
+
+    // Compass-driven "you are here" marker for the non-navigating map stages
+    // (browse / place confirm / route preview). During active navigation the SDK's
+    // own follow-puck is used instead (correct travel-direction chevron), and the
+    // trip-finished stage shows the finished route with start/end pins only.
+    val showUserMarker = stage == NavStage.BROWSE ||
+        stage == NavStage.SEARCH ||
+        stage == NavStage.CONFIRM ||
+        stage == NavStage.PREVIEW
+    val userMarker = remember {
+        UserLocationMarker(context, LocationMarkerStyle.fromId(appSettings.locationMarkerStyle))
+    }
+    val deviceHeading = rememberDeviceHeading(active = showUserMarker)
+    val deviceLatLng = rememberDeviceLatLng(active = showUserMarker)
+    // Keyed on `stage` too so every stage change (incl. returning to BROWSE after a
+    // preview that cleared the map) re-asserts the marker; update() re-adds it if
+    // the shared map was cleared.
+    LaunchedEffect(googleMap, showUserMarker, stage, deviceLatLng, deviceHeading) {
+        val gm = googleMap
+        if (gm == null || !showUserMarker) {
+            userMarker.remove()
+            return@LaunchedEffect
+        }
+        val ll = deviceLatLng ?: return@LaunchedEffect
+        userMarker.update(gm, ll, deviceHeading)
+    }
 
     // ---- Preview state ----------------------------------------------------
     var previewRoutes by remember { mutableStateOf<List<RoutePreview>>(emptyList()) }
@@ -312,14 +348,16 @@ fun NavigationHomeScreen(
         if (stage == NavStage.TRIP_FINISHED) return@LaunchedEffect
         gm.setOnPolylineClickListener(null)
         gm.clear()
-        val p = selected ?: return@LaunchedEffect
-        val ll = LatLng(p.lat, p.lng)
+        // NOTE: do NOT early-return when `selected` is null (e.g. returning to
+        // BROWSE): the user-marker re-add at the end must always run after clear().
+        val p = selected
+        val ll = p?.let { LatLng(it.lat, it.lng) }
         when (stage) {
-            NavStage.CONFIRM -> {
+            NavStage.CONFIRM -> if (p != null && ll != null) {
                 gm.addMarker(MarkerOptions().position(ll).title(p.label))
                 gm.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 15f))
             }
-            NavStage.PREVIEW -> {
+            NavStage.PREVIEW -> if (p != null && ll != null) {
                 gm.addMarker(MarkerOptions().position(ll).title(p.label))
                 if (previewRoutes.isNotEmpty()) {
                     // Alternates first (gray), then the selected route (blue, on top).
@@ -347,6 +385,10 @@ fun NavigationHomeScreen(
             }
             else -> {}
         }
+        // gm.clear() above dropped the user marker; drop the stale handle so the
+        // marker effect re-adds it, and re-add now if we already have a fix.
+        userMarker.remove()
+        if (showUserMarker) deviceLatLng?.let { userMarker.update(gm, it, deviceHeading) }
     }
 
     // Draw the just-finished ride's speed-coloured track on the map behind the
@@ -358,7 +400,7 @@ fun NavigationHomeScreen(
                 val pts = finishedPoints
                 if (!pts.isNullOrEmpty() && finishCardHeightPx > 0) {
                     runCatching { gm.setPadding(0, 0, 0, finishCardHeightPx) }
-                    drawRideTrack(gm, pts)
+                    drawRideTrack(gm, pts, speedBands)
                     frameRideTrack(gm, pts)
                 }
             }
@@ -550,6 +592,7 @@ fun NavigationHomeScreen(
             available && navReady -> BrowseMap(
                 retainedNav = retainedNav,
                 navUiEnabled = stage == NavStage.NAVIGATING,
+                fullSdkChrome = fullSdkNavUi,
                 onMap = { googleMap = it },
             )
             available && !navError -> MapPlaceholder("Preparing map…\n\nTap to retry if this doesn't clear.") {
@@ -717,58 +760,97 @@ fun NavigationHomeScreen(
                     (navState.distanceToManeuverMeters ?: Int.MAX_VALUE) <= LANE_HINT_DISTANCE_M
 
                 // Top: maneuver header, then lane guidance directly beneath it.
-                Column(
-                    modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
-                        .padding(start = 12.dp, end = 12.dp, top = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    NavGuidanceHeader(
-                        nav = navState,
-                        // Safeguard: while lanes show, drop the "Then" chip so the
-                        // top cluster can't grow tall enough to crowd other elements.
-                        hideNextHint = showLanes,
-                    )
-                    if (showLanes) {
-                        Spacer(Modifier.height(8.dp))
-                        LaneGuidance(lanes = navState.lanes)
+                // In full-SDK mode Google draws its own header/lanes/speedometer/ETA,
+                // so we suppress ours AND keep the top zone clear (the SDK header is
+                // full-width there); the offline banner is relocated below.
+                if (!fullSdkNavUi) {
+                    Column(
+                        modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
+                            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        NavGuidanceHeader(
+                            nav = navState,
+                            // Safeguard: while lanes show, drop the "Then" chip so the
+                            // top cluster can't grow tall enough to crowd other elements.
+                            hideNextHint = showLanes,
+                        )
+                        if (showLanes) {
+                            Spacer(Modifier.height(8.dp))
+                            LaneGuidance(lanes = navState.lanes)
+                        }
+                        if (!isOnline) {
+                            Spacer(Modifier.height(8.dp))
+                            OfflineBanner(
+                                text = if (rerouteOfflinePaused) {
+                                    "Offline · rerouting when back online"
+                                } else {
+                                    "Offline · guidance continues"
+                                },
+                            )
+                        }
                     }
-                    if (!isOnline) {
-                        Spacer(Modifier.height(8.dp))
-                        OfflineBanner(
-                            text = if (rerouteOfflinePaused) {
-                                "Offline · rerouting when back online"
-                            } else {
-                                "Offline · guidance continues"
-                            },
+                }
+
+                if (!fullSdkNavUi) {
+                    // Mid-left: speedometer (hidden until we have a GPS fix).
+                    navSpeedKmh?.let { kmh ->
+                        Speedometer(
+                            kmh = kmh,
+                            modifier = Modifier.align(Alignment.CenterStart).systemBarsPadding()
+                                .padding(start = 16.dp),
                         )
                     }
-                }
 
-                // Mid-left: speedometer (hidden until we have a GPS fix).
-                navSpeedKmh?.let { kmh ->
-                    Speedometer(
-                        kmh = kmh,
-                        modifier = Modifier.align(Alignment.CenterStart).systemBarsPadding()
-                            .padding(start = 16.dp),
+                    // Bottom ETA bar (full width, anchored bottom-centre). END asks to
+                    // confirm; the minimise button steps away to the map (trip continues).
+                    NavGuidanceBottomBar(
+                        nav = navState,
+                        onEnd = { showEndConfirm = true },
+                        onMinimize = ::moveAwayFromNav,
+                        modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     )
+                } else {
+                    // Full-SDK chrome owns the top (header) and bottom (ETA card).
+                    // Keep our minimise/end controls in a compact BOTTOM-LEFT stack
+                    // so they never overlap the SDK's full-width header, and relocate
+                    // the offline banner to bottom-centre above the SDK ETA card.
+                    Column(
+                        modifier = Modifier.align(Alignment.BottomStart).systemBarsPadding()
+                            .padding(start = 16.dp, bottom = 104.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SquareMapControl(
+                            OpenDashIcons.Close, "End navigation", tint = Ktm.Danger,
+                            cornerRadius = Ktm.RadiusCard,
+                        ) { showEndConfirm = true }
+                        SquareMapControl(
+                            OpenDashIcons.ChevronDown, "Back to map",
+                            cornerRadius = Ktm.RadiusCard,
+                        ) { moveAwayFromNav() }
+                    }
+                    if (!isOnline) {
+                        Box(
+                            modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                                .padding(start = 12.dp, end = 12.dp, bottom = 170.dp),
+                        ) {
+                            OfflineBanner(
+                                text = if (rerouteOfflinePaused) {
+                                    "Offline · rerouting when back online"
+                                } else {
+                                    "Offline · guidance continues"
+                                },
+                            )
+                        }
+                    }
                 }
-
-                // Bottom ETA bar (full width, anchored bottom-centre). END asks to
-                // confirm; the minimise button steps away to the map (trip continues).
-                NavGuidanceBottomBar(
-                    nav = navState,
-                    onEnd = { showEndConfirm = true },
-                    onMinimize = ::moveAwayFromNav,
-                    modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
-                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                )
                 // Bottom-right control stack: compass (only when the map is rotated)
-                // above the bike-connection button. The re-center button is the SDK's
-                // own (kept in BrowseMap), which pops up on pan at the bottom-left,
-                // above our ETA bar (via map padding).
+                // above the bike-connection button. In full-SDK mode raise it higher
+                // so it clears the SDK's own ETA card / re-center button.
                 Column(
                     modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
-                        .padding(end = 16.dp, bottom = 104.dp),
+                        .padding(end = 16.dp, bottom = if (fullSdkNavUi) 170.dp else 104.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -848,6 +930,7 @@ fun NavigationHomeScreen(
 private fun BrowseMap(
     retainedNav: RetainedNavigationView,
     navUiEnabled: Boolean,
+    fullSdkChrome: Boolean,
     onMap: (GoogleMap?) -> Unit,
 ) {
     val context = LocalContext.current
@@ -862,6 +945,7 @@ private fun BrowseMap(
     // up bottom-left on pan) sits ABOVE our custom ETA bar, on the same level as the
     // bottom-right compass (which is systemBars + 100dp above the raw bottom).
     val density = LocalDensity.current
+    val sysTopPx = WindowInsets.systemBars.getTop(density)
     val sysBottomPx = WindowInsets.systemBars.getBottom(density)
     val navBottomPadPx = sysBottomPx + with(density) { 92.dp.roundToPx() }
     AndroidView(
@@ -881,8 +965,12 @@ private fun BrowseMap(
             onMap(gm)
             gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
             gm.uiSettings.isCompassEnabled = false          // custom controls instead
+            // The SDK's own puck is only used during active navigation (its
+            // follow-camera + travel-direction chevron are correct there). While
+            // browsing/previewing we draw a compass-driven marker instead, so keep
+            // the SDK puck off to avoid two dots (see the screen-level effect).
             if (hasLocationPermission(context)) {
-                runCatching { gm.isMyLocationEnabled = true }
+                runCatching { gm.isMyLocationEnabled = navUiEnabled }
             }
             // Only frame the camera the first time — re-entry keeps the user's
             // current pan/zoom instead of snapping back to the start.
@@ -894,31 +982,53 @@ private fun BrowseMap(
             }
         }
     }
-    // Enable the SDK's guidance engine while navigating (route line + follow
-    // camera + turn-by-turn feed) and keep its built-in RE-CENTER button (it pops
-    // up on pan and reliably re-engages follow), but suppress the rest of the
-    // chrome — we render our own header, ETA bar and (no) report. Force the map's
-    // day/night from the app theme (the SDK otherwise follows the system).
-    LaunchedEffect(navUiEnabled, dark, mapRef) {
+    // Map + SDK day/night. Kept in its OWN effect keyed only on `dark`/`mapRef` so
+    // it isn't re-slammed on every enter/exit of NAVIGATING (which caused a restyle
+    // flash). `dark` already tracks the app theme, which in turn honours the
+    // Day/Night nav-theme setting while actively navigating (see MainActivity).
+    LaunchedEffect(dark, mapRef) {
         runCatching {
             mapRef?.mapColorScheme = if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT
         }
         runCatching {
-            navView.setNavigationUiEnabled(navUiEnabled)
             navView.setForceNightMode(
                 if (dark) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY,
             )
         }
-        // Hide the stock guidance chrome we replace, but KEEP the re-center button.
-        // Wrapped individually so an API mismatch degrades gracefully.
-        runCatching { navView.setHeaderEnabled(false) }
-        runCatching { navView.setEtaCardEnabled(false) }
+    }
+    // Guidance engine + chrome + padding, keyed on the nav/chrome state.
+    LaunchedEffect(navUiEnabled, mapRef, fullSdkChrome) {
+        runCatching { navView.setNavigationUiEnabled(navUiEnabled) }
+        // In FULL-SDK mode show Google's own stock guidance chrome; otherwise hide
+        // the parts we replace with custom overlays (but always keep the re-center
+        // button, which pops up on pan). Wrapped individually so an API mismatch
+        // degrades gracefully.
+        val stockChrome = fullSdkChrome && navUiEnabled
+        runCatching { navView.setHeaderEnabled(stockChrome) }
+        runCatching { navView.setEtaCardEnabled(stockChrome) }
+        runCatching { navView.setSpeedometerEnabled(stockChrome) }
         runCatching { navView.setRecenterButtonEnabled(true) }
         runCatching { navView.setReportIncidentButtonEnabled(false) }
-        runCatching { navView.setSpeedometerEnabled(false) }
-        runCatching { navView.setTrafficIncidentCardsEnabled(false) }
-        // Lift the SDK re-center button above our custom ETA bar while navigating.
-        runCatching { mapRef?.setPadding(0, 0, 0, if (navUiEnabled) navBottomPadPx else 0) }
+        runCatching { navView.setTrafficIncidentCardsEnabled(stockChrome) }
+        // Map padding so the SDK's stock chrome AND its tilted follow-camera focus
+        // are laid out inside the visible safe area (the app is edge-to-edge):
+        //  - full-SDK nav: inset by the real system bars (top status bar + bottom
+        //    nav bar) so the SDK header/ETA don't hide under the bars and the
+        //    perspective isn't computed against an occluded viewport (was the
+        //    "distortion" cause);
+        //  - custom-chrome nav: bottom only, lifted above our ETA bar;
+        //  - browse: none.
+        val (padTop, padBottom) = when {
+            navUiEnabled && fullSdkChrome -> sysTopPx to sysBottomPx
+            navUiEnabled -> 0 to navBottomPadPx
+            else -> 0 to 0
+        }
+        runCatching { mapRef?.setPadding(0, padTop, 0, padBottom) }
+        // SDK puck only during active navigation; the compass-driven marker owns
+        // browse/preview (screen-level effect) so keep the SDK dot off otherwise.
+        if (hasLocationPermission(context)) {
+            runCatching { mapRef?.isMyLocationEnabled = navUiEnabled }
+        }
     }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }

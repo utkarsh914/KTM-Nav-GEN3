@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -81,6 +82,7 @@ import kotlinx.coroutines.withContext
 private enum class SettingsDialog {
     NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME, ACCENT, ACCENT_CUSTOM,
     RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
+    SPEED_BAND_BASE, SPEED_BAND_STEP, SPEED_BAND_COUNT, LOCATION_MARKER_STYLE,
 }
 
 /**
@@ -135,6 +137,14 @@ fun SettingsScreen(
     var rideHistoryLimit by remember { mutableStateOf(settings.rideHistoryLimit) }
 
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
+
+    // Advanced settings.
+    var fullSdkNavUi by remember { mutableStateOf(settings.fullSdkNavUi) }
+    var speedBandBase by remember { mutableStateOf(settings.speedBandBaseKmh) }
+    var speedBandStep by remember { mutableStateOf(settings.speedBandStepKmh) }
+    var speedBandCount by remember { mutableStateOf(settings.speedBandCount) }
+    var locationMarkerStyle by remember { mutableStateOf(settings.locationMarkerStyle) }
+
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
     // Both of these are slow binder IPC (enumerating every installed app; the
@@ -187,21 +197,68 @@ fun SettingsScreen(
             .background(Ktm.Screen)
             .systemBarsPadding(),
     ) {
-        com.navigator.app.ui.components.ScreenTopBar(
-            title = "Settings",
-            onBack = onBack,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
-        )
+        // ---- Branded hero header --------------------------------------------
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.navigator.app.ui.components.CircleBackButton(onClick = onBack)
+            androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                com.navigator.app.ui.components.Eyebrow("Settings", fontSize = 12, letterSpacing = 3.0)
+                Text(
+                    Ktm.current.wordmark,
+                    color = Ktm.White,
+                    fontFamily = BarlowCondensed,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 30.sp,
+                    fontStyle = if (Ktm.current.wordmarkItalic) {
+                        androidx.compose.ui.text.font.FontStyle.Italic
+                    } else {
+                        androidx.compose.ui.text.font.FontStyle.Normal
+                    },
+                    letterSpacing = Ktm.current.wordmarkTracking,
+                    maxLines = 1,
+                )
+            }
+            // Live vehicle status chip.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (connected) Ktm.Green.copy(alpha = 0.16f) else Ktm.Surface)
+                    .border(
+                        1.dp,
+                        if (connected) Ktm.Green.copy(alpha = 0.5f) else Ktm.Border,
+                        RoundedCornerShape(20.dp),
+                    )
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+            ) {
+                Box(
+                    Modifier.size(7.dp).clip(CircleShape)
+                        .background(if (connected) Ktm.Green else Ktm.Dim),
+                )
+                androidx.compose.foundation.layout.Spacer(Modifier.size(7.dp))
+                Text(
+                    if (connected) "CONNECTED" else "OFFLINE",
+                    color = if (connected) Ktm.Green else Ktm.Dim,
+                    fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp, letterSpacing = 1.sp,
+                )
+            }
+        }
 
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp, top = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             // ===== Appearance =====
             item {
-                GroupCard("Appearance") {
+                GroupCard("Appearance", icon = com.navigator.app.ui.theme.OpenDashIcons.Settings) {
                     SettingsRow("Theme", showDivider = true, onClick = { dialog = SettingsDialog.THEME }) {
                         val label = when (themeMode) {
                             com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
@@ -233,7 +290,7 @@ fun SettingsScreen(
 
             // ===== Connection =====
             item {
-                GroupCard("Connection") {
+                GroupCard("Connection", icon = com.navigator.app.ui.theme.OpenDashIcons.Bluetooth) {
                     SettingsRow("Vehicle", showDivider = true) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (connected) {
@@ -258,7 +315,7 @@ fun SettingsScreen(
             // ===== Navigation engine =====
             if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(context)) {
                 item {
-                    GroupCard("Navigation engine") {
+                    GroupCard("Navigation engine", icon = com.navigator.app.ui.theme.OpenDashIcons.Navigation) {
                         SettingsRow(
                             "In-app maps (Google)", showDivider = true,
                             onClick = {
@@ -297,7 +354,7 @@ fun SettingsScreen(
 
             // ===== Ride recording =====
             item {
-                GroupCard("Ride recording") {
+                GroupCard("Ride recording", icon = com.navigator.app.ui.theme.OpenDashIcons.LocateFixed) {
                     SettingsRow("Record rides", showDivider = rideRecordingOn) {
                         KtmToggle(rideRecordingOn, { rideRecordingOn = it; settings.rideRecordingEnabled = it })
                     }
@@ -336,7 +393,7 @@ fun SettingsScreen(
 
             // ===== Notifications =====
             item {
-                GroupCard("Notifications") {
+                GroupCard("Notifications", icon = com.navigator.app.ui.theme.OpenDashIcons.Bell) {
                     SettingsRow(
                         "Notification access", showDivider = true,
                         onClick = if (notificationAccessGranted) null else ({
@@ -362,7 +419,7 @@ fun SettingsScreen(
 
             // ===== Navigation =====
             item {
-                GroupCard("Navigation") {
+                GroupCard("Navigation", icon = com.navigator.app.ui.theme.OpenDashIcons.TurnArrow) {
                     SettingsRow("Auto-detect nav app", showDivider = true) {
                         KtmToggle(navAutoDetect, { on ->
                             navAutoDetect = on
@@ -385,7 +442,7 @@ fun SettingsScreen(
 
             // ===== Riding =====
             item {
-                GroupCard("Riding") {
+                GroupCard("Riding", icon = com.navigator.app.ui.theme.OpenDashIcons.Bike) {
                     SettingsRow("Turn approach beeps (stereo)", showDivider = true) {
                         KtmToggle(turnBeepEnabled, { turnBeepEnabled = it; settings.turnBeepEnabled = it })
                     }
@@ -507,9 +564,60 @@ fun SettingsScreen(
                 }
             }
 
+            // ===== Advanced =====
+            item {
+                GroupCard("Advanced", icon = com.navigator.app.ui.theme.OpenDashIcons.Compass) {
+                    // Full Google-SDK nav rendering vs the app's custom overlays.
+                    SettingsRow("Full Google nav UI", showDivider = true) {
+                        KtmToggle(fullSdkNavUi, { fullSdkNavUi = it; settings.fullSdkNavUi = it })
+                    }
+                    Text(
+                        if (fullSdkNavUi) {
+                            "Active navigation shows Google's own maneuver header, ETA card and " +
+                                "speedometer. Applies next time you start navigating."
+                        } else {
+                            "Active navigation uses the app's custom guidance overlays (current look)."
+                        },
+                        color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
+                    )
+
+                    // Ride-track speed colour bands.
+                    SettingsRow(
+                        "Speed colour: green up to", showDivider = true,
+                        onClick = { dialog = SettingsDialog.SPEED_BAND_BASE },
+                    ) { MonoValue("$speedBandBase km/h ›") }
+                    SettingsRow(
+                        "Colour step size", showDivider = true,
+                        onClick = { dialog = SettingsDialog.SPEED_BAND_STEP },
+                    ) { MonoValue("$speedBandStep km/h ›") }
+                    SettingsRow(
+                        "Number of steps", showDivider = true,
+                        onClick = { dialog = SettingsDialog.SPEED_BAND_COUNT },
+                    ) { MonoValue("$speedBandCount ›") }
+                    // Live legend of the resulting bands (green → red).
+                    SpeedBandLegend(
+                        base = speedBandBase, step = speedBandStep, count = speedBandCount,
+                        modifier = Modifier.padding(horizontal = 14.dp).padding(top = 6.dp, bottom = 12.dp),
+                    )
+
+                    // Location marker direction-indicator style.
+                    SettingsRow(
+                        "Location marker", showDivider = false,
+                        onClick = { dialog = SettingsDialog.LOCATION_MARKER_STYLE },
+                    ) {
+                        val label = when (locationMarkerStyle) {
+                            AppSettings.LOCATION_MARKER_BEAM -> "Beam (cone)"
+                            else -> "Chevron (arrow)"
+                        }
+                        MonoValue("$label ›")
+                    }
+                }
+            }
+
             // ===== Diagnostics =====
             item {
-                GroupCard("Diagnostics") {
+                GroupCard("Diagnostics", icon = com.navigator.app.ui.theme.OpenDashIcons.Clock) {
                     SettingsRow("View & share logs", showDivider = true, onClick = onOpenLogs) {
                         Text("›", color = Ktm.Dim, fontSize = 18.sp)
                     }
@@ -612,6 +720,53 @@ fun SettingsScreen(
                         // Apply immediately so lowering the limit prunes now.
                         RideStore(context).pruneToLimit(it)
                     }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.SPEED_BAND_BASE -> TextFieldDialog(
+            title = "Green up to (km/h)",
+            initial = speedBandBase.toString(), label = "10 - 120", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it in AppSettings.SPEED_BAND_BASE_MIN..AppSettings.SPEED_BAND_BASE_MAX }
+                    ?.let { speedBandBase = it; settings.speedBandBaseKmh = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.SPEED_BAND_STEP -> TextFieldDialog(
+            title = "Colour step size (km/h)",
+            initial = speedBandStep.toString(), label = "min 1", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it >= AppSettings.SPEED_BAND_STEP_MIN }
+                    ?.let { speedBandStep = it; settings.speedBandStepKmh = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.SPEED_BAND_COUNT -> TextFieldDialog(
+            title = "Number of steps",
+            initial = speedBandCount.toString(), label = "min 1", numeric = true,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onConfirm = { value ->
+                value.trim().toIntOrNull()
+                    ?.takeIf { it >= AppSettings.SPEED_BAND_COUNT_MIN }
+                    ?.let { speedBandCount = it; settings.speedBandCount = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.LOCATION_MARKER_STYLE -> SingleChoiceDialog(
+            title = "Location marker",
+            options = listOf(AppSettings.LOCATION_MARKER_CHEVRON, AppSettings.LOCATION_MARKER_BEAM),
+            labelFor = {
+                if (it == AppSettings.LOCATION_MARKER_BEAM) "Beam (cone)" else "Chevron (arrow)"
+            },
+            selected = locationMarkerStyle,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = {
+                locationMarkerStyle = it
+                settings.locationMarkerStyle = it
                 dialog = SettingsDialog.NONE
             },
         )
@@ -926,6 +1081,36 @@ private fun AccentSwatchRow(
             Icon(
                 Icons.Filled.Check, "Selected",
                 tint = Ktm.Orange, modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Live green→red legend of the ride-track speed bands for the given base/step/
+ * count, so the rider can preview the colouring before applying it. Mirrors the
+ * exact colours used on the map (see [bandColor]).
+ */
+@Composable
+private fun SpeedBandLegend(base: Int, step: Int, count: Int, modifier: Modifier = Modifier) {
+    val bands = com.navigator.app.ride.RideMetrics.SpeedBands(base, step, count)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+            for (i in 0 until bands.bandCount) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(androidx.compose.ui.graphics.Color(bandColor(i, bands.bandCount))),
+                )
+            }
+        }
+        androidx.compose.foundation.layout.Spacer(Modifier.size(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("0", color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 10.sp)
+            Text(
+                "${base + step * (count - 1)}+ km/h",
+                color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 10.sp,
             )
         }
     }

@@ -290,6 +290,50 @@ class AppSettings(context: Context) {
         get() = navProvider != NAV_PROVIDER_NOTIFICATION
         set(value) { navProvider = if (value) NAV_PROVIDER_GOOGLE_NAV_SDK else NAV_PROVIDER_NOTIFICATION }
 
+    /**
+     * When true, active navigation shows Google's own stock guidance chrome
+     * (maneuver header, ETA card, speedometer) instead of the app's custom
+     * overlays. Default false keeps the app-rendered look. (Advanced setting.)
+     */
+    var fullSdkNavUi: Boolean
+        get() = pairingPrefs.getBoolean(KEY_FULL_SDK_NAV_UI, false)
+        set(value) = pairingPrefs.edit().putBoolean(KEY_FULL_SDK_NAV_UI, value).apply()
+
+    /**
+     * Ride-track speed colouring (Advanced): the first band (green) covers speeds
+     * up to [speedBandBaseKmh]; each subsequent band spans [speedBandStepKmh] km/h
+     * and shifts toward red, for [speedBandCount] bands above the base. Defaults
+     * give green ≤40, then 40–60, 60–80, 80–100, 100–120 toward red.
+     */
+    var speedBandBaseKmh: Int
+        get() = pairingPrefs.getInt(KEY_SPEED_BAND_BASE, DEFAULT_SPEED_BAND_BASE_KMH)
+        set(value) = pairingPrefs.edit()
+            .putInt(KEY_SPEED_BAND_BASE, value.coerceIn(SPEED_BAND_BASE_MIN, SPEED_BAND_BASE_MAX)).apply()
+
+    var speedBandStepKmh: Int
+        get() = pairingPrefs.getInt(KEY_SPEED_BAND_STEP, DEFAULT_SPEED_BAND_STEP_KMH)
+        set(value) = pairingPrefs.edit()
+            // Step size must stay ≥1 km/h to avoid a zero-width band (division by
+            // zero); otherwise unbounded.
+            .putInt(KEY_SPEED_BAND_STEP, value.coerceAtLeast(SPEED_BAND_STEP_MIN)).apply()
+
+    var speedBandCount: Int
+        get() = pairingPrefs.getInt(KEY_SPEED_BAND_COUNT, DEFAULT_SPEED_BAND_COUNT)
+        set(value) = pairingPrefs.edit()
+            // No upper cap on the number of steps; a single band (count 1) is the
+            // floor so there's always at least one colour transition.
+            .putInt(KEY_SPEED_BAND_COUNT, value.coerceAtLeast(SPEED_BAND_COUNT_MIN)).apply()
+
+    /**
+     * Direction-indicator style for the custom "you are here" marker on the
+     * browse/preview/replay maps: "chevron" (detached arrow, default) or "beam"
+     * (detached cone). See LocationMarkerStyle.
+     */
+    var locationMarkerStyle: String
+        get() = pairingPrefs.getString(KEY_LOCATION_MARKER_STYLE, LOCATION_MARKER_CHEVRON)
+            ?: LOCATION_MARKER_CHEVRON
+        set(value) = pairingPrefs.edit().putString(KEY_LOCATION_MARKER_STYLE, value).apply()
+
     /** Manual hardware-calibration result for one icon, from the Symbol Testing screen. "works", "wrong", or null (untested). */
     fun getIconTestResult(key: String): String? = prefs.getString(KEY_ICON_TEST_PREFIX + key, null)
 
@@ -354,6 +398,24 @@ class AppSettings(context: Context) {
         private const val KEY_NAV_PROVIDER = "nav_provider"
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
+
+        private const val KEY_FULL_SDK_NAV_UI = "full_sdk_nav_ui"
+
+        private const val KEY_SPEED_BAND_BASE = "speed_band_base_kmh"
+        private const val KEY_SPEED_BAND_STEP = "speed_band_step_kmh"
+        private const val KEY_SPEED_BAND_COUNT = "speed_band_count"
+        const val DEFAULT_SPEED_BAND_BASE_KMH = 40
+        const val DEFAULT_SPEED_BAND_STEP_KMH = 20
+        const val DEFAULT_SPEED_BAND_COUNT = 5
+        const val SPEED_BAND_BASE_MIN = 10
+        const val SPEED_BAND_BASE_MAX = 120
+        // Step size only needs a floor (≥1 km/h) to stay well-defined; no ceiling.
+        const val SPEED_BAND_STEP_MIN = 1
+        // Number of steps: floor of 1, no ceiling.
+        const val SPEED_BAND_COUNT_MIN = 1
+        private const val KEY_LOCATION_MARKER_STYLE = "location_marker_style"
+        const val LOCATION_MARKER_CHEVRON = "chevron"
+        const val LOCATION_MARKER_BEAM = "beam"
         private const val KEY_PAIRED_PREFIX = "paired_before_"
         private const val KEY_SESSION_KEYS_PREFIX = "session_keys_"
         private const val KEY_ICON_TEST_PREFIX = "icon_test_"

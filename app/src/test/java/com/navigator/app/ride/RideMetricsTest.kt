@@ -67,12 +67,27 @@ class RideMetricsTest {
         assertTrue(RideMetrics.meetsCutoff(5000, 600, 400, 60))
     }
 
-    @Test fun speedBands() {
-        assertEquals(RideMetrics.SpeedBand.SLOW, RideMetrics.band(null))
-        assertEquals(RideMetrics.SpeedBand.SLOW, RideMetrics.band(10f))
-        assertEquals(RideMetrics.SpeedBand.MEDIUM, RideMetrics.band(30f))
-        assertEquals(RideMetrics.SpeedBand.FAST, RideMetrics.band(60f))
-        assertEquals(RideMetrics.SpeedBand.VERY_FAST, RideMetrics.band(100f))
+    @Test fun speedBands_defaultScheme() {
+        val b = RideMetrics.SpeedBands.DEFAULT // base 40, step 20, count 5
+        assertEquals(6, b.bandCount)
+        assertEquals(0, b.bandOf(null))
+        assertEquals(0, b.bandOf(10f))
+        assertEquals(0, b.bandOf(39.9f))
+        assertEquals(1, b.bandOf(40f))
+        assertEquals(1, b.bandOf(59f))
+        assertEquals(2, b.bandOf(60f))
+        assertEquals(3, b.bandOf(80f))
+        assertEquals(4, b.bandOf(100f))
+        assertEquals(5, b.bandOf(120f))
+        // Above the top band saturates at the last index.
+        assertEquals(5, b.bandOf(500f))
+    }
+
+    @Test fun speedBands_upperBounds() {
+        val b = RideMetrics.SpeedBands(baseKmh = 40, stepKmh = 20, count = 5)
+        assertEquals(40, b.upperBoundKmh(0))
+        assertEquals(60, b.upperBoundKmh(1))
+        assertEquals(null, b.upperBoundKmh(5)) // open-ended top band
     }
 
     private fun ride(id: String, startMs: Long, saved: Boolean = false) = RecordedRide(

@@ -124,15 +124,35 @@ object RideMetrics {
         return unsavedNewestFirst.drop(limit).map { it.id }
     }
 
-    /** Speed bucket for colouring the replay track. */
-    enum class SpeedBand { SLOW, MEDIUM, FAST, VERY_FAST }
+    /**
+     * Configurable speed-band scheme for colouring the ride track. The first band
+     * (index 0, green) covers 0..[baseKmh]; each subsequent band spans [stepKmh]
+     * km/h and shifts toward red, for [count] bands ABOVE the base (so band
+     * indices run 0..count, i.e. count+1 total, the last being open-ended).
+     */
+    data class SpeedBands(
+        val baseKmh: Int,
+        val stepKmh: Int,
+        val count: Int,
+    ) {
+        /** Total number of distinct colour bands (base + [count] steps). */
+        val bandCount: Int get() = count + 1
 
-    /** Classify a speed (km/h) into a colour band for the replay polyline. */
-    fun band(speedKmh: Float?): SpeedBand = when {
-        speedKmh == null -> SpeedBand.SLOW
-        speedKmh < 20f -> SpeedBand.SLOW
-        speedKmh < 45f -> SpeedBand.MEDIUM
-        speedKmh < 80f -> SpeedBand.FAST
-        else -> SpeedBand.VERY_FAST
+        /** Classify a speed (km/h) into a band index in 0..[count]. */
+        fun bandOf(speedKmh: Float?): Int {
+            val s = speedKmh ?: return 0
+            if (s < baseKmh) return 0
+            val over = s - baseKmh
+            val step = if (stepKmh <= 0) 1 else stepKmh
+            return (1 + (over / step).toInt()).coerceIn(0, count)
+        }
+
+        /** Upper bound (km/h) of band [index], or null for the open-ended top band. */
+        fun upperBoundKmh(index: Int): Int? =
+            if (index >= count) null else baseKmh + index * stepKmh
+
+        companion object {
+            val DEFAULT = SpeedBands(baseKmh = 40, stepKmh = 20, count = 5)
+        }
     }
 }

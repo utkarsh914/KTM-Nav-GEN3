@@ -136,14 +136,38 @@ fun GroupCard(
     label: String,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
+) = GroupCard(label = label, icon = null, modifier = modifier, content = content)
+
+/**
+ * A labelled group of setting rows inside one bordered card, with an optional
+ * accent-tinted icon chip beside the eyebrow label for stronger visual hierarchy.
+ */
+@Composable
+fun GroupCard(
+    label: String,
+    icon: ImageVector?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Eyebrow(
-            label,
-            fontSize = 11,
-            letterSpacing = 2.0,
-            modifier = Modifier.padding(start = 4.dp, bottom = 7.dp),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        ) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Ktm.Orange.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, tint = Ktm.Orange, modifier = Modifier.size(14.dp))
+                }
+                Spacer(Modifier.width(9.dp))
+            }
+            Eyebrow(label, fontSize = 11, letterSpacing = 2.0)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
