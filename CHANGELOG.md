@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.5.0
+
+### Navigation & maps
+- Compass-driven location marker: the "you are here" dot now shows your heading from the phone's
+  orientation sensor and rotates as you physically turn (like the Google Maps app), on the browse map,
+  route preview and ride replay — the Navigation SDK's own puck only follows GPS course. Direction
+  indicator style is selectable (detached arrow / beam) in Settings → Advanced.
+- Choice of navigation UI: keep the app's custom guidance overlays (default) or switch to Google's full
+  stock navigation UI (maneuver header, ETA card, speedometer) in Settings → Advanced.
+
+### Ride replay
+- Tap the ride track to jump playback to the nearest recorded point.
+- Shows the wall-clock time of the current playback instant as the ride plays/scrubs.
+
+### Ride history
+- Configurable speed-to-colour mapping: set the green ceiling, step size and number of bands (green→red
+  ramp) in Settings → Advanced, with a live legend preview. Defaults to green ≤40, then steps every
+  20 km/h toward red; no upper cap on the number of bands.
+
+### Settings
+- Visual overhaul: branded hero header with live vehicle status, iconified group cards, and a new
+  Advanced section for the options above.
+
+### Fixes
+- The custom location marker no longer disappears after opening route preview and returning to the map
+  (previously required an app restart); it now survives shared-map clears.
+- Full Google-nav UI: the SDK chrome and its follow-camera are now laid out inside the system-bar safe
+  area (fixes the skew/overlap that appeared under the status/navigation bars), custom controls are moved
+  clear of the SDK header/ETA, and the map day/night no longer re-applies on every nav entry (removes a
+  start-of-navigation flash).
+
+---
+
 ## v0.4.0
 
 ### Ride recording & replay

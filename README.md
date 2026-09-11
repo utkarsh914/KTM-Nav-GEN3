@@ -58,6 +58,14 @@ pill and a search bar. Find a destination by search (with Recents and Home/Work/
 **long-pressing the map to drop a pin**, or by sharing a Google Maps link into the app; confirm it, preview
 the route with selectable **alternates**, then Start to run turn-by-turn on the phone and the dash at once.
 
+**A location dot that faces where you do.** The live-location marker shows your heading from the phone's
+compass and rotates as you turn — like the Google Maps app — instead of only following GPS course. You can
+pick the direction indicator style (a detached arrow or a beam) in Settings → Advanced.
+
+**Choose your navigation UI.** Active guidance renders with the app's own custom overlays by default, or
+you can switch to Google's full stock navigation UI (its maneuver header, ETA card and speedometer) in
+Settings → Advanced.
+
 **Shows over the lock screen.** While navigating, the app stays visible over the lock screen and keeps the
 screen awake — and tapping either navigation notification jumps straight back to the live nav screen.
 
@@ -73,8 +81,10 @@ sounds through Do Not Disturb.
 **Ride recording and replay.** Every trip's GPS track is recorded on-device by default — no API calls, no
 billing. The Rides screen lists your rides with a speed-coloured track and stats (distance, duration, top
 speed), searchable and sortable, and the Replay screen plays each ride back on the map at up to 64×, with
-tap-to-seek, drag-to-scrub and a follow toggle. Recording is configurable (minimum distance/duration and a
-"keep last N rides" limit; saved rides are pinned and never pruned).
+tap-to-seek, drag-to-scrub, a follow toggle, **tap-the-track to jump to that point**, and the **wall-clock
+time of the current instant** shown as it plays. Recording is configurable (minimum distance/duration and a
+"keep last N rides" limit; saved rides are pinned and never pruned). The speed-to-colour mapping is
+configurable too (green ceiling, step size and number of bands, green→red) in Settings → Advanced.
 
 **Offline resilience.** If you lose signal mid-route, guidance keeps running from the already-computed
 route. An offline banner appears during navigation, rerouting is paused until you're back online, and the
