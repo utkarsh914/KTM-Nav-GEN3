@@ -315,6 +315,10 @@ private fun OpenDashApp(
     var themeMode by remember { mutableStateOf(settings.themeMode) }
     var navThemeMode by remember { mutableStateOf(settings.navThemeMode) }
     var accentColorId by remember { mutableStateOf(settings.accentColorId) }
+    // App font: bundled brand fonts vs the phone's system font. Applied to the
+    // reactive AppFonts holder so a change re-fonts the whole app live.
+    var fontMode by remember { mutableStateOf(settings.fontMode) }
+    LaunchedEffect(fontMode) { com.navigator.app.ui.theme.AppFonts.apply(fontMode) }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val effectiveDark = when (themeMode) {
         com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
@@ -558,6 +562,8 @@ private fun OpenDashApp(
                 onOpenRecordings = { goTo(AppRoute.RECORDINGS) },
                 themeMode = themeMode,
                 onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
+                fontMode = fontMode,
+                onFontModeChanged = { mode -> fontMode = mode; settings.fontMode = mode },
                 navThemeMode = navThemeMode,
                 onNavThemeModeChanged = { mode -> navThemeMode = mode; settings.navThemeMode = mode },
                 accentColorId = accentColorId,

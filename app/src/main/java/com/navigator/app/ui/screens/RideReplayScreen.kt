@@ -210,13 +210,21 @@ fun RideReplayScreen(
                 mapBearing = map.cameraPosition.bearing
                 camTarget = map.cameraPosition.target
                 camZoom = map.cameraPosition.zoom
-                val syncCam = {
+                // During an active gesture (pinch-zoom/pan) only update the cheap
+                // bearing state the compass needs. Writing target/zoom on every
+                // frame recomputed [locateButtonVisible] and recomposed the whole
+                // overlay per frame, which made zooming visibly laggy. Defer the
+                // target/zoom sync to camera-idle so it settles once the gesture
+                // finishes rather than thrashing state mid-pinch.
+                map.setOnCameraMoveListener {
+                    val b = map.cameraPosition.bearing
+                    if (b != mapBearing) mapBearing = b
+                }
+                map.setOnCameraIdleListener {
                     mapBearing = map.cameraPosition.bearing
                     camTarget = map.cameraPosition.target
                     camZoom = map.cameraPosition.zoom
                 }
-                map.setOnCameraMoveListener { syncCam() }
-                map.setOnCameraIdleListener { syncCam() }
                 // A user pan/zoom/rotate cancels auto-follow; our own programmatic
                 // camera moves report a different reason and are ignored.
                 map.setOnCameraMoveStartedListener { reason ->

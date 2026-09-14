@@ -80,7 +80,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private enum class SettingsDialog {
-    NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, NAV_THEME, ACCENT, ACCENT_CUSTOM,
+    NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, FONT, NAV_THEME, ACCENT, ACCENT_CUSTOM,
     RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
     SPEED_BAND_BASE, SPEED_BAND_STEP, SPEED_BAND_COUNT, LOCATION_MARKER_STYLE,
 }
@@ -107,6 +107,8 @@ fun SettingsScreen(
     onEngineChanged: (Boolean) -> Unit = {},
     themeMode: com.navigator.app.ui.theme.ThemeMode = com.navigator.app.ui.theme.ThemeMode.SYSTEM,
     onThemeModeChanged: (com.navigator.app.ui.theme.ThemeMode) -> Unit = {},
+    fontMode: com.navigator.app.ui.theme.FontMode = com.navigator.app.ui.theme.FontMode.BRAND,
+    onFontModeChanged: (com.navigator.app.ui.theme.FontMode) -> Unit = {},
     navThemeMode: com.navigator.app.ui.theme.NavThemeMode = com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT,
     onNavThemeModeChanged: (com.navigator.app.ui.theme.NavThemeMode) -> Unit = {},
     accentColorId: String? = null,
@@ -264,6 +266,13 @@ fun SettingsScreen(
                             com.navigator.app.ui.theme.ThemeMode.SYSTEM -> "System"
                             com.navigator.app.ui.theme.ThemeMode.LIGHT -> "Light"
                             com.navigator.app.ui.theme.ThemeMode.DARK -> "Dark"
+                        }
+                        MonoValue("$label ›")
+                    }
+                    SettingsRow("App font", showDivider = true, onClick = { dialog = SettingsDialog.FONT }) {
+                        val label = when (fontMode) {
+                            com.navigator.app.ui.theme.FontMode.BRAND -> "Brand"
+                            com.navigator.app.ui.theme.FontMode.SYSTEM -> "System default"
                         }
                         MonoValue("$label ›")
                     }
@@ -817,6 +826,19 @@ fun SettingsScreen(
             selected = themeMode,
             onDismiss = { dialog = SettingsDialog.NONE },
             onSelect = { onThemeModeChanged(it); dialog = SettingsDialog.NONE },
+        )
+        SettingsDialog.FONT -> SingleChoiceDialog(
+            title = "App font",
+            options = com.navigator.app.ui.theme.FontMode.entries.toList(),
+            labelFor = {
+                when (it) {
+                    com.navigator.app.ui.theme.FontMode.BRAND -> "Brand font"
+                    com.navigator.app.ui.theme.FontMode.SYSTEM -> "System default"
+                }
+            },
+            selected = fontMode,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = { onFontModeChanged(it); dialog = SettingsDialog.NONE },
         )
         SettingsDialog.NAV_THEME -> SingleChoiceDialog(
             title = "Navigation theme",

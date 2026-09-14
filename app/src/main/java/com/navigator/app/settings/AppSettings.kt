@@ -90,6 +90,14 @@ class AppSettings(context: Context) {
         set(value) = pairingPrefs.edit().putString(KEY_THEME_MODE, value.id).apply()
 
     /**
+     * App font: the bundled brand fonts (default) or the phone's system font.
+     * Plain store so it survives the encrypted-prefs reset, like [themeMode].
+     */
+    var fontMode: com.navigator.app.ui.theme.FontMode
+        get() = com.navigator.app.ui.theme.FontMode.fromId(pairingPrefs.getString(KEY_FONT_MODE, null))
+        set(value) = pairingPrefs.edit().putString(KEY_FONT_MODE, value.id).apply()
+
+    /**
      * How the navigation/map screen picks light vs dark: follow the app theme, or
      * auto day/night by local time (default). Independent of [themeMode].
      */
@@ -366,6 +374,7 @@ class AppSettings(context: Context) {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_BRAND = "brand"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_FONT_MODE = "font_mode"
         private const val KEY_NAV_THEME_MODE = "nav_theme_mode"
         private const val KEY_ACCENT_COLOR = "accent_color"
 

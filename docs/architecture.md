@@ -149,6 +149,18 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   report). Overlay: a circular **END** (top-left, below the header); hardware Back also ends.
   Auto-returns to BROWSE on arrival.
 
+**Trip auto-finish** (`NavigationHomeScreen.kt`). Three paths end a trip, each guarded by a
+one-shot `arrivalLatched` (reset on new trip start) so continued movement past the destination
+can't re-trigger them:
+1. **SDK arrival callback** — `Navigator.ArrivalListener` → `NavSessionState.ARRIVED` (primary).
+2. **Proximity** — the SDK's `remainingDistanceMeters` drops to ≤ `ARRIVAL_RADIUS_M` (40 m;
+   generous vs GPS scatter and off-road destinations, which used to leave the trip running when
+   a fix never landed in the old tight 10 m).
+3. **Idle fallback** — within `ARRIVAL_OUTER_RADIUS_M` (150 m) of the destination but progress
+   has stalled (`remainingDistanceMeters` not decreasing by ≥ `ARRIVAL_PROGRESS_EPS_M`) for
+   `ARRIVAL_STALL_MS` (45 s). A 5 s timer drives this so it fires even when no fresh NavInfo
+   frames arrive (rider parked just shy of the point, or guidance stuck mid-reroute offline).
+
 **Start on the selected route.** The picked route's Routes API `routeToken` is passed via
 `NavDestination.routeToken` → `Navigator.setDestinations(waypoint, CustomRoutesOptions(token,
 TWO_WHEELER))`, with graceful fallback to default routing. Honored reliably in many cases;

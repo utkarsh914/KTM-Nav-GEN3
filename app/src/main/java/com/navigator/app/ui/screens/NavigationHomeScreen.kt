@@ -137,8 +137,26 @@ private fun stageTransition(initial: NavStage, target: NavStage): ContentTransfo
     else -> Motion.driftTransition()
 }
 
-/** Auto-finish the trip once we're within this many metres of the destination. */
-private const val ARRIVAL_RADIUS_M = 10
+/** Auto-finish the trip once we're within this many metres of the destination.
+ *  Kept generous (vs the old 10 m) because GPS scatter and destinations set off
+ *  the road often mean a fix never lands within a tight radius, leaving the trip
+ *  running until the SDK's own (sometimes missed) arrival callback. */
+private const val ARRIVAL_RADIUS_M = 40
+
+/** Idle-fallback: once the remaining distance is within this outer radius of the
+ *  destination but hasn't dropped below [ARRIVAL_RADIUS_M], finish the trip if it
+ *  stops making progress for [ARRIVAL_STALL_MS]. Catches the case where the rider
+ *  parks just shy of the exact point, or guidance stalls (offline reroute) near
+ *  the end and the SDK arrival callback never fires. */
+private const val ARRIVAL_OUTER_RADIUS_M = 150
+
+/** How long the remaining distance must stall (within the outer radius, not
+ *  meaningfully decreasing) before the idle fallback finishes the trip. */
+private const val ARRIVAL_STALL_MS = 45_000L
+
+/** Minimum drop in remaining distance (m) that counts as "still making progress"
+ *  and resets the stall timer. Below this the rider is effectively stopped. */
+private const val ARRIVAL_PROGRESS_EPS_M = 15.0
 
 /** Route preview polyline colors (ARGB). */
 private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
@@ -299,6 +317,13 @@ fun NavigationHomeScreen(
     // proximity auto-finish or otherwise re-trigger arrival handling.
     var arrivalLatched by remember { mutableStateOf(false) }
 
+    // Idle-fallback bookkeeping: the smallest remaining-distance seen this trip
+    // and the wall-clock time it last meaningfully decreased. Used to finish a
+    // trip that stalls near (but not exactly at) the destination without an SDK
+    // arrival callback. Reset when a new trip starts (see startTo/backToBrowse).
+    var arrivalBestRemainingM by remember { mutableStateOf(Double.MAX_VALUE) }
+    var arrivalLastProgressMs by remember { mutableStateOf(0L) }
+
     // ---- Search state -----------------------------------------------------
     val auth = remember { PlacesClient.androidAuth(context) }
     val origin = remember { lastLocation(context) }
@@ -433,6 +458,8 @@ fun NavigationHomeScreen(
         val token = previewRoutes.getOrNull(selectedRoute)?.routeToken
         onStartNavigation(NavDestination(p.lat, p.lng, p.label, token))
         arrivalLatched = false
+        arrivalBestRemainingM = Double.MAX_VALUE
+        arrivalLastProgressMs = System.currentTimeMillis()
         leftNavManually = false
         tripStartMs = System.currentTimeMillis()
         // Clear any prior ride-finish result so the next emission is this trip's.
@@ -525,14 +552,39 @@ fun NavigationHomeScreen(
     // come within ARRIVAL_RADIUS_M of the destination, rather than waiting for the
     // SDK's own (sometimes later) arrival callback. remainingDistanceMeters is the
     // SDK's distance to the final destination, updated ~1 Hz while en route.
+    // Also tracks progress for the idle-fallback below: whenever the remaining
+    // distance meaningfully decreases we note the time, so a later stall near the
+    // destination can finish the trip even if the SDK never reports arrival.
     LaunchedEffect(navState.remainingDistanceMeters, stage) {
         val remaining = navState.remainingDistanceMeters
-        if (owningTrip &&
-            !arrivalLatched &&
-            navState.sessionState.isActiveNav() &&
-            remaining != null && remaining <= ARRIVAL_RADIUS_M
-        ) {
+        val eligible = owningTrip && !arrivalLatched && navState.sessionState.isActiveNav()
+        if (!eligible || remaining == null) return@LaunchedEffect
+
+        val remD = remaining.toDouble()
+        // Record forward progress (resets the stall timer).
+        if (remD < arrivalBestRemainingM - ARRIVAL_PROGRESS_EPS_M) {
+            arrivalBestRemainingM = remD
+            arrivalLastProgressMs = System.currentTimeMillis()
+        }
+
+        if (remaining <= ARRIVAL_RADIUS_M) {
             finishTrip()
+        }
+    }
+
+    // Idle-fallback auto-finish: if we're inside the outer radius but progress has
+    // stalled for ARRIVAL_STALL_MS (rider parked just shy of the point, or
+    // guidance stalled near the end), finish the trip. Ticks on a timer so it
+    // fires even when no fresh NavInfo frames arrive (e.g. stuck offline reroute).
+    LaunchedEffect(stage, arrivalLatched, leftNavManually) {
+        while (owningTrip && !arrivalLatched && navState.sessionState.isActiveNav()) {
+            delay(5_000)
+            val remaining = navState.remainingDistanceMeters ?: continue
+            val stalled = System.currentTimeMillis() - arrivalLastProgressMs >= ARRIVAL_STALL_MS
+            if (remaining <= ARRIVAL_OUTER_RADIUS_M && stalled) {
+                finishTrip()
+                break
+            }
         }
     }
 

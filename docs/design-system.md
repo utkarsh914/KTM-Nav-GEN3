@@ -26,6 +26,17 @@ these before hand-rolling values.
 - Prefer the named roles in `AppText` (`CardTitle`, `SectionLabel`, `Body`,
   `BodySmall`, `StatLabel`, `StatValue`, `ButtonLabel`) over ad-hoc
   fontFamily/size/weight.
+- **Font mode (Brand vs System).** The public `Barlow`/`BarlowCondensed`/
+  `JetBrainsMono` families are reactive getters that read `AppFonts.mode`
+  (mirroring the `Ktm` colour object): in `FontMode.BRAND` (default) they return
+  the bundled families; in `FontMode.SYSTEM` they collapse to
+  `FontFamily.Default` (the phone font). Because every `fontFamily = Barlow`
+  call site reads that Compose state, flipping the mode re-fonts the whole app
+  live with no per-screen edits. `AppText` roles and `appTypography()` (used by
+  `OpenDashTheme`) resolve the same way.
+- Persisted as `AppSettings.fontMode`, applied at startup in
+  `OpenDashApplication` (no first-frame flash) and switchable in
+  **Settings → Appearance → App font**.
 
 ## Motion (`ui/theme/Motion.kt`)
 - Durations: `Motion.Fast` (160) for exits, `Motion.Medium` (240) for

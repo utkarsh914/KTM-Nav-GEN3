@@ -74,8 +74,10 @@ fun OpenDashTheme(
     }
 
     MaterialTheme(
+        // Rebuilt each composition so a font-mode switch (AppFonts) re-fonts
+        // Material typography live, alongside the reactive families below.
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = appTypography(),
     ) {
         // Default any un-styled Material text (text-field input, dialog buttons)
         // to Barlow so the whole app stays on-brand — Compose's LocalTextStyle

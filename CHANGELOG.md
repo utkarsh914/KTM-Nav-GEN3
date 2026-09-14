@@ -13,11 +13,18 @@
 ### Ride replay
 - Tap the ride track to jump playback to the nearest recorded point.
 - Shows the wall-clock time of the current playback instant as the ride plays/scrubs.
+- Smoother pinch-zoom: the map no longer stutters while zooming/panning. Camera target/zoom
+  state now settles when the gesture ends instead of being rewritten (and re-laying-out the
+  overlay) on every frame.
 
 ### Ride history
 - Configurable speed-to-colour mapping: set the green ceiling, step size and number of bands (green→red
   ramp) in Settings → Advanced, with a live legend preview. Defaults to green ≤40, then steps every
   20 km/h toward red; no upper cap on the number of bands.
+
+### Appearance
+- App font choice: keep the branded fonts (default) or switch the whole app to the phone's system
+  default font, in Settings → Appearance → App font. Applies live across every screen.
 
 ### Settings
 - Visual overhaul: branded hero header with live vehicle status, iconified group cards, and a new
@@ -26,6 +33,10 @@
 ### Fixes
 - The custom location marker no longer disappears after opening route preview and returning to the map
   (previously required an app restart); it now survives shared-map clears.
+- Trips now end reliably on arrival: the proximity auto-finish radius was widened (10 m → 40 m) so GPS
+  scatter or a destination set off the road no longer leaves a trip running, and a new idle fallback
+  finishes a trip that stalls near the destination when the SDK's arrival callback never fires (e.g.
+  parked just short of the point, or guidance stuck mid-reroute offline).
 - Full Google-nav UI: the SDK chrome and its follow-camera are now laid out inside the system-bar safe
   area (fixes the skew/overlap that appeared under the status/navigation bars), custom controls are moved
   clear of the SDK header/ETA, and the map day/night no longer re-applies on every nav entry (removes a
