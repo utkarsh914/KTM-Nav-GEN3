@@ -8,6 +8,8 @@ import android.graphics.drawable.Drawable
 import android.service.notification.StatusBarNotification
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.ktm.KtmManeuverMapping
+import com.navigator.app.nav.model.DrivingSide
 
 /**
  * Resolves a navigation notification into a dash [BccuProtocol.TurnIcon].
@@ -56,8 +58,12 @@ object TurnIconHeuristic {
     // and below a real 90-degree turn's ~2.05, so neither is reclassified.
     private const val STRAIGHT_TOP_MAX = 1.35
 
-    fun guessDirection(context: Context, sbn: StatusBarNotification): BccuProtocol.TurnIcon? {
-        parseManeuverFromText(collectText(sbn))?.let {
+    fun guessDirection(
+        context: Context,
+        sbn: StatusBarNotification,
+        drivingSide: DrivingSide = DrivingSide.UNKNOWN,
+    ): BccuProtocol.TurnIcon? {
+        parseManeuverFromText(collectText(sbn), drivingSide)?.let {
             AppLogger.log("TurnIcon", "Maneuver from text -> ${it.name}")
             return it
         }
@@ -71,7 +77,7 @@ object TurnIconHeuristic {
         //    app). Purpose-trained on nav maneuver icons, so it recognises the
         //    exact maneuver - including every roundabout exit - which the pixel
         //    heuristic below cannot. This is the real fix for Google Maps icons.
-        ManeuverClassifier.classify(context, bitmap)?.let {
+        ManeuverClassifier.classify(context, bitmap, drivingSide)?.let {
             AppLogger.log("TurnIcon", "Maneuver from model -> ${it.name}")
             return it
         }
@@ -132,19 +138,26 @@ object TurnIconHeuristic {
      * generic "turn left/right", so a "sharp left" isn't swallowed by "left".
      * Returns null when no maneuver word is present (falls through to bitmap).
      */
-    private fun parseManeuverFromText(t: String): BccuProtocol.TurnIcon? {
+    internal fun parseManeuverFromText(
+        t: String,
+        drivingSide: DrivingSide = DrivingSide.UNKNOWN,
+    ): BccuProtocol.TurnIcon? {
         if (t.isBlank()) return null
         val left = t.contains("left")
         val right = t.contains("right")
+        // Left-hand traffic circulates clockwise (RH glyph bank) and its
+        // ramps/exits are on the left; shared with the SDK path so they agree.
+        val bank = if (KtmManeuverMapping.clockwiseForDrivingSide(drivingSide)) "RH" else "LH"
+        val rampLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide)
 
         // Roundabouts: "roundabout" / "rotary" + an exit ordinal.
         if (t.contains("roundabout") || t.contains("rotary")) {
             val exit = roundaboutExit(t)
             if (exit != null) {
                 val idx = exit.coerceIn(1, 16)
-                return BccuProtocol.TurnIcon.entries.first { it.name == "RAB_SECT_${idx}_RH" }
+                return BccuProtocol.TurnIcon.entries.first { it.name == "RAB_SECT_${idx}_$bank" }
             }
-            return BccuProtocol.TurnIcon.RAB_SECT_2_RH
+            return BccuProtocol.TurnIcon.entries.first { it.name == "RAB_SECT_2_$bank" }
         }
 
         // U-turn.
@@ -164,13 +177,18 @@ object TurnIconHeuristic {
         if ((t.contains("keep") || t.contains("stay")) && (left || right)) {
             return if (left) BccuProtocol.TurnIcon.KEEP_LEFT else BccuProtocol.TurnIcon.KEEP_RIGHT
         }
-        // Merge onto a highway.
+        // Merge onto a highway. An explicit left/right wins; otherwise default to
+        // the rider's driving side (left-hand traffic merges on the left), not a
+        // fixed right-lane guess.
         if (t.contains("merge")) {
-            return if (left) BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+            val onLeft = if (left || right) left else rampLeft
+            return if (onLeft) BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
         }
-        // Take a motorway exit / off-ramp.
-        if ((t.contains("exit") || t.contains("ramp") || t.contains("off-ramp")) && (left || right)) {
-            return if (left) BccuProtocol.TurnIcon.LEAVE_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
+        // Take a motorway exit / off-ramp. Same rule: explicit side wins, else the
+        // driving-side lane (was: required an explicit side or fell through).
+        if (t.contains("exit") || t.contains("ramp") || t.contains("off-ramp")) {
+            val onLeft = if (left || right) left else rampLeft
+            return if (onLeft) BccuProtocol.TurnIcon.LEAVE_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
         }
         // Arrival / departure.
         if (t.contains("destination") || t.contains("arrive") || t.contains("you have arrived")) {
@@ -228,8 +246,8 @@ object TurnIconHeuristic {
 
     /**
      * Sum left-half vs right-half ink alpha. [fromYFraction] restricts the scan
-     * to the rows starting at that fraction of the height downward from the top
-     * (0.0 = whole image; 0.55 = top 45% only, where the arrowhead sits).
+     * to the **top** [fromYFraction] of the image height, where the arrowhead
+     * sits (0.0 = whole image; 0.45 = top 45% only).
      */
     private fun measureLeftRightInk(bitmap: Bitmap, fromYFraction: Double): Pair<Long, Long> {
         var leftInk = 0L

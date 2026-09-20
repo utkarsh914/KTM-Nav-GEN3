@@ -81,7 +81,7 @@ class AppNotificationListener : NotificationListenerService() {
             val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty()
             val (etaText, remainingDistanceText) = parseEtaAndRemainingDistance(subText)
             captureManeuverIconIfEnabled(sbn, title, text)
-            val guessedIcon = TurnIconHeuristic.guessDirection(this, sbn)
+            val guessedIcon = TurnIconHeuristic.guessDirection(this, sbn, settings.resolvedDrivingSide())
             // Feed the navigation pipeline instead of calling BLE directly:
             // provider -> encoder -> coordinator applies the dedup/throttle/
             // state-machine before it reaches the dash. title/text line up with

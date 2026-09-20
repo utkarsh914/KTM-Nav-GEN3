@@ -83,6 +83,7 @@ private enum class SettingsDialog {
     NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, FONT, NAV_THEME, ACCENT, ACCENT_CUSTOM,
     RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
     SPEED_BAND_BASE, SPEED_BAND_STEP, SPEED_BAND_COUNT, LOCATION_MARKER_STYLE,
+    DRIVING_SIDE,
 }
 
 /**
@@ -146,6 +147,7 @@ fun SettingsScreen(
     var speedBandStep by remember { mutableStateOf(settings.speedBandStepKmh) }
     var speedBandCount by remember { mutableStateOf(settings.speedBandCount) }
     var locationMarkerStyle by remember { mutableStateOf(settings.locationMarkerStyle) }
+    var drivingSidePref by remember { mutableStateOf(settings.drivingSidePreference) }
 
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
@@ -440,6 +442,18 @@ fun SettingsScreen(
                         SettingsRow("Nav app", showDivider = true, onClick = { dialog = SettingsDialog.NAV_APP }) {
                             MonoValue((navOverride?.let { appLabel(it) } ?: "Choose") + " ›")
                         }
+                    }
+                    // Drives which lane an unqualified merge/exit and which way a
+                    // roundabout is drawn when mirroring another nav app's
+                    // notification (the in-app Google Nav uses route geometry and
+                    // ignores this). Auto infers from the device region.
+                    SettingsRow("Drive on", showDivider = true, onClick = { dialog = SettingsDialog.DRIVING_SIDE }) {
+                        val label = when (drivingSidePref) {
+                            com.navigator.app.settings.DrivingSidePreference.LEFT -> "Left"
+                            com.navigator.app.settings.DrivingSidePreference.RIGHT -> "Right"
+                            com.navigator.app.settings.DrivingSidePreference.AUTO -> "Auto"
+                        }
+                        MonoValue("$label ›")
                     }
                     SettingsRow("Call-audio device", showDivider = false, onClick = { dialog = SettingsDialog.CALL_AUDIO }) {
                         val label = bondedAudioDevices.firstOrNull { it.address == preferredAudioAddress }
@@ -776,6 +790,24 @@ fun SettingsScreen(
             onSelect = {
                 locationMarkerStyle = it
                 settings.locationMarkerStyle = it
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.DRIVING_SIDE -> SingleChoiceDialog(
+            title = "Drive on",
+            options = com.navigator.app.settings.DrivingSidePreference.entries.toList(),
+            labelFor = {
+                when (it) {
+                    com.navigator.app.settings.DrivingSidePreference.AUTO -> "Auto (from region)"
+                    com.navigator.app.settings.DrivingSidePreference.LEFT -> "Left (e.g. India, UK)"
+                    com.navigator.app.settings.DrivingSidePreference.RIGHT -> "Right (e.g. US, EU)"
+                }
+            },
+            selected = drivingSidePref,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = {
+                drivingSidePref = it
+                settings.drivingSidePreference = it
                 dialog = SettingsDialog.NONE
             },
         )

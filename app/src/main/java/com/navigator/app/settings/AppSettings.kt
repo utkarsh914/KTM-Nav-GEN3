@@ -342,6 +342,23 @@ class AppSettings(context: Context) {
             ?: LOCATION_MARKER_CHEVRON
         set(value) = pairingPrefs.edit().putString(KEY_LOCATION_MARKER_STYLE, value).apply()
 
+    /**
+     * Which side of the road the rider drives on, for the notification-mirroring
+     * path (Google Maps etc. carry no driving-side info). [DrivingSidePreference.AUTO]
+     * (default) infers from the device region. The in-app Google Nav SDK ignores
+     * this - it reports driving side per-step from route geometry.
+     */
+    var drivingSidePreference: DrivingSidePreference
+        get() = DrivingSidePreference.fromId(pairingPrefs.getString(KEY_DRIVING_SIDE, null))
+        set(value) = pairingPrefs.edit().putString(KEY_DRIVING_SIDE, value.id).apply()
+
+    /**
+     * The resolved driving side (preference + device region for AUTO). Read live
+     * so a settings change or a region change takes effect immediately.
+     */
+    fun resolvedDrivingSide(): com.navigator.app.nav.model.DrivingSide =
+        DrivingSideResolver.resolve(drivingSidePreference)
+
     /** Manual hardware-calibration result for one icon, from the Symbol Testing screen. "works", "wrong", or null (untested). */
     fun getIconTestResult(key: String): String? = prefs.getString(KEY_ICON_TEST_PREFIX + key, null)
 
@@ -423,6 +440,7 @@ class AppSettings(context: Context) {
         // Number of steps: floor of 1, no ceiling.
         const val SPEED_BAND_COUNT_MIN = 1
         private const val KEY_LOCATION_MARKER_STYLE = "location_marker_style"
+        private const val KEY_DRIVING_SIDE = "driving_side"
         const val LOCATION_MARKER_CHEVRON = "chevron"
         const val LOCATION_MARKER_BEAM = "beam"
         private const val KEY_PAIRED_PREFIX = "paired_before_"

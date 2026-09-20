@@ -42,7 +42,12 @@ object TurnIconArt {
         TurnIcon.KEEP_RIGHT, TurnIcon.HIGHWAY_KEEP_RIGHT -> R.drawable.dash_keep_right
         TurnIcon.KEEP_LEFT, TurnIcon.HIGHWAY_KEEP_LEFT -> R.drawable.dash_keep_left
 
-        TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, TurnIcon.ENTER_HIGHWAY_LEFT_LANE -> R.drawable.dash_highway
+        // Enter-highway is directional too (was one shared non-directional glyph):
+        // KTM's official motorway-shield (dash_highway) is symmetric, so each
+        // variant adds a small left/right chevron to it - a left merge and a
+        // right merge now read differently, like leave-highway already does.
+        TurnIcon.ENTER_HIGHWAY_RIGHT_LANE -> R.drawable.dash_highway_right
+        TurnIcon.ENTER_HIGHWAY_LEFT_LANE -> R.drawable.dash_highway_left
         TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE -> R.drawable.dash_exit_right
         TurnIcon.LEAVE_HIGHWAY_LEFT_LANE -> R.drawable.dash_exit_left
 
@@ -61,14 +66,21 @@ object TurnIconArt {
 
     /**
      * Pick the roundabout glyph for a RAB_SECT_<n>_RH/LH or ROUNDABOUT_<n>(_LH)
-     * code. The official app has 8 exit-angle icons per side (45°..360°); we map
-     * the section number onto them in order so the exit arrow rotates around the
-     * circle as the section increases. `_LH` = left-hand-traffic (mirrored).
+     * code. The official app has 8 exit-angle icons per side, drawn by the angle
+     * you **sweep around the circle** before exiting: 45°..360° in 45° steps.
+     *
+     * This lines up with the dash's hardware-verified section law (see
+     * [com.navigator.app.nav.ktm.KtmManeuverMapping.roundaboutSection]): on the
+     * RH (clockwise) block N=1 is the sharpest right … N=8 straight-through …
+     * N=16 a U-turn, i.e. sweep ≈ N·22.5°. Two sections map to each 45° glyph, so
+     * `idx = (N-1)/2` puts N=4 (90° right) → 90° glyph, N=8 (straight) → 180°,
+     * N=12 (left) → 270°, N=16 (U-turn) → 360°. `_LH` = left-hand-traffic
+     * (mirrored) and uses the mirrored glyph set.
      */
     private fun roundDrawable(name: String): Int {
         val n = Regex("(\\d+)").find(name)?.value?.toIntOrNull() ?: 2
         val left = name.endsWith("_LH")
-        // sections 1..16 -> one of 8 angles (two sections per angle step)
+        // sections 1..16 -> one of 8 sweep-angle glyphs (two sections per step).
         val idx = ((n - 1) / 2).coerceIn(0, 7)
         return if (left) LEFT_ROUND[idx] else RIGHT_ROUND[idx]
     }

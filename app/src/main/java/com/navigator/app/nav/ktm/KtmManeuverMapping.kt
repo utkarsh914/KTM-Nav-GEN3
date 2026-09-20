@@ -42,6 +42,12 @@ object KtmManeuverMapping {
             NormalizedManeuver.RIGHT -> TurnIcon.QUITE_RIGHT
             NormalizedManeuver.SHARP_RIGHT -> TurnIcon.HEAVY_RIGHT
 
+            // Ramp-keeps collapse to the plain KEEP_* arrow, NOT the dash's
+            // HIGHWAY_KEEP_LEFT/RIGHT (18/19) codes. Those two codes are
+            // intentionally never emitted: a "keep left/right to stay on the
+            // ramp" reads the same as a normal lane-keep on the dash, and using
+            // the distinct highway-keep glyphs gave no rider benefit in testing.
+            // Left here as a deliberate gap, not an oversight.
             NormalizedManeuver.KEEP_LEFT,
             NormalizedManeuver.FORK_LEFT,
             NormalizedManeuver.ON_RAMP_KEEP_LEFT,
@@ -115,12 +121,35 @@ object KtmManeuverMapping {
         when (rotation) {
             RoundaboutRotation.CLOCKWISE -> true
             RoundaboutRotation.COUNTERCLOCKWISE -> false
-            RoundaboutRotation.UNKNOWN -> when (drivingSide) {
-                DrivingSide.LEFT -> true
-                DrivingSide.RIGHT -> false
-                DrivingSide.UNKNOWN -> true
-            }
+            RoundaboutRotation.UNKNOWN -> clockwiseForDrivingSide(drivingSide)
         }
+
+    /**
+     * The single source of truth for the "which way round a roundabout" and
+     * "which lane an unqualified merge/exit uses" decision, shared by the SDK
+     * path (here) and the notification-mirroring path
+     * ([com.navigator.app.notifications.TurnIconHeuristic]) so they can never
+     * drift. Left-hand traffic (India, UK, JP, AU…) circulates **clockwise**
+     * (RH glyph bank) and its ramps/exits are on the **left**; right-hand
+     * traffic is the mirror. Unknown defaults to left-hand/clockwise (the plan
+     * default; overridable via the driving-side setting).
+     */
+    fun clockwiseForDrivingSide(drivingSide: DrivingSide): Boolean = when (drivingSide) {
+        DrivingSide.LEFT -> true
+        DrivingSide.RIGHT -> false
+        DrivingSide.UNKNOWN -> true
+    }
+
+    /**
+     * The side an unqualified ramp/exit takes for a given driving side: left-hand
+     * traffic exits/merges on the **left**, right-hand traffic on the **right**.
+     * Returns true for the left lane. Unknown defaults to left (LHT).
+     */
+    fun rampOnLeftFor(drivingSide: DrivingSide): Boolean = when (drivingSide) {
+        DrivingSide.LEFT -> true
+        DrivingSide.RIGHT -> false
+        DrivingSide.UNKNOWN -> true
+    }
 
     /**
      * Section glyph for a roundabout exit, chosen by the exit's TURN ANGLE

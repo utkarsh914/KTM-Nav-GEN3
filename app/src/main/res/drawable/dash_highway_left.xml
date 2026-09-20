@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Enter highway / merge, left lane (left-hand traffic, e.g. India): the mirror of
+  dash_highway_right - KTM's official motorway-shield glyph with the directional
+  chevron pointing left. Uses scaleX="-1" (like dash_exit_left mirrors
+  dash_exit_right) so both variants share the one official shield path.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <group android:scaleX="-1" android:translateX="48">
+        <!-- Official KTM highway shield, shifted up slightly to make room for the chevron. -->
+        <group android:translateY="-4">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M22 4l0 12 -7 0 3 -12 4 0zm-20 14l44 0 0 4 -4 0 0 4 -4 0 0 -4 -28 0 0 4 -4 0 0 -4 -4 0 0 -4zm28 -14l3 12 -7 0 0 -12 4 0zm-4 20l9 0 5 20 -14 0 0 -20zm-18 20l5 -20 9 0 0 20 -14 0z"/>
+        </group>
+        <!-- Directional chevron (mirrored to point left = merge to the left lane). -->
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M34 40l6 4 -6 4 0 -2.5 -6 0 0 -3 6 0 0 -2.5z"/>
+    </group>
+</vector>

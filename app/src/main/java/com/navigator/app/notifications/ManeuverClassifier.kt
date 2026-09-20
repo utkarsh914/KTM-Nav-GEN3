@@ -7,6 +7,8 @@ import android.graphics.Color
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.ktm.KtmManeuverMapping
+import com.navigator.app.nav.model.DrivingSide
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -59,10 +61,15 @@ object ManeuverClassifier {
         return (loaded ?: FALLBACK_LABELS).also { labels = it }
     }
 
+    // Named fall-backs whose left/right (or RH/LH) sense depends on the rider's
+    // driving side rather than being fixed - resolved in [labelToIcon] via the
+    // shared [KtmManeuverMapping] driving-side rule so it agrees with every other
+    // path. The `_lhs`/no-suffix roundabout labels are the *model's* own two
+    // classes (a generic roundabout drawn for LHT vs RHT), independent of the
+    // rider setting, so those stay fixed.
     private val NAMED: Map<String, BccuProtocol.TurnIcon> = mapOf(
         "big_trans_directions_roundabout" to BccuProtocol.TurnIcon.RAB_SECT_8_RH,
         "big_trans_directions_roundabout_lhs" to BccuProtocol.TurnIcon.RAB_SECT_8_LH,
-        "merge" to BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE,
     )
 
     @Volatile private var interpreter: Interpreter? = null
@@ -90,8 +97,14 @@ object ManeuverClassifier {
     }
 
     /** Classify a nav maneuver bitmap into a dash TurnIcon, or null if the model isn't confident. */
-    fun classify(context: Context, bitmap: Bitmap): BccuProtocol.TurnIcon? {
-        val hash = bitmapPixelHash(bitmap)
+    fun classify(
+        context: Context,
+        bitmap: Bitmap,
+        drivingSide: DrivingSide = DrivingSide.UNKNOWN,
+    ): BccuProtocol.TurnIcon? {
+        // Cache key includes driving side: the same "merge" bitmap resolves to a
+        // different lane per driving side, so they can't share a cache entry.
+        val hash = bitmapPixelHash(bitmap) * 31 + drivingSide.ordinal
         cache[hash]?.let { return it }
         val model = ensureModel(context) ?: return null
         val lbls = labels(context)
@@ -106,7 +119,7 @@ object ManeuverClassifier {
                 AppLogger.log("Maneuver", "No confident match (best=${lbls[best]} @ ${"%.2f".format(scores[best])})")
                 null
             } else {
-                labelToIcon(lbls[best])?.also {
+                labelToIcon(lbls[best], drivingSide)?.also {
                     AppLogger.log("Maneuver", "Model -> ${lbls[best]} = ${it.name} (${"%.2f".format(scores[best])})")
                 }
             }
@@ -118,9 +131,19 @@ object ManeuverClassifier {
         return result
     }
 
-    private fun labelToIcon(label: String): BccuProtocol.TurnIcon? {
+    private fun labelToIcon(label: String, drivingSide: DrivingSide): BccuProtocol.TurnIcon? {
         val n = label.toIntOrNull()
-        return if (n != null) BccuProtocol.TurnIcon.fromBinary(n) else NAMED[label]
+        if (n != null) return BccuProtocol.TurnIcon.fromBinary(n)
+        // "merge" has no left/right in the label - pick the lane from driving side
+        // (left-hand traffic merges on the left), consistent with the text path.
+        if (label == "merge") {
+            return if (KtmManeuverMapping.rampOnLeftFor(drivingSide)) {
+                BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE
+            } else {
+                BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+            }
+        }
+        return NAMED[label]
     }
 
     /** Composite onto black, scale to 96x96, emit RGB floats [0,1] - matches the reference app byte-for-byte. */
