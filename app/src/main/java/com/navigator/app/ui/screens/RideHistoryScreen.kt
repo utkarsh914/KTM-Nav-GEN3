@@ -537,19 +537,20 @@ private fun RideCard(
  *  the card width so the numbers never wrap. */
 @Composable
 private fun RideStatStrip(ride: RecordedRide) {
+    // Thin spaces so number + unit sit close (e.g. "70 km", "131 kmph").
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         StatColumn(
-            value = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC),
+            value = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC).tightSpaces(),
             label = "DISTANCE", modifier = Modifier.weight(1f),
         )
         StatDivider()
         StatColumn(
-            value = formatDurationShort(ride.durationSeconds),
+            value = formatDurationShort(ride.durationSeconds).tightSpaces(),
             label = "DURATION", modifier = Modifier.weight(1f),
         )
         StatDivider()
         StatColumn(
-            value = "${ride.maxSpeedKmh.toInt()} km/h",
+            value = "${ride.maxSpeedKmh.toInt()} kmph".tightSpaces(),
             label = "TOP SPEED", modifier = Modifier.weight(1f),
         )
     }

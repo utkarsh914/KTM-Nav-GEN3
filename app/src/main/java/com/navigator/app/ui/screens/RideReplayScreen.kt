@@ -75,6 +75,7 @@ import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -100,8 +101,19 @@ private const val ZOOM_MATCH_EPS = 0.15f
 /** Upper bound (metres) of the in-session "Track detail" simplification slider. */
 private const val TRACK_DETAIL_MAX_M = 30
 
-/** Track width of the popover sliders (press-drag maps finger travel over this). */
+/** Visual track width of the popover sliders. */
 private val SLIDER_WIDTH = 200.dp
+
+/** Finger travel that spans the full slider range in press-drag mode. Smaller =
+ *  more sensitive; ~100dp means a short swipe covers Off..max. */
+private val SLIDER_TRAVEL = 100.dp
+
+/** Hold this long (ms) without lifting to enter slider drag mode (hold-then-slide),
+ *  even if the finger hasn't moved past the touch slop yet. */
+private const val LONG_PRESS_MS = 200L
+
+/** The control popovers on the replay controls row; at most one open at a time. */
+private enum class ReplayPopover { SPEED, TRACK_DETAIL }
 
 /**
  * Replays a recorded ride on the map: a speed-coloured track (green slow → red
@@ -156,6 +168,9 @@ fun RideReplayScreen(
     // rideId so it resets to the default on every screen entry - deliberately NOT
     // persisted (a per-view "Track detail" knob, not a saved preference). 0 = off.
     var simplifyEpsilonM by remember(rideId) { mutableStateOf(SIMPLIFY_EPSILON_M) }
+    // Which control popover (if any) is open - hoisted so Speed and Track-detail
+    // are mutually exclusive (opening one closes the other). null = none.
+    var openPopover by remember { mutableStateOf<ReplayPopover?>(null) }
     // Kept as the State object (not read via `by` in composition): the camera
     // move-listener writes it per-frame during a rotate gesture, and only the
     // isolated ResetNorthControl child reads it - so bearing churn recomposes a
@@ -440,6 +455,8 @@ fun RideReplayScreen(
                         playing = playing,
                         speedMult = speedMult,
                         simplifyEpsilonM = simplifyEpsilonM,
+                        openPopover = openPopover,
+                        onOpenPopover = { openPopover = it },
                         saved = r.saved,
                         following = following,
                         onPlayPause = {
@@ -487,7 +504,7 @@ fun RideReplayScreen(
  *    normally; tapping outside dismisses.
  *
  * The button owns the whole gesture and drives the value by cumulative horizontal
- * drag over [SLIDER_WIDTH] (so no cross-window coordinate math is needed); the
+ * drag over [SLIDER_TRAVEL] (so no cross-window coordinate math is needed); the
  * popover is a visual mirror during a press-drag and an interactive slider in
  * tap-open mode. [valueFraction] is the current value as 0..1; [labelFor] formats
  * a fraction into the value text (used for both the button face and popover, so
@@ -496,22 +513,38 @@ fun RideReplayScreen(
  */
 @Composable
 private fun PopoverSliderButton(
+    open: Boolean,
     valueFraction: Float,
     label: String,
     labelFor: (Float) -> String,
+    onRequestOpen: () -> Unit,
+    onRequestClose: () -> Unit,
     onFraction: (Float) -> Unit,
     onCommit: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    var open by remember { mutableStateOf(false) }
     // Latest fraction; drives the face + popover live. Synced to the source of
     // truth whenever we're not actively showing the popover.
     var fraction by remember { mutableStateOf(valueFraction) }
     if (!open) fraction = valueFraction
 
-    val sliderWidthPx = with(density) { SLIDER_WIDTH.toPx() }
+    // The long-lived pointerInput coroutine (key = Unit) captures values from
+    // first composition; wrap the ones it reads so it always sees the latest.
+    val openState = androidx.compose.runtime.rememberUpdatedState(open)
+    val requestOpen = androidx.compose.runtime.rememberUpdatedState(onRequestOpen)
+    val requestClose = androidx.compose.runtime.rememberUpdatedState(onRequestClose)
+    val commit = androidx.compose.runtime.rememberUpdatedState(onCommit)
+    val emitFraction = androidx.compose.runtime.rememberUpdatedState(onFraction)
+    val labelForNow = androidx.compose.runtime.rememberUpdatedState(labelFor)
+
+    // Full slider range over ~SLIDER_TRAVEL of finger movement (sensitivity).
+    val travelPx = with(density) { SLIDER_TRAVEL.toPx() }
+    val touchSlop = with(density) { 6.dp.toPx() }
+    // Suppresses a button-tap re-opening right after the Popup's outside-dismiss
+    // fired for that same tap (they're separate windows and both see the touch).
+    val lastDismissNanos = remember { mutableStateOf(0L) }
 
     Box(
         modifier = modifier
@@ -523,27 +556,65 @@ private fun PopoverSliderButton(
                 awaitPointerEventScope {
                     while (true) {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        haptics.tap()
-                        open = true
-                        var dragged = false
+                        val downTime = System.nanoTime()
+                        var totalDx = 0f
+                        var isDrag = false
+                        // Discrete value label at drag start; a tick fires whenever
+                        // it changes so the rider feels each step/metre.
+                        var lastTickLabel = labelForNow.value(fraction)
+                        // Enter drag mode either by moving past the slop OR by
+                        // holding past the long-press timeout (hold-then-slide).
+                        fun enterDrag() {
+                            if (isDrag) return
+                            isDrag = true
+                            haptics.tap()
+                            if (!openState.value) requestOpen.value()
+                        }
                         // Track this pointer until it lifts.
                         while (true) {
-                            val event = awaitPointerEvent()
+                            // Wait for the next event, but wake up around the
+                            // long-press deadline so a stationary hold still opens.
+                            val event = withTimeoutOrNull(60) { awaitPointerEvent() }
+                            if (event == null) {
+                                // No movement; check for long-press hold.
+                                val heldMs = (System.nanoTime() - downTime) / 1_000_000
+                                if (!isDrag && heldMs >= LONG_PRESS_MS) enterDrag()
+                                continue
+                            }
                             val change = event.changes.firstOrNull { it.id == down.id }
                             if (change == null || !change.pressed) break
                             val dx = change.positionChange().x
-                            if (dx != 0f) {
-                                dragged = true
-                                val next = (fraction + dx / sliderWidthPx).coerceIn(0f, 1f)
+                            totalDx += dx
+                            if (!isDrag && kotlin.math.abs(totalDx) > touchSlop) enterDrag()
+                            if (isDrag && dx != 0f) {
+                                val next = (fraction + dx / travelPx).coerceIn(0f, 1f)
                                 fraction = next
-                                onFraction(next)
+                                emitFraction.value(next)
+                                // Tick on each discrete value change.
+                                val lbl = labelForNow.value(next)
+                                if (lbl != lastTickLabel) {
+                                    lastTickLabel = lbl
+                                    haptics.tap()
+                                }
                                 change.consume()
                             }
                         }
-                        // Up: a real drag commits + closes; a bare tap leaves it open.
-                        if (dragged) {
-                            onCommit(fraction)
-                            open = false
+                        if (isDrag) {
+                            // Press-drag / hold-slide released: commit + close.
+                            commit.value(fraction)
+                            requestClose.value()
+                        } else {
+                            // Bare tap: toggle (haptic on both open and close).
+                            // Ignore an open-tap that just dismissed the popup.
+                            val sinceDismiss = (System.nanoTime() - lastDismissNanos.value) / 1_000_000
+                            if (openState.value) {
+                                haptics.tap()
+                                commit.value(fraction)
+                                requestClose.value()
+                            } else if (sinceDismiss > 250) {
+                                haptics.tap()
+                                requestOpen.value()
+                            }
                         }
                     }
                 }
@@ -576,12 +647,17 @@ private fun PopoverSliderButton(
             }
             Popup(
                 popupPositionProvider = anchor,
-                onDismissRequest = { onCommit(fraction); open = false },
+                onDismissRequest = {
+                    lastDismissNanos.value = System.nanoTime()
+                    haptics.tap()
+                    onCommit(fraction)
+                    onRequestClose()
+                },
                 properties = androidx.compose.ui.window.PopupProperties(focusable = false),
             ) {
                 SliderPopoverContent(
                     label = label,
-                    valueText = labelFor(fraction),
+                    labelFor = labelFor,
                     fraction = fraction,
                     onFraction = { f -> fraction = f; onFraction(f) },
                 )
@@ -590,14 +666,19 @@ private fun PopoverSliderButton(
     }
 }
 
-/** Visual + tap-interactive content of a [PopoverSliderButton]'s popover. */
+/** Visual + tap-interactive content of a [PopoverSliderButton]'s popover.
+ *  [labelFor] formats a fraction to its discrete value text; a haptic tick fires
+ *  whenever that text changes as the in-popover slider is dragged. */
 @Composable
 private fun SliderPopoverContent(
     label: String,
-    valueText: String,
+    labelFor: (Float) -> String,
     fraction: Float,
     onFraction: (Float) -> Unit,
 ) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    // Last discrete value tick'd, so dragging the slider buzzes per value change.
+    val lastTick = remember { mutableStateOf(labelFor(fraction)) }
     Column(
         modifier = Modifier
             .width(SLIDER_WIDTH + 28.dp)
@@ -614,14 +695,21 @@ private fun SliderPopoverContent(
             )
             Spacer(Modifier.size(8.dp))
             Text(
-                valueText, color = Ktm.Orange, fontFamily = JetBrainsMono,
+                labelFor(fraction), color = Ktm.Orange, fontFamily = JetBrainsMono,
                 fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1,
             )
         }
         Spacer(Modifier.size(4.dp))
         androidx.compose.material3.Slider(
             value = fraction.coerceIn(0f, 1f),
-            onValueChange = onFraction,
+            onValueChange = { f ->
+                onFraction(f)
+                val lbl = labelFor(f)
+                if (lbl != lastTick.value) {
+                    lastTick.value = lbl
+                    haptics.tap()
+                }
+            },
             modifier = Modifier.width(SLIDER_WIDTH),
             colors = androidx.compose.material3.SliderDefaults.colors(
                 thumbColor = Ktm.Orange,
@@ -669,6 +757,8 @@ private fun ReplayControls(
     playing: Boolean,
     speedMult: Int,
     simplifyEpsilonM: Double,
+    openPopover: ReplayPopover?,
+    onOpenPopover: (ReplayPopover?) -> Unit,
     saved: Boolean,
     following: Boolean,
     onPlayPause: () -> Unit,
@@ -705,15 +795,16 @@ private fun ReplayControls(
 
         Spacer(Modifier.size(10.dp))
         // Equal-weight stat strip (matches the ride-list card) so values never
-        // wrap however long the numbers get.
+        // wrap however long the numbers get. Regular spaces are swapped for a
+        // thin space so the number and its unit sit closer (e.g. "70 km").
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            StatColumn(distanceText, "DISTANCE", modifier = Modifier.weight(1f))
+            StatColumn(distanceText.tightSpaces(), "DISTANCE", modifier = Modifier.weight(1f))
             StatDivider()
-            StatColumn(durationText, "TIME", modifier = Modifier.weight(1f))
+            StatColumn(durationText.tightSpaces(), "TIME", modifier = Modifier.weight(1f))
             StatDivider()
-            StatColumn("$avgSpeed km/h", "AVG", modifier = Modifier.weight(1f))
+            StatColumn("$avgSpeed kmph".tightSpaces(), "AVG", modifier = Modifier.weight(1f))
             StatDivider()
-            StatColumn("$maxSpeed km/h", "MAX", modifier = Modifier.weight(1f))
+            StatColumn("$maxSpeed kmph".tightSpaces(), "MAX", modifier = Modifier.weight(1f))
         }
 
         Spacer(Modifier.size(10.dp))
@@ -802,9 +893,12 @@ private fun ReplayControls(
             val speedLast = (SPEED_STEPS.size - 1).coerceAtLeast(1)
             fun fractionToSpeed(f: Float) = SPEED_STEPS[(f * speedLast).roundToInt().coerceIn(0, speedLast)]
             PopoverSliderButton(
+                open = openPopover == ReplayPopover.SPEED,
                 valueFraction = SPEED_STEPS.indexOf(speedMult).coerceAtLeast(0).toFloat() / speedLast,
                 label = "Playback speed",
                 labelFor = { f -> "${fractionToSpeed(f)}x" },
+                onRequestOpen = { onOpenPopover(ReplayPopover.SPEED) },
+                onRequestClose = { onOpenPopover(null) },
                 onFraction = { f ->
                     val v = fractionToSpeed(f)
                     if (v != speedMult) onSetSpeed(v)
@@ -816,9 +910,12 @@ private fun ReplayControls(
             // redraw is deferred to release (onCommit) to stay smooth on big rides.
             fun fractionToMetres(f: Float) = (f * TRACK_DETAIL_MAX_M).roundToInt()
             PopoverSliderButton(
+                open = openPopover == ReplayPopover.TRACK_DETAIL,
                 valueFraction = (simplifyEpsilonM / TRACK_DETAIL_MAX_M).toFloat().coerceIn(0f, 1f),
                 label = "Track detail",
                 labelFor = { f -> fractionToMetres(f).let { if (it <= 0) "Off" else "$it m" } },
+                onRequestOpen = { onOpenPopover(ReplayPopover.TRACK_DETAIL) },
+                onRequestClose = { onOpenPopover(null) },
                 onFraction = { /* live label only; no redraw mid-drag */ },
                 onCommit = { f -> onSetSimplify(fractionToMetres(f).toDouble()) },
             )
@@ -829,11 +926,16 @@ private fun ReplayControls(
                     liveSpeed?.let { "$it" } ?: "--",
                     color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 26.sp,
                 )
-                Text("km/h", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 11.sp)
+                Text("kmph", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 11.sp)
             }
         }
     }
 }
+
+/** Replace normal spaces with a thin space (U+2009) so a stat value's number and
+ *  unit ("70 km", "1h 42m", "40 kmph") sit closer together in the compact card.
+ *  Shared with the ride-list card. */
+internal fun String.tightSpaces(): String = replace(' ', '\u2009')
 
 /** Wall-clock time (HH:mm:ss, local) of a recorded fix's epoch millis. */
 private fun formatClockTime(epochMs: Long): String =
