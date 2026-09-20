@@ -88,8 +88,8 @@ import com.navigator.app.ui.theme.OpenDashIcons
 enum class RideSortField { DATE, DISTANCE, DURATION, TOP_SPEED }
 
 /** Text style that drops the built-in glyph padding so the stat strip can pack
- *  the value + label tightly together. */
-private val TightTextStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+ *  the value + label tightly together. (Shared with the replay info card.) */
+internal val TightTextStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
 
 /**
  * Lists recorded rides. A plain tap opens the replay; a long-press enters
@@ -556,7 +556,7 @@ private fun RideStatStrip(ride: RecordedRide) {
 }
 
 @Composable
-private fun StatColumn(value: String, label: String, modifier: Modifier = Modifier) {
+internal fun StatColumn(value: String, label: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             value, color = Ktm.TextPrimary, fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium,
@@ -570,7 +570,7 @@ private fun StatColumn(value: String, label: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun StatDivider() {
+internal fun StatDivider() {
     Box(Modifier.height(26.dp).width(1.dp).background(Ktm.RowDivider))
 }
 
@@ -631,7 +631,7 @@ private fun dayHeaderLabel(date: java.time.LocalDate): String {
 }
 
 /** Compact duration for the stat strip: "22m" / "1h 12m". */
-private fun formatDurationShort(seconds: Int): String {
+internal fun formatDurationShort(seconds: Int): String {
     val mins = (seconds + 59) / 60
     return if (mins < 60) "${mins}m" else "${mins / 60}h ${mins % 60}m"
 }

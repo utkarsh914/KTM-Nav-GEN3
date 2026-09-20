@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,13 +42,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -94,6 +100,9 @@ private const val ZOOM_MATCH_EPS = 0.15f
 /** Upper bound (metres) of the in-session "Track detail" simplification slider. */
 private const val TRACK_DETAIL_MAX_M = 30
 
+/** Track width of the popover sliders (press-drag maps finger travel over this). */
+private val SLIDER_WIDTH = 200.dp
+
 /**
  * Replays a recorded ride on the map: a speed-coloured track (green slow → red
  * fast) with start/end markers, a stats card, and animated playback (a marker
@@ -140,13 +149,13 @@ fun RideReplayScreen(
     val deviceLatLng = rememberDeviceLatLng()
     var currentIndex by remember(rideId) { mutableStateOf(0) }
     var playing by remember { mutableStateOf(false) }
-    var speedMult by remember { mutableStateOf(1) }
+    // Default playback speed 4x (a full ride at 1x is too slow to skim).
+    var speedMult by remember { mutableStateOf(4) }
     var following by remember { mutableStateOf(false) }
     // In-session track-simplification distance (Douglas-Peucker epsilon). Keyed on
     // rideId so it resets to the default on every screen entry - deliberately NOT
     // persisted (a per-view "Track detail" knob, not a saved preference). 0 = off.
     var simplifyEpsilonM by remember(rideId) { mutableStateOf(SIMPLIFY_EPSILON_M) }
-    var showDetailDialog by remember { mutableStateOf(false) }
     // Kept as the State object (not read via `by` in composition): the camera
     // move-listener writes it per-frame during a rotate gesture, and only the
     // isolated ResetNorthControl child reads it - so bearing churn recomposes a
@@ -416,20 +425,13 @@ fun RideReplayScreen(
                                 },
                             )
                         }
-                        // Track detail: in-session Douglas-Peucker distance (or off).
-                        // Coarser = smoother zoom on very long rides.
-                        SquareMapControl(
-                            icon = OpenDashIcons.Settings,
-                            contentDescription = "Track detail",
-                            onClick = { showDetailDialog = true },
-                        )
                     }
 
                     ReplayControls(
                         title = r.destinationLabel ?: "Ride",
                         dateText = formatRideDate(r.startMs),
                         distanceText = DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
-                        durationText = formatDuration(r.durationSeconds),
+                        durationText = formatDurationShort(r.durationSeconds),
                         avgSpeed = r.avgSpeedKmh.toInt(),
                         maxSpeed = r.maxSpeedKmh.toInt(),
                         liveSpeed = liveSpeed?.toInt(),
@@ -437,6 +439,7 @@ fun RideReplayScreen(
                         progress = if (pts.size > 1) currentIndex.toFloat() / pts.lastIndex else 0f,
                         playing = playing,
                         speedMult = speedMult,
+                        simplifyEpsilonM = simplifyEpsilonM,
                         saved = r.saved,
                         following = following,
                         onPlayPause = {
@@ -448,10 +451,8 @@ fun RideReplayScreen(
                             currentIndex = 0
                             place(0)
                         },
-                        onCycleSpeed = {
-                            val i = SPEED_STEPS.indexOf(speedMult)
-                            speedMult = SPEED_STEPS[(i + 1) % SPEED_STEPS.size]
-                        },
+                        onSetSpeed = { speedMult = it },
+                        onSetSimplify = { simplifyEpsilonM = it },
                         onToggleFollow = {
                             following = !following
                             if (following) place(currentIndex)
@@ -474,96 +475,161 @@ fun RideReplayScreen(
                 }
             }
         }
-
-        if (showDetailDialog) {
-            TrackDetailDialog(
-                selectedEpsilonM = simplifyEpsilonM,
-                // Slider commits on release; keep the dialog open so the rider can
-                // fine-tune and see the redraw, closing only via DONE.
-                onSelect = { simplifyEpsilonM = it },
-                onDismiss = { showDetailDialog = false },
-            )
-        }
     }
 }
 
 /**
- * In-session "Track detail" control: a slider for the Douglas-Peucker
- * simplification distance ([TRACK_DETAIL_MAX_M] m range; 0 = off). Not persisted -
- * a per-view knob to trade line detail for zoom smoothness on very long rides.
+ * A control-row button that opens a horizontal slider **popover directly above
+ * itself**, with two ways to use it:
+ *  - **Press-drag:** press the button and, without lifting, slide left/right - the
+ *    value tracks your finger live; releasing commits and dismisses.
+ *  - **Tap:** opens the popover and leaves it up so you can drag the slider
+ *    normally; tapping outside dismisses.
  *
- * The track is redrawn only when the drag finishes (onValueChangeFinished), not on
- * every tick, so dragging stays smooth on huge rides; the label tracks the live
- * drag value.
+ * The button owns the whole gesture and drives the value by cumulative horizontal
+ * drag over [SLIDER_WIDTH] (so no cross-window coordinate math is needed); the
+ * popover is a visual mirror during a press-drag and an interactive slider in
+ * tap-open mode. [valueFraction] is the current value as 0..1; [labelFor] formats
+ * a fraction into the value text (used for both the button face and popover, so
+ * both update live). [onFraction] fires live; [onCommit] fires on release/dismiss
+ * (used by Track detail to defer its map redraw).
  */
 @Composable
-private fun TrackDetailDialog(
-    selectedEpsilonM: Double,
-    onSelect: (Double) -> Unit,
-    onDismiss: () -> Unit,
+private fun PopoverSliderButton(
+    valueFraction: Float,
+    label: String,
+    labelFor: (Float) -> String,
+    onFraction: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    // Live slider position while dragging (whole metres); committed on release.
-    var sliderValue by remember(selectedEpsilonM) { mutableStateOf(selectedEpsilonM.toFloat()) }
-    val rounded = sliderValue.roundToInt()
-    val valueLabel = if (rounded <= 0) "Off (full detail)" else "$rounded m"
+    val density = LocalDensity.current
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    var open by remember { mutableStateOf(false) }
+    // Latest fraction; drives the face + popover live. Synced to the source of
+    // truth whenever we're not actively showing the popover.
+    var fraction by remember { mutableStateOf(valueFraction) }
+    if (!open) fraction = valueFraction
 
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Ktm.Surface,
-        titleContentColor = Ktm.White,
-        textContentColor = Ktm.TextPrimary,
-        title = {
-            Text("Track detail", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Column {
-                Text(
-                    "Simplifies the drawn track. Coarser = smoother zoom on long rides.",
-                    color = Ktm.Dim, fontFamily = Barlow, fontSize = 13.sp,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Simplification", color = Ktm.TextPrimary, fontFamily = Barlow,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        valueLabel, color = Ktm.Orange, fontFamily = JetBrainsMono,
-                        fontWeight = FontWeight.Bold,
-                    )
+    val sliderWidthPx = with(density) { SLIDER_WIDTH.toPx() }
+
+    Box(
+        modifier = modifier
+            .size(width = 52.dp, height = 44.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(if (open) Ktm.Orange else Ktm.Screen)
+            .border(1.dp, if (open) Ktm.Orange else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        haptics.tap()
+                        open = true
+                        var dragged = false
+                        // Track this pointer until it lifts.
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) break
+                            val dx = change.positionChange().x
+                            if (dx != 0f) {
+                                dragged = true
+                                val next = (fraction + dx / sliderWidthPx).coerceIn(0f, 1f)
+                                fraction = next
+                                onFraction(next)
+                                change.consume()
+                            }
+                        }
+                        // Up: a real drag commits + closes; a bare tap leaves it open.
+                        if (dragged) {
+                            onCommit(fraction)
+                            open = false
+                        }
+                    }
                 }
-                androidx.compose.material3.Slider(
-                    value = sliderValue,
-                    onValueChange = { sliderValue = it },
-                    // Commit (and redraw) only when the drag settles.
-                    onValueChangeFinished = { onSelect(sliderValue.roundToInt().toDouble()) },
-                    valueRange = 0f..TRACK_DETAIL_MAX_M.toFloat(),
-                    // Whole-metre steps across the range.
-                    steps = TRACK_DETAIL_MAX_M - 1,
-                    colors = androidx.compose.material3.SliderDefaults.colors(
-                        thumbColor = Ktm.Orange,
-                        activeTrackColor = Ktm.Orange,
-                        inactiveTrackColor = Ktm.Border,
-                    ),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text("Off", color = Ktm.Dim, fontFamily = Barlow, fontSize = 12.sp)
-                    Text("${TRACK_DETAIL_MAX_M} m", color = Ktm.Dim, fontFamily = Barlow, fontSize = 12.sp)
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            labelFor(fraction),
+            color = if (open) Ktm.OnAccent else Ktm.White,
+            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+            maxLines = 1,
+        )
+
+        if (open) {
+            // Popover anchored centered above this button.
+            val anchor = remember {
+                object : PopupPositionProvider {
+                    override fun calculatePosition(
+                        anchorBounds: androidx.compose.ui.unit.IntRect,
+                        windowSize: androidx.compose.ui.unit.IntSize,
+                        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+                        popupContentSize: androidx.compose.ui.unit.IntSize,
+                    ): IntOffset {
+                        val x = (anchorBounds.left + anchorBounds.width / 2 - popupContentSize.width / 2)
+                            .coerceIn(8, (windowSize.width - popupContentSize.width - 8).coerceAtLeast(8))
+                        val y = anchorBounds.top - popupContentSize.height - 8
+                        return IntOffset(x, y.coerceAtLeast(8))
+                    }
                 }
             }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("DONE", color = Ktm.Orange)
+            Popup(
+                popupPositionProvider = anchor,
+                onDismissRequest = { onCommit(fraction); open = false },
+                properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+            ) {
+                SliderPopoverContent(
+                    label = label,
+                    valueText = labelFor(fraction),
+                    fraction = fraction,
+                    onFraction = { f -> fraction = f; onFraction(f) },
+                )
             }
-        },
-    )
+        }
+    }
+}
+
+/** Visual + tap-interactive content of a [PopoverSliderButton]'s popover. */
+@Composable
+private fun SliderPopoverContent(
+    label: String,
+    valueText: String,
+    fraction: Float,
+    onFraction: (Float) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(SLIDER_WIDTH + 28.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusCard))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                label, color = Ktm.TextPrimary, fontFamily = Barlow, fontSize = 13.sp,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                valueText, color = Ktm.Orange, fontFamily = JetBrainsMono,
+                fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1,
+            )
+        }
+        Spacer(Modifier.size(4.dp))
+        androidx.compose.material3.Slider(
+            value = fraction.coerceIn(0f, 1f),
+            onValueChange = onFraction,
+            modifier = Modifier.width(SLIDER_WIDTH),
+            colors = androidx.compose.material3.SliderDefaults.colors(
+                thumbColor = Ktm.Orange,
+                activeTrackColor = Ktm.Orange,
+                inactiveTrackColor = Ktm.Border,
+            ),
+        )
+    }
 }
 
 /**
@@ -602,11 +668,13 @@ private fun ReplayControls(
     progress: Float,
     playing: Boolean,
     speedMult: Int,
+    simplifyEpsilonM: Double,
     saved: Boolean,
     following: Boolean,
     onPlayPause: () -> Unit,
     onReplay: () -> Unit,
-    onCycleSpeed: () -> Unit,
+    onSetSpeed: (Int) -> Unit,
+    onSetSimplify: (Double) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleSave: () -> Unit,
     onSeek: (Float) -> Unit,
@@ -620,32 +688,37 @@ private fun ReplayControls(
             .clip(RoundedCornerShape(Ktm.RadiusCard))
             .background(Ktm.Surface)
             .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(16.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
-                    color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                    color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(dateText, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp)
             }
             // Save / pin toggle with a subtle pop animation.
-            SaveStar(saved = saved, boxSize = 40.dp, iconSize = 24.dp, onToggle = onToggleSave)
+            SaveStar(saved = saved, boxSize = 36.dp, iconSize = 24.dp, onToggle = onToggleSave)
         }
 
-        Spacer(Modifier.size(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Stat("DISTANCE", distanceText)
-            Stat("TIME", durationText)
-            Stat("AVG", "$avgSpeed km/h")
-            Stat("MAX", "$maxSpeed km/h")
+        Spacer(Modifier.size(10.dp))
+        // Equal-weight stat strip (matches the ride-list card) so values never
+        // wrap however long the numbers get.
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            StatColumn(distanceText, "DISTANCE", modifier = Modifier.weight(1f))
+            StatDivider()
+            StatColumn(durationText, "TIME", modifier = Modifier.weight(1f))
+            StatDivider()
+            StatColumn("$avgSpeed km/h", "AVG", modifier = Modifier.weight(1f))
+            StatDivider()
+            StatColumn("$maxSpeed km/h", "MAX", modifier = Modifier.weight(1f))
         }
 
-        Spacer(Modifier.size(12.dp))
-        // Current instant's wall-clock time (of the recorded fix) — updates as
-        // playback advances or the rider scrubs.
+        Spacer(Modifier.size(10.dp))
+        // Time-of-day of the current fix, inline above the seek bar (updates as
+        // playback advances / the rider scrubs). Folded here to save a row.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -654,21 +727,18 @@ private fun ReplayControls(
             Text(
                 "TIME OF DAY",
                 color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                fontSize = 10.sp, letterSpacing = 1.sp,
+                fontSize = 9.sp, letterSpacing = 1.sp,
             )
-            Text(
-                timeText,
-                color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 14.sp,
-            )
+            Text(timeText, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
         }
 
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(6.dp))
         // Seek bar: tap to seek, drag to scrub. The touch target is tall for
         // glove use; the visible bar stays thin.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp)
+                .height(20.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { off ->
                         onSeek((off.x / size.width.toFloat()))
@@ -695,16 +765,16 @@ private fun ReplayControls(
             }
         }
 
-        Spacer(Modifier.size(14.dp))
+        Spacer(Modifier.size(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             RoundControl(
                 icon = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 desc = if (playing) "Pause" else "Play",
                 onClick = onPlayPause,
             )
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(8.dp))
             RoundControl(icon = Icons.Filled.Replay, desc = "Restart", onClick = onReplay)
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(8.dp))
             // Follow toggle: keeps the camera centred on the moving marker.
             Box(
                 modifier = Modifier
@@ -726,37 +796,42 @@ private fun ReplayControls(
                     modifier = Modifier.size(22.dp),
                 )
             }
-            Spacer(Modifier.size(12.dp))
-            // Speed multiplier chip.
-            Box(
-                modifier = Modifier
-                    .size(width = 56.dp, height = 44.dp)
-                    .clip(RoundedCornerShape(Ktm.RadiusButton))
-                    .background(Ktm.Screen)
-                    .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-                    .clickable { haptics.tap(); onCycleSpeed() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("${speedMult}x", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+            Spacer(Modifier.size(8.dp))
+            // Speed: press-drag or tap opens a slider popover above the button.
+            // Value snaps to the discrete SPEED_STEPS; updates playback live.
+            val speedLast = (SPEED_STEPS.size - 1).coerceAtLeast(1)
+            fun fractionToSpeed(f: Float) = SPEED_STEPS[(f * speedLast).roundToInt().coerceIn(0, speedLast)]
+            PopoverSliderButton(
+                valueFraction = SPEED_STEPS.indexOf(speedMult).coerceAtLeast(0).toFloat() / speedLast,
+                label = "Playback speed",
+                labelFor = { f -> "${fractionToSpeed(f)}x" },
+                onFraction = { f ->
+                    val v = fractionToSpeed(f)
+                    if (v != speedMult) onSetSpeed(v)
+                },
+                onCommit = { /* speed updates live; nothing deferred */ },
+            )
+            Spacer(Modifier.size(8.dp))
+            // Track detail: same interaction; label updates live, but the map
+            // redraw is deferred to release (onCommit) to stay smooth on big rides.
+            fun fractionToMetres(f: Float) = (f * TRACK_DETAIL_MAX_M).roundToInt()
+            PopoverSliderButton(
+                valueFraction = (simplifyEpsilonM / TRACK_DETAIL_MAX_M).toFloat().coerceIn(0f, 1f),
+                label = "Track detail",
+                labelFor = { f -> fractionToMetres(f).let { if (it <= 0) "Off" else "$it m" } },
+                onFraction = { /* live label only; no redraw mid-drag */ },
+                onCommit = { f -> onSetSimplify(fractionToMetres(f).toDouble()) },
+            )
             Spacer(Modifier.weight(1f))
             // Live speed at the playback marker.
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     liveSpeed?.let { "$it" } ?: "--",
-                    color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 28.sp,
+                    color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 26.sp,
                 )
                 Text("km/h", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 11.sp)
             }
         }
-    }
-}
-
-@Composable
-private fun Stat(label: String, value: String) {
-    Column {
-        Text(label, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp)
-        Text(value, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
     }
 }
 
