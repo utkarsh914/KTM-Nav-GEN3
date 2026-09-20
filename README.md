@@ -82,7 +82,9 @@ sounds through Do Not Disturb.
 billing. The Rides screen lists your rides with a speed-coloured track and stats (distance, duration, top
 speed), searchable and sortable, and the Replay screen plays each ride back on the map at up to 64×, with
 tap-to-seek, drag-to-scrub, a follow toggle, **tap-the-track to jump to that point**, and the **wall-clock
-time of the current instant** shown as it plays. Recording is configurable (minimum distance/duration and a
+time of the current instant** shown as it plays. Zooming stays **smooth even on long (1–2 h) rides** —
+the track is simplified before drawing — and a **Track detail** slider lets you trade line detail for
+extra smoothness on huge rides. Recording is configurable (minimum distance/duration and a
 "keep last N rides" limit; saved rides are pinned and never pruned). The speed-to-colour mapping is
 configurable too (green ceiling, step size and number of bands, green→red) in Settings → Advanced.
 

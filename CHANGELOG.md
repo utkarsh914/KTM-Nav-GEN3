@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.6.0
+
+### Ride replay
+- Much smoother zoom on long rides: the recorded track is now simplified before it's drawn
+  (speed-band hysteresis + micro-run merging + Douglas-Peucker + a vertex cap), collapsing the
+  thousands of tiny coloured polylines a 1–2 h ride used to produce (which the map re-tessellated on
+  every zoom frame) down to a handful — a ~95% reduction with no visible change to the track.
+- Track detail control: an in-replay slider to trade line detail for zoom smoothness on very long
+  rides (Off → 30 m). Not persisted; resets to the default each time you open a ride.
+- Redesigned bottom info card: shorter, and restyled to match the ride-list cards (equal-width
+  DISTANCE / TIME / AVG / MAX columns that never wrap), with the current time-of-day folded inline
+  above the seek bar.
+- Speed and Track-detail are now slider popovers you can **press-and-hold then slide** (or tap to
+  open) right above their buttons, with a haptic tick per value change; the two are mutually
+  exclusive. Default playback speed is now 4× (was 1×).
+
+### Navigation
+- Driving-side–aware maneuver symbols on the mirrored-notification path: an unqualified "merge"/
+  "exit" and roundabout glyphs now follow the rider's driving side instead of assuming right-hand
+  traffic — correct for left-hand-traffic countries (e.g. India). New "Drive on" setting
+  (Auto / Left / Right; Auto infers from the device region). Enter-highway icons are now directional.
+
+### Fixes
+- Ride-replay compass heading no longer recomposes the whole screen on every sensor tick (~16 Hz);
+  the map marker updates off the composition path, removing background jank while viewing a ride.
+
+---
+
 ## v0.5.0
 
 ### Navigation & maps
