@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -254,19 +255,25 @@ fun NavigationHomeScreen(
     val userMarker = remember {
         UserLocationMarker(context, LocationMarkerStyle.fromId(appSettings.locationMarkerStyle))
     }
-    val deviceHeading = rememberDeviceHeading(active = showUserMarker)
+    // Heading as a State object read only inside the effect (never in
+    // composition), so a ~16 Hz sensor tick rotates the marker beam without
+    // recomposing the whole nav screen.
+    val deviceHeadingState = rememberDeviceHeadingState(active = showUserMarker)
     val deviceLatLng = rememberDeviceLatLng(active = showUserMarker)
     // Keyed on `stage` too so every stage change (incl. returning to BROWSE after a
     // preview that cleared the map) re-asserts the marker; update() re-adds it if
-    // the shared map was cleared.
-    LaunchedEffect(googleMap, showUserMarker, stage, deviceLatLng, deviceHeading) {
+    // the shared map was cleared. Heading is collected via snapshotFlow inside so
+    // its updates mutate the marker off the composition path.
+    LaunchedEffect(googleMap, showUserMarker, stage, deviceLatLng) {
         val gm = googleMap
         if (gm == null || !showUserMarker) {
             userMarker.remove()
             return@LaunchedEffect
         }
         val ll = deviceLatLng ?: return@LaunchedEffect
-        userMarker.update(gm, ll, deviceHeading)
+        snapshotFlow { deviceHeadingState.value }.collect { heading ->
+            userMarker.update(gm, ll, heading)
+        }
     }
 
     // ---- Preview state ----------------------------------------------------
@@ -413,7 +420,7 @@ fun NavigationHomeScreen(
         // gm.clear() above dropped the user marker; drop the stale handle so the
         // marker effect re-adds it, and re-add now if we already have a fix.
         userMarker.remove()
-        if (showUserMarker) deviceLatLng?.let { userMarker.update(gm, it, deviceHeading) }
+        if (showUserMarker) deviceLatLng?.let { userMarker.update(gm, it, deviceHeadingState.value) }
     }
 
     // Draw the just-finished ride's speed-coloured track on the map behind the

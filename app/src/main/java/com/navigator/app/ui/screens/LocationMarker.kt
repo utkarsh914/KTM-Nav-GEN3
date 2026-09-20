@@ -15,6 +15,7 @@ import android.location.LocationManager
 import android.view.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,15 +44,23 @@ import kotlin.math.sin
 // ---- Compass heading -------------------------------------------------------
 
 /**
- * Live device heading in degrees (0 = north, clockwise), from the rotation-vector
- * sensor (falling back to accelerometer + magnetometer). Smoothed to avoid jitter
- * and remapped for the current display rotation. Null until the first reading (or
- * when no suitable sensor exists). Registers on entry, unregisters on dispose.
+ * Live device heading as a [State] object (0 = north, clockwise), from the
+ * rotation-vector sensor (falling back to accelerometer + magnetometer). Smoothed
+ * to avoid jitter and remapped for the current display rotation. Null until the
+ * first reading (or when no suitable sensor exists).
+ *
+ * Returns the [State] *object* rather than its value: callers that only feed the
+ * heading into a marker/effect should read `.value` **inside a `snapshotFlow` or
+ * effect**, NOT in composition - reading it in composition subscribes the whole
+ * composable and forces a full recomposition on every sensor tick (~16 Hz), which
+ * caused visible map-gesture lag on the replay/nav screens. A small angular
+ * dead-band ([HEADING_MIN_DELTA_DEG]) further suppresses no-op updates.
  */
 @Composable
-internal fun rememberDeviceHeading(active: Boolean = true): Float? {
+internal fun rememberDeviceHeadingState(active: Boolean = true): State<Float?> {
     val context = LocalContext.current
-    var heading by remember { mutableStateOf<Float?>(null) }
+    val headingState = remember { mutableStateOf<Float?>(null) }
+    var heading by headingState
     DisposableEffect(active) {
         if (!active) return@DisposableEffect onDispose { }
         val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
@@ -69,6 +78,9 @@ internal fun rememberDeviceHeading(active: Boolean = true): Float? {
         // Low-pass smoothing over the shortest-arc so 359°→1° doesn't spin the
         // beam the long way round.
         var smoothed = Float.NaN
+        // Last value actually written to state; used for the dead-band so tiny
+        // sensor jitter doesn't publish a new heading (and churn the marker).
+        var lastPublished = Float.NaN
 
         fun publish(rawDeg: Float) {
             val norm = ((rawDeg % 360f) + 360f) % 360f
@@ -80,6 +92,15 @@ internal fun rememberDeviceHeading(active: Boolean = true): Float? {
                 if (delta < -180f) delta += 360f
                 (smoothed + delta * SMOOTHING) .let { ((it % 360f) + 360f) % 360f }
             }
+            // Dead-band: only publish when the smoothed heading has moved by at
+            // least HEADING_MIN_DELTA_DEG (shortest arc) since the last write.
+            if (!lastPublished.isNaN()) {
+                var moved = smoothed - lastPublished
+                if (moved > 180f) moved -= 360f
+                if (moved < -180f) moved += 360f
+                if (kotlin.math.abs(moved) < HEADING_MIN_DELTA_DEG) return
+            }
+            lastPublished = smoothed
             heading = smoothed
         }
 
@@ -136,10 +157,12 @@ internal fun rememberDeviceHeading(active: Boolean = true): Float? {
             if (registered) runCatching { sm?.unregisterListener(listener) }
         }
     }
-    return heading
+    return headingState
 }
 
 private const val SMOOTHING = 0.15f
+// Minimum smoothed-heading change (degrees) before publishing a new value.
+private const val HEADING_MIN_DELTA_DEG = 2f
 
 private fun computeFallback(
     gravity: FloatArray?,

@@ -29,10 +29,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +70,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** Longest gap we honour between fixes during playback, so a GPS dropout doesn't
  *  freeze the marker for minutes. */
@@ -86,6 +90,9 @@ private const val FOLLOW_ZOOM = 16.5f
  *  (metres) AND the zoom is within [ZOOM_MATCH_EPS] of [FOLLOW_ZOOM]. */
 private const val CENTER_MATCH_METERS = 20.0
 private const val ZOOM_MATCH_EPS = 0.15f
+
+/** Upper bound (metres) of the in-session "Track detail" simplification slider. */
+private const val TRACK_DETAIL_MAX_M = 30
 
 /**
  * Replays a recorded ride on the map: a speed-coloured track (green slow → red
@@ -127,13 +134,24 @@ fun RideReplayScreen(
             LocationMarkerStyle.fromId(com.navigator.app.settings.AppSettings(context).locationMarkerStyle),
         )
     }
-    val deviceHeading = rememberDeviceHeading()
+    // Heading as a State object read only inside effects (never in composition),
+    // so a ~16 Hz sensor tick updates the marker without recomposing the screen.
+    val deviceHeadingState = rememberDeviceHeadingState()
     val deviceLatLng = rememberDeviceLatLng()
     var currentIndex by remember(rideId) { mutableStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var speedMult by remember { mutableStateOf(1) }
     var following by remember { mutableStateOf(false) }
-    var mapBearing by remember { mutableStateOf(0f) }
+    // In-session track-simplification distance (Douglas-Peucker epsilon). Keyed on
+    // rideId so it resets to the default on every screen entry - deliberately NOT
+    // persisted (a per-view "Track detail" knob, not a saved preference). 0 = off.
+    var simplifyEpsilonM by remember(rideId) { mutableStateOf(SIMPLIFY_EPSILON_M) }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    // Kept as the State object (not read via `by` in composition): the camera
+    // move-listener writes it per-frame during a rotate gesture, and only the
+    // isolated ResetNorthControl child reads it - so bearing churn recomposes a
+    // single ~48dp button, not the whole replay overlay.
+    val mapBearingState = remember { mutableStateOf(0f) }
     // Live camera target/zoom, so we can hide the locate button when the current
     // point is already centred at the follow zoom (see [locateButtonVisible]).
     var camTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -154,13 +172,17 @@ fun RideReplayScreen(
 
     // The locate/zoom button is shown unless the current point is already centred
     // at the follow zoom (so it disappears once you've zoomed in / while following).
-    val curPoint = points?.getOrNull(currentIndex)
-    val locateButtonVisible = run {
-        val p = curPoint ?: return@run false
-        val t = camTarget ?: return@run true
-        val centered = RideMetrics.haversineMeters(t.latitude, t.longitude, p.lat, p.lng) < CENTER_MATCH_METERS
-        val zoomMatch = abs(camZoom - FOLLOW_ZOOM) < ZOOM_MATCH_EPS
-        !(centered && zoomMatch)
+    // Wrapped in derivedStateOf so it only recomputes when its inputs actually
+    // change (camTarget/camZoom settle at camera-idle, currentIndex at playback),
+    // and only the locate button - not the whole overlay - recomposes.
+    val locateButtonVisible by remember {
+        derivedStateOf {
+            val p = points?.getOrNull(currentIndex) ?: return@derivedStateOf false
+            val t = camTarget ?: return@derivedStateOf true
+            val centered = RideMetrics.haversineMeters(t.latitude, t.longitude, p.lat, p.lng) < CENTER_MATCH_METERS
+            val zoomMatch = abs(camZoom - FOLLOW_ZOOM) < ZOOM_MATCH_EPS
+            !(centered && zoomMatch)
+        }
     }
 
     fun seekToFraction(fraction: Float) {
@@ -207,7 +229,7 @@ fun RideReplayScreen(
                 // leave the SDK's small GPS-course-only puck off to avoid two dots.
                 // Tap anywhere on/near the track to seek playback to that point.
                 map.setOnMapClickListener { latLng -> jumpToNearest(latLng) }
-                mapBearing = map.cameraPosition.bearing
+                mapBearingState.value = map.cameraPosition.bearing
                 camTarget = map.cameraPosition.target
                 camZoom = map.cameraPosition.zoom
                 // During an active gesture (pinch-zoom/pan) only update the cheap
@@ -215,13 +237,15 @@ fun RideReplayScreen(
                 // frame recomputed [locateButtonVisible] and recomposed the whole
                 // overlay per frame, which made zooming visibly laggy. Defer the
                 // target/zoom sync to camera-idle so it settles once the gesture
-                // finishes rather than thrashing state mid-pinch.
+                // finishes rather than thrashing state mid-pinch. Bearing writes
+                // are isolated to ResetNorthControl (see below), so even per-frame
+                // rotation churn recomposes only that button.
                 map.setOnCameraMoveListener {
                     val b = map.cameraPosition.bearing
-                    if (b != mapBearing) mapBearing = b
+                    if (b != mapBearingState.value) mapBearingState.value = b
                 }
                 map.setOnCameraIdleListener {
-                    mapBearing = map.cameraPosition.bearing
+                    mapBearingState.value = map.cameraPosition.bearing
                     camTarget = map.cameraPosition.target
                     camZoom = map.cameraPosition.zoom
                 }
@@ -235,31 +259,40 @@ fun RideReplayScreen(
             }
         }
 
-        // Draw the track (polylines + start/end + moving marker) once ready.
-        LaunchedEffect(gm, points) {
+        // Draw the track (polylines + start/end + moving marker) once ready, and
+        // redraw when the simplification distance changes (Track detail control).
+        LaunchedEffect(gm, points, simplifyEpsilonM) {
             val map = gm ?: return@LaunchedEffect
             val pts = points ?: return@LaunchedEffect
-            drawRideTrack(map, pts, speedBands)
-            currentIndex = 0
+            drawRideTrack(map, pts, speedBands, simplifyEpsilonM = simplifyEpsilonM)
+            // Keep the current playback position across a simplification redraw;
+            // only clamp if it somehow fell out of range. (Ride/map change resets
+            // currentIndex via its own remember(rideId).)
+            val idx = currentIndex.coerceIn(0, pts.lastIndex.coerceAtLeast(0))
             marker = if (pts.isNotEmpty()) {
                 map.addMarker(
                     MarkerOptions()
-                        .position(LatLng(pts.first().lat, pts.first().lng))
+                        .position(LatLng(pts[idx].lat, pts[idx].lng))
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)),
                 )
             } else null
             // drawRideTrack() cleared the map, dropping our user marker too; drop
             // the stale handle so the heading effect re-adds it on its next tick.
             userMarker.remove()
-            deviceLatLng?.let { userMarker.update(map, it, deviceHeading) }
+            deviceLatLng?.let { userMarker.update(map, it, deviceHeadingState.value) }
         }
 
         // Compass-driven "you are here" marker: follows the device location and
         // rotates its beam with the phone's orientation (like Google Maps).
-        LaunchedEffect(gm, deviceLatLng, deviceHeading) {
+        // Heading is collected via snapshotFlow so beam rotation updates happen
+        // off the composition path - a sensor tick mutates the marker directly
+        // and never recomposes RideReplayScreen (this was a key zoom-lag source).
+        LaunchedEffect(gm, deviceLatLng) {
             val map = gm ?: return@LaunchedEffect
             val ll = deviceLatLng ?: return@LaunchedEffect
-            userMarker.update(map, ll, deviceHeading)
+            snapshotFlow { deviceHeadingState.value }.collect { heading ->
+                userMarker.update(map, ll, heading)
+            }
         }
 
         // Keep the map's bottom padding equal to the control card height so the
@@ -355,21 +388,18 @@ fun RideReplayScreen(
                         modifier = Modifier.padding(end = 2.dp, bottom = 10.dp),
                     ) {
                         // Reset-to-north (only when rotated) — on top after the swap.
-                        if (abs(mapBearing) > 0.5f) {
-                            SquareMapControl(
-                                icon = OpenDashIcons.Compass,
-                                contentDescription = "Reset orientation to north",
-                                tint = Ktm.Danger,
-                                rotation = -mapBearing,
-                                onClick = {
-                                    gm?.let { map ->
-                                        val north = CameraPosition.Builder(map.cameraPosition)
-                                            .bearing(0f).tilt(0f).build()
-                                        runCatching { map.animateCamera(CameraUpdateFactory.newCameraPosition(north)) }
-                                    }
-                                },
-                            )
-                        }
+                        // Isolated child so per-frame bearing changes recompose
+                        // only this button, not the whole overlay.
+                        ResetNorthControl(
+                            bearingState = mapBearingState,
+                            onResetNorth = {
+                                gm?.let { map ->
+                                    val north = CameraPosition.Builder(map.cameraPosition)
+                                        .bearing(0f).tilt(0f).build()
+                                    runCatching { map.animateCamera(CameraUpdateFactory.newCameraPosition(north)) }
+                                }
+                            },
+                        )
                         // Zoom-to-current — hidden once already centred at follow zoom.
                         if (locateButtonVisible) {
                             SquareMapControl(
@@ -386,6 +416,13 @@ fun RideReplayScreen(
                                 },
                             )
                         }
+                        // Track detail: in-session Douglas-Peucker distance (or off).
+                        // Coarser = smoother zoom on very long rides.
+                        SquareMapControl(
+                            icon = OpenDashIcons.Settings,
+                            contentDescription = "Track detail",
+                            onClick = { showDetailDialog = true },
+                        )
                     }
 
                     ReplayControls(
@@ -437,6 +474,118 @@ fun RideReplayScreen(
                 }
             }
         }
+
+        if (showDetailDialog) {
+            TrackDetailDialog(
+                selectedEpsilonM = simplifyEpsilonM,
+                // Slider commits on release; keep the dialog open so the rider can
+                // fine-tune and see the redraw, closing only via DONE.
+                onSelect = { simplifyEpsilonM = it },
+                onDismiss = { showDetailDialog = false },
+            )
+        }
+    }
+}
+
+/**
+ * In-session "Track detail" control: a slider for the Douglas-Peucker
+ * simplification distance ([TRACK_DETAIL_MAX_M] m range; 0 = off). Not persisted -
+ * a per-view knob to trade line detail for zoom smoothness on very long rides.
+ *
+ * The track is redrawn only when the drag finishes (onValueChangeFinished), not on
+ * every tick, so dragging stays smooth on huge rides; the label tracks the live
+ * drag value.
+ */
+@Composable
+private fun TrackDetailDialog(
+    selectedEpsilonM: Double,
+    onSelect: (Double) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Live slider position while dragging (whole metres); committed on release.
+    var sliderValue by remember(selectedEpsilonM) { mutableStateOf(selectedEpsilonM.toFloat()) }
+    val rounded = sliderValue.roundToInt()
+    val valueLabel = if (rounded <= 0) "Off (full detail)" else "$rounded m"
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        textContentColor = Ktm.TextPrimary,
+        title = {
+            Text("Track detail", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text(
+                    "Simplifies the drawn track. Coarser = smoother zoom on long rides.",
+                    color = Ktm.Dim, fontFamily = Barlow, fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Simplification", color = Ktm.TextPrimary, fontFamily = Barlow,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        valueLabel, color = Ktm.Orange, fontFamily = JetBrainsMono,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                androidx.compose.material3.Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    // Commit (and redraw) only when the drag settles.
+                    onValueChangeFinished = { onSelect(sliderValue.roundToInt().toDouble()) },
+                    valueRange = 0f..TRACK_DETAIL_MAX_M.toFloat(),
+                    // Whole-metre steps across the range.
+                    steps = TRACK_DETAIL_MAX_M - 1,
+                    colors = androidx.compose.material3.SliderDefaults.colors(
+                        thumbColor = Ktm.Orange,
+                        activeTrackColor = Ktm.Orange,
+                        inactiveTrackColor = Ktm.Border,
+                    ),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Off", color = Ktm.Dim, fontFamily = Barlow, fontSize = 12.sp)
+                    Text("${TRACK_DETAIL_MAX_M} m", color = Ktm.Dim, fontFamily = Barlow, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("DONE", color = Ktm.Orange)
+            }
+        },
+    )
+}
+
+/**
+ * Reset-to-north button, shown only while the map is rotated. Reads [bearingState]
+ * itself so the camera move-listener's per-frame bearing writes recompose only
+ * this ~48dp control (not the whole replay overlay) - the core of the zoom/rotate
+ * lag fix.
+ */
+@Composable
+private fun ResetNorthControl(
+    bearingState: State<Float>,
+    onResetNorth: () -> Unit,
+) {
+    val bearing by bearingState
+    if (abs(bearing) > 0.5f) {
+        SquareMapControl(
+            icon = OpenDashIcons.Compass,
+            contentDescription = "Reset orientation to north",
+            tint = Ktm.Danger,
+            rotation = -bearing,
+            onClick = onResetNorth,
+        )
     }
 }
 
