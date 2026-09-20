@@ -367,7 +367,7 @@ fun NavigationHomeScreen(
         previewLoading = true
         val o = (withTimeoutOrNull(4000) { freshLocation(context) }) ?: origin ?: lastLocation(context)
         if (o == null) { previewLoading = false; previewFailed = true; return@LaunchedEffect }
-        val routes = RoutesClient.computeRoutes(o, p.lat to p.lng, auth)
+        val routes = RoutesClient.computeRoutes(o, p.lat to p.lng, auth, appSettings.vehicleMode)
         previewLoading = false
         previewRoutes = routes
         previewFailed = routes.isEmpty()
@@ -462,8 +462,11 @@ fun NavigationHomeScreen(
     fun startTo(p: SavedPlace) {
         store.addRecent(p)
         recents = store.recents()
-        val token = previewRoutes.getOrNull(selectedRoute)?.routeToken
-        onStartNavigation(NavDestination(p.lat, p.lng, p.label, token))
+        val sel = previewRoutes.getOrNull(selectedRoute)
+        // Carry the mode that produced the token so the SDK consumes it with the
+        // same mode (else it rejects the token and silently picks its own route).
+        val mode = sel?.travelMode ?: com.navigator.app.nav.model.TravelMode.TWO_WHEELER
+        onStartNavigation(NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode))
         arrivalLatched = false
         arrivalBestRemainingM = Double.MAX_VALUE
         arrivalLastProgressMs = System.currentTimeMillis()

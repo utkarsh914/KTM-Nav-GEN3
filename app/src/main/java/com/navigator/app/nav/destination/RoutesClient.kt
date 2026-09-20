@@ -3,6 +3,7 @@ package com.navigator.app.nav.destination
 import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.TravelMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -19,6 +20,11 @@ data class RoutePreview(
     /** Traffic delay in seconds: live (traffic-aware) `duration` minus the
      *  free-flow `staticDuration`. 0 when unknown or no delay. */
     val delaySeconds: Int = 0,
+    /** The travel mode that produced this route/token. The Nav SDK must consume
+     *  the token with the *same* mode or it rejects it (falling back to its own
+     *  default route). Preview can fall back TWO_WHEELER -> DRIVE, so this is
+     *  carried through to Start rather than assumed. */
+    val travelMode: TravelMode = TravelMode.TWO_WHEELER,
 )
 
 /**
@@ -33,15 +39,29 @@ object RoutesClient {
 
     private const val URL_COMPUTE = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
-    /** Returns routes best-first (index 0 = primary); empty on failure. */
+    /**
+     * Returns routes best-first (index 0 = primary); empty on failure.
+     *
+     * Requests the [preferred] vehicle mode (from the user's setting) first and
+     * falls back to the other mode only if that yields nothing, so the preview
+     * never comes up empty. The chosen mode is recorded on each [RoutePreview] so
+     * the Nav SDK consumes the route token with the same mode at Start.
+     */
     suspend fun computeRoutes(
         origin: Pair<Double, Double>,
         dest: Pair<Double, Double>,
         auth: AndroidClientAuth?,
+        preferred: TravelMode = TravelMode.TWO_WHEELER,
     ): List<RoutePreview> {
-        return request(origin, dest, "TWO_WHEELER", auth)
-            .ifEmpty { request(origin, dest, "DRIVE", auth) }
+        val primary = if (preferred == TravelMode.DRIVING) "DRIVE" else "TWO_WHEELER"
+        val secondary = if (primary == "DRIVE") "TWO_WHEELER" else "DRIVE"
+        return request(origin, dest, primary, auth)
+            .ifEmpty { request(origin, dest, secondary, auth) }
     }
+
+    /** Map the Routes API travel-mode string to the app's [TravelMode]. */
+    private fun modeOf(travelMode: String): TravelMode =
+        if (travelMode == "TWO_WHEELER") TravelMode.TWO_WHEELER else TravelMode.DRIVING
 
     private suspend fun request(
         origin: Pair<Double, Double>,
@@ -83,7 +103,7 @@ object RoutesClient {
                 AppLogger.log("Routes", "computeRoutes($travelMode) HTTP $code: ${text.take(300)}")
                 return@withContext emptyList()
             }
-            parseRoutes(text)
+            parseRoutes(text, modeOf(travelMode))
         } catch (e: Exception) {
             AppLogger.log("Routes", "computeRoutes($travelMode) error: ${e.message}")
             emptyList()
@@ -102,7 +122,7 @@ object RoutesClient {
         )
 
     /** Parse all routes' duration/distance/polyline (best-first). Visible for future tests. */
-    fun parseRoutes(json: String): List<RoutePreview> {
+    fun parseRoutes(json: String, travelMode: TravelMode = TravelMode.TWO_WHEELER): List<RoutePreview> {
         val routes = JSONObject(json).optJSONArray("routes") ?: return emptyList()
         val out = ArrayList<RoutePreview>(routes.length())
         for (i in 0 until routes.length()) {
@@ -115,7 +135,7 @@ object RoutesClient {
             val encoded = r.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty()
             val points = decodePolyline(encoded)
             val token = r.optString("routeToken").ifBlank { null }
-            if (points.isNotEmpty()) out += RoutePreview(durationSec, distance, points, token, delaySec)
+            if (points.isNotEmpty()) out += RoutePreview(durationSec, distance, points, token, delaySec, travelMode)
         }
         return out
     }

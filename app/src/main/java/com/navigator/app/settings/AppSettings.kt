@@ -359,6 +359,21 @@ class AppSettings(context: Context) {
     fun resolvedDrivingSide(): com.navigator.app.nav.model.DrivingSide =
         DrivingSideResolver.resolve(drivingSidePreference)
 
+    /**
+     * Vehicle used for route calculation. Drives which travel mode the route
+     * preview requests (and, via the route token, the mode the Nav SDK guides
+     * with). Defaults to [com.navigator.app.nav.model.TravelMode.TWO_WHEELER]
+     * (bike). Stored by enum name with a safe fallback.
+     */
+    var vehicleMode: com.navigator.app.nav.model.TravelMode
+        get() = runCatching {
+            com.navigator.app.nav.model.TravelMode.valueOf(
+                pairingPrefs.getString(KEY_VEHICLE_MODE, null)
+                    ?: com.navigator.app.nav.model.TravelMode.TWO_WHEELER.name,
+            )
+        }.getOrDefault(com.navigator.app.nav.model.TravelMode.TWO_WHEELER)
+        set(value) = pairingPrefs.edit().putString(KEY_VEHICLE_MODE, value.name).apply()
+
     /** Manual hardware-calibration result for one icon, from the Symbol Testing screen. "works", "wrong", or null (untested). */
     fun getIconTestResult(key: String): String? = prefs.getString(KEY_ICON_TEST_PREFIX + key, null)
 
@@ -441,6 +456,7 @@ class AppSettings(context: Context) {
         const val SPEED_BAND_COUNT_MIN = 1
         private const val KEY_LOCATION_MARKER_STYLE = "location_marker_style"
         private const val KEY_DRIVING_SIDE = "driving_side"
+        private const val KEY_VEHICLE_MODE = "vehicle_mode"
         const val LOCATION_MARKER_CHEVRON = "chevron"
         const val LOCATION_MARKER_BEAM = "beam"
         private const val KEY_PAIRED_PREFIX = "paired_before_"

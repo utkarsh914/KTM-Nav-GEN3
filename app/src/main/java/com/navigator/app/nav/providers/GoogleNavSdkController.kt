@@ -11,7 +11,6 @@ import com.navigator.app.BuildConfig
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
-import com.navigator.app.nav.model.TravelMode
 
 /**
  * Orchestrates the Activity-side handshake the Navigation SDK requires (API key,
@@ -114,7 +113,7 @@ object GoogleNavSdkController {
                 AppLogger.log("Nav", "Navigator ready - starting guidance to ${dest.label}")
                 GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext)
                 BccuConnectionService.setNavProviderIfRunning(GoogleNavSdkProvider)
-                GoogleNavSdkProvider.startNavigation(dest, TravelMode.TWO_WHEELER)
+                GoogleNavSdkProvider.startNavigation(dest, dest.travelMode)
             }
 
             override fun onError(errorCode: Int) {

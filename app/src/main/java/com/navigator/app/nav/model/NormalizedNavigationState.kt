@@ -185,6 +185,10 @@ data class NavDestination(
     val lng: Double,
     val label: String? = null,
     val routeToken: String? = null,
+    /** Travel mode that produced [routeToken] in the preview. The Nav SDK must
+     *  consume the token with the same mode or it rejects it, so it's carried
+     *  through rather than assumed TWO_WHEELER at Start. */
+    val travelMode: TravelMode = TravelMode.TWO_WHEELER,
 )
 
 /** Travel mode requested for routing. */

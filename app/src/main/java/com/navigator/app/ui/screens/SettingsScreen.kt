@@ -83,7 +83,7 @@ private enum class SettingsDialog {
     NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, FONT, NAV_THEME, ACCENT, ACCENT_CUSTOM,
     RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
     SPEED_BAND_BASE, SPEED_BAND_STEP, SPEED_BAND_COUNT, LOCATION_MARKER_STYLE,
-    DRIVING_SIDE,
+    DRIVING_SIDE, VEHICLE_MODE,
 }
 
 /**
@@ -148,6 +148,7 @@ fun SettingsScreen(
     var speedBandCount by remember { mutableStateOf(settings.speedBandCount) }
     var locationMarkerStyle by remember { mutableStateOf(settings.locationMarkerStyle) }
     var drivingSidePref by remember { mutableStateOf(settings.drivingSidePreference) }
+    var vehicleMode by remember { mutableStateOf(settings.vehicleMode) }
 
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
 
@@ -442,6 +443,15 @@ fun SettingsScreen(
                         SettingsRow("Nav app", showDivider = true, onClick = { dialog = SettingsDialog.NAV_APP }) {
                             MonoValue((navOverride?.let { appLabel(it) } ?: "Choose") + " ›")
                         }
+                    }
+                    // Vehicle used for route calculation (the preview requests this
+                    // travel mode, and the Nav SDK guides the picked route with it).
+                    SettingsRow("Vehicle", showDivider = true, onClick = { dialog = SettingsDialog.VEHICLE_MODE }) {
+                        val label = when (vehicleMode) {
+                            com.navigator.app.nav.model.TravelMode.DRIVING -> "Car"
+                            com.navigator.app.nav.model.TravelMode.TWO_WHEELER -> "Bike"
+                        }
+                        MonoValue("$label ›")
                     }
                     // Drives which lane an unqualified merge/exit and which way a
                     // roundabout is drawn when mirroring another nav app's
@@ -808,6 +818,26 @@ fun SettingsScreen(
             onSelect = {
                 drivingSidePref = it
                 settings.drivingSidePreference = it
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.VEHICLE_MODE -> SingleChoiceDialog(
+            title = "Vehicle",
+            options = listOf(
+                com.navigator.app.nav.model.TravelMode.TWO_WHEELER,
+                com.navigator.app.nav.model.TravelMode.DRIVING,
+            ),
+            labelFor = {
+                when (it) {
+                    com.navigator.app.nav.model.TravelMode.TWO_WHEELER -> "Bike"
+                    com.navigator.app.nav.model.TravelMode.DRIVING -> "Car"
+                }
+            },
+            selected = vehicleMode,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = {
+                vehicleMode = it
+                settings.vehicleMode = it
                 dialog = SettingsDialog.NONE
             },
         )

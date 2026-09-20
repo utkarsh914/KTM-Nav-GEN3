@@ -40,6 +40,10 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     @Volatile private var serviceRegistered = false
     @Volatile private var arrivalListenerAdded = false
 
+    /** App context, kept to surface a Toast when the picked preview route can't
+     *  be honored and guidance falls back to the SDK's own default route. */
+    @Volatile private var appContext: Context? = null
+
     /** True only while guidance is live. Set when guidance actually starts and
      *  cleared on stop/arrival, so continued-movement NavInfo frames that arrive
      *  after the trip ends can't flip the state back to ENROUTE (which would
@@ -79,6 +83,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     /** Called from [GoogleNavSdkController] on NavigatorListener.onNavigatorReady. */
     fun onNavigatorReady(nav: Navigator, context: Context) {
         navigator = nav
+        appContext = context.applicationContext
         if (!arrivalListenerAdded) {
             nav.addArrivalListener(arrivalListener)
             arrivalListenerAdded = true
@@ -104,40 +109,82 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             .also { b -> dest.label?.let { b.setTitle(it) } }
             .build()
         val token = dest.routeToken
-        if (!token.isNullOrBlank() && guideWithToken(nav, waypoint, token, mode)) return
+        if (!token.isNullOrBlank()) {
+            if (guideWithToken(nav, waypoint, token, mode)) return
+            // Token path couldn't even be attempted (SDK threw) - the started
+            // route will be the SDK's own, so tell the rider.
+            notifyRouteSubstituted()
+        }
         setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
     }
 
     /**
      * Guide the exact route the user picked in the preview, using the Routes API
      * route token via [CustomRoutesOptions]. Returns false (and the caller falls
-     * back to default routing) if the token path can't be used.
+     * back to default routing) if the token path can't be *attempted* at all.
+     *
+     * The token is consumed with the *same* [mode] that produced it in the
+     * preview: a mismatch (e.g. a DRIVE-derived token consumed as TWO_WHEELER)
+     * makes the SDK reject it and silently pick its own route — the exact cause
+     * of "preview shows one route, guidance runs another".
+     *
+     * On a non-OK result we retry the token once (guards a transient reject)
+     * before defaulting to the SDK's own route, and surface that substitution to
+     * the rider so it isn't a silent swap.
      */
     private fun guideWithToken(
         nav: Navigator,
         waypoint: Waypoint,
         token: String,
         mode: TravelMode,
+        retriesLeft: Int = 1,
     ): Boolean = runCatching {
         val options = CustomRoutesOptions.builder()
             .setRouteToken(token)
-            .setTravelMode(CustomRoutesOptions.TravelMode.TWO_WHEELER)
+            .setTravelMode(
+                if (mode == TravelMode.TWO_WHEELER) {
+                    CustomRoutesOptions.TravelMode.TWO_WHEELER
+                } else {
+                    CustomRoutesOptions.TravelMode.DRIVING
+                },
+            )
             .build()
-        AppLogger.log("Nav", "setDestinations(routeToken) -> (${waypoint.title ?: "?"})")
+        AppLogger.log("Nav", "setDestinations(routeToken, $mode) -> (${waypoint.title ?: "?"})")
         nav.setDestinations(listOf(waypoint), options).setOnResultListener { status ->
-            if (status == Navigator.RouteStatus.OK) {
-                AppLogger.log("Nav", "Route (token) OK - starting guidance")
-                guidanceActive = true
-                nav.startGuidance()
-            } else {
-                AppLogger.log("Nav", "token route failed ($status) - default routing")
-                setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+            when {
+                status == Navigator.RouteStatus.OK -> {
+                    AppLogger.log("Nav", "Route (token) OK - starting guidance")
+                    guidanceActive = true
+                    nav.startGuidance()
+                }
+                retriesLeft > 0 -> {
+                    AppLogger.log("Nav", "token route failed ($status) - retrying token ($retriesLeft left)")
+                    guideWithToken(nav, waypoint, token, mode, retriesLeft - 1)
+                }
+                else -> {
+                    AppLogger.log("Nav", "token route failed ($status) - falling back to default route")
+                    notifyRouteSubstituted()
+                    setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+                }
             }
         }
         true
     }.getOrElse {
         AppLogger.log("Nav", "setDestinations(routeToken) failed: ${it.message} - default routing")
         false
+    }
+
+    /** Tell the rider the picked route couldn't be loaded so we're using the
+     *  recommended one — avoids a surprising silent route swap at Start. */
+    private fun notifyRouteSubstituted() {
+        val ctx = appContext ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(
+                ctx,
+                "Couldn't load the selected route - using the recommended route",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
     }
 
     private fun setDestinationAndGuide(
