@@ -189,6 +189,17 @@ data class NavDestination(
      *  consume the token with the same mode or it rejects it, so it's carried
      *  through rather than assumed TWO_WHEELER at Start. */
     val travelMode: TravelMode = TravelMode.TWO_WHEELER,
+    /** Intermediate stops to visit, in order, before the final destination
+     *  ([lat]/[lng]). Empty for a plain single-destination trip. Guided via
+     *  `Navigator.setDestinations(waypoints)` (stops + final). */
+    val stops: List<Stop> = emptyList(),
+)
+
+/** A single intermediate stop on a multi-stop trip. */
+data class Stop(
+    val lat: Double,
+    val lng: Double,
+    val label: String? = null,
 )
 
 /** Travel mode requested for routing. */

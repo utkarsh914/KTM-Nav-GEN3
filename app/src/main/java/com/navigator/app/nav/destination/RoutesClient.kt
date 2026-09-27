@@ -25,6 +25,16 @@ data class RoutePreview(
      *  default route). Preview can fall back TWO_WHEELER -> DRIVE, so this is
      *  carried through to Start rather than assumed. */
     val travelMode: TravelMode = TravelMode.TWO_WHEELER,
+    /** Per-leg breakdown (origin->stop1, stop1->stop2, ..., ->destination).
+     *  Only populated for multi-stop routes; empty otherwise. */
+    val legs: List<RouteLeg> = emptyList(),
+)
+
+/** One leg of a multi-stop route (between two consecutive waypoints). */
+data class RouteLeg(
+    val durationSeconds: Int,
+    val distanceMeters: Int,
+    val points: List<LatLng>,
 )
 
 /**
@@ -52,43 +62,64 @@ object RoutesClient {
         dest: Pair<Double, Double>,
         auth: AndroidClientAuth?,
         preferred: TravelMode = TravelMode.TWO_WHEELER,
+        intermediates: List<Pair<Double, Double>> = emptyList(),
     ): List<RoutePreview> {
         val primary = if (preferred == TravelMode.DRIVING) "DRIVE" else "TWO_WHEELER"
         val secondary = if (primary == "DRIVE") "TWO_WHEELER" else "DRIVE"
-        return request(origin, dest, primary, auth)
-            .ifEmpty { request(origin, dest, secondary, auth) }
+        return request(origin, dest, primary, auth, intermediates)
+            .ifEmpty { request(origin, dest, secondary, auth, intermediates) }
     }
 
     /** Map the Routes API travel-mode string to the app's [TravelMode]. */
     private fun modeOf(travelMode: String): TravelMode =
         if (travelMode == "TWO_WHEELER") TravelMode.TWO_WHEELER else TravelMode.DRIVING
 
+    /**
+     * Build the `computeRoutes` request body. Pure and JVM-testable.
+     *
+     * Note: the Routes API rejects `computeAlternativeRoutes: true` together with
+     * `intermediates`, so alternates are requested only when there are no stops.
+     */
+    fun buildRequestBody(
+        origin: Pair<Double, Double>,
+        dest: Pair<Double, Double>,
+        travelMode: String,
+        intermediates: List<Pair<Double, Double>> = emptyList(),
+    ): JSONObject = JSONObject().apply {
+        put("origin", waypointJson(origin))
+        put("destination", waypointJson(dest))
+        if (intermediates.isNotEmpty()) {
+            put("intermediates", org.json.JSONArray().apply { intermediates.forEach { put(waypointJson(it)) } })
+        }
+        put("travelMode", travelMode)
+        // routingPreference is required for a routeToken to be returned.
+        put("routingPreference", "TRAFFIC_AWARE")
+        put("polylineEncoding", "ENCODED_POLYLINE")
+        // Alternates are incompatible with intermediates; only ask when no stops.
+        put("computeAlternativeRoutes", intermediates.isEmpty())
+        put("regionCode", "IN")
+    }
+
     private suspend fun request(
         origin: Pair<Double, Double>,
         dest: Pair<Double, Double>,
         travelMode: String,
         auth: AndroidClientAuth?,
+        intermediates: List<Pair<Double, Double>> = emptyList(),
     ): List<RoutePreview> = withContext(Dispatchers.IO) {
         val key = BuildConfig.NAV_SDK_API_KEY
         if (key.isBlank()) return@withContext emptyList()
 
-        val body = JSONObject().apply {
-            put("origin", waypointJson(origin))
-            put("destination", waypointJson(dest))
-            put("travelMode", travelMode)
-            // routingPreference is required for a routeToken to be returned.
-            put("routingPreference", "TRAFFIC_AWARE")
-            put("polylineEncoding", "ENCODED_POLYLINE")
-            put("computeAlternativeRoutes", true)
-            put("regionCode", "IN")
-        }
+        val body = buildRequestBody(origin, dest, travelMode, intermediates)
         val conn = (URL(URL_COMPUTE).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("X-Goog-Api-Key", key)
             setRequestProperty(
                 "X-Goog-FieldMask",
-                "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeToken",
+                "routes.duration,routes.staticDuration,routes.distanceMeters," +
+                    "routes.polyline.encodedPolyline,routes.routeToken," +
+                    "routes.legs.duration,routes.legs.distanceMeters,routes.legs.polyline.encodedPolyline",
             )
             applyAndroidAuth(auth)
             connectTimeout = 10_000
@@ -135,7 +166,24 @@ object RoutesClient {
             val encoded = r.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty()
             val points = decodePolyline(encoded)
             val token = r.optString("routeToken").ifBlank { null }
-            if (points.isNotEmpty()) out += RoutePreview(durationSec, distance, points, token, delaySec, travelMode)
+            val legs = parseLegs(r.optJSONArray("legs"))
+            if (points.isNotEmpty()) {
+                out += RoutePreview(durationSec, distance, points, token, delaySec, travelMode, legs)
+            }
+        }
+        return out
+    }
+
+    /** Parse a route's `legs[]` array into [RouteLeg]s (empty for single-leg). */
+    private fun parseLegs(legs: org.json.JSONArray?): List<RouteLeg> {
+        if (legs == null || legs.length() <= 1) return emptyList()
+        val out = ArrayList<RouteLeg>(legs.length())
+        for (i in 0 until legs.length()) {
+            val l = legs.getJSONObject(i)
+            val d = l.optString("duration").removeSuffix("s").toIntOrNull() ?: 0
+            val dist = l.optInt("distanceMeters", 0)
+            val pts = decodePolyline(l.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty())
+            out += RouteLeg(d, dist, pts)
         }
         return out
     }

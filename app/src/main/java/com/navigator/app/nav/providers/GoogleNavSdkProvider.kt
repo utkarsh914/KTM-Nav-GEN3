@@ -63,8 +63,16 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private val _currentDestination = MutableStateFlow<NavDestination?>(null)
     val currentDestination: StateFlow<NavDestination?> = _currentDestination.asStateFlow()
 
-    private val arrivalListener = Navigator.ArrivalListener {
-        AppLogger.log("Nav", "Nav SDK arrival")
+    private val arrivalListener = Navigator.ArrivalListener { event ->
+        if (!event.isFinalDestination) {
+            // Reached an intermediate stop: advance to the next waypoint and keep
+            // guidance running. Do NOT emit ARRIVED (that would end the trip).
+            AppLogger.log("Nav", "Nav SDK arrival at stop - continuing to next destination")
+            runCatching { navigator?.continueToNextDestination() }
+            runCatching { navigator?.startGuidance() }
+            return@ArrivalListener
+        }
+        AppLogger.log("Nav", "Nav SDK arrival (final)")
         guidanceActive = false
         lastEnroute = null
         _currentDestination.value = null
@@ -104,18 +112,30 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             return
         }
         _currentDestination.value = dest
-        val waypoint = Waypoint.builder()
-            .setLatLng(dest.lat, dest.lng)
-            .also { b -> dest.label?.let { b.setTitle(it) } }
-            .build()
+        // Intermediate stops (in order) followed by the final destination. For a
+        // plain single-destination trip this is a one-element list.
+        val waypoints = buildWaypoints(dest)
         val token = dest.routeToken
         if (!token.isNullOrBlank()) {
-            if (guideWithToken(nav, waypoint, token, mode)) return
+            if (guideWithToken(nav, waypoints, token, mode)) return
             // Token path couldn't even be attempted (SDK threw) - the started
             // route will be the SDK's own, so tell the rider.
             notifyRouteSubstituted()
         }
-        setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+        setDestinationAndGuide(nav, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+    }
+
+    /** Stops (in order) + final destination as SDK [Waypoint]s. */
+    private fun buildWaypoints(dest: NavDestination): List<Waypoint> {
+        fun wp(lat: Double, lng: Double, label: String?): Waypoint =
+            Waypoint.builder()
+                .setLatLng(lat, lng)
+                .also { b -> label?.let { b.setTitle(it) } }
+                .build()
+        val list = ArrayList<Waypoint>(dest.stops.size + 1)
+        dest.stops.forEach { list += wp(it.lat, it.lng, it.label) }
+        list += wp(dest.lat, dest.lng, dest.label)
+        return list
     }
 
     /**
@@ -134,7 +154,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
      */
     private fun guideWithToken(
         nav: Navigator,
-        waypoint: Waypoint,
+        waypoints: List<Waypoint>,
         token: String,
         mode: TravelMode,
         retriesLeft: Int = 1,
@@ -149,8 +169,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 },
             )
             .build()
-        AppLogger.log("Nav", "setDestinations(routeToken, $mode) -> (${waypoint.title ?: "?"})")
-        nav.setDestinations(listOf(waypoint), options).setOnResultListener { status ->
+        AppLogger.log("Nav", "setDestinations(routeToken, $mode, ${waypoints.size} wp) -> (${waypoints.lastOrNull()?.title ?: "?"})")
+        nav.setDestinations(waypoints, options).setOnResultListener { status ->
             when {
                 status == Navigator.RouteStatus.OK -> {
                     AppLogger.log("Nav", "Route (token) OK - starting guidance")
@@ -159,12 +179,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 }
                 retriesLeft > 0 -> {
                     AppLogger.log("Nav", "token route failed ($status) - retrying token ($retriesLeft left)")
-                    guideWithToken(nav, waypoint, token, mode, retriesLeft - 1)
+                    guideWithToken(nav, waypoints, token, mode, retriesLeft - 1)
                 }
                 else -> {
                     AppLogger.log("Nav", "token route failed ($status) - falling back to default route")
                     notifyRouteSubstituted()
-                    setDestinationAndGuide(nav, waypoint, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+                    setDestinationAndGuide(nav, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
                 }
             }
         }
@@ -189,7 +209,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     private fun setDestinationAndGuide(
         nav: Navigator,
-        waypoint: Waypoint,
+        waypoints: List<Waypoint>,
         mode: TravelMode,
         allowFallback: Boolean,
     ) {
@@ -200,8 +220,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 RoutingOptions.TravelMode.DRIVING
             },
         )
-        AppLogger.log("Nav", "setDestination mode=$mode -> (${waypoint.title ?: "?"})")
-        nav.setDestination(waypoint, options).setOnResultListener { status ->
+        AppLogger.log("Nav", "setDestinations mode=$mode, ${waypoints.size} wp -> (${waypoints.lastOrNull()?.title ?: "?"})")
+        nav.setDestinations(waypoints, options).setOnResultListener { status ->
             when {
                 status == Navigator.RouteStatus.OK -> {
                     AppLogger.log("Nav", "Route OK - starting guidance")
@@ -210,7 +230,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 }
                 allowFallback -> {
                     AppLogger.log("Nav", "TWO_WHEELER route failed ($status) - retrying DRIVING")
-                    setDestinationAndGuide(nav, waypoint, TravelMode.DRIVING, allowFallback = false)
+                    setDestinationAndGuide(nav, waypoints, TravelMode.DRIVING, allowFallback = false)
                 }
                 else -> {
                     AppLogger.log("Nav", "!! Route failed: $status")
