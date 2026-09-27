@@ -160,8 +160,14 @@ object TurnIconHeuristic {
         drivingSide: DrivingSide = DrivingSide.UNKNOWN,
     ): BccuProtocol.TurnIcon? {
         if (t.isBlank()) return null
-        val left = t.contains("left")
-        val right = t.contains("right")
+        // Whole-word matching throughout: plain substrings misfired on place names
+        // ("Rampura" -> ramp/exit, "Leftwich Rd" -> left, "Hardware Rd" -> sharp).
+        fun has(vararg words: String) = words.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) }
+        // The instruction's direction is the FIRST left/right word; a later one
+        // usually belongs to a road name ("Turn right onto Left Bank Rd").
+        val side = SIDE_RE.find(t)?.value
+        val left = side == "left"
+        val right = side == "right"
         // Left-hand traffic circulates clockwise (RH glyph bank) and its
         // ramps/exits are on the left; shared with the SDK path so they agree.
         val clockwise = KtmManeuverMapping.clockwiseForDrivingSide(drivingSide)
@@ -180,58 +186,67 @@ object TurnIconHeuristic {
             )
         }
 
-        // U-turn.
-        if (t.contains("u-turn") || t.contains("u turn") || t.contains("uturn") || t.contains("make a u")) {
-            return if (right) BccuProtocol.TurnIcon.UTURN_RIGHT else BccuProtocol.TurnIcon.UTURN_LEFT
+        // U-turn. Explicit side wins; otherwise a U-turn crosses oncoming
+        // traffic: right in left-hand traffic (India), left in right-hand.
+        if (UTURN_RE.containsMatchIn(t)) {
+            val uRight = if (left || right) right else rampLeft
+            return if (uRight) BccuProtocol.TurnIcon.UTURN_RIGHT else BccuProtocol.TurnIcon.UTURN_LEFT
         }
 
         // Sharp / hard.
-        if ((t.contains("sharp") || t.contains("hard")) && (left || right)) {
+        if (has("sharp", "sharply", "hard") && (left || right)) {
             return if (left) BccuProtocol.TurnIcon.HEAVY_LEFT else BccuProtocol.TurnIcon.HEAVY_RIGHT
         }
         // Slight / soft / bear.
-        if ((t.contains("slight") || t.contains("soft") || t.contains("bear")) && (left || right)) {
+        if (has("slight", "slightly", "soft", "bear") && (left || right)) {
             return if (left) BccuProtocol.TurnIcon.LIGHT_LEFT else BccuProtocol.TurnIcon.LIGHT_RIGHT
         }
+        // "Turn left to stay on NH 48" is a real turn - checked before keep/stay,
+        // which would otherwise read it as a lane keep.
+        TURN_SIDE_RE.find(t)?.let {
+            return if (it.groupValues[1] == "left") BccuProtocol.TurnIcon.QUITE_LEFT else BccuProtocol.TurnIcon.QUITE_RIGHT
+        }
         // Keep / stay in lane.
-        if ((t.contains("keep") || t.contains("stay")) && (left || right)) {
+        if (has("keep", "stay") && (left || right)) {
             return if (left) BccuProtocol.TurnIcon.KEEP_LEFT else BccuProtocol.TurnIcon.KEEP_RIGHT
         }
         // Merge onto a highway. An explicit left/right wins; otherwise default to
-        // the rider's driving side (left-hand traffic merges on the left), not a
-        // fixed right-lane guess.
-        if (t.contains("merge")) {
+        // the rider's driving side (left-hand traffic merges on the left).
+        if (has("merge")) {
             val onLeft = if (left || right) left else rampLeft
             return KtmManeuverMapping.enterHighwayIcon(mergeLeft = onLeft)
         }
         // Take a motorway exit / off-ramp. Same rule: explicit side wins, else the
-        // driving-side lane (was: required an explicit side or fell through).
-        // BUT an explicit turn onto an on-ramp ("Turn right onto the ramp to NH
-        // 48") is a surface-road turn, not a highway exit - let it fall through to
-        // the plain-turn branch below so the dash shows the real turn, matching
-        // the SDK path's ON_RAMP_* -> turn-arrow mapping.
+        // driving-side lane. BUT an explicit turn onto an on-ramp ("Turn right
+        // onto the ramp to NH 48") is a surface-road turn, not a highway exit -
+        // let it fall through to the plain-turn branch so the dash shows the real
+        // turn, matching the SDK path's ON_RAMP_* -> turn-arrow mapping.
         val turnOntoRamp = (left || right) &&
-            (t.contains("turn") || t.contains("onto the ramp") || t.contains("on-ramp") || t.contains("on ramp"))
-        if (!turnOntoRamp && (t.contains("exit") || t.contains("ramp") || t.contains("off-ramp"))) {
+            (has("turn") || t.contains("onto the ramp") || has("on-ramp") || t.contains("on ramp"))
+        if (!turnOntoRamp && has("exit", "ramp", "off-ramp")) {
             val onLeft = if (left || right) left else rampLeft
             return if (onLeft) BccuProtocol.TurnIcon.LEAVE_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
         }
         // Arrival / departure.
-        if (t.contains("destination") || t.contains("arrive") || t.contains("you have arrived")) {
+        if (has("destination", "arrive", "arrived")) {
             return BccuProtocol.TurnIcon.END
         }
-        // Plain turn: this is a normal ~90° turn, so QUITE_* (not LIGHT_*).
-        if (t.contains("turn left") || (left && t.contains("turn"))) return BccuProtocol.TurnIcon.QUITE_LEFT
-        if (t.contains("turn right") || (right && t.contains("turn"))) return BccuProtocol.TurnIcon.QUITE_RIGHT
+        // Plain turn: this is a normal ~90 degree turn, so QUITE_* (not LIGHT_*).
+        if (has("turn") && left) return BccuProtocol.TurnIcon.QUITE_LEFT
+        if (has("turn") && right) return BccuProtocol.TurnIcon.QUITE_RIGHT
         // Straight / continue / head.
-        if (t.contains("straight") || t.contains("continue") || t.contains("head ") || t.contains("proceed")) {
+        if (has("straight", "continue", "head", "proceed")) {
             return BccuProtocol.TurnIcon.GO_STRAIGHT
         }
         // A bare directional word with no other maneuver context - treat as a turn.
-        if (left && !right) return BccuProtocol.TurnIcon.QUITE_LEFT
-        if (right && !left) return BccuProtocol.TurnIcon.QUITE_RIGHT
+        if (left) return BccuProtocol.TurnIcon.QUITE_LEFT
+        if (right) return BccuProtocol.TurnIcon.QUITE_RIGHT
         return null
     }
+
+    private val SIDE_RE = Regex("""\b(left|right)\b""")
+    private val TURN_SIDE_RE = Regex("""\bturn\s+(left|right)\b""")
+    private val UTURN_RE = Regex("""\bu-?\s?turn\b|\bmake a u\b""")
 
     /**
      * Whole-word "roundabout" or "rotary" (the US term). "Rotary" that is part of

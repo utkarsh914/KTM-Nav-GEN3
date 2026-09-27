@@ -99,7 +99,29 @@ class TurnIconHeuristicTest {
     @Test fun ordinaryTurnsUnaffected() {
         assertEquals(TurnIcon.HEAVY_LEFT, parse("Sharp left", DrivingSide.RIGHT))
         assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right", DrivingSide.LEFT))
-        assertEquals(TurnIcon.UTURN_LEFT, parse("Make a U-turn", DrivingSide.LEFT))
+        assertEquals(TurnIcon.UTURN_RIGHT, parse("Make a U-turn", DrivingSide.LEFT))
         assertEquals(TurnIcon.GO_STRAIGHT, parse("Continue straight", DrivingSide.LEFT))
+    }
+
+    // --- Whole-word matching / phrase precedence ---
+
+    @Test fun placeNamesDoNotTriggerManeuvers() {
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right towards Rampura", DrivingSide.LEFT))
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right onto Leftwich Rd", DrivingSide.LEFT))
+        assertEquals(TurnIcon.QUITE_LEFT, parse("Turn left onto Hardware Rd", DrivingSide.LEFT))
+        // First side word is the instruction; a later one is the road name.
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right onto Left Bank Rd", DrivingSide.LEFT))
+    }
+
+    @Test fun turnToStayOnIsATurnNotAKeep() {
+        assertEquals(TurnIcon.QUITE_LEFT, parse("Turn left to stay on NH 48", DrivingSide.LEFT))
+        assertEquals(TurnIcon.KEEP_RIGHT, parse("Keep right to stay on NH 48", DrivingSide.LEFT))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slight left to stay on NH 48", DrivingSide.LEFT))
+    }
+
+    @Test fun unqualifiedUTurnFollowsDrivingSide() {
+        assertEquals(TurnIcon.UTURN_RIGHT, parse("Make a U-turn", DrivingSide.LEFT))
+        assertEquals(TurnIcon.UTURN_LEFT, parse("Make a U-turn", DrivingSide.RIGHT))
+        assertEquals(TurnIcon.UTURN_LEFT, parse("Make a U-turn to the left", DrivingSide.LEFT))
     }
 }

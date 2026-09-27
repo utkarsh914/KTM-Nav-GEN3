@@ -152,6 +152,14 @@ object TurnBeeper {
 
     private fun sideOf(icon: BccuProtocol.TurnIcon?): Side? {
         val name = icon?.name ?: return null
+        // Roundabout sections carry no LEFT/RIGHT in their name: use the exit angle.
+        com.navigator.app.nav.ktm.KtmManeuverMapping.roundaboutSectionAngle(icon)?.let { angle ->
+            return when {
+                angle > 0 -> Side.RIGHT
+                angle < 0 -> Side.LEFT
+                else -> null
+            }
+        }
         return when {
             name.contains("LEFT") -> Side.LEFT
             name.contains("RIGHT") -> Side.RIGHT

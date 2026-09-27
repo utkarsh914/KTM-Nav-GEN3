@@ -88,7 +88,7 @@ class AppNotificationListener : NotificationListenerService() {
             // the official app's field split: title="110 m" (TURN_DISTANCE),
             // text="towards 1st Cross Rd" (TURN_ROAD).
             NotificationNavProvider.pushGuidance(
-                distanceText = title.ifBlank { null },
+                distanceText = title.ifBlank { null }?.let { NavSubtextParser.compactDistance(NavSubtextParser.asciiDigits(it)) },
                 roadText = text.ifBlank { null },
                 etaText = etaText,
                 remainingText = remainingDistanceText,
@@ -167,42 +167,23 @@ class AppNotificationListener : NotificationListenerService() {
      * this same dash slot showed a bare "00:00" - strongly suggesting the
      * firmware expects a strict numeric time, not extra letters.
      */
-    private fun parseEtaAndRemainingDistance(subText: String): Pair<String?, String?> {
-        if (subText.isBlank()) return null to null
-        // Nav apps use a variety of separators between the "22 min", "9.7 km"
-        // and "2:12 ETA" segments: middle dot, bullet, hyphen, en/em dashes.
-        val segments = subText.split("·", "•", "-", "–", "—", "|").map { it.trim() }.filter { it.isNotEmpty() }
-        val timePattern = Regex("""(\d{1,2}):(\d{2})\s*(am|pm)?""", RegexOption.IGNORE_CASE)
-        val distancePattern = Regex("""\d+(\.\d+)?\s*(km|mi|m)\b""", RegexOption.IGNORE_CASE)
-        var eta: String? = null
-        var distance: String? = null
-        for (segment in segments) {
-            if (eta == null) {
-                val match = timePattern.find(segment)
-                if (match != null) {
-                    var hour = match.groupValues[1].toInt()
-                    val minute = match.groupValues[2]
-                    val meridiem = match.groupValues[3].lowercase()
-                    if (meridiem == "pm" && hour < 12) hour += 12
-                    if (meridiem == "am" && hour == 12) hour = 0
-                    eta = "%02d:%s".format(hour, minute)
-                }
-            }
-            if (distance == null && distancePattern.matches(segment)) {
-                distance = segment
-            }
-        }
-        return eta to distance
-    }
+    private fun parseEtaAndRemainingDistance(subText: String): Pair<String?, String?> =
+        NavSubtextParser.parseEtaAndRemaining(subText)
 
     /** Best-effort maneuver label for the Direction screen, derived from the guessed turn icon. */
     private fun maneuverTextFor(icon: com.navigator.app.ble.BccuProtocol.TurnIcon?): String? {
         val name = icon?.name ?: return null
+        // Specific families first: U-turn/highway/roundabout names also contain
+        // LEFT/RIGHT, so a plain LEFT/RIGHT check first mislabelled them as turns.
         return when {
+            name.contains("UTURN") || name.contains("U_TURN") -> "Make a U-turn onto"
+            name.startsWith("ENTER_HIGHWAY") -> "Merge onto"
+            name.startsWith("LEAVE_HIGHWAY") -> "Take the exit onto"
+            name.startsWith("RAB_SECT") -> "At the roundabout, exit onto"
+            name.startsWith("KEEP_") -> if (name.endsWith("LEFT")) "Keep left onto" else "Keep right onto"
             name.contains("LEFT") -> "Turn left onto"
             name.contains("RIGHT") -> "Turn right onto"
             name.contains("STRAIGHT") || name.contains("CONTINUE") -> "Continue onto"
-            name.contains("UTURN") || name.contains("U_TURN") -> "Make a U-turn onto"
             else -> null
         }
     }
