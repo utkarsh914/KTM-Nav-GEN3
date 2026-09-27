@@ -121,6 +121,27 @@ class KtmManeuverMappingTest {
         assertEquals(TurnIcon.UTURN_LEFT, map(ROUNDABOUT_UTURN, RoundaboutRotation.COUNTERCLOCKWISE))
     }
 
+    @Test fun ordinalExitAngleMirrorsByCirculation() {
+        assertEquals(-90, KtmManeuverMapping.ordinalExitAngle(1, clockwise = true))
+        assertEquals(0, KtmManeuverMapping.ordinalExitAngle(2, clockwise = true))
+        assertEquals(90, KtmManeuverMapping.ordinalExitAngle(3, clockwise = true))
+        assertEquals(180, KtmManeuverMapping.ordinalExitAngle(4, clockwise = true))
+        assertEquals(90, KtmManeuverMapping.ordinalExitAngle(1, clockwise = false))
+        assertEquals(-90, KtmManeuverMapping.ordinalExitAngle(3, clockwise = false))
+    }
+
+    @Test fun sectionAngleIsInverseOfSectionLaw() {
+        for (m in listOf(ROUNDABOUT_SHARP_RIGHT, ROUNDABOUT_RIGHT, ROUNDABOUT_SLIGHT_RIGHT, ROUNDABOUT_STRAIGHT,
+            ROUNDABOUT_SLIGHT_LEFT, ROUNDABOUT_LEFT, ROUNDABOUT_SHARP_LEFT)) {
+            val cw = map(m, RoundaboutRotation.CLOCKWISE)
+            val ccw = map(m, RoundaboutRotation.COUNTERCLOCKWISE)
+            assertEquals(KtmManeuverMapping.roundaboutSectionAngle(cw), KtmManeuverMapping.roundaboutSectionAngle(ccw))
+        }
+        assertEquals(90.0, KtmManeuverMapping.roundaboutSectionAngle(TurnIcon.RAB_SECT_4_RH)!!, 0.0)
+        assertEquals(-90.0, KtmManeuverMapping.roundaboutSectionAngle(TurnIcon.RAB_SECT_4_LH)!!, 0.0)
+        assertEquals(null, KtmManeuverMapping.roundaboutSectionAngle(TurnIcon.QUITE_LEFT))
+    }
+
     @Test fun roundaboutGenericHasNoArrow() {
         assertEquals(TurnIcon.UNDEFINED, map(ROUNDABOUT_GENERIC))
     }

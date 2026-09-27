@@ -45,15 +45,21 @@ object ManeuverClassifier {
         "big_trans_directions_roundabout", "big_trans_directions_roundabout_lhs", "merge",
     )
     @Volatile private var labels: Array<String>? = null
+    /** True when the loaded labels file predates the roundabout-label fix
+     *  (no [LegacyModelRemap.V2_HEADER]); its outputs go through [LegacyModelRemap]. */
+    @Volatile private var legacyLabels = false
 
     private fun labels(context: Context): Array<String> {
         labels?.let { return it }
         val loaded = try {
             val id = context.resources.getIdentifier("maneuver_labels", "raw", context.packageName)
             if (id != 0) {
-                context.resources.openRawResource(id).bufferedReader().useLines { seq ->
-                    seq.map { it.trim() }.filter { it.isNotEmpty() }.toList().toTypedArray()
-                }.takeIf { it.isNotEmpty() }
+                val lines = context.resources.openRawResource(id).bufferedReader().useLines { seq ->
+                    seq.map { it.trim() }.filter { it.isNotEmpty() }.toList()
+                }
+                legacyLabels = lines.none { it == LegacyModelRemap.V2_HEADER }
+                // '#' lines are headers, not classes.
+                lines.filterNot { it.startsWith("#") }.toTypedArray().takeIf { it.isNotEmpty() }
             } else null
         } catch (e: Throwable) {
             AppLogger.log("Maneuver", "!! labels load failed, using embedded: $e"); null
@@ -142,7 +148,7 @@ object ManeuverClassifier {
                     KtmManeuverMapping.enterHighwayIcon(mergeLeft = true)
                 BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE.binary ->
                     KtmManeuverMapping.enterHighwayIcon(mergeLeft = false)
-                else -> BccuProtocol.TurnIcon.fromBinary(n)
+                else -> if (legacyLabels) LegacyModelRemap.correct(n) else BccuProtocol.TurnIcon.fromBinary(n)
             }
         }
         // "merge" has no left/right in the label - pick the lane from driving side

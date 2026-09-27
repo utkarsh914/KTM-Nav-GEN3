@@ -63,7 +63,24 @@ object TurnIconHeuristic {
         sbn: StatusBarNotification,
         drivingSide: DrivingSide = DrivingSide.UNKNOWN,
     ): BccuProtocol.TurnIcon? {
-        parseManeuverFromText(collectText(sbn), drivingSide)?.let {
+        val text = collectText(sbn)
+
+        // Roundabouts: the text only carries an ORDINAL exit count, but the dash
+        // glyph is chosen by exit ANGLE. The Maps icon shows the real angle, so
+        // for a roundabout the icon (user calibration, then the classifier) wins
+        // over the text; the ordinal is only an approximate fallback.
+        if (mentionsRoundabout(text)) {
+            loadIconBitmap(context, sbn)?.let { bmp ->
+                val fromIcon = IconHashCache.lookup(bmp, context)
+                    ?: ManeuverClassifier.classify(context, bmp, drivingSide)
+                if (fromIcon != null && isRoundaboutResult(fromIcon)) {
+                    AppLogger.log("TurnIcon", "Roundabout from icon -> ${fromIcon.name}")
+                    return fromIcon
+                }
+            }
+        }
+
+        parseManeuverFromText(text, drivingSide)?.let {
             AppLogger.log("TurnIcon", "Maneuver from text -> ${it.name}")
             return it
         }
@@ -147,17 +164,20 @@ object TurnIconHeuristic {
         val right = t.contains("right")
         // Left-hand traffic circulates clockwise (RH glyph bank) and its
         // ramps/exits are on the left; shared with the SDK path so they agree.
-        val bank = if (KtmManeuverMapping.clockwiseForDrivingSide(drivingSide)) "RH" else "LH"
+        val clockwise = KtmManeuverMapping.clockwiseForDrivingSide(drivingSide)
         val rampLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide)
 
-        // Roundabouts: "roundabout" / "rotary" + an exit ordinal.
-        if (t.contains("roundabout") || t.contains("rotary")) {
-            val exit = roundaboutExit(t)
-            if (exit != null) {
-                val idx = exit.coerceIn(1, 16)
-                return BccuProtocol.TurnIcon.entries.first { it.name == "RAB_SECT_${idx}_$bank" }
-            }
-            return BccuProtocol.TurnIcon.entries.first { it.name == "RAB_SECT_2_$bank" }
+        // Roundabouts: "roundabout" / "rotary" + an exit ordinal. The dash
+        // sections are fixed exit-ANGLE glyphs (hardware-verified, see
+        // KtmManeuverMapping.roundaboutSection), so the ordinal is converted to
+        // an approximate angle - NOT used as the section index. No ordinal ->
+        // UNDEFINED (no arrow) rather than inventing a direction.
+        if (mentionsRoundabout(t)) {
+            val exit = roundaboutExit(t) ?: return BccuProtocol.TurnIcon.UNDEFINED
+            return KtmManeuverMapping.roundaboutIcon(
+                KtmManeuverMapping.ordinalExitAngle(exit, clockwise),
+                clockwise,
+            )
         }
 
         // U-turn.
@@ -212,6 +232,27 @@ object TurnIconHeuristic {
         if (right && !left) return BccuProtocol.TurnIcon.QUITE_RIGHT
         return null
     }
+
+    /**
+     * Whole-word "roundabout" or "rotary" (the US term). "Rotary" that is part of
+     * a proper name ("Rotary Club Rd") doesn't count on its own.
+     */
+    internal fun mentionsRoundabout(t: String): Boolean {
+        if (ROUNDABOUT_WORD_RE.containsMatchIn(t)) return true
+        return ROTARY_RE.findAll(t).any { m ->
+            ROTARY_NAME_RE.find(t, m.range.first)?.range?.first != m.range.first
+        }
+    }
+
+    private val ROUNDABOUT_WORD_RE = Regex("""\broundabouts?\b""")
+    private val ROTARY_RE = Regex("""\brotary\b""")
+    // "rotary" used as part of a proper name (Rotary Club/Road/Nagar...) is not a maneuver.
+    private val ROTARY_NAME_RE = Regex("""rotary\s+(club|rd|road|nagar|circle|layout|park|hall|school|colony|street|st)\b""")
+
+    /** Icon results acceptable for a roundabout instruction: a section glyph or a (roundabout) U-turn. */
+    private fun isRoundaboutResult(icon: BccuProtocol.TurnIcon): Boolean =
+        KtmManeuverMapping.isRoundaboutSection(icon) ||
+            icon == BccuProtocol.TurnIcon.UTURN_LEFT || icon == BccuProtocol.TurnIcon.UTURN_RIGHT
 
     /** Pull a roundabout exit number from phrases like "3rd exit" or "exit 2". */
     private fun roundaboutExit(t: String): Int? {

@@ -38,19 +38,20 @@ def dash_code(name: str) -> int:
     n = name.replace("maneuver_", "")
     L, R = "left" in n, "right" in n
     if n.startswith("roundabout"):
-        rh = "_cw" in n                     # clockwise = right-hand traffic
-        base = 26 if rh else 42             # RAB_SECT_1_RH / _LH
-        # exit direction -> section index (1..16), matching the RH/LH bank
-        if "u_turn" in n:  sect = 16
-        elif "straight" in n: sect = 8
-        elif "slight_right" in n: sect = 2
-        elif "normal_right" in n: sect = 4
-        elif "sharp_right" in n:  sect = 6
-        elif "slight_left" in n:  sect = 10
-        elif "normal_left" in n:  sect = 12
-        elif "sharp_left" in n:   sect = 14
-        else: sect = 8                       # generic enter/exit
-        return base + (sect - 1)
+        # Clockwise circulation = LEFT-hand traffic (India, UK...) = RH glyph
+        # bank (26..41); counter-clockwise = LH bank (42..57).
+        cw = "_cw" in n
+        # Must match KtmManeuverMapping.roundaboutIcon (hardware-verified):
+        # sections are fixed exit-ANGLE glyphs, RH N = 8 - angle/22.5, LH mirrored
+        # N = 8 + angle/22.5; a roundabout U-turn is the plain U-turn arrow.
+        if "u_turn" in n: return 3 if cw else 4          # UTURN_RIGHT / UTURN_LEFT
+        angle = 0                                         # straight / generic enter/exit
+        for key, a in (("slight_right", 45), ("normal_right", 90), ("sharp_right", 135),
+                       ("slight_left", -45), ("normal_left", -90), ("sharp_left", -135)):
+            if key in n: angle = a
+        steps = round(angle / 22.5)
+        sect = max(1, min(16, 8 - steps if cw else 8 + steps))
+        return (26 if cw else 42) + (sect - 1)
     # IMPORTANT: Google Maps reuses the SAME bitmap for a turn and its
     # on-ramp / off-ramp / fork equivalent (verified byte-identical), so those
     # MUST share a dash code - a classifier can't give identical images
@@ -150,7 +151,9 @@ def main():
     with open(out_model, "wb") as fp:
         fp.write(tflite)
     with open(out_labels, "w") as fp:
-        fp.write("\n".join(str(c) for c in codes) + "\n")
+        # Header tells the app these labels use the verified roundabout law, so
+        # it skips its legacy-model runtime remap (LegacyModelRemap.kt).
+        fp.write("#labels-v2\n" + "\n".join(str(c) for c in codes) + "\n")
     print(f"wrote {out_model} ({len(tflite)} bytes) and {out_labels}")
     print("Copy both into app/src/main/res/raw/ (maneuver_model.tflite, maneuver_labels.txt)")
 

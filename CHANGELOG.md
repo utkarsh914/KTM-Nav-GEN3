@@ -8,6 +8,11 @@
   (slight / normal / sharp), matching the notification-text and on-device-model paths. Sharp off-ramps
   likewise show the sharp-turn arrow. An unqualified SDK merge now picks the enter-highway lane from
   the driving side (was: straight arrow). Merge-direction selection is centralised in one helper.
+- Roundabouts when mirroring Google Maps now use the hardware-verified exit-angle glyphs (the
+  in-app path already did). "Take the Nth exit" no longer maps to section N (which showed a sharp
+  right for most roundabouts); the Maps icon is preferred, else the ordinal is converted to an
+  approximate angle for the driving side. The bundled model's mis-labelled roundabout classes are
+  corrected at runtime, and the training script is fixed for the next retrain.
 
 ## v0.6.0
 

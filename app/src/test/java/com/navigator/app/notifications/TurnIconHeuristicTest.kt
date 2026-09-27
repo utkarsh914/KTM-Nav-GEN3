@@ -58,13 +58,40 @@ class TurnIconHeuristicTest {
 
     // --- Roundabout bank follows driving side ---
 
-    @Test fun roundaboutBankFollowsDrivingSide() {
-        // Left-hand traffic circulates clockwise -> RH glyph bank.
-        assertEquals(TurnIcon.RAB_SECT_3_RH, parse("At the roundabout, take the 3rd exit", DrivingSide.LEFT))
-        assertEquals(TurnIcon.RAB_SECT_3_LH, parse("At the roundabout, take the 3rd exit", DrivingSide.RIGHT))
-        // No ordinal -> default section, still on the correct bank.
-        assertEquals(TurnIcon.RAB_SECT_2_RH, parse("Enter the roundabout", DrivingSide.LEFT))
-        assertEquals(TurnIcon.RAB_SECT_2_LH, parse("Enter the roundabout", DrivingSide.RIGHT))
+    @Test fun roundaboutOrdinalBecomesApproxAngle_clockwise() {
+        // Left-hand traffic circulates clockwise -> RH bank; 1st exit = left.
+        // Sections are exit-ANGLE glyphs (N = 8 - angle/22.5), never the ordinal.
+        val s = DrivingSide.LEFT
+        assertEquals(TurnIcon.RAB_SECT_12_RH, parse("At the roundabout, take the 1st exit", s)) // -90
+        assertEquals(TurnIcon.RAB_SECT_8_RH, parse("At the roundabout, take the 2nd exit", s))  //   0
+        assertEquals(TurnIcon.RAB_SECT_4_RH, parse("At the roundabout, take the 3rd exit", s))  // +90
+        assertEquals(TurnIcon.UTURN_RIGHT, parse("At the roundabout, take the 4th exit", s))
+        assertEquals(TurnIcon.RAB_SECT_8_RH, parse("At the roundabout, take the second exit", s))
+    }
+
+    @Test fun roundaboutOrdinalBecomesApproxAngle_counterClockwise() {
+        // Right-hand traffic: CCW -> LH bank (N = 8 + angle/22.5); 1st exit = right.
+        val s = DrivingSide.RIGHT
+        assertEquals(TurnIcon.RAB_SECT_12_LH, parse("At the roundabout, take the 1st exit", s)) // +90
+        assertEquals(TurnIcon.RAB_SECT_8_LH, parse("At the roundabout, take the 2nd exit", s))
+        assertEquals(TurnIcon.RAB_SECT_4_LH, parse("At the roundabout, take the 3rd exit", s))  // -90
+        assertEquals(TurnIcon.UTURN_LEFT, parse("At the roundabout, take the 5th exit", s))
+    }
+
+    @Test fun roundaboutWithoutOrdinalHasNoArrow() {
+        assertEquals(TurnIcon.UNDEFINED, parse("Enter the roundabout", DrivingSide.LEFT))
+        assertEquals(TurnIcon.UNDEFINED, parse("Enter the roundabout", DrivingSide.RIGHT))
+    }
+
+    @Test fun rotaryAsPlaceNameIsNotARoundabout() {
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right onto Rotary Club Rd", DrivingSide.LEFT))
+        // But the US maneuver word still counts.
+        assertEquals(TurnIcon.RAB_SECT_8_RH, parse("At the rotary, take the 2nd exit", DrivingSide.LEFT))
+        // And a real roundabout onto a Rotary-named road still counts.
+        assertEquals(
+            TurnIcon.RAB_SECT_12_RH,
+            parse("At the roundabout, take the 1st exit onto Rotary Club Rd", DrivingSide.LEFT),
+        )
     }
 
     // --- Non-highway maneuvers unaffected by driving side ---

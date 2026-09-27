@@ -94,18 +94,17 @@ object KtmManeuverMapping {
             // ANGLE (right = +, left = -, straight = 0), not Google's ordinal exit
             // count - the dash renders a fixed glyph per code and can't show an
             // ordinal. Buckets come at 45deg resolution from the SDK maneuver.
-            NormalizedManeuver.ROUNDABOUT_SLIGHT_LEFT -> roundaboutSection(-45, clockwise)
-            NormalizedManeuver.ROUNDABOUT_LEFT -> roundaboutSection(-90, clockwise)
-            NormalizedManeuver.ROUNDABOUT_SHARP_LEFT -> roundaboutSection(-135, clockwise)
-            NormalizedManeuver.ROUNDABOUT_SLIGHT_RIGHT -> roundaboutSection(45, clockwise)
-            NormalizedManeuver.ROUNDABOUT_RIGHT -> roundaboutSection(90, clockwise)
-            NormalizedManeuver.ROUNDABOUT_SHARP_RIGHT -> roundaboutSection(135, clockwise)
-            NormalizedManeuver.ROUNDABOUT_STRAIGHT -> roundaboutSection(0, clockwise)
-            NormalizedManeuver.ROUNDABOUT_EXIT -> roundaboutSection(0, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SLIGHT_LEFT -> roundaboutIcon(-45, clockwise)
+            NormalizedManeuver.ROUNDABOUT_LEFT -> roundaboutIcon(-90, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SHARP_LEFT -> roundaboutIcon(-135, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SLIGHT_RIGHT -> roundaboutIcon(45, clockwise)
+            NormalizedManeuver.ROUNDABOUT_RIGHT -> roundaboutIcon(90, clockwise)
+            NormalizedManeuver.ROUNDABOUT_SHARP_RIGHT -> roundaboutIcon(135, clockwise)
+            NormalizedManeuver.ROUNDABOUT_STRAIGHT -> roundaboutIcon(0, clockwise)
+            NormalizedManeuver.ROUNDABOUT_EXIT -> roundaboutIcon(0, clockwise)
             // A roundabout U-turn shows the plain U-turn arrow (product decision),
             // not a roundabout-section glyph.
-            NormalizedManeuver.ROUNDABOUT_UTURN ->
-                if (clockwise) TurnIcon.UTURN_RIGHT else TurnIcon.UTURN_LEFT
+            NormalizedManeuver.ROUNDABOUT_UTURN -> roundaboutIcon(180, clockwise)
             // Rotation known but exit direction unknown: no arrow (the dash has no
             // generic roundabout glyph, and we won't invent a direction).
             NormalizedManeuver.ROUNDABOUT_GENERIC -> TurnIcon.UNDEFINED
@@ -178,6 +177,52 @@ object KtmManeuverMapping {
      */
     fun enterHighwayIcon(mergeLeft: Boolean): TurnIcon =
         if (mergeLeft) TurnIcon.ENTER_HIGHWAY_LEFT_LANE else TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+
+    /**
+     * The one roundabout rule shared by every path (SDK, notification text,
+     * TFLite classifier): a roundabout exit at [turnAngleDeg] (right = +, left
+     * = -, straight = 0) becomes the angle-based section glyph, and a U-turn
+     * (|angle| >= 180) becomes the plain U-turn arrow (product decision) in the
+     * direction of circulation.
+     */
+    fun roundaboutIcon(turnAngleDeg: Int, clockwise: Boolean): TurnIcon =
+        if (kotlin.math.abs(turnAngleDeg) >= 180) {
+            if (clockwise) TurnIcon.UTURN_RIGHT else TurnIcon.UTURN_LEFT
+        } else {
+            roundaboutSection(turnAngleDeg, clockwise)
+        }
+
+    /**
+     * Best-effort exit ANGLE from an ordinal exit count ("take the 2nd exit"),
+     * for when the nav app gives only the ordinal. Assumes a regular 4-arm
+     * roundabout: clockwise circulation (left-hand traffic) meets the left arm
+     * first, so 1st = left, 2nd = straight, 3rd = right, 4th+ = U-turn;
+     * counter-clockwise is the mirror. An approximation - the icon classifier
+     * (which sees the real exit angle) is preferred whenever it is confident.
+     */
+    fun ordinalExitAngle(exit: Int, clockwise: Boolean): Int = when {
+        exit <= 1 -> if (clockwise) -90 else 90
+        exit == 2 -> 0
+        exit == 3 -> if (clockwise) 90 else -90
+        else -> 180
+    }
+
+    /** True for any roundabout section glyph (either circulation bank). */
+    fun isRoundaboutSection(icon: TurnIcon): Boolean = icon.binary in 26..57
+
+    /**
+     * Signed turn angle of a roundabout section glyph (inverse of
+     * [roundaboutSection]): RH N -> (8 - N) * 22.5, LH N -> (N - 8) * 22.5.
+     * Null for non-roundabout icons.
+     */
+    fun roundaboutSectionAngle(icon: TurnIcon): Double? {
+        val b = icon.binary
+        return when (b) {
+            in 26..41 -> (8 - (b - 25)) * 22.5
+            in 42..57 -> ((b - 41) - 8) * 22.5
+            else -> null
+        }
+    }
 
     /**
      * Section glyph for a roundabout exit, chosen by the exit's TURN ANGLE

@@ -35,6 +35,23 @@ param was dropped from `toTurnIcon`/the encoder call (kept-but-unused on
 RH-clockwise / LH-mirrored confirmed on hardware. Rewritten as angle-based in
 `KtmManeuverMappingTest` (RH + LH cases).
 
+### Follow-up: the notification-mirroring path still used ordinals
+
+The fix above only covered the Nav SDK path. Mirroring Google Maps had two more copies of the
+old assumption:
+
+- **Text parser** (`TurnIconHeuristic`): "take the 3rd exit" → `RAB_SECT_3`, and a bare
+  "roundabout" defaulted to `RAB_SECT_2` — i.e. nearly every mirrored roundabout showed some
+  flavour of sharp right. Now the ordinal is converted to an **approximate angle**
+  (`KtmManeuverMapping.ordinalExitAngle`: clockwise 1st ≈ left, 2nd ≈ straight, 3rd ≈ right,
+  4th+ ≈ U-turn; CCW mirrored) and fed through the shared `roundaboutIcon()`. No ordinal →
+  `UNDEFINED`. For roundabouts the **icon** (calibration, then classifier) is consulted before
+  the text, because the Maps icon encodes the real exit angle.
+- **TFLite model**: trained with pre-verification labels (RH slight/sharp right swapped; LH bank
+  never mirrored; roundabout U-turn → N16). `ml/train_maneuver_model.py` now derives labels from
+  the same law and writes a `#labels-v2` header; until a v2 model ships,
+  `LegacyModelRemap` corrects the shipped model's roundabout outputs at runtime.
+
 ---
 
 ## 16 KB page-size compatibility — the TFLite native lib was the only offender
