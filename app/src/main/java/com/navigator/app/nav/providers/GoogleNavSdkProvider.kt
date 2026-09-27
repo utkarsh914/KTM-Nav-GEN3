@@ -340,7 +340,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             remainingTimeSeconds = navInfo.timeToFinalDestinationSeconds,
             remainingDistanceMeters = navInfo.distanceToFinalDestinationMeters,
             nextManeuver = nextManeuver,
-            units = DistanceUnits.METRIC,
+            units = deviceUnits(),
             producedAtMs = now,
             fullInstruction = fullInstruction,
             exitNumber = exitNumber,
@@ -358,6 +358,13 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             .replace("&amp;", "&")
             .replace(Regex("\\s+"), " ")
             .trim()
+
+    /** Road distances in miles for the countries that use them; metric elsewhere. */
+    private fun deviceUnits(): DistanceUnits =
+        if (java.util.Locale.getDefault().country.uppercase() in IMPERIAL_COUNTRIES) DistanceUnits.IMPERIAL
+        else DistanceUnits.METRIC
+
+    private val IMPERIAL_COUNTRIES = setOf("US", "GB", "LR", "MM")
 
     private const val NUM_NEXT_STEPS_TO_PREVIEW = 3
 }

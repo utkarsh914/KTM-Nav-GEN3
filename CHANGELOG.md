@@ -13,6 +13,21 @@
   right for most roundabouts); the Maps icon is preferred, else the ordinal is converted to an
   approximate angle for the driving side. The bundled model's mis-labelled roundabout classes are
   corrected at runtime, and the training script is fixed for the next retrain.
+- Starting a second in-app trip no longer bounces straight back to notification mirroring (the
+  previous trip's "stopped" state was mistaken for the new trip ending). In-app guidance is picked
+  up when the bike connects mid-trip, switching sources clears the old guidance, and the service
+  shutting down no longer cancels an in-app trip.
+- The dash never shows the previous step's arrow for an unrecognised new turn (it's blanked), and a
+  new arrow always arrives with its own distance. Throttled updates are flushed, and a phone clock
+  change can no longer freeze distance/ETA.
+- Notification parsing matches whole words ("Rampura", "Leftwich Rd" no longer trigger maneuvers),
+  "Turn left to stay on…" shows a turn, unqualified U-turns follow the driving side, ETAs with
+  localized AM/PM parse correctly, and imperial distances fit the dash ("0.3 mi", not "0.3 m...").
+- Bluetooth: a lost or failed write can no longer freeze the dash — the write queue self-heals,
+  failed guidance writes trigger a resync, and guidance is refreshed every 15 s while navigating.
+  The connect greeting no longer overwrites or blanks live guidance.
+- Text is truncated on whole characters (no broken emoji or Kannada conjuncts), 9.95–9.99 km reads
+  "10 km", in-app navigation uses miles in US/UK, and the ETA follows time-zone changes.
 
 ## v0.6.0
 

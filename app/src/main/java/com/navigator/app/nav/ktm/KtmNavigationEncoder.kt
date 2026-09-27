@@ -26,7 +26,9 @@ import java.time.ZoneId
  * whole thing is unit-testable.
  */
 class KtmNavigationEncoder(
-    private val zone: ZoneId = ZoneId.systemDefault(),
+    /** Fixed zone for tests; null = the device's CURRENT zone at format time
+     *  (was captured once at service start, so a mid-ride zone change was missed). */
+    private val zone: ZoneId? = null,
     val minIntervalMs: Long = 1_000L,
     private val etaDeadbandMs: Long = 60_000L,
     /** Monotonic clock (ms) for the throttle. Deliberately NOT the snapshot's
@@ -184,7 +186,7 @@ class KtmNavigationEncoder(
                                 null
                             } else {
                                 lastEtaEpochMs = candidate
-                                EtaFormatter.format(candidate, zone)
+                                EtaFormatter.format(candidate, zone ?: ZoneId.systemDefault())
                             }
                         } else {
                             null

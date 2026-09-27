@@ -31,13 +31,15 @@ object DistanceFormatter {
         val rounded10 = roundToStep(m, 10)
         if (rounded10 < 1000) return "$rounded10 m"
         val km = m / 1000.0
-        return if (km >= 10) "${km.roundToInt()} km" else "${oneDecimal(km)} km"
+        // >= 9.95 rounds to "10.0" at one decimal - switch to integers there so
+        // 9950 m and 10000 m both read "10 km".
+        return if (km >= 9.95) "${km.roundToInt()} km" else "${oneDecimal(km)} km"
     }
 
     private fun imperial(m: Int): String {
         val miles = m / METERS_PER_MILE
         return when {
-            miles >= 10 -> "${miles.roundToInt()} mi"
+            miles >= 9.95 -> "${miles.roundToInt()} mi"
             miles >= 0.1 -> "${oneDecimal(miles)} mi"
             else -> "${roundToStep((m * FEET_PER_METER).roundToInt(), 10)} ft"
         }

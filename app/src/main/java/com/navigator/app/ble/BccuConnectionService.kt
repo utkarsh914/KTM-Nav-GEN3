@@ -1105,12 +1105,12 @@ class BccuConnectionService : LifecycleService() {
      */
     private suspend fun runMarquee(text: String, icon: BccuProtocol.NotificationIcon) {
         val gap = "   "
-        val loop = text + gap
-        // Doubling lets a fixed-width window wrap past the end without special-casing.
-        val doubled = loop + loop
+        // Step by grapheme cluster, not UTF-16 unit: a raw substring window cut
+        // emoji surrogate pairs (shown as '?') on almost every frame.
+        val chars = BccuProtocol.graphemes(text + gap)
         repeat(MARQUEE_CYCLES) {
-            for (start in loop.indices) {
-                val window = doubled.substring(start, start + NOTIFICATION_BANNER_CHARS)
+            for (start in chars.indices) {
+                val window = (0 until NOTIFICATION_BANNER_CHARS).joinToString("") { chars[(start + it) % chars.size] }
                 writeNotificationFrame(window, icon, BccuProtocol.Visibility.FULL)
                 delay(MARQUEE_STEP_MS)
             }

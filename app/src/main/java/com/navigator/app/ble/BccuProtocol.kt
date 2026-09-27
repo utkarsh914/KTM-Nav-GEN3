@@ -136,7 +136,7 @@ object BccuProtocol {
 
     /** Build a NOTIFICATION characteristic payload: [visibility][iconByte][UTF-8 text, max 16 chars]. */
     fun buildNotificationPayload(icon: NotificationIcon, text: String, visibility: Visibility = Visibility.FULL): ByteArray {
-        val truncated = if (text.length > 16) text.substring(0, 16) else text
+        val truncated = safePrefix(text, 16)
         val textBytes = truncated.toByteArray(Charsets.UTF_8)
         val out = ByteArray(2 + textBytes.size)
         out[0] = visibility.binary.toByte()
@@ -163,8 +163,49 @@ object BccuProtocol {
      */
     private fun elipse(text: String, maxLen: Int): String = when {
         text.length <= maxLen -> text
-        maxLen <= 3 -> text.substring(0, maxLen)
-        else -> text.substring(0, maxLen - 3) + "..."
+        maxLen <= 3 -> safePrefix(text, maxLen)
+        else -> safePrefix(text, maxLen - 3) + "..."
+    }
+
+    /**
+     * Longest prefix of whole grapheme clusters whose UTF-16 length is <=
+     * [maxUnits]. A plain substring could cut an emoji's surrogate pair (the
+     * lone half encodes to '?') or split a Kannada/Devanagari conjunct, leaving
+     * a dangling vowel sign / virama on the dash.
+     */
+    fun safePrefix(text: String, maxUnits: Int): String {
+        if (text.length <= maxUnits) return text
+        val it = java.text.BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val bounds = ArrayList<Int>()
+        var next = it.next()
+        while (next != java.text.BreakIterator.DONE && next <= maxUnits) {
+            bounds += next
+            next = it.next()
+        }
+        // Pre-Unicode-15.1 break rules split Indic conjuncts after the virama
+        // (e.g. Kannada ಕ್|ಷ); never stop right after a virama / ZWJ.
+        while (bounds.isNotEmpty() && text[bounds.last() - 1] in JOINERS) bounds.removeAt(bounds.size - 1)
+        return text.substring(0, bounds.lastOrNull() ?: 0)
+    }
+
+    private val JOINERS = setOf(
+        '\u094D', '\u09CD', '\u0A4D', '\u0ACD', '\u0B4D', '\u0BCD', '\u0C4D', '\u0CCD', '\u0D4D', '\u200D',
+    )
+
+    /** Split [text] into user-perceived characters (grapheme clusters). */
+    fun graphemes(text: String): List<String> {
+        val it = java.text.BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val out = ArrayList<String>(text.length)
+        var start = it.first()
+        var end = it.next()
+        while (end != java.text.BreakIterator.DONE) {
+            out += text.substring(start, end)
+            start = end
+            end = it.next()
+        }
+        return out
     }
 
     /** Shared [visibility][UTF-8 text] shape used by TURN_DISTANCE/TURN_INFO/TURN_ROAD/ETA/REMAINING_DISTANCE. */

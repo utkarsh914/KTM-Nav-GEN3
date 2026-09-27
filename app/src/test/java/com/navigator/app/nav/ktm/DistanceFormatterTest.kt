@@ -28,6 +28,13 @@ class DistanceFormatterTest {
         assertEquals("123 km", m(123456))
     }
 
+    @Test fun noTenPointZeroAtTheBoundary() {
+        assertEquals("10 km", m(9950))
+        assertEquals("10 km", m(9999))
+        assertEquals("9.9 km", m(9940))
+        assertEquals("10 mi", i(16_020)) // 9.954 mi
+    }
+
     @Test fun metric_negativeClampsToZero() {
         assertEquals("0 m", m(-50))
     }
