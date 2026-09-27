@@ -14,8 +14,11 @@ class KtmNavigationEncoderTest {
 
     private val utc = ZoneId.of("UTC")
 
+    /** Fake monotonic clock driving the throttle. */
+    private var now = 0L
+
     private fun encoder(minIntervalMs: Long = 0L) =
-        KtmNavigationEncoder(zone = utc, minIntervalMs = minIntervalMs)
+        KtmNavigationEncoder(zone = utc, minIntervalMs = minIntervalMs, clockMs = { now })
 
     private fun enroute(
         t: Long,
@@ -64,6 +67,19 @@ class KtmNavigationEncoderTest {
         enc.encode(enroute(0))
         val w = enc.encode(enroute(2000, dist = 80))
         assertEquals(listOf(DashWrite.TurnDistance("80 m")), w)
+    }
+
+    @Test fun unknownManeuverOnNewStep_blanksArrow() {
+        val enc = encoder()
+        enc.encode(enroute(0, maneuver = NormalizedManeuver.LEFT))
+        val w = enc.encode(enroute(2000, maneuver = NormalizedManeuver.UNKNOWN, road = "2nd Cross", dist = 300))
+        assertEquals(
+            listOf(DashWrite.TurnIcon(TurnIcon.UNDEFINED), DashWrite.TurnRoad("2nd Cross"), DashWrite.TurnDistance("300 m")),
+            w,
+        )
+        // Recognised again -> arrow comes back.
+        val back = enc.encode(enroute(3000, maneuver = NormalizedManeuver.RIGHT, road = "2nd Cross", dist = 300))
+        assertEquals(listOf(DashWrite.TurnIcon(TurnIcon.QUITE_RIGHT)), back)
     }
 
     @Test fun unknownManeuver_holdsLastIcon() {
@@ -136,18 +152,41 @@ class KtmNavigationEncoderTest {
 
     @Test fun throttle_dropsLabelOnlyChurnWithinWindow() {
         val enc = encoder(minIntervalMs = 1000)
-        enc.encode(enroute(0))
+        now = 0; enc.encode(enroute(0))
+        now = 500
         val throttled = enc.encode(enroute(500, dist = 80))
         assertTrue("within window, label change should be dropped: $throttled", throttled.isEmpty())
+        assertTrue("held-back change must be flagged for a trailing flush", enc.hasThrottledChanges)
+        now = 1500
         val passed = enc.encode(enroute(1500, dist = 60))
         assertEquals(listOf(DashWrite.TurnDistance("60 m")), passed)
+        assertTrue(!enc.hasThrottledChanges)
     }
 
-    @Test fun throttle_neverBlocksIconChange() {
+    @Test fun throttle_trailingFlushSendsLastValue() {
         val enc = encoder(minIntervalMs = 1000)
-        enc.encode(enroute(0, maneuver = NormalizedManeuver.LEFT))
-        val w = enc.encode(enroute(500, maneuver = NormalizedManeuver.RIGHT))
-        assertEquals(listOf(DashWrite.TurnIcon(TurnIcon.QUITE_RIGHT)), w)
+        now = 0; enc.encode(enroute(0))
+        now = 400; val s = enroute(400, dist = 20)
+        assertTrue(enc.encode(s).isEmpty())
+        now = 1400 // coordinator re-encodes the same latest snapshot after the window
+        assertEquals(listOf(DashWrite.TurnDistance("20 m")), enc.encode(s))
+    }
+
+    @Test fun throttle_neverSplitsNewTurnFromItsDistance() {
+        val enc = encoder(minIntervalMs = 1000)
+        now = 0; enc.encode(enroute(0, maneuver = NormalizedManeuver.LEFT, dist = 0))
+        now = 500
+        val w = enc.encode(enroute(500, maneuver = NormalizedManeuver.RIGHT, dist = 400))
+        assertEquals(listOf(DashWrite.TurnIcon(TurnIcon.QUITE_RIGHT), DashWrite.TurnDistance("400 m")), w)
+    }
+
+    @Test fun throttle_usesMonotonicClockNotWallClock() {
+        val enc = encoder(minIntervalMs = 1000)
+        now = 0; enc.encode(enroute(1_000_000))
+        // Wall clock jumps backwards by an hour; monotonic clock moves forward.
+        now = 2000
+        val w = enc.encode(enroute(1_000_000 - 3_600_000, dist = 50))
+        assertTrue(w.contains(DashWrite.TurnDistance("50 m")))
     }
 
     @Test fun imperialUnits_convertLabels() {

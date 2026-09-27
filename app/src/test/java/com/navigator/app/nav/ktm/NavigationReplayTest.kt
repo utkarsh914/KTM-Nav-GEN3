@@ -38,7 +38,8 @@ class NavigationReplayTest {
     )
 
     @Test fun shortRoute_departTurnArrive() {
-        val enc = KtmNavigationEncoder(zone = utc, minIntervalMs = 1000)
+        var now = 0L
+        val enc = KtmNavigationEncoder(zone = utc, minIntervalMs = 1000, clockMs = { now })
 
         val sequence = listOf(
             enroute(0, NormalizedManeuver.DEPART, 500, "Start Rd", 600, 5000),
@@ -47,7 +48,8 @@ class NavigationReplayTest {
             NormalizedNavigationState(NavSessionState.ARRIVED, producedAtMs = 6000),
         )
 
-        val writes = sequence.flatMap { enc.encode(it) }
+        // Replay in "real time": the monotonic clock follows the recording.
+        val writes = sequence.flatMap { now = it.producedAtMs; enc.encode(it) }
 
         assertEquals(
             listOf(
@@ -76,12 +78,13 @@ class NavigationReplayTest {
     }
 
     @Test fun navStateEmittedOnce_andClearsAtEnd() {
-        val enc = KtmNavigationEncoder(zone = utc, minIntervalMs = 1000)
+        var now = 0L
+        val enc = KtmNavigationEncoder(zone = utc, minIntervalMs = 1000, clockMs = { now })
         val writes = listOf(
             enroute(0, NormalizedManeuver.DEPART, 500, "Start Rd", 600, 5000),
             enroute(2000, NormalizedManeuver.LEFT, 200, "Main St", 500, 4000),
             NormalizedNavigationState(NavSessionState.STOPPED, producedAtMs = 3000),
-        ).flatMap { enc.encode(it) }
+        ).flatMap { now = it.producedAtMs; enc.encode(it) }
 
         assertEquals(1, writes.count { it is DashWrite.SetNavState })
         assertTrue(writes.last() is DashWrite.ClearGuidance)

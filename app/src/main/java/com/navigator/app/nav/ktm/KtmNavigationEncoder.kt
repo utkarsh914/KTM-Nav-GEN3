@@ -17,7 +17,8 @@ import java.time.ZoneId
  * - **throttle** - label-only churn is capped to ~1 write-set/[minIntervalMs]
  *   (state/icon/road changes always pass; the existing GATT queue coalesces the rest),
  * - **state machine** - IDLE/ENROUTE/REROUTING/ARRIVED/STOPPED handling, including
- *   holding the last valid turn (never emitting UNKNOWN as an arrow) and blanking
+ *   holding the last turn on flaky ticks, blanking it on an unrecognised new step
+ *   (never emitting UNKNOWN as an arrow), and blanking
  *   a stale turn while rerouting.
  *
  * Pure logic, no I/O - the coordinator applies the returned writes. Deterministic
@@ -26,8 +27,12 @@ import java.time.ZoneId
  */
 class KtmNavigationEncoder(
     private val zone: ZoneId = ZoneId.systemDefault(),
-    private val minIntervalMs: Long = 1_000L,
+    val minIntervalMs: Long = 1_000L,
     private val etaDeadbandMs: Long = 60_000L,
+    /** Monotonic clock (ms) for the throttle. Deliberately NOT the snapshot's
+     *  wall-clock [NormalizedNavigationState.producedAtMs]: a backwards wall-clock
+     *  step (NTP / manual change) would otherwise freeze distance/ETA updates. */
+    private val clockMs: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
     private var lastSession: NavSessionState = NavSessionState.IDLE
     private var guidanceOnDash = false
@@ -42,7 +47,16 @@ class KtmNavigationEncoder(
     private var lastEtaText: String? = null
     private var lastEtaEpochMs: Long? = null
     private var lastRemaining: String? = null
-    private var lastEmitMs: Long = Long.MIN_VALUE
+    private var lastEmitMs: Long? = null
+
+    /**
+     * True when the last [encode] held back a changed label because of the
+     * throttle. The coordinator then re-encodes the latest snapshot once the
+     * window has passed, so the final value of a burst is never left unsent
+     * (the notification path may not produce another update for a long time).
+     */
+    var hasThrottledChanges: Boolean = false
+        private set
 
     /**
      * Forget all sent state so the next [encode] re-emits everything from
@@ -56,6 +70,7 @@ class KtmNavigationEncoder(
 
     fun encode(state: NormalizedNavigationState): List<DashWrite> {
         val writes = mutableListOf<DashWrite>()
+        hasThrottledChanges = false
         when (state.sessionState) {
             NavSessionState.IDLE, NavSessionState.STOPPED -> {
                 if (guidanceOnDash) {
@@ -94,13 +109,15 @@ class KtmNavigationEncoder(
 
             NavSessionState.ENROUTE -> {
                 ensureNavState(writes, gpsIconOn = !state.offline)
-                val throttled = lastEmitMs != Long.MIN_VALUE &&
-                    (state.producedAtMs - lastEmitMs) < minIntervalMs
+                val now = clockMs()
+                val withinWindow = lastEmitMs?.let { now - it < minIntervalMs } ?: false
+
+                val road = state.roadName?.trim()?.takeIf { it.isNotEmpty() }
+                val roadChanged = road != null && road != lastRoad
 
                 // Turn icon (significant - always allowed). Prefer a
                 // provider-resolved icon (notification path); else map the
-                // maneuver; else hold the last valid one (never emit
-                // UNKNOWN/UNDEFINED as an arrow).
+                // maneuver. Never emit UNKNOWN as an arrow.
                 val icon: TurnIcon? = state.resolvedIcon
                     ?: if (state.maneuver != NormalizedManeuver.UNKNOWN) {
                         KtmManeuverMapping.toTurnIcon(
@@ -111,56 +128,89 @@ class KtmNavigationEncoder(
                     } else {
                         null
                     }
-                if (icon != null && icon != TurnIcon.UNDEFINED && icon != lastIcon) {
-                    writes += DashWrite.TurnIcon(icon)
-                    lastIcon = icon
+                val resolved = icon?.takeIf { it != TurnIcon.UNDEFINED }
+                var iconChanged = false
+                if (resolved != null) {
+                    if (resolved != lastIcon) {
+                        writes += DashWrite.TurnIcon(resolved)
+                        lastIcon = resolved
+                        iconChanged = true
+                    }
+                } else if (roadChanged && lastIcon != null && lastIcon != TurnIcon.UNDEFINED) {
+                    // Unrecognised maneuver on a NEW step (the road moved on): blank
+                    // the arrow rather than keep showing the previous step's turn
+                    // next to the new road/distance - a stale arrow could point the
+                    // wrong way. Same step (road unchanged): hold the last arrow,
+                    // it's just a flaky tick.
+                    writes += DashWrite.TurnIcon(TurnIcon.UNDEFINED)
+                    lastIcon = TurnIcon.UNDEFINED
+                    iconChanged = true
                 }
 
                 // Road name (significant - always allowed).
-                val road = state.roadName?.trim()?.takeIf { it.isNotEmpty() }
-                if (road != null && road != lastRoad) {
-                    writes += DashWrite.TurnRoad(road)
+                if (roadChanged) {
+                    writes += DashWrite.TurnRoad(road!!)
                     lastRoad = road
                 }
 
-                // Throttle-eligible labels: distance / ETA / remaining. A
-                // provider-preformatted string bypasses the numeric formatter.
-                if (!throttled) {
-                    val distance = state.preformattedDistance
-                        ?: state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, state.units) }
-                    if (distance != null && distance != lastDistance) {
+                // Distance belongs to the step: when the icon/road changed it must
+                // go out with them (never a new arrow next to the old step's
+                // "0 m"), so the throttle only applies to label-only churn.
+                val throttled = withinWindow && !iconChanged && !roadChanged
+
+                val distance = state.preformattedDistance
+                    ?: state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, state.units) }
+                if (distance != null && distance != lastDistance) {
+                    if (throttled) {
+                        hasThrottledChanges = true
+                    } else {
                         writes += DashWrite.TurnDistance(distance)
                         lastDistance = distance
                     }
+                }
 
-                    val eta: String? = when {
-                        state.preformattedEta != null -> state.preformattedEta
-                        state.remainingTimeSeconds != null -> {
-                            val candidate = EtaFormatter.etaEpochMs(state.remainingTimeSeconds, state.producedAtMs)
-                            if (EtaFormatter.shouldUpdate(lastEtaEpochMs, candidate, etaDeadbandMs)) {
+                // ETA / remaining: throttle-eligible (they never change per step).
+                val labelsThrottled = withinWindow
+                val eta: String? = when {
+                    state.preformattedEta != null -> state.preformattedEta
+                    state.remainingTimeSeconds != null -> {
+                        val candidate = EtaFormatter.etaEpochMs(state.remainingTimeSeconds, state.producedAtMs)
+                        if (EtaFormatter.shouldUpdate(lastEtaEpochMs, candidate, etaDeadbandMs)) {
+                            if (labelsThrottled) {
+                                hasThrottledChanges = true
+                                null
+                            } else {
                                 lastEtaEpochMs = candidate
                                 EtaFormatter.format(candidate, zone)
-                            } else {
-                                null
                             }
+                        } else {
+                            null
                         }
-                        else -> null
                     }
-                    if (eta != null && eta != lastEtaText) {
+                    else -> null
+                }
+                if (eta != null && eta != lastEtaText) {
+                    if (labelsThrottled) {
+                        hasThrottledChanges = true
+                    } else {
                         writes += DashWrite.Eta(eta)
                         lastEtaText = eta
                     }
+                }
 
-                    val remaining = state.preformattedRemaining
-                        ?: state.remainingDistanceMeters?.let { DistanceFormatter.format(it, state.units) }
-                    if (remaining != null && remaining != lastRemaining) {
+                val remaining = state.preformattedRemaining
+                    ?: state.remainingDistanceMeters?.let { DistanceFormatter.format(it, state.units) }
+                if (remaining != null && remaining != lastRemaining) {
+                    if (labelsThrottled) {
+                        hasThrottledChanges = true
+                    } else {
                         writes += DashWrite.RemainingDistance(remaining)
                         lastRemaining = remaining
                     }
                 }
 
                 lastSession = NavSessionState.ENROUTE
-                if (writes.isNotEmpty()) lastEmitMs = state.producedAtMs
+                if (writes.isNotEmpty()) lastEmitMs = now
             }
         }
         return writes
@@ -187,6 +237,7 @@ class KtmNavigationEncoder(
         lastEtaText = null
         lastEtaEpochMs = null
         lastRemaining = null
-        lastEmitMs = Long.MIN_VALUE
+        lastEmitMs = null
+        hasThrottledChanges = false
     }
 }

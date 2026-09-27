@@ -9,6 +9,7 @@ import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.net.ConnectivityMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
@@ -51,6 +52,9 @@ class NavigationCoordinator(
     private var job: Job? = null
     /** Last offline value we surfaced as a dash banner, so we only alert on change. */
     private var lastOfflineBanner = false
+    /** Latest snapshot seen (offline merged), for the throttle's trailing flush. */
+    private var latestState: NormalizedNavigationState? = null
+    private var flushJob: Job? = null
 
     fun start() {
         provider.attach()
@@ -60,6 +64,7 @@ class NavigationCoordinator(
     fun stop() {
         job?.cancel()
         job = null
+        flushJob?.cancel(); flushJob = null
         if (lastOfflineBanner) { lastOfflineBanner = false; output.offlineBanner(false) }
         provider.detach()
     }
@@ -72,6 +77,8 @@ class NavigationCoordinator(
     fun setProvider(newProvider: NavigationProvider) {
         if (newProvider === provider) return
         job?.cancel()
+        flushJob?.cancel(); flushJob = null
+        latestState = null
         provider.detach()
         encoder.reset()
         provider = newProvider
@@ -85,7 +92,7 @@ class NavigationCoordinator(
             state.copy(offline = !online)
         }
             .onEach { state ->
-                apply(encoder.encode(state))
+                encodeAndApply(state)
                 maybeOfflineBanner(activeProvider, state)
                 maybeRevertToFallback(state)
             }
@@ -126,7 +133,30 @@ class NavigationCoordinator(
     fun onReAuth() {
         scope.launch {
             encoder.reset()
-            apply(encoder.encode(provider.state.value.copy(offline = !isOnline.value)))
+            encodeAndApply(provider.state.value.copy(offline = !isOnline.value))
+        }
+    }
+
+    private fun encodeAndApply(state: NormalizedNavigationState) {
+        latestState = state
+        apply(encoder.encode(state))
+        scheduleTrailingFlush()
+    }
+
+    /**
+     * The encoder throttles label-only churn. If it held a change back, re-encode
+     * the latest snapshot once the window has passed so the final value of a
+     * burst always reaches the dash (a new snapshot arriving first supersedes it).
+     */
+    private fun scheduleTrailingFlush() {
+        if (!encoder.hasThrottledChanges) return
+        if (flushJob?.isActive == true) return
+        flushJob = scope.launch {
+            delay(encoder.minIntervalMs)
+            latestState?.let { apply(encoder.encode(it)) }
+            // A second hold-back (rare) chains another flush.
+            flushJob = null
+            scheduleTrailingFlush()
         }
     }
 
