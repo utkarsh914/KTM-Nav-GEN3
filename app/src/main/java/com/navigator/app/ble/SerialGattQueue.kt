@@ -1,6 +1,8 @@
 package com.navigator.app.ble
 
 import java.util.ArrayDeque
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Serialises GATT operations - the Android BLE stack allows only one outstanding
@@ -15,14 +17,29 @@ import java.util.ArrayDeque
  * next op, and [clear] on teardown. Thread-safe: ops are enqueued/finished on BLE
  * binder threads while teardown paths clear the queue from the main thread
  * (ArrayDeque itself is not thread-safe, hence the lock).
+ *
+ * Self-healing: an in-flight op is released after [opTimeoutMs] if its
+ * completion callback never arrives (a known Android quirk on a link that stays
+ * up), and an op that throws is released immediately - either used to leave the
+ * queue busy forever, freezing every later dash write until a reconnect.
  */
-internal class SerialGattQueue {
+internal class SerialGattQueue(
+    private val opTimeoutMs: Long = 2_000L,
+    /** Schedules [action] after [delayMs]; returns a canceller. Injectable for tests. */
+    private val scheduler: (delayMs: Long, action: () -> Unit) -> (() -> Unit) = ::defaultSchedule,
+    /** Called (outside the lock) when an op timed out or threw, e.g. to log/resync. */
+    private val onOpFailed: (reason: String) -> Unit = {},
+) {
 
     private class Op(val coalesceKey: java.util.UUID?, val run: () -> Unit)
 
     private val lock = Any()
     private val queue = ArrayDeque<Op>()
     private var busy = false
+    /** Id of the op currently in flight (0 = none); guards timeout/throw releases. */
+    private var inFlightId = 0L
+    private var nextId = 0L
+    private var cancelTimeout: (() -> Unit)? = null
 
     fun enqueue(coalesceKey: java.util.UUID? = null, op: () -> Unit) {
         synchronized(lock) {
@@ -35,18 +52,45 @@ internal class SerialGattQueue {
     }
 
     private fun runNext() {
-        val next = synchronized(lock) {
+        val (next, id) = synchronized(lock) {
             if (busy) return
             val op = queue.pollFirst() ?: return
             busy = true
-            op
+            val id = ++nextId
+            inFlightId = id
+            cancelTimeout = scheduler(opTimeoutMs) { release(id, "timed out after ${opTimeoutMs}ms") }
+            op to id
         }
-        next.run()
+        try {
+            next.run()
+        } catch (e: Throwable) {
+            release(id, "threw: $e")
+        }
+    }
+
+    /** Release op [id] if it is still the one in flight (timeout / exception path). */
+    private fun release(id: Long, reason: String) {
+        val released = synchronized(lock) {
+            if (!busy || inFlightId != id) return
+            releaseLocked()
+            true
+        }
+        if (released) {
+            onOpFailed(reason)
+            runNext()
+        }
+    }
+
+    private fun releaseLocked() {
+        busy = false
+        inFlightId = 0
+        cancelTimeout?.invoke()
+        cancelTimeout = null
     }
 
     /** Release the queue so the next op can run. Call from each GATT completion callback. */
     fun finish() {
-        synchronized(lock) { busy = false }
+        synchronized(lock) { releaseLocked() }
         runNext()
     }
 
@@ -54,7 +98,18 @@ internal class SerialGattQueue {
     fun clear() {
         synchronized(lock) {
             queue.clear()
-            busy = false
+            releaseLocked()
+        }
+    }
+
+    private companion object {
+        private val timer = Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "gatt-op-timeout").apply { isDaemon = true }
+        }
+
+        fun defaultSchedule(delayMs: Long, action: () -> Unit): () -> Unit {
+            val f = timer.schedule(action, delayMs, TimeUnit.MILLISECONDS)
+            return { f.cancel(false) }
         }
     }
 }

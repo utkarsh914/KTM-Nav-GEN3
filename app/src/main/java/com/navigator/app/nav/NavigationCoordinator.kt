@@ -49,6 +49,10 @@ class NavigationCoordinator(
     private val isOnline: StateFlow<Boolean> = ConnectivityMonitor.isOnline,
     /** Wall clock (same base as [NormalizedNavigationState.producedAtMs]). */
     private val wallClockMs: () -> Long = System::currentTimeMillis,
+    /** Full guidance re-send period while navigating (0 = off). Recovers from a
+     *  lost write or the dash dropping its display state, which the encoder's
+     *  dedup would otherwise never repair until the value changed. */
+    private val refreshIntervalMs: Long = 15_000L,
 ) {
     private var provider: NavigationProvider = fallbackProvider
 
@@ -64,12 +68,25 @@ class NavigationCoordinator(
      *  (ENROUTE/REROUTING) since - see [maybeRevertToFallback]. */
     private var providerSelectedAtMs = 0L
     private var sawActiveSession = false
+    private var refreshJob: Job? = null
+
+    /** True while the dash is showing live guidance from the active provider. */
+    val isGuidanceActive: Boolean get() = encoder.isGuidanceOnDash
 
     fun start() {
         providerSelectedAtMs = wallClockMs()
         sawActiveSession = false
         provider.attach()
         collect()
+        if (refreshIntervalMs > 0) {
+            refreshJob?.cancel()
+            refreshJob = scope.launch {
+                while (true) {
+                    delay(refreshIntervalMs)
+                    if (encoder.isGuidanceOnDash) resyncNow()
+                }
+            }
+        }
     }
 
     /**
@@ -81,6 +98,7 @@ class NavigationCoordinator(
         job?.cancel()
         job = null
         flushJob?.cancel(); flushJob = null
+        refreshJob?.cancel(); refreshJob = null
         if (lastOfflineBanner) { lastOfflineBanner = false; output.offlineBanner(false) }
         if (provider === fallbackProvider) provider.detach()
     }
@@ -166,10 +184,23 @@ class NavigationCoordinator(
      * re-apply the current snapshot, so a reconnect never leaves the dash stale.
      */
     fun onReAuth() {
-        scope.launch {
-            encoder.reset()
-            encodeAndApply(provider.state.value.copy(offline = !isOnline.value))
-        }
+        scope.launch { reAuthNow() }
+    }
+
+    /** [onReAuth] for callers already on the coordinator's (main) thread. */
+    fun reAuthNow() = resyncNow()
+
+    /**
+     * A dash write failed (or timed out): the encoder believes it was delivered,
+     * so re-send the whole current guidance. No-op when no guidance is live.
+     */
+    fun resync() {
+        scope.launch { if (encoder.isGuidanceOnDash) resyncNow() }
+    }
+
+    private fun resyncNow() {
+        encoder.reset()
+        encodeAndApply(provider.state.value.copy(offline = !isOnline.value))
     }
 
     private fun encodeAndApply(state: NormalizedNavigationState) {

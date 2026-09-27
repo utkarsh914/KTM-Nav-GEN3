@@ -58,6 +58,10 @@ class BccuConnectionService : LifecycleService() {
         private const val GUIDANCE_CLEAR_DELAY_MS = 4000L
         /** How long the "Hi <name>!" connect greeting stays on the center display before clearing. */
         private const val GREETING_MS = 6000L
+        private const val RESYNC_MIN_INTERVAL_MS = 3_000L
+        private const val RESYNC_DELAY_MS = 300L
+        /** Below this, TURN_ROAD payloads (up to ~130 B encrypted) exceed MTU-3. */
+        private const val MIN_COMFORTABLE_MTU = 185
         /**
          * If a handshake doesn't reach AUTHENTICATED within this long, drop the
          * link and re-scan. Armed at LINK-UP (not on m1): a reused/zombie ACL
@@ -172,15 +176,17 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    private var gatt: BluetoothGatt? = null
-    private var currentDeviceAddress: String? = null
-    private var tempIv: ByteArray? = null
-    private var tempSecret: ByteArray? = null
-    private var sessionKeys: List<ByteArray>? = null
-    private var activeSessionKey: ByteArray? = null
-    private var clearJob: Job? = null
-    private var marqueeJob: Job? = null
-    private var guidanceClearJob: Job? = null
+    // Written from GATT binder callbacks and read on the main thread (and vice
+    // versa) - @Volatile so each thread sees the other's latest value.
+    @Volatile private var gatt: BluetoothGatt? = null
+    @Volatile private var currentDeviceAddress: String? = null
+    @Volatile private var tempIv: ByteArray? = null
+    @Volatile private var tempSecret: ByteArray? = null
+    @Volatile private var sessionKeys: List<ByteArray>? = null
+    @Volatile private var activeSessionKey: ByteArray? = null
+    @Volatile private var clearJob: Job? = null
+    @Volatile private var marqueeJob: Job? = null
+    @Volatile private var guidanceClearJob: Job? = null
     private var lastNotificationIcon: BccuProtocol.NotificationIcon = BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
     private var reconnectWatchdogJob: Job? = null
     private var handshakeTimeoutJob: Job? = null
@@ -194,7 +200,32 @@ class BccuConnectionService : LifecycleService() {
     // Serialises all GATT reads/writes (Android allows one outstanding op at a
     // time); coalescing keys drop stale display writes on a degraded link. See
     // [SerialGattQueue].
-    private val gattOps = SerialGattQueue()
+    private val gattOps = SerialGattQueue(
+        onOpFailed = { reason ->
+            AppLogger.log("BLE", "!! GATT op $reason - released queue")
+            requestGuidanceResync()
+        },
+    )
+
+    /** Characteristics that make up the center guidance view. A failed write to
+     *  one of them triggers a resync (the encoder believes it was delivered and
+     *  its dedup would otherwise never re-send it). */
+    private val guidanceUuids = setOf(
+        BccuProtocol.NAVIGATION_STATE, BccuProtocol.TURN_ICON, BccuProtocol.TURN_DISTANCE,
+        BccuProtocol.TURN_ROAD, BccuProtocol.ETA, BccuProtocol.REMAINING_DISTANCE,
+    )
+    @Volatile private var lastResyncRequestMs = 0L
+
+    /** Re-send the full current guidance (rate-limited so a flaky link can't loop). */
+    private fun requestGuidanceResync() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastResyncRequestMs < RESYNC_MIN_INTERVAL_MS) return
+        lastResyncRequestMs = now
+        lifecycleScope.launch {
+            delay(RESYNC_DELAY_MS)
+            if (hasSession()) navCoordinator?.resync()
+        }
+    }
 
     private var connectingSinceMs: Long = 0L
     private var pendingAutoConnect: Boolean = false
@@ -668,6 +699,11 @@ class BccuConnectionService : LifecycleService() {
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
             try {
                 AppLogger.log("BLE", "onMtuChanged mtu=$mtu status=$status")
+                if (status != BluetoothGatt.GATT_SUCCESS || mtu < MIN_COMFORTABLE_MTU) {
+                    // Long road names would need prepare/execute (long) writes,
+                    // which the BCCU may not support - surface it in the logs.
+                    AppLogger.log("BLE", "!! MTU negotiation weak (mtu=$mtu status=$status) - long labels may fail to write")
+                }
                 if (g.getService(BccuProtocol.MAIN_SERVICE) == null) {
                     // MTU event raced ahead of service discovery (seen on a reused
                     // ACL, field log 19:17:15). onServicesDiscovered's requestMtu
@@ -686,6 +722,9 @@ class BccuConnectionService : LifecycleService() {
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onDescriptorWrite ${d.characteristic?.uuid} -> $statusName")
+                // A late completion from a recycled client must not release the
+                // CURRENT connection's in-flight op (two outstanding ops -> BUSY).
+                if (g !== gatt) return
                 gattOps.finish()
             } catch (e: Exception) {
                 AppLogger.log("BLE", "!! onDescriptorWrite threw: $e")
@@ -696,7 +735,9 @@ class BccuConnectionService : LifecycleService() {
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onCharacteristicWrite ${c.uuid} -> $statusName")
+                if (g !== gatt) return
                 gattOps.finish()
+                if (status != BluetoothGatt.GATT_SUCCESS && c.uuid in guidanceUuids) requestGuidanceResync()
             } catch (e: Exception) {
                 AppLogger.log("BLE", "!! onCharacteristicWrite threw: $e")
             }
@@ -731,7 +772,7 @@ class BccuConnectionService : LifecycleService() {
             } catch (e: Exception) {
                 AppLogger.log("Probe", "!! onCharacteristicRead threw: $e")
             } finally {
-                gattOps.finish()
+                if (g === gatt) gattOps.finish()
             }
         }
 
@@ -741,7 +782,7 @@ class BccuConnectionService : LifecycleService() {
             } catch (e: Exception) {
                 AppLogger.log("Probe", "!! onCharacteristicRead threw: $e")
             } finally {
-                gattOps.finish()
+                if (g === gatt) gattOps.finish()
             }
         }
     }
@@ -915,9 +956,14 @@ class BccuConnectionService : LifecycleService() {
                     enableNotification(BccuProtocol.TBT_NAV_REQUEST)
                     sendNavigationState(guidanceOn = true, gpsIconOn = true)
                     // Re-push any active guidance snapshot so a reconnect never
-                    // leaves the TFT stale (encoder re-sends state + guidance).
-                    navCoordinator?.onReAuth()
-                    sendGreeting()
+                    // leaves the TFT stale, THEN greet only if nothing is being
+                    // guided. Both on main, in order: the greeting used to race
+                    // the re-push from this binder thread, and its 6 s clear could
+                    // then blank live guidance.
+                    lifecycleScope.launch {
+                        navCoordinator?.reAuthNow()
+                        if (navCoordinator?.isGuidanceActive != true) sendGreeting()
+                    }
                     // Diagnostics only: reads device info / VIN and probes the
                     // undocumented 0200/0300 services, queuing ~20 serialised GATT
                     // ops for ~10s after every auth (results are logged, never used
@@ -1004,6 +1050,9 @@ class BccuConnectionService : LifecycleService() {
 
     fun sendTurnIcon(icon: BccuProtocol.TurnIcon, visibility: BccuProtocol.Visibility = BccuProtocol.Visibility.FULL) {
         val payload = BccuProtocol.buildTurnIconPayload(icon, visibility)
+        // Live guidance: cancel a pending greeting / "nav ended" clear, like
+        // sendGuidance does (an icon-only update used to let it fire).
+        if (visibility != BccuProtocol.Visibility.OFF) guidanceClearJob?.cancel()
         if (sendEncrypted(BccuProtocol.TURN_ICON, payload, coalesce = true)) {
             AppLogger.log("Dash", "Sending TURN_ICON = ${icon.name}")
         } else {
@@ -1031,6 +1080,7 @@ class BccuConnectionService : LifecycleService() {
         marqueeJob?.cancel()
         lastNotificationIcon = icon
         bannerOwnedByMessage = true
+        offlineBannerShown = false // any new message replaces our "Offline" banner
 
         val marquee = AppSettings(this).marqueeEnabled && text.length > NOTIFICATION_BANNER_CHARS
         if (marquee) {
@@ -1108,8 +1158,8 @@ class BccuConnectionService : LifecycleService() {
      */
     private fun showOfflineBanner(show: Boolean) {
         if (show) {
-            offlineBannerShown = true
             sendNotification("Offline", BccuProtocol.NotificationIcon.WARNING)
+            offlineBannerShown = true
         } else if (offlineBannerShown) {
             offlineBannerShown = false
             clearNotificationDisplay()
@@ -1131,6 +1181,7 @@ class BccuConnectionService : LifecycleService() {
      */
     private fun clearNotificationDisplay() {
         bannerOwnedByMessage = false
+        offlineBannerShown = false
         val payload = BccuProtocol.buildNotificationPayload(lastNotificationIcon, "", BccuProtocol.Visibility.OFF)
         if (sendEncrypted(BccuProtocol.NOTIFICATION, payload, coalesce = true)) {
             AppLogger.log("Dash", "Clearing NOTIFICATION display (visibility OFF, icon=${lastNotificationIcon.name})")
@@ -1417,6 +1468,7 @@ class BccuConnectionService : LifecycleService() {
             AppLogger.log("BLE", "writeCharacteristic $uuid (${data.size} bytes) queued=$accepted")
             if (!accepted) {
                 gattOps.finish()
+                if (uuid in guidanceUuids) requestGuidanceResync()
             }
         }
     }
