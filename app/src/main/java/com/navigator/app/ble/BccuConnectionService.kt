@@ -221,7 +221,17 @@ class BccuConnectionService : LifecycleService() {
             scope = lifecycleScope,
             fallbackProvider = com.navigator.app.nav.providers.NotificationNavProvider,
             output = output,
-        ).also { it.start() }
+        ).also {
+            it.start()
+            // Service (re)started mid-trip (bike connected after in-app nav began,
+            // or the service was recreated): the Nav SDK provider is only selected
+            // when a trip STARTS, so pick it up here or the dash gets nothing.
+            val sdk = com.navigator.app.nav.providers.GoogleNavSdkProvider
+            if (sdk.isTripInProgress) {
+                AppLogger.log("Nav", "In-app trip already in progress - driving dash from Nav SDK")
+                it.setProvider(sdk)
+            }
+        }
     }
 
     /** Switch the active navigation provider (notification <-> Google Nav SDK). */

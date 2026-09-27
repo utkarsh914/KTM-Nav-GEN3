@@ -84,6 +84,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     override fun attach() { /* driven by the controller once the navigator is ready */ }
 
+    /** True while an in-app trip is requested or being guided. */
+    val isTripInProgress: Boolean
+        get() = _currentDestination.value != null || _state.value.sessionState.let {
+            it == NavSessionState.ENROUTE || it == NavSessionState.REROUTING
+        }
+
     override fun detach() {
         stopNavigation()
     }
@@ -112,6 +118,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             return
         }
         _currentDestination.value = dest
+        // Drop the previous trip's terminal state (STOPPED/ARRIVED) so nothing
+        // collecting this flow for the new trip mistakes it for this trip ending.
+        _state.value = NormalizedNavigationState(
+            sessionState = NavSessionState.IDLE,
+            producedAtMs = System.currentTimeMillis(),
+        )
         // Intermediate stops (in order) followed by the final destination. For a
         // plain single-destination trip this is a one-element list.
         val waypoints = buildWaypoints(dest)

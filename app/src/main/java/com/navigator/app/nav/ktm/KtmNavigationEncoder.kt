@@ -36,6 +36,9 @@ class KtmNavigationEncoder(
 ) {
     private var lastSession: NavSessionState = NavSessionState.IDLE
     private var guidanceOnDash = false
+
+    /** True while the encoder believes the dash is showing guidance. */
+    val isGuidanceOnDash: Boolean get() = guidanceOnDash
     /** Last GPS/nav status bit sent in NAVIGATION_STATE. Flipped off while offline
      *  so the dash shows a degraded-navigation indicator (reflection of
      *  [NormalizedNavigationState.offline]). */

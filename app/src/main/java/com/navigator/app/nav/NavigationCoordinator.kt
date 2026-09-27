@@ -47,32 +47,49 @@ class NavigationCoordinator(
     private val encoder: KtmNavigationEncoder = KtmNavigationEncoder(),
     /** Internet reachability; merged into each snapshot as [NormalizedNavigationState.offline]. */
     private val isOnline: StateFlow<Boolean> = ConnectivityMonitor.isOnline,
+    /** Wall clock (same base as [NormalizedNavigationState.producedAtMs]). */
+    private val wallClockMs: () -> Long = System::currentTimeMillis,
 ) {
     private var provider: NavigationProvider = fallbackProvider
+
+    /** The provider currently driving the dash. */
+    val activeProvider: NavigationProvider get() = provider
     private var job: Job? = null
     /** Last offline value we surfaced as a dash banner, so we only alert on change. */
     private var lastOfflineBanner = false
     /** Latest snapshot seen (offline merged), for the throttle's trailing flush. */
     private var latestState: NormalizedNavigationState? = null
     private var flushJob: Job? = null
+    /** When the current provider was selected, and whether it has been live
+     *  (ENROUTE/REROUTING) since - see [maybeRevertToFallback]. */
+    private var providerSelectedAtMs = 0L
+    private var sawActiveSession = false
 
     fun start() {
+        providerSelectedAtMs = wallClockMs()
+        sawActiveSession = false
         provider.attach()
         collect()
     }
 
+    /**
+     * Stop driving the dash (service teardown). A routing provider is NOT
+     * detached here: detaching it stops the rider's in-app trip, and the BLE
+     * service going away (bike off / disconnect) must not cancel navigation.
+     */
     fun stop() {
         job?.cancel()
         job = null
         flushJob?.cancel(); flushJob = null
         if (lastOfflineBanner) { lastOfflineBanner = false; output.offlineBanner(false) }
-        provider.detach()
+        if (provider === fallbackProvider) provider.detach()
     }
 
     /**
      * Switch the active navigation source (e.g. notification <-> Google Nav SDK).
-     * Detaches the old provider, resets the encoder so the new provider's first
-     * snapshot is sent in full, and starts collecting the new one.
+     * Detaches the old provider, blanks whatever the old one left on the dash,
+     * resets the encoder so the new provider's first snapshot is sent in full,
+     * and starts collecting the new one.
      */
     fun setProvider(newProvider: NavigationProvider) {
         if (newProvider === provider) return
@@ -80,8 +97,13 @@ class NavigationCoordinator(
         flushJob?.cancel(); flushJob = null
         latestState = null
         provider.detach()
+        // Don't leave the old source's turn on the dash until the new source's
+        // first update (e.g. mirrored Maps guidance when in-app nav starts).
+        if (encoder.isGuidanceOnDash) output.clearNow()
         encoder.reset()
         provider = newProvider
+        providerSelectedAtMs = wallClockMs()
+        sawActiveSession = false
         provider.attach()
         collect()
     }
@@ -118,11 +140,24 @@ class NavigationCoordinator(
      * STOPPED - hand the dash back to the notification-mirroring fallback so
      * mirroring keeps working afterwards. Posted to [scope] so we don't cancel
      * the collector from inside its own emission.
+     *
+     * Only a GENUINE end counts: the provider's StateFlow replays its last value
+     * on collection, so right after switching to it for a new trip we'd first see
+     * the PREVIOUS trip's STOPPED/ARRIVED - reverting on that killed the new trip
+     * (or left the dash blank). A terminal state reverts only if this session
+     * was seen live, or it was produced after the provider was selected (e.g.
+     * the new route failed to compute).
      */
     private fun maybeRevertToFallback(state: NormalizedNavigationState) {
         if (provider === fallbackProvider) return
-        if (state.sessionState == NavSessionState.ARRIVED || state.sessionState == NavSessionState.STOPPED) {
-            scope.launch { setProvider(fallbackProvider) }
+        if (state.sessionState.isActiveNav()) {
+            sawActiveSession = true
+            return
+        }
+        val terminal = state.sessionState == NavSessionState.ARRIVED || state.sessionState == NavSessionState.STOPPED
+        if (terminal && (sawActiveSession || state.producedAtMs >= providerSelectedAtMs)) {
+            val from = provider
+            scope.launch { if (provider === from) setProvider(fallbackProvider) }
         }
     }
 
