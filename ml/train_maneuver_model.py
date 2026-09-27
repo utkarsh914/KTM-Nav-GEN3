@@ -37,6 +37,16 @@ EPOCHS = 30
 def dash_code(name: str) -> int:
     n = name.replace("maneuver_", "")
     L, R = "left" in n, "right" in n
+    # Named (non-numeric) classes the app resolves itself (ManeuverClassifier):
+    # an unqualified merge takes the rider's driving-side lane, and a roundabout
+    # icon with no exit direction gives no arrow (the text's exit ordinal, or
+    # nothing, decides) - same as the SDK path's ROUNDABOUT_GENERIC.
+    # Maps draws merge / merge_left / merge_right with the SAME bitmap (verified
+    # pixel-identical), so they must be one class; the app picks the lane.
+    if n.startswith("merge"): return "merge"
+    if n in ("roundabout_enter_cw", "roundabout_enter_ccw",
+             "roundabout_enter_and_exit_cw", "roundabout_enter_and_exit_ccw"):
+        return "roundabout_generic"
     if n.startswith("roundabout"):
         # Clockwise circulation = LEFT-hand traffic (India, UK...) = RH glyph
         # bank (26..41); counter-clockwise = LH bank (42..57).
@@ -58,7 +68,6 @@ def dash_code(name: str) -> int:
     # different labels. We therefore map by the icon's visual SHAPE, not its
     # highway semantics. (Only "merge" is a visually distinct symbol.)
     if "u_turn" in n:  return 3 if R else 4
-    if "merge" in n:   return 14 if R else 15          # distinct merge symbol
     if "keep" in n or "fork" in n: return 5 if R else 10
     if "slight" in n:  return 6 if R else 11           # LIGHT (turn/on_ramp/off_ramp)
     if "normal" in n:  return 7 if R else 12           # QUITE
@@ -109,7 +118,7 @@ def build_dataset():
     code_to_bases = collections.defaultdict(list)
     for f in files:
         code_to_bases[dash_code(os.path.basename(f)[:-4])].append(Image.open(f).convert("RGBA"))
-    codes = sorted(code_to_bases)
+    codes = sorted(code_to_bases, key=str)
     code_to_idx = {c: i for i, c in enumerate(codes)}
     X, y = [], []
     for code, bases in code_to_bases.items():

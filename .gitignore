@@ -18,3 +18,4 @@ ml/_saved_model/
 ml/dataset/
 ml/*.log
 ml/*.tflite
+__pycache__/

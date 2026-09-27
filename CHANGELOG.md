@@ -13,6 +13,9 @@
   right for most roundabouts); the Maps icon is preferred, else the ordinal is converted to an
   approximate angle for the driving side. The bundled model's mis-labelled roundabout classes are
   corrected at runtime, and the training script is fixed for the next retrain.
+- Retrained the on-device maneuver model with the corrected labels (all 64 Google Maps icons
+  classified correctly on-device). Merge icons, which Maps draws identically for left/right, are one
+  class resolved by driving side; direction-less roundabout icons give no arrow.
 - Starting a second in-app trip no longer bounces straight back to notification mirroring (the
   previous trip's "stopped" state was mistaken for the new trip ending). In-app guidance is picked
   up when the bike connects mid-trip, switching sources clears the old guidance, and the service

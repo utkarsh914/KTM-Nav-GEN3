@@ -39,15 +39,14 @@ object ManeuverClassifier {
     // currently-bundled model). A numeric entry is a dash TurnIcon binary code;
     // named entries are Google Maps icon-resource fall-backs.
     private val FALLBACK_LABELS = arrayOf(
-        "1", "11", "12", "13", "16", "17", "2", "21", "27", "29", "3", "31",
-        "32", "33", "35", "37", "39", "4", "41", "43", "45", "47", "48", "49",
-        "51", "53", "55", "57", "6", "7", "8",
-        "big_trans_directions_roundabout", "big_trans_directions_roundabout_lhs", "merge",
+        "10", "11", "12", "13", "2", "21", "27", "29", "3", "31", "33", "35", "37", "39",
+        "4", "43", "45", "47", "49", "5", "51", "53", "55", "6", "7", "8",
+        "merge", "roundabout_generic",
     )
     @Volatile private var labels: Array<String>? = null
     /** True when the loaded labels file predates the roundabout-label fix
      *  (no [LegacyModelRemap.V2_HEADER]); its outputs go through [LegacyModelRemap]. */
-    @Volatile private var legacyLabels = false
+    @Volatile private var legacyLabels = false // embedded fallback matches the v2 model
 
     private fun labels(context: Context): Array<String> {
         labels?.let { return it }
@@ -76,6 +75,8 @@ object ManeuverClassifier {
     private val NAMED: Map<String, BccuProtocol.TurnIcon> = mapOf(
         "big_trans_directions_roundabout" to BccuProtocol.TurnIcon.RAB_SECT_8_RH,
         "big_trans_directions_roundabout_lhs" to BccuProtocol.TurnIcon.RAB_SECT_8_LH,
+        // v2 models: a roundabout icon with no exit direction -> no arrow.
+        "roundabout_generic" to BccuProtocol.TurnIcon.UNDEFINED,
     )
 
     @Volatile private var interpreter: Interpreter? = null

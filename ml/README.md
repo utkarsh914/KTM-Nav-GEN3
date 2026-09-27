@@ -11,17 +11,18 @@ Google Maps ships its maneuver icons as **named** drawables
 …). The filename *is* the ground-truth label, so we get a perfectly-labeled
 dataset with zero hand-labeling and never touch anyone's trained weights.
 
-## 1. Build the dataset (already done once, committed in `dataset/`)
+## 1. Build the dataset (`dataset/` is gitignored - regenerate it)
 On a phone/emulator with Google Maps installed and a debug OpenDash build:
 
 ```
-adb shell am start -n com.navigator.app/.ui.MainActivity
-adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS
-adb exec-out run-as com.navigator.app tar c files/maneuver_dataset | tar x -C ml/
+adb shell am start -n com.navigator.ktm/com.navigator.app.ui.MainActivity
+adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS -p com.navigator.ktm
+adb exec-out run-as com.navigator.ktm tar c files/maneuver_dataset | tar x -C /tmp/ && mv /tmp/files/maneuver_dataset ml/dataset
 ```
 
 `MapsIconExporter` renders each `maneuver_*` drawable from the installed Maps
 package, tinted white (matching the notification), to `dataset/<name>.png`.
+A Play Store emulator image ships Google Maps, so no phone is needed.
 Re-run after a Google Maps update to refresh the icons. To cover more nav apps,
 extend `MANEUVER_NAMES` / the package in `MapsIconExporter` and re-export.
 
