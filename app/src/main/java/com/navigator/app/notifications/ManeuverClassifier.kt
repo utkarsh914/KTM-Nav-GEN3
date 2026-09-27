@@ -133,15 +133,24 @@ object ManeuverClassifier {
 
     private fun labelToIcon(label: String, drivingSide: DrivingSide): BccuProtocol.TurnIcon? {
         val n = label.toIntOrNull()
-        if (n != null) return BccuProtocol.TurnIcon.fromBinary(n)
+        if (n != null) {
+            // Merge classes (trained from Maps' merge_left -> 15, merge_right -> 14)
+            // go through the shared helper so the merge direction is decided in
+            // exactly one place (KtmManeuverMapping.enterHighwayIcon).
+            return when (n) {
+                BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE.binary ->
+                    KtmManeuverMapping.enterHighwayIcon(mergeLeft = true)
+                BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE.binary ->
+                    KtmManeuverMapping.enterHighwayIcon(mergeLeft = false)
+                else -> BccuProtocol.TurnIcon.fromBinary(n)
+            }
+        }
         // "merge" has no left/right in the label - pick the lane from driving side
         // (left-hand traffic merges on the left), consistent with the text path.
         if (label == "merge") {
-            return if (KtmManeuverMapping.rampOnLeftFor(drivingSide)) {
-                BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE
-            } else {
-                BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
-            }
+            return KtmManeuverMapping.enterHighwayIcon(
+                mergeLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide),
+            )
         }
         return NAMED[label]
     }

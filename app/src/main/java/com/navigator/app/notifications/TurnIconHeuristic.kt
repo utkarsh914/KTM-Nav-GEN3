@@ -182,11 +182,17 @@ object TurnIconHeuristic {
         // fixed right-lane guess.
         if (t.contains("merge")) {
             val onLeft = if (left || right) left else rampLeft
-            return if (onLeft) BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+            return KtmManeuverMapping.enterHighwayIcon(mergeLeft = onLeft)
         }
         // Take a motorway exit / off-ramp. Same rule: explicit side wins, else the
         // driving-side lane (was: required an explicit side or fell through).
-        if (t.contains("exit") || t.contains("ramp") || t.contains("off-ramp")) {
+        // BUT an explicit turn onto an on-ramp ("Turn right onto the ramp to NH
+        // 48") is a surface-road turn, not a highway exit - let it fall through to
+        // the plain-turn branch below so the dash shows the real turn, matching
+        // the SDK path's ON_RAMP_* -> turn-arrow mapping.
+        val turnOntoRamp = (left || right) &&
+            (t.contains("turn") || t.contains("onto the ramp") || t.contains("on-ramp") || t.contains("on ramp"))
+        if (!turnOntoRamp && (t.contains("exit") || t.contains("ramp") || t.contains("off-ramp"))) {
             val onLeft = if (left || right) left else rampLeft
             return if (onLeft) BccuProtocol.TurnIcon.LEAVE_HIGHWAY_LEFT_LANE else BccuProtocol.TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
         }

@@ -31,13 +31,38 @@ class KtmManeuverMappingTest {
     @Test fun keepsForksRampsMerges() {
         assertEquals(TurnIcon.KEEP_LEFT, map(KEEP_LEFT))
         assertEquals(TurnIcon.KEEP_RIGHT, map(FORK_RIGHT))
+        assertEquals(TurnIcon.KEEP_LEFT, map(ON_RAMP_KEEP_LEFT))
+        assertEquals(TurnIcon.KEEP_RIGHT, map(OFF_RAMP_KEEP_RIGHT))
         assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_LEFT))
-        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(ON_RAMP_RIGHT))
-        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(ON_RAMP_SHARP_LEFT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(MERGE_RIGHT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, map(OFF_RAMP_LEFT))
+        assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, map(OFF_RAMP_SLIGHT_LEFT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE, map(OFF_RAMP_RIGHT))
-        assertEquals(TurnIcon.GO_STRAIGHT, map(MERGE_UNSPECIFIED))
+        assertEquals(TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE, map(OFF_RAMP_SLIGHT_RIGHT))
+        assertEquals(TurnIcon.GO_STRAIGHT, map(ON_RAMP_UNSPECIFIED))
         assertEquals(TurnIcon.GO_STRAIGHT, map(OFF_RAMP_UNSPECIFIED))
+    }
+
+    @Test fun onRampShowsTheActualTurnNotEnterHighway() {
+        // Regression: "Sharp right onto the ramp to NH 48" (ON_RAMP_SHARP_RIGHT)
+        // was sent as ENTER_HIGHWAY_RIGHT_LANE, whose dash arrow leans LEFT.
+        assertEquals(TurnIcon.HEAVY_RIGHT, map(ON_RAMP_SHARP_RIGHT))
+        assertEquals(TurnIcon.HEAVY_LEFT, map(ON_RAMP_SHARP_LEFT))
+        assertEquals(TurnIcon.QUITE_RIGHT, map(ON_RAMP_RIGHT))
+        assertEquals(TurnIcon.QUITE_LEFT, map(ON_RAMP_LEFT))
+        assertEquals(TurnIcon.LIGHT_RIGHT, map(ON_RAMP_SLIGHT_RIGHT))
+        assertEquals(TurnIcon.LIGHT_LEFT, map(ON_RAMP_SLIGHT_LEFT))
+    }
+
+    @Test fun sharpOffRampShowsHeavyTurn() {
+        assertEquals(TurnIcon.HEAVY_RIGHT, map(OFF_RAMP_SHARP_RIGHT))
+        assertEquals(TurnIcon.HEAVY_LEFT, map(OFF_RAMP_SHARP_LEFT))
+    }
+
+    @Test fun unspecifiedMergeUsesDrivingSideLane() {
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_UNSPECIFIED, drivingSide = DrivingSide.LEFT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(MERGE_UNSPECIFIED, drivingSide = DrivingSide.RIGHT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_UNSPECIFIED)) // unknown -> LHT default
     }
 
     @Test fun uTurnsDestinationsFerries() {

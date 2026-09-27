@@ -31,16 +31,32 @@ object KtmManeuverMapping {
 
             NormalizedManeuver.NAME_CHANGE,
             NormalizedManeuver.STRAIGHT,
-            NormalizedManeuver.MERGE_UNSPECIFIED,
             NormalizedManeuver.ON_RAMP_UNSPECIFIED,
             NormalizedManeuver.OFF_RAMP_UNSPECIFIED -> TurnIcon.GO_STRAIGHT
 
-            NormalizedManeuver.SLIGHT_LEFT -> TurnIcon.LIGHT_LEFT
-            NormalizedManeuver.LEFT -> TurnIcon.QUITE_LEFT
-            NormalizedManeuver.SHARP_LEFT -> TurnIcon.HEAVY_LEFT
-            NormalizedManeuver.SLIGHT_RIGHT -> TurnIcon.LIGHT_RIGHT
-            NormalizedManeuver.RIGHT -> TurnIcon.QUITE_RIGHT
-            NormalizedManeuver.SHARP_RIGHT -> TurnIcon.HEAVY_RIGHT
+            // ON_RAMP_<dir> is the turn you make FROM the surface road ONTO the
+            // ramp ("Sharp right onto the ramp to NH 48") - the rider is not on
+            // the highway yet; joining it is a separate, later MERGE_* step. So
+            // the dash must show the actual turn, graded by severity, NOT the
+            // enter-highway glyph (whose arrow leans the opposite way and pointed
+            // riders left before a sharp right). This also matches the
+            // notification-text and TFLite paths, which already map by turn shape.
+            NormalizedManeuver.SLIGHT_LEFT,
+            NormalizedManeuver.ON_RAMP_SLIGHT_LEFT -> TurnIcon.LIGHT_LEFT
+            NormalizedManeuver.LEFT,
+            NormalizedManeuver.ON_RAMP_LEFT -> TurnIcon.QUITE_LEFT
+            NormalizedManeuver.SHARP_LEFT,
+            NormalizedManeuver.ON_RAMP_SHARP_LEFT,
+            // A sharp exit is a real hairpin-ish turn; the gentle LEAVE_HIGHWAY
+            // split glyph would understate it.
+            NormalizedManeuver.OFF_RAMP_SHARP_LEFT -> TurnIcon.HEAVY_LEFT
+            NormalizedManeuver.SLIGHT_RIGHT,
+            NormalizedManeuver.ON_RAMP_SLIGHT_RIGHT -> TurnIcon.LIGHT_RIGHT
+            NormalizedManeuver.RIGHT,
+            NormalizedManeuver.ON_RAMP_RIGHT -> TurnIcon.QUITE_RIGHT
+            NormalizedManeuver.SHARP_RIGHT,
+            NormalizedManeuver.ON_RAMP_SHARP_RIGHT,
+            NormalizedManeuver.OFF_RAMP_SHARP_RIGHT -> TurnIcon.HEAVY_RIGHT
 
             // Ramp-keeps collapse to the plain KEEP_* arrow, NOT the dash's
             // HIGHWAY_KEEP_LEFT/RIGHT (18/19) codes. Those two codes are
@@ -58,23 +74,18 @@ object KtmManeuverMapping {
             NormalizedManeuver.ON_RAMP_KEEP_RIGHT,
             NormalizedManeuver.OFF_RAMP_KEEP_RIGHT -> TurnIcon.KEEP_RIGHT
 
-            NormalizedManeuver.MERGE_LEFT,
-            NormalizedManeuver.ON_RAMP_LEFT,
-            NormalizedManeuver.ON_RAMP_SLIGHT_LEFT,
-            NormalizedManeuver.ON_RAMP_SHARP_LEFT -> TurnIcon.ENTER_HIGHWAY_LEFT_LANE
-
-            NormalizedManeuver.MERGE_RIGHT,
-            NormalizedManeuver.ON_RAMP_RIGHT,
-            NormalizedManeuver.ON_RAMP_SLIGHT_RIGHT,
-            NormalizedManeuver.ON_RAMP_SHARP_RIGHT -> TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+            // Joining the highway itself. An unqualified merge takes the
+            // driving-side lane (same rule as the notification path).
+            NormalizedManeuver.MERGE_LEFT -> enterHighwayIcon(mergeLeft = true)
+            NormalizedManeuver.MERGE_RIGHT -> enterHighwayIcon(mergeLeft = false)
+            NormalizedManeuver.MERGE_UNSPECIFIED ->
+                enterHighwayIcon(mergeLeft = rampOnLeftFor(drivingSide))
 
             NormalizedManeuver.OFF_RAMP_LEFT,
-            NormalizedManeuver.OFF_RAMP_SLIGHT_LEFT,
-            NormalizedManeuver.OFF_RAMP_SHARP_LEFT -> TurnIcon.LEAVE_HIGHWAY_LEFT_LANE
+            NormalizedManeuver.OFF_RAMP_SLIGHT_LEFT -> TurnIcon.LEAVE_HIGHWAY_LEFT_LANE
 
             NormalizedManeuver.OFF_RAMP_RIGHT,
-            NormalizedManeuver.OFF_RAMP_SLIGHT_RIGHT,
-            NormalizedManeuver.OFF_RAMP_SHARP_RIGHT -> TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
+            NormalizedManeuver.OFF_RAMP_SLIGHT_RIGHT -> TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE
 
             NormalizedManeuver.UTURN_LEFT -> TurnIcon.UTURN_LEFT
             NormalizedManeuver.UTURN_RIGHT -> TurnIcon.UTURN_RIGHT
@@ -150,6 +161,23 @@ object KtmManeuverMapping {
         DrivingSide.RIGHT -> false
         DrivingSide.UNKNOWN -> true
     }
+
+    /**
+     * The single place that picks the enter-highway (merge) dash code, shared by
+     * the SDK path, the notification-text parser and the TFLite classifier so a
+     * direction fix only ever needs to happen here.
+     *
+     * [mergeLeft] is the nav app's merge side (Google's MERGE_LEFT / "merge
+     * left").
+     *
+     * UNVERIFIED ON HARDWARE: a dash photo (2026-09) shows code 14
+     * (ENTER_HIGHWAY_RIGHT_LANE) drawn as a ramp on the RIGHT whose arrow bends
+     * LEFT into the carriageway - i.e. it visually reads as a "merge left". If a
+     * Symbol Test confirms 15 is its mirror, swap the two branches below (and the
+     * dash_highway_left/right preview drawables).
+     */
+    fun enterHighwayIcon(mergeLeft: Boolean): TurnIcon =
+        if (mergeLeft) TurnIcon.ENTER_HIGHWAY_LEFT_LANE else TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
 
     /**
      * Section glyph for a roundabout exit, chosen by the exit's TURN ANGLE

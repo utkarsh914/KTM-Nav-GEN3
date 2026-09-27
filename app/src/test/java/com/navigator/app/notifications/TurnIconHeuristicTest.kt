@@ -44,6 +44,18 @@ class TurnIconHeuristicTest {
         assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, parse("Take the off-ramp", DrivingSide.LEFT))
     }
 
+    // --- Turning onto an on-ramp is a turn, not a highway enter/exit ---
+
+    @Test fun turnOntoRampShowsTheTurn() {
+        // Regression (NH 48): must agree with the SDK path's ON_RAMP_* mapping.
+        assertEquals(TurnIcon.HEAVY_RIGHT, parse("Sharp right onto the ramp to NH 48", DrivingSide.LEFT))
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right onto the ramp to NH 48", DrivingSide.LEFT))
+        assertEquals(TurnIcon.QUITE_LEFT, parse("Turn left onto the ramp to NH 48", DrivingSide.RIGHT))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slight left onto the ramp to NH 48", DrivingSide.LEFT))
+        // A real exit is still an exit.
+        assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, parse("Take the exit on the left", DrivingSide.LEFT))
+    }
+
     // --- Roundabout bank follows driving side ---
 
     @Test fun roundaboutBankFollowsDrivingSide() {

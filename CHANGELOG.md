@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+- Highway on-ramps now show the real turn on the dash. "Sharp right onto the ramp to NH 48" was being
+  sent as the enter-highway glyph, whose arrow leans *left*; on-ramps now map to the graded turn arrow
+  (slight / normal / sharp), matching the notification-text and on-device-model paths. Sharp off-ramps
+  likewise show the sharp-turn arrow. An unqualified SDK merge now picks the enter-highway lane from
+  the driving side (was: straight arrow). Merge-direction selection is centralised in one helper.
+
 ## v0.6.0
 
 ### Ride replay
