@@ -19,8 +19,18 @@ of the shipped work.
 - **Migrate in-app UI to normalized state** — `DirectionScreen`/`GridMenuScreen`/`MainActivity`
   still read the legacy `NotificationRepository` rather than `NormalizedNavigationState`; no
   functional regression today, but it's a parallel source of truth to eventually retire.
-- **Units hardcoded metric** in the Google Nav SDK provider — wire to a user setting
-  (imperial/metric), matching the notification-path formatter.
+- **Units setting** — the Nav SDK provider now follows the device region (miles for
+  US/GB/LR/MM); an explicit user setting (imperial/metric) is still to do.
+- **Hardware checks pending** (from the nav/dash fix series): confirm merge codes 14/15
+  direction in Symbol Test (swap `KtmManeuverMapping.enterHighwayIcon` + `dash_highway_*`
+  previews if mirrored); ride right/straight/left roundabouts on both engines; two in-app
+  trips back-to-back; confirm the 15 s guidance refresh doesn't flicker.
+- **NAVIGATION_STATE guidanceOn is never sent OFF** — the dash may stay in guidance mode
+  (GPS icon lit) while idle. Needs a dash test before changing.
+- **Non-Latin road names** (e.g. Kannada) are sent as UTF-8; the dash font is likely
+  Latin-only. Consider transliteration or falling back to the road ref.
+- **Delete `LegacyModelRemap`** — the bundled model is now v2 (`#labels-v2`), so the remap is
+  dormant.
 - **Revisit notification-path passthrough overrides** — the notification provider currently
   feeds the encoder via optional override fields on `NormalizedNavigationState`
   (`resolvedIcon`, `preformatted{Distance,Eta,Remaining}`) to stay byte-for-byte identical to

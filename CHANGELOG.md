@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Navigation
+- Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
+  destination.
+- Retrained the on-device maneuver model with the corrected labels (all 64 Google Maps icons
+  classified correctly on-device). Merge icons, which Maps draws identically for left/right, are one
+  class resolved by driving side; direction-less roundabout icons give no arrow.
+
+### Known / needs a dash check
+- Merge (enter-highway) direction codes 14/15 are not yet verified on hardware.
+
 ### Fixes
 - Highway on-ramps now show the real turn on the dash. "Sharp right onto the ramp to NH 48" was being
   sent as the enter-highway glyph, whose arrow leans *left*; on-ramps now map to the graded turn arrow
@@ -12,10 +22,7 @@
   in-app path already did). "Take the Nth exit" no longer maps to section N (which showed a sharp
   right for most roundabouts); the Maps icon is preferred, else the ordinal is converted to an
   approximate angle for the driving side. The bundled model's mis-labelled roundabout classes are
-  corrected at runtime, and the training script is fixed for the next retrain.
-- Retrained the on-device maneuver model with the corrected labels (all 64 Google Maps icons
-  classified correctly on-device). Merge icons, which Maps draws identically for left/right, are one
-  class resolved by driving side; direction-less roundabout icons give no arrow.
+  corrected at runtime (now dormant with the retrained model), and the training script is fixed.
 - Starting a second in-app trip no longer bounces straight back to notification mirroring (the
   previous trip's "stopped" state was mistaken for the new trip ending). In-app guidance is picked
   up when the bike connects mid-trip, switching sources clears the old guidance, and the service

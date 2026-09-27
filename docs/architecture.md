@@ -80,9 +80,9 @@ in-app SDK is never started. The user can also **pause** mirror-to-dash on the m
 |---|---|
 | `nav/model/NormalizedNavigationState.kt` | Provider-agnostic domain model (pure Kotlin). `NavSessionState`, ~50-value `NormalizedManeuver` (mirrors the SDK), rotation/driving-side, `remainingTimeSeconds` (not an epoch), passthrough overrides, `NavDestination`, `TravelMode`. |
 | `nav/NavigationProvider.kt` | `NavigationProvider` + `RoutingNavigationProvider` interfaces. |
-| `nav/NavigationCoordinator.kt` | Collects the active provider's state, runs the encoder, applies `DashWrite`s via `DashOutput`; owns provider switching + auto-revert + re-auth re-send. |
+| `nav/NavigationCoordinator.kt` | Collects the active provider's state, runs the encoder, applies `DashWrite`s via `DashOutput`; owns provider switching (clears the old source's guidance), auto-revert only on a *genuine* trip end, re-auth/resync re-send, the throttle's trailing flush, and a 15 s full-guidance refresh. |
 | `nav/ktm/KtmNavigationEncoder.kt` | **Reliability core** (stateful, pure): dedup, distance rounding, throttle, ETA deadband, state machine. |
-| `nav/ktm/KtmManeuverMapping.kt` | The single lossy reduction from `NormalizedManeuver` → 58-entry KTM `TurnIcon` (exhaustive `when`). |
+| `nav/ktm/KtmManeuverMapping.kt` | The single lossy reduction from `NormalizedManeuver` → 58-entry KTM `TurnIcon` (exhaustive `when`). Also the shared rules every path uses: `roundaboutIcon` (exit angle → section glyph), `ordinalExitAngle`, `enterHighwayIcon` (merge lane), driving-side helpers. |
 | `nav/ktm/DistanceFormatter.kt`, `EtaFormatter.kt`, `DashWrite.kt` | Pure formatting + the sealed write set. |
 | `nav/providers/NotificationNavProvider.kt` | Notification-mirroring provider (session-end debounce). |
 | `nav/providers/GoogleNavSdkProvider.kt` | Nav SDK provider (owns `Navigator`, maps the feed, arrival→ARRIVED). |
@@ -106,11 +106,36 @@ nav ended, etc. `KtmNavigationEncoder` centralises reliability:
   `≥10 km`→integer km; imperial equivalents), always ≤8 chars for the KTM labels.
 - **ETA deadband** — the SDK gives *remaining seconds*, not an epoch; `EtaFormatter` derives
   local `HH:MM` and a deadband stops it flapping across the minute boundary.
-- **Throttle** — label churn is capped to ~1 write-set/second; icon/state/road changes always
-  pass. Cooperates with the BLE layer's per-characteristic coalescing.
-- **State machine** — IDLE / ENROUTE / REROUTING / ARRIVED / STOPPED: holds the last valid
-  turn (never emits UNKNOWN as an arrow), blanks a stale turn while rerouting, END + clear on
-  arrival, immediate vs debounced clear, `reset()` for BLE re-auth.
+- **Throttle** — label churn is capped to ~1 write-set/second on a *monotonic* clock;
+  icon/state/road changes always pass, and the distance always travels with a new icon/road
+  (never a new arrow next to the old step's "0 m"). Held-back values set
+  `hasThrottledChanges`, and the coordinator re-encodes after the window so the last value of
+  a burst is always sent. Cooperates with the BLE layer's per-characteristic coalescing.
+- **State machine** — IDLE / ENROUTE / REROUTING / ARRIVED / STOPPED: never emits UNKNOWN as an
+  arrow; holds the last turn on a flaky tick but **blanks it** (UNDEFINED) when the step moved
+  on (road changed) and the new maneuver is unrecognised; blanks a stale turn while rerouting;
+  END + clear on arrival; immediate vs debounced clear; `reset()` for BLE re-auth / resync.
+
+### 2.2.1 Maneuver → icon rules (shared by all paths)
+
+- **On-ramps** (`ON_RAMP_*`) are the surface-road turn *onto* the ramp → graded turn arrow
+  (LIGHT/QUITE/HEAVY). Only `MERGE_*` uses the enter-highway glyph; plain/slight `OFF_RAMP_*`
+  use leave-highway, sharp off-ramps HEAVY.
+- **Roundabouts** — sections are fixed exit-*angle* glyphs (see ENGINEERING_NOTES). The
+  notification path prefers the Maps icon (calibration → classifier); otherwise an ordinal
+  "Nth exit" is converted to an approximate angle for the driving side; no ordinal → no arrow.
+- **Merge direction (14/15)** is chosen in one place, `enterHighwayIcon()` — still to be
+  confirmed on hardware.
+- Notification text is parsed with **whole-word** matching; the first left/right word is the
+  instruction's side; "turn X to stay on…" is a turn; unqualified U-turns follow driving side.
+
+### 2.2.2 BLE delivery
+
+`SerialGattQueue` serialises GATT ops with a 2 s per-op timeout and exception release, so a lost
+completion callback can't freeze the dash. Late callbacks from a recycled GATT client are
+ignored. A failed/unqueued guidance write or a queue timeout triggers a rate-limited
+`NavigationCoordinator.resync()`. Labels are truncated by grapheme cluster
+(`BccuProtocol.safePrefix`).
 
 ### 2.3 Passthrough overrides (a deliberate compromise — revisit)
 

@@ -52,6 +52,51 @@ old assumption:
   the same law and writes a `#labels-v2` header; until a v2 model ships,
   `LegacyModelRemap` corrects the shipped model's roundabout outputs at runtime.
 
+**Retrained (v2):** the dataset was regenerated from a Play Store emulator (which ships Google
+Maps) and the model retrained; the bundled labels now carry `#labels-v2`, so the remap is
+dormant. Two findings: `merge`/`merge_left`/`merge_right` are **pixel-identical** in Maps, so
+they're one `merge` class resolved by driving side (three labels on one image capped confidence
+at 0.42); and direction-less roundabout icons map to `roundabout_generic` → no arrow. Verified
+192/192 in Python and on-device.
+
+---
+
+## On-ramps are a turn, not "enter highway"
+
+**Symptom:** "Sharp right onto the ramp to NH 48" showed the enter-highway glyph on the dash,
+whose arrow leans *left*.
+
+**Cause:** `ON_RAMP_*` was mapped to `ENTER_HIGHWAY_*`. Google's `ON_RAMP_<dir>` is the turn
+from the surface road onto the ramp; joining the highway is the later `MERGE_*` step.
+
+**Fix:** on-ramps → LIGHT/QUITE/HEAVY by severity (matching the text and model paths), sharp
+off-ramps → HEAVY, `MERGE_UNSPECIFIED` → driving-side lane. The merge code is picked only in
+`enterHighwayIcon()`. A dash photo suggests code 14 draws as "ramp on the right, arrow bending
+left" — i.e. possibly mirrored vs. our mapping; unverified, see BACKLOG.
+
+---
+
+## Provider handoff: stale StateFlow values
+
+The Nav SDK provider's `StateFlow` replays its last value on collection, so switching to it for
+a second trip first delivered the *previous* trip's `STOPPED`, and the coordinator's auto-revert
+immediately switched back to mirroring (detaching the provider and cancelling the new route).
+Now a terminal state reverts only if the session was seen live or was produced after the
+provider was selected; `startNavigation` also resets state to IDLE. `NavigationCoordinator.stop()`
+no longer detaches a routing provider (BLE service teardown was cancelling in-app trips), and
+the service selects the SDK provider on start if a trip is already in progress.
+
+---
+
+## GATT queue must self-heal
+
+Android sometimes never delivers `onCharacteristicWrite` on a link that stays up, and a throw
+inside an op skipped `finish()` — either left `SerialGattQueue` busy forever, silently freezing
+the dash until reconnect. The queue now has a per-op timeout and exception release, guarded by
+an op id so a late timeout can't release the wrong op. Because the encoder's dedup assumes
+delivery, a failed guidance write triggers a full resync, and the coordinator re-sends all
+guidance every 15 s while navigating.
+
 ---
 
 ## 16 KB page-size compatibility — the TFLite native lib was the only offender
