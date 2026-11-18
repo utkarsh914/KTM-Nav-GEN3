@@ -35,7 +35,56 @@ Target: **Android 16+ only (minSdk 36)**.
 | 6 | UX polish & accessibility | 12 | 14 | UX1 partial, UX8 done (C5); UX7/UX11 deferred |
 | 7 | New features | 11 | 12 | F1-F6, F8-F12 done (Phases 9/10); F7 weather skipped by decision |
 | T | Tests to extend/add | 7 | 8 | T1 partial (RideStore needs Android); T5 done (NavFlow) |
-| H | Hardware verification | 0 | 5 | Not started |
+| H | Hardware verification | 0 | 5 | Not started (needs bike) |
+
+---
+
+## Status overview (done / skipped / pending)
+
+_Updated after Phase 10. Phase 10 is awaiting smoke test 3. Details live in the per-phase tables below._
+
+### 1. Done
+- **Phase S, 0, 1, 2, 4, 5**: safety net, minSdk 36 cleanup, crash/privacy fixes, navigation/UI state, data integrity, settings/build/docs (see tables).
+- **Phase 3 (BLE)**: bucket C in one revertable commit `a2fccb0` (B1, B2, B3 reduced, B4 reduced, B5, B6, B7 UI only, B8 reduced, B9, B10).
+- **Phase 6 (UX)**: UX2-UX6, UX8 (real sunrise/sunset), UX9, UX10, UX12-UX14; UX1 partly.
+- **Phase 8 (foundation)**: A1-A5 (deps/compileSdk 36.1, NavFlow ViewModel, edge/back, touch targets + off-main rides, single plain settings store).
+- **Phase 9 (features)**: B1 manual recording, B2 GPX + trip-finished actions, B3 Home/Work chips + shortcuts, B4 mirror hints, B5 Live Updates, B6 categories/voice/add stop.
+- **Phase 10**: C1 elevation + chart, C2 rename/notes/trim + backup/restore, C3 leg ETAs + drag reorder, C4 Latin dash text, C5 polish (pause breaks, GPX dedupe, Resume pill, sun-based day/night).
+- **Features F1-F6, F8-F12**; avg-speed selector; debug dash-preview toggle.
+- **Tests**: T1 (partial), T2-T8 added or extended; ~all pure logic is unit-tested.
+- **Verified by user**: smoke tests 1 and 2. **Awaiting**: smoke test 3 (Phase 10).
+
+### 2. Skipped / dropped (decided, not planned)
+| ID | Item | Why |
+|---|---|---|
+| F7 | Weather chip on map | Skipped by decision |
+| NET2 | Derive `regionCode` from locale | Dropped: locale is a poor proxy |
+| ST5 | FileProvider authority rename | Dropped: no install-conflict reason |
+| F3 part | Auto-pause | Decided against |
+| F2 part | GPX import as navigation route | Import as ride only |
+
+### 3. Pending / deferred (not done yet)
+**Needs the bike (cannot be tested now)**
+| ID | Item |
+|---|---|
+| B11 | CompanionDeviceManager replacing `AutoConnectReceiver` |
+| N8 | `guidanceOn` OFF when idle |
+| NP4 | Classifier preprocessing vs training (re-run 192/192 eval first) |
+| P2 | Save bike only on AUTHENTICATED (partly done) |
+| UX11 | Pairing RSSI bars and "Connected to <bike> · Disconnect" |
+| H1-H5 | Hardware verification: back-to-back trips, roundabouts/MERGE code 14, ignition-cycle reconnect, mirror mode, 1-2 h ride |
+| - | On-device behaviour of bucket C, C3/C4/N1 (shipped at >=50% confidence, unverified) |
+
+**Feature or polish work (no bike needed)**
+| ID | Item |
+|---|---|
+| UX7 | Units setting (miles/yards) and 12/24 h; leg-line distances are metric only until then |
+| UX1 | Resume pill on the full-screen search panel |
+| - | Add a stop to a trip that already has stops (N4 covers trips with none) |
+| T1 | `RideStore` instrumented tests (needs Android) |
+| - | Selective restore; replay chart on screens under 480 dp height |
+
+**Next step**: user runs smoke test 3, then fixes for any regressions (each maps to one commit).
 
 ---
 
@@ -91,7 +140,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [x] | 0.3 | Manifest cleanup + `tools:node="remove"` for Nav-SDK-merged `WRITE_EXTERNAL_STORAGE`/`BLUETOOTH*`; verify merged manifest | | 🔎 |
 | [x] | 0.4 | BLE dead code: delete pre-33 write/descriptor branches and legacy `onCharacteristicChanged/Read` overloads (behaviour unchanged) | | Bucket C commit |
 | [x] | 0.5 | Keep desugaring (Nav SDK requires it); fix stale comments (`:86`, `:180`); remove no-op multiDex | | |
-| [ ] | 0.6 | Android 16 checks: edge-to-edge insets, predictive back, large-screen orientation | | 🏍 |
+| [x] | 0.6 | Android 16 checks: edge-to-edge insets, predictive back, large-screen orientation | | 🏍 |
 | [x] | 0.7 | Docs after Phase 0: `ENGINEERING_NOTES.md:221-237`, `architecture.md:264, 276` | | |
 
 ## Phase 1: Critical bugs, crashes, privacy
@@ -260,10 +309,10 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [x] | F1 | Live Updates navigation notification (check compileSdk 36.1 vs AGP 8.13.2 first; consolidate with SDK notification) | | 🔎 🏍 |
 | [x] | F2 | GPX/KML export & share; GPX import | | |
 | [x] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
-| [ ] | F4 | Richer ride data, elevation, charts | | |
+| [x] | F4 | Richer ride data, elevation, charts | `970c659` | |
 | [x] | F5 | "Ride home/work" chip + shortcut/widget | | |
 | [x] | F6 | Quick categories + voice search | | |
-| [ ] | F7 | Weather chip on map | | |
+| [-] | F7 | Weather chip on map | | SKIPPED by decision |
 | [x] | F8 | Mirror home freshness indicator + missing-notification hint | | |
 | [x] | F9 | Trip-finished actions (save destination, reverse route, share GPX) | | |
 | [x] | F10 | Ride rename / notes / trim; SAF backup/restore | | |
@@ -279,7 +328,7 @@ Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
 | [x] | A1 | Dependency bumps within AGP 8.13.2 / Gradle 8.13 limits (ST8); compileSdk 36.1 (needed by F1) | core-ktx 1.17.0 (1.19 needs compileSdk 37/AGP 9.1), appcompat 1.7.1, material 1.13.0, activity-compose 1.12.4, lifecycle 2.10.0, coroutines 1.11.0, gms-base 18.11.1; compileSdk 36.1, targetSdk 36. Tests+lint unchanged (6 errors). ST8 done |
 | [x] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | NavFlow.kt (pure NavFlowState/Rules/ArrivalPolicy/Codec + NavFlowViewModel, attach/detach counting), MainActivity routes rememberSaveable, manifest configChanges (locale still recreates, now safe). ~20 new tests. Needs on-device check: rotate on each stage, background-kill restore |
 | [x] | A3 | Android 16 checks (0.6): insets on every screen, predictive back, landscape / large screen | Code review only. `edgePadding()` (system bars + display cutout) replaces systemBarsPadding everywhere; `enableOnBackInvokedCallback=true` (all back handling already via BackHandler, no onBackPressed); system-bar icon colours already theme-driven. NOT done: wide-screen content width caps. Visual check in landscape by user |
-| [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
+| [x] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
 | [x] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | CHANGED DESIGN (less risk): the encrypted file only held low-sensitivity keys (onboarding, name, mirror apps, ...); bike address/pairing flag/session keys were already plain. So AppSettings is now ONE plain store and LegacySettingsMigration copies the old encrypted+fallback contents once (plain wins, verified, retried up to 10 launches, skips Keystore when no legacy file). security-crypto stays ONLY as the read-only migration source: remove lib + LegacySettingsMigration after the first launch on every device. Settings > Diagnostics shows 'Settings storage: migrated (N keys)'. Session keys intentionally stay plain (a Keystore wrap that can silently reset = re-pair prompt). Revert alone with git revert |
 
 security-crypto and `LegacySettingsMigration` were removed after smoke test 1 passed (they only existed to migrate once). The old `opendash_settings*.xml` files stay unused on disk.
