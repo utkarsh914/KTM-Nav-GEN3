@@ -34,6 +34,17 @@ class RideRecordingService : Service() {
                 stopRecordingAndSelf()
                 return START_NOT_STICKY
             }
+            ACTION_PAUSE, ACTION_RESUME -> {
+                val r = recorder
+                if (r == null) {
+                    // Nothing recording (stale notification action): don't linger as an empty FGS.
+                    stopRecordingAndSelf()
+                    return START_NOT_STICKY
+                }
+                if (intent?.action == ACTION_PAUSE) r.pause() else r.resume()
+                refreshNotification()
+                return START_NOT_STICKY
+            }
             else -> {
                 createChannel()
                 try {
@@ -50,9 +61,11 @@ class RideRecordingService : Service() {
                         destLabel = intent?.getStringExtra(EXTRA_LABEL),
                         destLat = intent?.doubleOrNull(EXTRA_LAT),
                         destLng = intent?.doubleOrNull(EXTRA_LNG),
+                        manual = intent?.getBooleanExtra(EXTRA_MANUAL, false) == true,
                     )
                     if (ok) {
                         recorder = r
+                        refreshNotification()
                     } else {
                         // Don't leave an empty "Recording ride" foreground notification behind.
                         AppLogger.log("Ride", "Recorder failed to start - stopping the service")
@@ -87,6 +100,12 @@ class RideRecordingService : Service() {
         )
     }
 
+    private fun refreshNotification() {
+        runCatching {
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
+        }
+    }
+
     private fun buildNotification(): android.app.Notification {
         val open = PendingIntent.getActivity(
             this, 0,
@@ -99,15 +118,30 @@ class RideRecordingService : Service() {
             Intent(this, RideRecordingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Recording ride")
-            .setContentText("Saving your GPS track for this trip")
+        val session = RideSession.state.value
+        val paused = recorder?.isPaused == true || session.paused
+        val toggle = PendingIntent.getService(
+            this, 2,
+            Intent(this, RideRecordingService::class.java).setAction(if (paused) ACTION_RESUME else ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val b = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(if (paused) "Ride paused" else "Recording ride")
+            .setContentText(
+                if (paused) "Tap Resume to keep recording" else "Saving your GPS track",
+            )
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(open)
+            .addAction(0, if (paused) "Resume" else "Pause", toggle)
             .addAction(0, "Stop", stop)
-            .build()
+        if (!paused) {
+            // System-drawn elapsed timer (excludes earlier paused time).
+            b.setUsesChronometer(true).setShowWhen(true)
+                .setWhen(System.currentTimeMillis() - session.elapsedMs(System.currentTimeMillis()))
+        } else b.setShowWhen(false)
+        return b.build()
     }
 
     private fun createChannel() {
@@ -119,13 +153,19 @@ class RideRecordingService : Service() {
         private const val CHANNEL_ID = "ride_recording"
         private const val NOTIFICATION_ID = 43
         private const val ACTION_STOP = "com.navigator.app.action.STOP_RIDE_RECORDING"
+        private const val ACTION_PAUSE = "com.navigator.app.action.PAUSE_RIDE_RECORDING"
+        private const val ACTION_RESUME = "com.navigator.app.action.RESUME_RIDE_RECORDING"
+        private const val EXTRA_MANUAL = "manual"
         private const val EXTRA_LABEL = "label"
         private const val EXTRA_LAT = "lat"
         private const val EXTRA_LNG = "lng"
 
         /** Start recording a trip toward the (optional) destination. */
-        fun start(context: Context, destLabel: String?, destLat: Double?, destLng: Double?): Boolean {
+        fun start(
+            context: Context, destLabel: String?, destLat: Double?, destLng: Double?, manual: Boolean = false,
+        ): Boolean {
             val intent = Intent(context, RideRecordingService::class.java).apply {
+                if (manual) putExtra(EXTRA_MANUAL, true)
                 putExtra(EXTRA_LABEL, destLabel)
                 destLat?.let { putExtra(EXTRA_LAT, it) }
                 destLng?.let { putExtra(EXTRA_LNG, it) }
@@ -133,6 +173,16 @@ class RideRecordingService : Service() {
             return runCatching {
                 context.startForegroundService(intent)
             }.onFailure { AppLogger.log("Ride", "!! start service failed: $it") }.isSuccess
+        }
+
+        /** Rider-initiated recording with no destination. */
+        fun startManual(context: Context): Boolean = start(context, null, null, null, manual = true)
+
+        fun pause(context: Context) = send(context, ACTION_PAUSE)
+        fun resume(context: Context) = send(context, ACTION_RESUME)
+
+        private fun send(context: Context, action: String) {
+            runCatching { context.startService(Intent(context, RideRecordingService::class.java).setAction(action)) }
         }
 
         /** Stop recording and finalise the ride. */

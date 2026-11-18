@@ -33,6 +33,10 @@ class RideRecorder(private val context: Context) {
     private var writer: Writer? = null
     private var activeId: String? = null
     private var started = false
+    @Volatile private var paused = false
+    // Set by resume(): the next accepted fix is flagged as the first one after a pause.
+    @Volatile private var gapNext = false
+    private var manual = false
 
     // Destination captured at start(), read at finalize.
     private var destLabel: String? = null
@@ -57,8 +61,9 @@ class RideRecorder(private val context: Context) {
 
     /** Begin recording a new ride toward the given (optional) destination. */
     /** @return true when recording is running (also if it already was). */
-    fun start(destLabel: String?, destLat: Double?, destLng: Double?): Boolean {
+    fun start(destLabel: String?, destLat: Double?, destLng: Double?, manual: Boolean = false): Boolean {
         if (started) return true
+        this.manual = manual
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -77,6 +82,7 @@ class RideRecorder(private val context: Context) {
             thread = ht
             activeId = id
             started = true
+            RideSession.started(manual, System.currentTimeMillis())
             AppLogger.log("Ride", "Recording started ($id) -> ${AppLogger.sensitive(destLabel)}")
             return true
         } catch (e: Exception) {
@@ -91,6 +97,8 @@ class RideRecorder(private val context: Context) {
 
     private fun onFix(location: Location) {
         val w = writer ?: return
+        // A fix that was already queued when updates were removed must not leak into the pause.
+        if (paused) return
         // Poor fixes (urban canyon, cold start) add phantom distance and speed spikes.
         if (location.hasAccuracy() && location.accuracy > MAX_ACCURACY_M) return
         // Mock providers are accepted in debug builds only, so mock-location testing still works.
@@ -100,15 +108,49 @@ class RideRecorder(private val context: Context) {
             lng = location.longitude,
             timeMs = if (location.time > 0L) location.time else System.currentTimeMillis(),
             speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
+            gapBefore = gapNext,
         )
         if (!acc.add(point)) return // rejected as a glitch (time went backwards / impossible jump)
+        gapNext = false
         runCatching { store.appendPoint(w, point) }
+        RideSession.distance(acc.stats().distanceMeters)
     }
+
+    /** Stop collecting fixes without ending the ride (the track keeps its file and state). */
+    fun pause() {
+        if (!started || paused) return
+        paused = true
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        runCatching { lm.removeUpdates(listener) }
+        thread?.let { ht -> Handler(ht.looper).post { runCatching { writer?.flush() } } }
+        RideSession.paused(System.currentTimeMillis())
+        AppLogger.log("Ride", "Recording paused")
+    }
+
+    fun resume() {
+        if (!started || !paused) return
+        val ht = thread ?: return
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        try {
+            gapNext = true
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, ht.looper)
+            paused = false
+            RideSession.resumed(System.currentTimeMillis())
+            AppLogger.log("Ride", "Recording resumed")
+        } catch (e: Exception) {
+            gapNext = false
+            AppLogger.log("Ride", "!! resume failed: $e")
+        }
+    }
+
+    val isPaused: Boolean get() = paused
 
     /** Stop recording; finalise or discard on the recorder thread, then tear down. */
     fun stop() {
         if (!started) return
         started = false
+        paused = false
+        RideSession.ended()
         val id = activeId ?: return
         val ht = thread
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager

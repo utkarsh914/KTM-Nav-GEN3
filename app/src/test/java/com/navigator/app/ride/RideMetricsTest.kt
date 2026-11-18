@@ -189,4 +189,39 @@ class RideMetricsTest {
         assertTrue(RideMetrics.ridesToPrune(rides, 0).isEmpty())
         assertTrue(RideMetrics.ridesToPrune(rides, -1).isEmpty())
     }
+
+    @Test fun pauseGapAddsNoDistanceNoMovingTimeAndNoDuration() {
+        // 10 s cruising, a 10 min pause with the bike moved ~2.2 km, then 10 s more.
+        val before = cruise(11)
+        val resumeAt = 10_000L + 600_000L
+        val after = (0 until 11).map {
+            RidePoint(0.0, 0.02 + it * 0.0002, resumeAt + 1_000L * it, 80f, gapBefore = it == 0)
+        }
+        val s = RideMetrics.summarize(before + after)
+        assertEquals(20, s.durationSeconds)                         // paused span excluded
+        assertEquals(20, s.movingSeconds)
+        assertEquals(445.0, s.distanceMeters.toDouble(), 10.0)      // 2 x ~222 m, the 2 km jump not counted
+        assertEquals(80f, s.avgOverallSpeedKmh, 3f)                 // overall now excludes the pause too
+    }
+
+    @Test fun gapFlagSurvivesTheTrackFileFormat() {
+        val p = RidePoint(1.0, 2.0, 5L, 3f, gapBefore = true)
+        assertEquals(p, RideJson.parsePoint(RideJson.pointLine(p)))
+        assertEquals(false, RideJson.parsePoint(RideJson.pointLine(p.copy(gapBefore = false)))!!.gapBefore)
+    }
+
+    @Test fun gapOnTheVeryFirstFixIsHarmless() {
+        val pts = listOf(RidePoint(0.0, 0.0, 0L, 80f, gapBefore = true)) + cruise(10, startMs = 1_000L)
+        val s = RideMetrics.summarize(pts)
+        assertEquals(10, s.durationSeconds)
+        assertTrue(s.distanceMeters in 190..240)
+    }
+
+    @Test fun twoPausesBothExcludedFromDuration() {
+        fun seg(startMs: Long, lng0: Double) = (0 until 6).map {
+            RidePoint(0.0, lng0 + it * 0.0002, startMs + 1_000L * it, 80f, gapBefore = it == 0 && startMs > 0)
+        }
+        val s = RideMetrics.summarize(seg(0, 0.0) + seg(100_000, 0.05) + seg(500_000, 0.1))
+        assertEquals(15, s.durationSeconds) // 3 segments x 5 s of riding
+    }
 }

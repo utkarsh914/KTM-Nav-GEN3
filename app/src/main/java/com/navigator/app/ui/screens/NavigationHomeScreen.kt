@@ -816,8 +816,12 @@ fun NavigationHomeScreen(
                         SquareMapControl(OpenDashIcons.LocateFixed, "Recenter") { recenter(context, googleMap) }
                     }
                 }
-                // Bottom-left connect pill.
-                Box(Modifier.align(Alignment.BottomStart).edgePadding().padding(16.dp)) {
+                // Bottom-left: record control above the connect pill.
+                Column(
+                    modifier = Modifier.align(Alignment.BottomStart).edgePadding().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    RecordControlsHost()
                     ConnectPill(onClick = onOpenConnect)
                 }
                 // A trip is still running in the background -> offer to jump back.
@@ -825,7 +829,7 @@ fun NavigationHomeScreen(
                     ResumeNavPill(
                         onClick = ::resumeNav,
                         modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
-                            .padding(bottom = 84.dp),
+                            .padding(bottom = 140.dp), // clears the record chip + connect pill column
                     )
                 }
             }

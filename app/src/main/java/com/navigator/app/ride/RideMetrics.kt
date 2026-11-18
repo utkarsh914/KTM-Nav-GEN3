@@ -70,11 +70,14 @@ object RideMetrics {
         private var count = 0
         private val recentSpeeds = ArrayDeque<Float>()
         private var rejectStreak = 0
+        private var pausedMs = 0L
 
         /** Feed one fix; returns false when it was rejected as a glitch (and must not be recorded). */
         fun add(p: RidePoint): Boolean {
             var resync = false
-            if (started) {
+            // First fix after a user pause: not a glitch check, not riding.
+            val gap = p.gapBefore && started
+            if (started && !gap) {
                 val dtMs = p.timeMs - lastMs
                 // Clock went backwards, or a hop that would need an impossible speed: GPS glitch.
                 val glitch = dtMs < 0 || (havePrev && dtMs > 0 &&
@@ -88,7 +91,8 @@ object RideMetrics {
                 }
             }
             rejectStreak = 0
-            if (havePrev && !resync) {
+            if (gap) pausedMs += (p.timeMs - lastMs).coerceAtLeast(0L)
+            if (havePrev && !resync && !gap) {
                 val dtMs = p.timeMs - lastMs
                 val hop = haversineMeters(prevLat, prevLng, p.lat, p.lng)
                 val speed = p.speedKmh
@@ -101,6 +105,7 @@ object RideMetrics {
             }
             if (!started || (resync && count <= RESYNC_AFTER_REJECTS)) {
                 firstMs = p.timeMs
+                pausedMs = 0L
                 started = true
             }
             lastMs = p.timeMs
@@ -120,7 +125,8 @@ object RideMetrics {
         }
 
         fun stats(): RideStats {
-            val durationSec = if (lastMs > firstMs) ((lastMs - firstMs) / 1000).toInt() else 0
+            val spanMs = lastMs - firstMs - pausedMs
+            val durationSec = if (spanMs > 0) (spanMs / 1000).toInt() else 0
             val movingSec = (movingMs / 1000).toInt()
             val avg = if (movingSec > 0) (distanceM / movingSec * 3.6).toFloat() else 0f
             val overall = if (durationSec > 0) (distanceM / durationSec * 3.6).toFloat() else 0f

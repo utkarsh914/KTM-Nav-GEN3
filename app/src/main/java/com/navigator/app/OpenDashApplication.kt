@@ -69,7 +69,10 @@ class OpenDashApplication : Application() {
             // same-destination restarts are separate rides.
             GoogleNavSdkProvider.activeTrip.collect { trip ->
                 if (recording && (trip == null || trip.id != recordingTripId)) {
-                    RideRecordingService.stop(this@OpenDashApplication)
+                    // A rider-started recording that took over meanwhile is theirs to stop.
+                    if (!com.navigator.app.ride.RideSession.state.value.manual) {
+                        RideRecordingService.stop(this@OpenDashApplication)
+                    }
                     recording = false
                     // Let the service finalise the old ride before the next one starts.
                     if (trip != null) {
@@ -81,7 +84,9 @@ class OpenDashApplication : Application() {
                 }
                 if (trip != null && !recording) {
                     val settings = AppSettings(this@OpenDashApplication)
-                    if (settings.rideRecordingEnabled && hasLocationPermission()) {
+                    // A rider-started recording already covers this trip: don't start a second one.
+                    val alreadyRecording = com.navigator.app.ride.RideSession.state.value.active
+                    if (!alreadyRecording && settings.rideRecordingEnabled && hasLocationPermission()) {
                         recording = RideRecordingService.start(
                             this@OpenDashApplication,
                             destLabel = trip.dest.label,

@@ -30,6 +30,7 @@ object RideJson {
             .put("lng", p.lng)
             .put("t", p.timeMs)
         p.speedKmh?.let { o.put("s", it.toDouble()) }
+        if (p.gapBefore) o.put("g", 1)
         return o.toString()
     }
 
@@ -45,6 +46,7 @@ object RideJson {
                 lng = o.getDouble("lng"),
                 timeMs = o.getLong("t"),
                 speedKmh = if (o.has("s")) o.getDouble("s").toFloat() else null,
+                gapBefore = o.optInt("g", 0) == 1,
             )
         }.getOrNull()
     }

@@ -247,7 +247,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 |---|---|---|---|---|
 | [ ] | F1 | Live Updates navigation notification (check compileSdk 36.1 vs AGP 8.13.2 first; consolidate with SDK notification) | | 🔎 🏍 |
 | [ ] | F2 | GPX/KML export & share; GPX import | | |
-| [ ] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
+| [x] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
 | [ ] | F4 | Richer ride data, elevation, charts | | |
 | [ ] | F5 | "Ride home/work" chip + shortcut/widget | | |
 | [ ] | F6 | Quick categories + voice search | | |
@@ -278,7 +278,7 @@ Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 inclu
 
 | St | ID | Item | Notes |
 |---|---|---|---|
-| [ ] | B1 | F3: manual Record ride (idle map), pause/resume/stop from notification + app | |
+| [x] | B1 | F3: manual Record ride (idle map), pause/resume/stop from notification + app | RideSession state flow, recorder pause/resume with gapBefore points (no distance/moving/duration across a pause, persisted in NDJSON so recovery matches), service Pause/Resume/Stop actions + chronometer notification, RecordControlsHost (chip/pill) bottom-left of browse map, trip observer skips its own recording when one is active. No auto-pause (decision). NOT done: breaking the replay polyline at pauses. Needs on-device check: chip fit on 360dp, pause/resume from notification |
 | [ ] | B2 | F2 + F9: GPX export/share, GPX import as ride, Trip-finished actions (save destination, reverse route, share GPX) | |
 | [ ] | B3 | F5: Home/Work chip + launcher shortcuts | |
 | [ ] | B4 | F8: mirror home freshness + missing-notification / access-revoked hint | |
