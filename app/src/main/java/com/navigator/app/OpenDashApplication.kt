@@ -48,6 +48,7 @@ class OpenDashApplication : Application() {
                     minDurationSeconds = settings.rideMinDurationSeconds,
                 )
                 store.pruneToLimit(settings.rideHistoryLimit)
+                store.backfillMovingStats()
             }.onFailure { AppLogger.log("Ride", "!! orphan recovery failed: $it") }
         }
     }

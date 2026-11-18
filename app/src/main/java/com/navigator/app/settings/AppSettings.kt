@@ -246,6 +246,16 @@ class AppSettings(context: Context) {
         set(value) = pairingPrefs.edit()
             .putInt(KEY_OVERSPEED_LIMIT, value.coerceIn(OVERSPEED_LIMIT_MIN, OVERSPEED_LIMIT_MAX)).apply()
 
+    /** Which average speed ride screens show (both are always recorded). */
+    var avgSpeedMode: com.navigator.app.ride.AvgSpeedMode
+        get() = com.navigator.app.ride.AvgSpeedMode.fromId(pairingPrefs.getString(KEY_AVG_SPEED_MODE, null))
+        set(value) = pairingPrefs.edit().putString(KEY_AVG_SPEED_MODE, value.id).apply()
+
+    /** Debug builds only: show the floating "Dash preview" chip (off by default). */
+    var dashPreviewOverlay: Boolean
+        get() = pairingPrefs.getBoolean(KEY_DASH_PREVIEW_OVERLAY, false)
+        set(value) = pairingPrefs.edit().putBoolean(KEY_DASH_PREVIEW_OVERLAY, value).apply()
+
     /** Record the GPS track of every navigation by default. */
     var rideRecordingEnabled: Boolean
         get() = pairingPrefs.getBoolean(KEY_RIDE_RECORDING, true)
@@ -433,6 +443,8 @@ class AppSettings(context: Context) {
             }
         }
 
+        private const val KEY_AVG_SPEED_MODE = "avg_speed_mode"
+        private const val KEY_DASH_PREVIEW_OVERLAY = "dash_preview_overlay"
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
 

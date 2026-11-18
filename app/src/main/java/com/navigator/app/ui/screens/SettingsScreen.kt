@@ -80,7 +80,7 @@ import kotlinx.coroutines.withContext
 
 private enum class SettingsDialog {
     NONE, NAME, NAV_APP, MIRROR_APPS, CALL_AUDIO, OVERSPEED_LIMIT, THEME, FONT, NAV_THEME, ACCENT, ACCENT_CUSTOM,
-    RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT,
+    RIDE_MIN_DISTANCE, RIDE_MIN_DURATION, RIDE_HISTORY_LIMIT, AVG_SPEED_MODE,
     SPEED_BAND_BASE, SPEED_BAND_STEP, SPEED_BAND_COUNT, LOCATION_MARKER_STYLE,
     DRIVING_SIDE, VEHICLE_MODE,
 }
@@ -140,6 +140,8 @@ fun SettingsScreen(
     var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
     var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
     var rideHistoryLimit by remember { mutableStateOf(settings.rideHistoryLimit) }
+    var avgSpeedMode by remember { mutableStateOf(settings.avgSpeedMode) }
+    var dashPreviewOverlay by remember { mutableStateOf(settings.dashPreviewOverlay) }
 
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
 
@@ -385,8 +387,17 @@ fun SettingsScreen(
             // ===== Ride recording =====
             item {
                 GroupCard("Ride recording", icon = com.navigator.app.ui.theme.OpenDashIcons.LocateFixed) {
-                    SettingsRow("Record rides", showDivider = rideRecordingOn) {
+                    SettingsRow("Record rides", showDivider = true) {
                         KtmToggle(rideRecordingOn, { rideRecordingOn = it; settings.rideRecordingEnabled = it })
+                    }
+                    // Both averages are always stored per ride; this only picks which one the
+                    // trip-finished card and ride replay show. Kept visible even with recording
+                    // off, because it also affects rides already in the history.
+                    SettingsRow(
+                        "Average speed", showDivider = rideRecordingOn,
+                        onClick = { dialog = SettingsDialog.AVG_SPEED_MODE },
+                    ) {
+                        MonoValue("${if (avgSpeedMode == com.navigator.app.ride.AvgSpeedMode.MOVING) "Moving" else "Overall"} ›")
                     }
                     // Trivial/aborted trips shorter than BOTH cutoffs are dropped
                     // on finish. Tap to enter an exact value.
@@ -667,6 +678,16 @@ fun SettingsScreen(
                     SettingsRow("View & share logs", showDivider = true, onClick = onOpenLogs) {
                         Text("›", color = Ktm.Dim, fontSize = 18.sp)
                     }
+                    // Debug builds only: floating chip showing what would be sent to the dash.
+                    if (com.navigator.app.BuildConfig.DEBUG) {
+                        SettingsRow("Dash preview overlay", showDivider = true) {
+                            KtmToggle(dashPreviewOverlay, {
+                                dashPreviewOverlay = it
+                                settings.dashPreviewOverlay = it
+                                com.navigator.app.nav.DashPreview.setOverlayEnabled(it)
+                            })
+                        }
+                    }
                     SettingsRow("Copy logs to Downloads", showDivider = true) {
                         KtmToggle(publicLogMirror, {
                             publicLogMirror = it
@@ -771,6 +792,18 @@ fun SettingsScreen(
                 value.trim().toIntOrNull()
                     ?.takeIf { it in AppSettings.RIDE_MIN_DURATION_MIN_S..AppSettings.RIDE_MIN_DURATION_MAX_S }
                     ?.let { rideMinDur = it; settings.rideMinDurationSeconds = it }
+                dialog = SettingsDialog.NONE
+            },
+        )
+        SettingsDialog.AVG_SPEED_MODE -> SingleChoiceDialog(
+            title = "Average speed",
+            options = com.navigator.app.ride.AvgSpeedMode.entries.toList(),
+            labelFor = { it.label },
+            selected = avgSpeedMode,
+            onDismiss = { dialog = SettingsDialog.NONE },
+            onSelect = {
+                avgSpeedMode = it
+                settings.avgSpeedMode = it
                 dialog = SettingsDialog.NONE
             },
         )

@@ -131,6 +131,8 @@ class RideRecorder(private val context: Context) {
                     destLat = destLat,
                     destLng = destLng,
                     avgSpeedKmh = stats.avgSpeedKmh,
+                    movingSeconds = stats.movingSeconds,
+                    avgOverallSpeedKmh = stats.avgOverallSpeedKmh,
                     maxSpeedKmh = stats.maxSpeedKmh,
                     pointCount = stats.pointCount,
                 )

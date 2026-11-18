@@ -28,7 +28,13 @@ data class RecordedRide(
     val destLat: Double? = null,
     val destLng: Double? = null,
     val avgSpeedKmh: Float = 0f,
+    /** Seconds spent moving; [MOVING_UNKNOWN] for rides recorded before it was stored (backfilled at launch). */
+    val movingSeconds: Int = MOVING_UNKNOWN,
+    /** distance / total duration (stops included); 0 when not yet computed. */
+    val avgOverallSpeedKmh: Float = 0f,
     val maxSpeedKmh: Float = 0f,
     val pointCount: Int = 0,
     val saved: Boolean = false,
 )
+
+const val MOVING_UNKNOWN = -1

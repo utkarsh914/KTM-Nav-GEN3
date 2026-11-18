@@ -67,6 +67,8 @@ object RideJson {
         r.destLat?.let { put("destLat", it) }
         r.destLng?.let { put("destLng", it) }
         put("avgSpeedKmh", r.avgSpeedKmh.toDouble())
+        put("movingSeconds", r.movingSeconds)
+        put("avgOverallSpeedKmh", r.avgOverallSpeedKmh.toDouble())
         put("maxSpeedKmh", r.maxSpeedKmh.toDouble())
         put("pointCount", r.pointCount)
         put("saved", r.saved)
@@ -82,6 +84,8 @@ object RideJson {
         destLat = if (o.has("destLat")) o.getDouble("destLat") else null,
         destLng = if (o.has("destLng")) o.getDouble("destLng") else null,
         avgSpeedKmh = o.optDouble("avgSpeedKmh", 0.0).toFloat(),
+        movingSeconds = o.optInt("movingSeconds", MOVING_UNKNOWN),
+        avgOverallSpeedKmh = o.optDouble("avgOverallSpeedKmh", 0.0).toFloat(),
         maxSpeedKmh = o.optDouble("maxSpeedKmh", 0.0).toFloat(),
         pointCount = o.optInt("pointCount", 0),
         saved = o.optBoolean("saved", false),

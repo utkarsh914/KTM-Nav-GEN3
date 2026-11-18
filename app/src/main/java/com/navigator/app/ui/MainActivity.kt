@@ -120,6 +120,10 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        if (com.navigator.app.BuildConfig.DEBUG) {
+            com.navigator.app.nav.DashPreview.setOverlayEnabled(settings.dashPreviewOverlay)
+        }
+
         // First-run users grant permissions with context in the onboarding flow;
         // returning users get a silent top-up request for anything since revoked.
         // Only on a fresh launch (not rotation/recreation) and only when something is missing.
@@ -638,7 +642,10 @@ private fun OpenDashApp(
         ) {
             ConnectGreeting(name = settings.userName?.trim().orEmpty())
         }
-        if (com.navigator.app.BuildConfig.DEBUG) DashPreviewPanel()
+        if (com.navigator.app.BuildConfig.DEBUG) {
+            val overlayOn by com.navigator.app.nav.DashPreview.overlayEnabled.collectAsState()
+            if (overlayOn) DashPreviewPanel()
+        }
       }
     }
 }

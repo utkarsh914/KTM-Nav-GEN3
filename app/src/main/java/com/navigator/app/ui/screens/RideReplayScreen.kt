@@ -65,6 +65,7 @@ import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
+import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.SquareMapControl
 import com.navigator.app.ui.theme.Barlow
@@ -136,6 +137,8 @@ fun RideReplayScreen(
         val s = com.navigator.app.settings.AppSettings(context)
         RideMetrics.SpeedBands(s.speedBandBaseKmh, s.speedBandStepKmh, s.speedBandCount)
     }
+    // Which average (moving / overall) the rider picked in Settings > Ride recording.
+    val avgMode = remember { com.navigator.app.settings.AppSettings(context).avgSpeedMode }
     // Extra map bottom padding on top of the measured card height (its outer
     // margin + a small gap), so the framed/centred track clears the card.
     val bottomMarginPx = with(LocalDensity.current) { 28.dp.roundToPx() }
@@ -454,7 +457,8 @@ fun RideReplayScreen(
                         dateText = formatRideDate(r.startMs),
                         distanceText = DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
                         durationText = formatDurationShort(r.durationSeconds),
-                        avgSpeed = r.avgSpeedKmh.toInt(),
+                        avgSpeed = r.displayAvgKmh(avgMode).toInt(),
+                        avgLabel = avgMode.shortLabel,
                         maxSpeed = r.maxSpeedKmh.toInt(),
                         liveSpeed = liveSpeed?.toInt(),
                         timeText = timeText,
@@ -757,6 +761,7 @@ private fun ReplayControls(
     distanceText: String,
     durationText: String,
     avgSpeed: Int,
+    avgLabel: String,
     maxSpeed: Int,
     liveSpeed: Int?,
     timeText: String,
@@ -809,7 +814,7 @@ private fun ReplayControls(
             StatDivider()
             StatColumn(durationText.tightSpaces(), "TIME", modifier = Modifier.weight(1f))
             StatDivider()
-            StatColumn("$avgSpeed kmph".tightSpaces(), "AVG", modifier = Modifier.weight(1f))
+            StatColumn("$avgSpeed kmph".tightSpaces(), avgLabel, modifier = Modifier.weight(1f))
             StatDivider()
             StatColumn("$maxSpeed kmph".tightSpaces(), "MAX", modifier = Modifier.weight(1f))
         }

@@ -28,6 +28,12 @@ object DashPreview {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
 
+    /** Whether the on-screen chip is shown (Settings > Diagnostics, debug builds). Recording continues either way. */
+    private val _overlayEnabled = MutableStateFlow(false)
+    val overlayEnabled: StateFlow<Boolean> = _overlayEnabled
+
+    fun setOverlayEnabled(enabled: Boolean) { _overlayEnabled.value = enabled }
+
     internal fun reset() { _state.value = State() }
 
     /** Never throws: the preview must not be able to disturb real dash output. */

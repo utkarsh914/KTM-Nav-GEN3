@@ -115,6 +115,35 @@ class RideStore(context: Context) {
         return toDrop
     }
 
+    /**
+     * One-time (idempotent) upgrade: rides saved before both averages were stored get their
+     * moving time and moving/overall averages recomputed from the track file. Reads the tracks
+     * outside the lock and applies the results under it. Rides whose track is gone are left
+     * alone (the UI falls back to distance / duration for them).
+     */
+    fun backfillMovingStats() {
+        val pending = list().filter { it.movingSeconds < 0 }
+        if (pending.isEmpty()) return
+        val computed = HashMap<String, RideStats>()
+        for (r in pending) {
+            val pts = points(r.id)
+            if (pts.size >= 2) computed[r.id] = RideMetrics.summarize(pts)
+        }
+        if (computed.isEmpty()) return
+        synchronized(LOCK) {
+            writeIndex(readIndex().map { r ->
+                val st = computed[r.id]
+                // Only touch rides that still lack the data (they may have been re-saved meanwhile).
+                if (st == null || r.movingSeconds >= 0) r else r.copy(
+                    avgSpeedKmh = st.avgSpeedKmh,
+                    movingSeconds = st.movingSeconds,
+                    avgOverallSpeedKmh = st.avgOverallSpeedKmh,
+                )
+            })
+        }
+        AppLogger.log("Ride", "Backfilled moving stats for ${computed.size} ride(s)")
+    }
+
     /** Delete a track file that will not be kept (no index entry created). */
     fun discardTrack(id: String) {
         ACTIVE_TRACKS.remove(id)
@@ -218,6 +247,8 @@ class RideStore(context: Context) {
                     destLat = meta?.takeIf { it.has("dlat") }?.optDouble("dlat"),
                     destLng = meta?.takeIf { it.has("dlng") }?.optDouble("dlng"),
                     avgSpeedKmh = stats.avgSpeedKmh,
+                    movingSeconds = stats.movingSeconds,
+                    avgOverallSpeedKmh = stats.avgOverallSpeedKmh,
                     maxSpeedKmh = stats.maxSpeedKmh,
                     pointCount = stats.pointCount,
                     saved = id in savedIds(),

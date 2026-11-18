@@ -303,3 +303,5 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | 2026-11-18 | Deferred: B11 (CDM), N8 (guidanceOn OFF), NP4 (model input); B7 limited to UI, statuses 3/4 not sent | <50% confidence or unknown dash effect |
 | 2026-11-18 | Conservative bucket C parameters: backoff cap 2 min, liveness 30 s, 2 s GATT timeout unchanged, dedicated BLE thread | Minimise regression risk without hardware |
 | 2026-11-18 | C4 and R4 applied directly (no shadow mode); mock locations still accepted in debug builds | User decision |
+| 2026-11-18 | Rides store both averages (moving + overall); Settings > Ride recording > Average speed picks which one the UI shows (default Moving); legacy rides backfilled at launch | Moving-only changed the numbers riders were used to |
+| 2026-11-18 | Debug-only Dash preview overlay is toggled in Settings > Diagnostics (default off) | Debug builds are the daily driver; the floating chip was always on |

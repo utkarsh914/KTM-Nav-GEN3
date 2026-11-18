@@ -566,6 +566,7 @@ internal fun StatColumn(value: String, label: String, modifier: Modifier = Modif
         Text(
             label, color = Ktm.Dim, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
             fontSize = 9.sp, letterSpacing = 1.5.sp, style = TightTextStyle,
+            maxLines = 1, softWrap = false,
         )
     }
 }

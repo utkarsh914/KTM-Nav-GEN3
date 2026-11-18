@@ -14,8 +14,10 @@ data class RideStats(
     val pointCount: Int,
     val startMs: Long,
     val endMs: Long,
-    /** Time spent actually moving (stopped time excluded); not persisted. */
+    /** Time spent actually moving (stopped time excluded). */
     val movingSeconds: Int = 0,
+    /** distance / total duration (stops included); [avgSpeedKmh] is distance / moving time. */
+    val avgOverallSpeedKmh: Float = 0f,
 )
 
 /**
@@ -121,6 +123,7 @@ object RideMetrics {
             val durationSec = if (lastMs > firstMs) ((lastMs - firstMs) / 1000).toInt() else 0
             val movingSec = (movingMs / 1000).toInt()
             val avg = if (movingSec > 0) (distanceM / movingSec * 3.6).toFloat() else 0f
+            val overall = if (durationSec > 0) (distanceM / durationSec * 3.6).toFloat() else 0f
             return RideStats(
                 distanceMeters = distanceM.toInt(),
                 durationSeconds = durationSec,
@@ -130,6 +133,7 @@ object RideMetrics {
                 startMs = firstMs,
                 endMs = lastMs,
                 movingSeconds = movingSec,
+                avgOverallSpeedKmh = overall,
             )
         }
     }

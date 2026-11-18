@@ -104,6 +104,7 @@ import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideFinish
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
+import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.ConnectIconPill
 import com.navigator.app.ui.components.ConnectPill
@@ -1170,6 +1171,7 @@ fun NavigationHomeScreen(
                     TripFinishedCard(
                         destinationLabel = selected?.label,
                         ride = finishedRide,
+                        avgMode = appSettings.avgSpeedMode,
                         resolved = finishResolved,
                         fallbackDurationSec = finishedDurationSec,
                         onDone = ::backToBrowse,
@@ -1346,6 +1348,7 @@ private object HomeMapOwner
 private fun TripFinishedCard(
     destinationLabel: String?,
     ride: RecordedRide?,
+    avgMode: com.navigator.app.ride.AvgSpeedMode,
     resolved: Boolean,
     fallbackDurationSec: Int,
     onDone: () -> Unit,
@@ -1392,7 +1395,7 @@ private fun TripFinishedCard(
             ) {
                 TripStat("DISTANCE", DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC))
                 TripStat("TIME", formatDuration(ride.durationSeconds))
-                TripStat("AVG", "${ride.avgSpeedKmh.toInt()} km/h")
+                TripStat(avgMode.shortLabel, "${ride.displayAvgKmh(avgMode).toInt()} km/h")
                 TripStat("MAX", "${ride.maxSpeedKmh.toInt()} km/h")
             }
             else -> Row(
@@ -1426,7 +1429,7 @@ private fun TripFinishedCard(
 @Composable
 private fun TripStat(label: String, value: String) {
     Column {
-        Text(label, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp)
+        Text(label, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1, softWrap = false)
         Text(value, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
     }
 }
