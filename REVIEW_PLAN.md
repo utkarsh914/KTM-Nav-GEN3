@@ -330,3 +330,9 @@ Added after smoke test of batches 1-11. Detailed status in TRACKER.md (Phase 8 /
 - **B1** F3 manual recording (no auto-pause). **B2** F2/F9 GPX export + import-as-ride + trip-finished actions. **B3** F5 home/work chip + shortcuts. **B4** F8 freshness/hint. **B5** F1 Live Updates (own notification through the Nav SDK's NotificationContentProvider hook; in-app engine only). **B6** F6 categories + voice + along-route + N4 Add as stop.
 
 **Status (rev. 3):** Phases 8 and 9 are implemented (see TRACKER.md commit log). Open: smoke test 2 on the phone, bike checks (H1-H5), F4/F7/F10/F11/F12, remaining deferred items listed in TRACKER.md.
+
+---
+
+## Rev. 4 addendum: Phase 10 (remaining features and polish)
+
+C1 F4 richer ride data (altitude, elevation gain/loss, chart). C2 F10 rename/notes/trim + backup/restore (rides + places + prefs, never the bike pairing, merge-only). C3 F11 per-leg ETA + drag-to-reorder stops. C4 F12 Latin transliteration / road ref for the dash. C5 polish (replay line gaps, GPX import dedupe, UX1 resume pill, UX8 sunrise/sunset). F7 weather skipped; UX11 deferred (needs the bike).

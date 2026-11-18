@@ -299,6 +299,20 @@ Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 inclu
 
 Smoke test 2 (user) after B6.
 
+## Phase 10: Remaining features and polish (rev. 4)
+
+Decisions: F7 weather skipped; backup = rides + places + prefs (never the bike pairing); UX11 stays deferred; one smoke test (3) after C5.
+
+| St | ID | Item | Notes |
+|---|---|---|---|
+| [ ] | C1 | F4: altitude per fix, elevation gain/loss, speed+elevation chart in Replay, GPX ele in/out | |
+| [ ] | C2 | F10: ride rename/notes/trim; backup + restore (SAF, merge-only) | |
+| [ ] | C3 | F11: per-leg ETA in the preview, drag-to-reorder stops | |
+| [ ] | C4 | F12: Latin transliteration / road ref for the dash | check dash font first |
+| [ ] | C5 | Polish: replay line breaks at pauses, GPX import dedupe, Resume pill on more stages (UX1), real sunrise/sunset (UX8) | |
+
+Smoke test 3 (user) after C5.
+
 ## Tests to extend/add
 
 Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTest`, `RoutesClientTest`, `TurnIconHeuristicTest`, `NavSubtextParserTest`.
