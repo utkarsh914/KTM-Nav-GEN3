@@ -13,6 +13,8 @@ import androidx.security.crypto.MasterKey
  */
 class AppSettings(context: Context) {
 
+    private val appContext = context.applicationContext
+
     private val prefs: SharedPreferences = encryptedPrefs(context)
 
     // Plain (unencrypted) prefs for non-secret pairing state. EncryptedSharedPreferences
@@ -240,7 +242,9 @@ class AppSettings(context: Context) {
     /** Speed (km/h) above which the overspeed alert fires. Alert clears at limit − 10. */
     var overspeedLimitKmh: Int
         get() = pairingPrefs.getInt(KEY_OVERSPEED_LIMIT, DEFAULT_OVERSPEED_LIMIT_KMH)
-        set(value) = pairingPrefs.edit().putInt(KEY_OVERSPEED_LIMIT, value).apply()
+            .coerceIn(OVERSPEED_LIMIT_MIN, OVERSPEED_LIMIT_MAX)
+        set(value) = pairingPrefs.edit()
+            .putInt(KEY_OVERSPEED_LIMIT, value.coerceIn(OVERSPEED_LIMIT_MIN, OVERSPEED_LIMIT_MAX)).apply()
 
     /** Record the GPS track of every navigation by default. */
     var rideRecordingEnabled: Boolean
@@ -301,22 +305,24 @@ class AppSettings(context: Context) {
      */
     var speedBandBaseKmh: Int
         get() = pairingPrefs.getInt(KEY_SPEED_BAND_BASE, DEFAULT_SPEED_BAND_BASE_KMH)
+            .coerceIn(SPEED_BAND_BASE_MIN, SPEED_BAND_BASE_MAX)
         set(value) = pairingPrefs.edit()
             .putInt(KEY_SPEED_BAND_BASE, value.coerceIn(SPEED_BAND_BASE_MIN, SPEED_BAND_BASE_MAX)).apply()
 
     var speedBandStepKmh: Int
         get() = pairingPrefs.getInt(KEY_SPEED_BAND_STEP, DEFAULT_SPEED_BAND_STEP_KMH)
+            .coerceIn(SPEED_BAND_STEP_MIN, SPEED_BAND_STEP_MAX)
         set(value) = pairingPrefs.edit()
-            // Step size must stay ≥1 km/h to avoid a zero-width band (division by
-            // zero); otherwise unbounded.
-            .putInt(KEY_SPEED_BAND_STEP, value.coerceAtLeast(SPEED_BAND_STEP_MIN)).apply()
+            // Step size must stay >= 1 km/h to avoid a zero-width band (division by zero).
+            .putInt(KEY_SPEED_BAND_STEP, value.coerceIn(SPEED_BAND_STEP_MIN, SPEED_BAND_STEP_MAX)).apply()
 
     var speedBandCount: Int
         get() = pairingPrefs.getInt(KEY_SPEED_BAND_COUNT, DEFAULT_SPEED_BAND_COUNT)
+            .coerceIn(SPEED_BAND_COUNT_MIN, SPEED_BAND_COUNT_MAX)
         set(value) = pairingPrefs.edit()
-            // No upper cap on the number of steps; a single band (count 1) is the
-            // floor so there's always at least one colour transition.
-            .putInt(KEY_SPEED_BAND_COUNT, value.coerceAtLeast(SPEED_BAND_COUNT_MIN)).apply()
+            // A single band (count 1) is the floor; the cap keeps a typo (10 million) from
+            // building millions of colour bands and freezing the ride screens.
+            .putInt(KEY_SPEED_BAND_COUNT, value.coerceIn(SPEED_BAND_COUNT_MIN, SPEED_BAND_COUNT_MAX)).apply()
 
     /**
      * Direction-indicator style for the custom "you are here" marker on the
@@ -343,7 +349,14 @@ class AppSettings(context: Context) {
      * so a settings change or a region change takes effect immediately.
      */
     fun resolvedDrivingSide(): com.navigator.app.nav.model.DrivingSide =
-        DrivingSideResolver.resolve(drivingSidePreference)
+        DrivingSideResolver.resolve(drivingSidePreference, telephonyCountry())
+
+    /** Country the phone is physically in (network, else SIM), before falling back to the UI locale. */
+    private fun telephonyCountry(): String? = runCatching {
+        val tm = appContext.getSystemService(android.telephony.TelephonyManager::class.java)
+        listOf(tm?.networkCountryIso, tm?.simCountryIso)
+            .firstOrNull { !it.isNullOrBlank() }?.takeIf { it.length == 2 }
+    }.getOrNull()
 
     /**
      * Vehicle used for route calculation. Drives which travel mode the route
@@ -471,10 +484,14 @@ class AppSettings(context: Context) {
         const val DEFAULT_SPEED_BAND_COUNT = 5
         const val SPEED_BAND_BASE_MIN = 10
         const val SPEED_BAND_BASE_MAX = 120
-        // Step size only needs a floor (≥1 km/h) to stay well-defined; no ceiling.
+        // Step size: floor of 1 km/h keeps bands well-defined; the ceiling stops absurd values.
         const val SPEED_BAND_STEP_MIN = 1
-        // Number of steps: floor of 1, no ceiling.
+        const val SPEED_BAND_STEP_MAX = 100
+        const val OVERSPEED_LIMIT_MIN = 30
+        const val OVERSPEED_LIMIT_MAX = 200
+        // Number of steps: floor of 1; the ceiling keeps a typo from building millions of bands.
         const val SPEED_BAND_COUNT_MIN = 1
+        const val SPEED_BAND_COUNT_MAX = 20
         private const val KEY_LOCATION_MARKER_STYLE = "location_marker_style"
         private const val KEY_DRIVING_SIDE = "driving_side"
         private const val KEY_VEHICLE_MODE = "vehicle_mode"

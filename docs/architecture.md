@@ -37,8 +37,9 @@ The engines are **mutually exclusive**: the Settings "Navigation engine" selecto
 the in-app SDK engine is selected (so both never drive the dash at once).
 
 The legacy dash-companion surface (handlebar-remote controller / on-screen D-pad / 2×2 grid
-home), GPX ride recording, accelerometer engine-detect, and media/call handling have all been
-**removed** in the D2 lean-down (commits `refactor(d2): ...`). Symbol Testing + Turn-icon
+home), accelerometer engine-detect, and media/call handling have all been
+**removed** in the D2 lean-down (commits `refactor(d2): ...`). (Ride recording itself — NDJSON
+tracks, history and replay — is present; only GPX export/import is not.) Symbol Testing + Turn-icon
 calibration are intentionally retained as hardware diagnostics.
 
 ---

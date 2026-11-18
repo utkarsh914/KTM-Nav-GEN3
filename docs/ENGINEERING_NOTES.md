@@ -96,8 +96,9 @@ shows the turn arrow when the SDK reports `MERGE_*` but its own instruction expl
 "turn/sharp/slight left/right" (the turn phrase must hold the first left/right word; English
 only, since the SDK text follows the device language — other languages just don't override);
 `GoogleNavSdkProvider` logs the raw SDK maneuver, the chosen icon and any text-derived turn once
-per step. Road/instruction text is logged only in debug builds (lengths otherwise) because the log
-file is shareable. Also: model outputs 14/15 are treated as generic "merge" (Maps draws left/right
+per step. Release logs redact ALL user content - road/instruction text, destinations, notification
+text, message titles, the connect-greeting name - via `AppLogger.sensitive` (length only), and the
+public `Download/OpenDash` copy of the log is opt-in (Settings), because the log is shareable. Also: model outputs 14/15 are treated as generic "merge" (Maps draws left/right
 merges identically), "Merge onto Left Bank Expy" no longer reads the road name as the side, and the
 "Then" hint uses the step's driving side.
 

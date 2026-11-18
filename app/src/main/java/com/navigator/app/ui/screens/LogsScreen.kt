@@ -55,7 +55,7 @@ fun LogsScreen(onBack: () -> Unit) {
                             putExtra(Intent.EXTRA_STREAM, uri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(intent, "Share KTM Navigator log"))
+                        runCatching { context.startActivity(Intent.createChooser(intent, "Share KTM Navigator log")) }
                     }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )

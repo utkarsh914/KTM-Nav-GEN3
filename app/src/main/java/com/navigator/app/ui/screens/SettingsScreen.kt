@@ -180,6 +180,13 @@ fun SettingsScreen(
         }
     }
 
+    var bgLocationGranted by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
     var notificationAccessGranted by remember {
         mutableStateOf(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName))
     }
@@ -189,6 +196,10 @@ fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationAccessGranted =
                     NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+                // Granted/revoked from system settings while we were away.
+                bgLocationGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                ) == PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -416,7 +427,7 @@ fun SettingsScreen(
                     SettingsRow(
                         "Notification access", showDivider = true,
                         onClick = if (notificationAccessGranted) null else ({
-                            context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            runCatching { context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                         }),
                     ) {
                         MonoValue(
@@ -537,13 +548,6 @@ fun SettingsScreen(
                     // service auto-started in the background (boot / bike
                     // reconnect) rather than from the app being open.
                     run {
-                        var bgLocationGranted by remember {
-                            mutableStateOf(
-                                androidx.core.content.ContextCompat.checkSelfPermission(
-                                    context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                                ) == PackageManager.PERMISSION_GRANTED
-                            )
-                        }
                         val bgLocationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
                             androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
                         ) { granted ->
@@ -559,12 +563,14 @@ fun SettingsScreen(
                                     "Choose \"Allow all the time\" under Permissions → Location",
                                     android.widget.Toast.LENGTH_LONG,
                                 ).show()
-                                context.startActivity(
-                                    Intent(
-                                        AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        Uri.parse("package:${context.packageName}"),
-                                    ),
-                                )
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            Uri.parse("package:${context.packageName}"),
+                                        ),
+                                    )
+                                }
                             }
                         }
                         val fineLocationLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -738,7 +744,8 @@ fun SettingsScreen(
             title = "Overspeed limit (km/h)", initial = overspeedLimit.toString(), label = "km/h",
             onDismiss = { dialog = SettingsDialog.NONE },
             onConfirm = { value ->
-                value.trim().toIntOrNull()?.takeIf { it in 30..200 }?.let {
+                value.trim().toIntOrNull()
+                    ?.takeIf { it in AppSettings.OVERSPEED_LIMIT_MIN..AppSettings.OVERSPEED_LIMIT_MAX }?.let {
                     overspeedLimit = it
                     settings.overspeedLimitKmh = it
                 }
@@ -800,7 +807,7 @@ fun SettingsScreen(
             onDismiss = { dialog = SettingsDialog.NONE },
             onConfirm = { value ->
                 value.trim().toIntOrNull()
-                    ?.takeIf { it >= AppSettings.SPEED_BAND_STEP_MIN }
+                    ?.takeIf { it in AppSettings.SPEED_BAND_STEP_MIN..AppSettings.SPEED_BAND_STEP_MAX }
                     ?.let { speedBandStep = it; settings.speedBandStepKmh = it }
                 dialog = SettingsDialog.NONE
             },
@@ -811,7 +818,7 @@ fun SettingsScreen(
             onDismiss = { dialog = SettingsDialog.NONE },
             onConfirm = { value ->
                 value.trim().toIntOrNull()
-                    ?.takeIf { it >= AppSettings.SPEED_BAND_COUNT_MIN }
+                    ?.takeIf { it in AppSettings.SPEED_BAND_COUNT_MIN..AppSettings.SPEED_BAND_COUNT_MAX }
                     ?.let { speedBandCount = it; settings.speedBandCount = it }
                 dialog = SettingsDialog.NONE
             },
@@ -1313,9 +1320,12 @@ private fun <T> MultiChoiceDialog(
         titleContentColor = Ktm.White,
         title = { Text(title, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                options.forEach { option ->
+            // Lazy: the installed-app list can be hundreds of rows, and each row resolves a label.
+            androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                items(options.size) { i ->
+                    val option = options[i]
                     val checked = option in selected
+                    val label = remember(option) { labelFor(option) }
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .clickable { onToggle(option, !checked) }
@@ -1326,7 +1336,7 @@ private fun <T> MultiChoiceDialog(
                             checked = checked, onCheckedChange = { onToggle(option, it) },
                             colors = CheckboxDefaults.colors(checkedColor = Ktm.Orange, uncheckedColor = Ktm.Dim),
                         )
-                        Text(labelFor(option), color = Ktm.TextPrimary, fontFamily = Barlow)
+                        Text(label, color = Ktm.TextPrimary, fontFamily = Barlow)
                     }
                 }
             }

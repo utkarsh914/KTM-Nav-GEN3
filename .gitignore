@@ -19,3 +19,7 @@ ml/dataset/
 ml/*.log
 ml/*.tflite
 __pycache__/
+
+# Signing keys must never be committed
+*.jks
+*.keystore

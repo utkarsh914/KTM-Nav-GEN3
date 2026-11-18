@@ -10,7 +10,7 @@ formats, session crypto, the pairing/authentication handshake, and the telemetry
 > `KTM3638` on a KTM 390 Adventure. Items only seen in the live dump (not in either app's
 > source) are labelled **Reverse-engineered**. Source of truth in this repo:
 > `ble/BccuProtocol.kt`, `ble/BccuCrypto.kt`, `ble/BccuConnectionService.kt`,
-> `ble/TelemetrySchema.kt`.
+> `ble/TelemetrySchema.kt` _(the telemetry runtime was removed from the app; the schema notes below are kept as wire-format reference — see git history)_.
 
 All multi-byte integers in the telemetry/RPC path are **little-endian**.
 
@@ -223,7 +223,7 @@ length from the schema.
 
 ### 5.3 Datapoint schema
 Bundled JSON (`assets/bike_signals_contract.json`, from KTM Connect's `CUKT_bCCU.json`).
-Loaded by `TelemetrySchema`. Type lengths (bytes): `T_UINT8/T_INT8/T_CHAR`=1,
+Formerly loaded by `TelemetrySchema` (removed from the app). Type lengths (bytes): `T_UINT8/T_INT8/T_CHAR`=1,
 `T_UINT16/T_INT16`=2, `T_UINT32/T_INT32/T_FLOAT`=4, `T_UINT64/T_INT64`=8. Each datapoint has
 id, name, type, unit, default/min/max sample rate, and a `TELEMETRYABLE` flag.
 
@@ -231,7 +231,7 @@ id, name, type, unit, default/min/max sample rate, and a `TELEMETRYABLE` flag.
 
 ## 6. Handlebar remote (RCM)
 
-`parseRcmValue()` on the decrypted RCM_REMOTE_CONTROL notification: `active = v[16] == 0xFF`;
+`parseRcmValue()` (removed from the app; kept for reference) on the decrypted RCM_REMOTE_CONTROL notification: `active = v[16] == 0xFF`;
 button bitmask at `v[17]` — `SET(bit0)`, `BACK(bit1)`, `DOWN(bit2)`, `UP(bit3)`.
 
 ---

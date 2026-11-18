@@ -17,7 +17,7 @@ import com.navigator.app.settings.AppSettings
  * ever opening it.
  *
  * Note it deliberately does NOT stop the service on ACL_DISCONNECTED: the
- * service owns its own auto-reconnect (connectGatt(autoConnect=true)), and
+ * service owns its own auto-reconnect (scan-first, with a direct-connect fallback), and
  * tearing it down on every brief disconnect was exactly what prevented the app
  * from reconnecting on its own.
  */

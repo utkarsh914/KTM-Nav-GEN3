@@ -305,7 +305,7 @@ private fun ColumnScope.PermissionsStep(
             title = "Notification access",
             desc = "Read incoming notifications so they can be mirrored to the dash.",
             granted = notifAccess,
-            onGrant = { context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+            onGrant = { runCatching { context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } },
         )
         PermissionCard(
             icon = OpenDashIcons.LocateFixed,

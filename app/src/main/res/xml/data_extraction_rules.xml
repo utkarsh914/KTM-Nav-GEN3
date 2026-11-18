@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  allowBackup="false" already blocks cloud backup. This covers the OTHER path: device-to-device
+  transfer to a new phone. The bike pairing (session keys + bonded address) and the
+  Keystore-encrypted settings are bound to THIS phone/dash pairing, so they are excluded:
+  a restored copy would claim a pairing the new phone can't use and skip the dash's
+  "add device" prompt. NOTE: opendash_pairing.xml also holds the plain app preferences (theme,
+  overspeed limit, ...), so those restart from defaults on a new phone; rides and places
+  (their own files) do transfer.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="opendash_pairing.xml" />
+        <exclude domain="sharedpref" path="opendash_settings.xml" />
+        <exclude domain="sharedpref" path="opendash_settings_fallback.xml" />
+    </device-transfer>
+</data-extraction-rules>

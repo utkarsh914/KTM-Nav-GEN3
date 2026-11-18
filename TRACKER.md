@@ -31,7 +31,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 24 | 25 | R1/NP1 partial, NET2 dropped, NP4 deferred |
-| 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
+| 5 | Settings, build, docs hygiene | 8 | 11 | ST5 dropped; ST8, ST9 deferred |
 | 6 | UX polish & accessibility | 0 | 14 | Not started |
 | 7 | New features | 0 | 12 | Not started |
 | T | Tests to extend/add | 6 | 8 | T1 partial; T5 pending (stage state machine not extracted) |
@@ -192,17 +192,17 @@ Target: **Android 16+ only (minSdk 36)**.
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | ST1 | Clamp speed-band count/step and overspeed limit | | |
-| [ ] | ST2 | Driving-side AUTO via telephony country first | | |
-| [ ] | ST3 | `runCatching` around OEM-dependent `startActivity` calls | | |
-| [ ] | ST4 | Mirror-from apps dialog lazy + off-main; refresh background-location status on resume | | |
-| [ ] | ST5 | FileProvider authority `${applicationId}.fileprovider` (conditional: only with install-conflict reason, else drop) | | 🔎 |
-| [ ] | ST6 | Deterministic, monotonic `versionCode`/`versionName` | | |
-| [ ] | ST7 | `.gitignore` keystores; remove tracked `my-logs.txt` | | |
-| [ ] | ST8 | Bump old AndroidX/coroutines within toolchain limits | | |
-| [ ] | ST9 | Migrate off `security-crypto`; decide session-key storage; fix KDoc mismatches | | |
-| [ ] | ST10 | Docs corrections (protocol doc, architecture.md, stale comments, logging scope) | | |
-| [ ] | ST11 | Backup decision (`allowBackup=false` already set; device-to-device transfer of plain-prefs keys) | | |
+| [x] | ST1 | Clamp speed-band count/step and overspeed limit | | |
+| [x] | ST2 | Driving-side AUTO via telephony country first | | |
+| [x] | ST3 | `runCatching` around OEM-dependent `startActivity` calls | | |
+| [x] | ST4 | Mirror-from apps dialog lazy + off-main; refresh background-location status on resume | | |
+| [-] | ST5 | FileProvider authority `${applicationId}.fileprovider` (conditional: only with install-conflict reason, else drop) | | 🔎 DROPPED: no install-conflict reason (ENGINEERING_NOTES: no change needed) |
+| [x] | ST6 | Deterministic, monotonic `versionCode`/`versionName` versionCode = 100000 + commit count (above old day-based values; shallow clones fall back) |
+| [x] | ST7 | `.gitignore` keystores; remove tracked `my-logs.txt` | | |
+| [-] | ST8 | Bump old AndroidX/coroutines within toolchain limits DEFERRED: bumps can't be validated without device testing |
+| [-] | ST9 | Migrate off `security-crypto`; decide session-key storage; fix KDoc mismatches DEFERRED: needs a read-legacy-then-rewrite migration of every setting, best done with a device test |
+| [x] | ST10 | Docs corrections (protocol doc, architecture.md, stale comments, logging scope) | | |
+| [x] | ST11 | Backup decision (`allowBackup=false` already set; device-to-device transfer of plain-prefs keys) data_extraction_rules.xml: pairing + encrypted prefs excluded from device transfer |
 
 ## Phase 6: UX polish & accessibility
 

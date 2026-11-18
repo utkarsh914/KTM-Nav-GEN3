@@ -10,6 +10,16 @@ val localProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+/** Output of a git command run in the repo root, or null when git/the repo is unavailable. */
+fun gitOutput(vararg args: String): String? = runCatching {
+    val p = ProcessBuilder(listOf("git") + args)
+        .directory(rootProject.projectDir)
+        .redirectErrorStream(true)
+        .start()
+    val out = p.inputStream.bufferedReader().readText().trim()
+    if (p.waitFor() == 0) out else null
+}.getOrNull()
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -27,13 +37,20 @@ android {
         applicationId = "com.navigator.ktm"
         minSdk = 36
         targetSdk = 36
-        // Days-since-epoch: monotonically increasing across builds, so every
-        // new APK is a clean in-place update (Play Protect also treats a
-        // never-incrementing versionCode as a suspicion signal).
-        versionCode = (System.currentTimeMillis() / 86_400_000L).toInt()
-        // Public beta line, with a build stamp appended so it's easy to confirm
-        // which build is actually installed on-device (Settings > Diagnostics).
-        versionName = "0.6.0+" + SimpleDateFormat("MMdd-HHmm").format(Date())
+        // Deterministic and monotonic: 100_000 + the git commit count. The offset keeps it
+        // above every older days-since-epoch versionCode (~20_000), so existing installs
+        // still upgrade in place. Without git it falls back to the old day-based value.
+        // (A shallow clone reports a truncated, too-small count: ignore it rather than risk a downgrade.)
+        val shallow = gitOutput("rev-parse", "--is-shallow-repository") == "true"
+        val commitCount = if (shallow) null else gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
+        versionCode = if (commitCount != null) 100_000 + commitCount
+        else maxOf(100_000, (System.currentTimeMillis() / 86_400_000L).toInt())
+        // Public beta line + the commit it was built from (and "-dirty" for uncommitted
+        // changes), so the installed build can be identified (Settings > Diagnostics).
+        val shortHash = gitOutput("rev-parse", "--short", "HEAD")
+        val dirty = gitOutput("status", "--porcelain")?.isNotBlank() == true
+        versionName = "0.6.0+" + (shortHash?.plus(if (dirty) "-dirty" else "")
+            ?: SimpleDateFormat("MMdd-HHmm").format(Date()))
 
         // Navigation SDK / Places API key, read from local.properties (gitignored).
         // Applied at runtime via NavigationApi.setApiKey() rather than a manifest

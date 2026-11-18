@@ -24,7 +24,7 @@ import java.nio.ByteOrder
  * Pipeline (identical to the reference app so the bundled model behaves the
  * same): composite the icon onto a black background, scale to 96x96, feed RGB
  * floats [0,1], run the model, take the arg-max class; accept it only if its
- * confidence is >= [CONFIDENCE]. The 34 output classes are the dash turn-icon
+ * confidence is >= [CONFIDENCE]. The 28 output classes are the dash turn-icon
  * binary codes (plus three named fall-backs), so a numeric label maps straight
  * to [BccuProtocol.TurnIcon.fromBinary].
  */
