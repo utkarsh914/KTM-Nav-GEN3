@@ -13,6 +13,19 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
@@ -281,6 +294,8 @@ fun NavigationHomeScreen(
     // ---- Preview state ----------------------------------------------------
     var previewRoutes by remember { mutableStateOf<List<RoutePreview>>(emptyList()) }
     var selectedRoute by remember { mutableIntStateOf(0) }
+    // The stops previewRoutes were computed for (leg lines are only valid against these).
+    var routesForStops by remember { mutableStateOf<List<SavedPlace>>(emptyList()) }
     var previewLoading by remember { mutableStateOf(false) }
     var previewFailed by remember { mutableStateOf(false) }
     // Intermediate stops (up to MAX_STOPS), in visit order, shown/edited in the
@@ -416,11 +431,13 @@ fun NavigationHomeScreen(
         val o = (withTimeoutOrNull(4000) { freshLocation(context) }) ?: origin ?: lastLocation(context)
         if (o == null) { previewLoading = false; previewFailed = true; return@LaunchedEffect }
         origin = o
+        val stopsForRoutes = stops
         val routes = RoutesClient.computeRoutes(
             o, p.lat to p.lng, auth, appSettings.vehicleMode,
-            intermediates = stops.map { it.lat to it.lng },
+            intermediates = stopsForRoutes.map { it.lat to it.lng },
         )
         previewLoading = false
+        routesForStops = stopsForRoutes
         previewRoutes = routes
         previewFailed = routes.isEmpty()
     }
@@ -1090,6 +1107,7 @@ fun NavigationHomeScreen(
                         selectedIndex = selectedRoute,
                         failed = previewFailed,
                         stops = stops,
+                        routeStops = routesForStops,
                         origin = origin,
                         onSelect = { selectedRoute = it },
                         onAddStop = ::openSearchForStop,
@@ -1682,6 +1700,7 @@ private fun PreviewCard(
     selectedIndex: Int,
     failed: Boolean,
     stops: List<SavedPlace>,
+    routeStops: List<SavedPlace>,
     origin: Pair<Double, Double>?,
     onSelect: (Int) -> Unit,
     onAddStop: () -> Unit,
@@ -1708,19 +1727,32 @@ private fun PreviewCard(
 
         // ---- Stops list (Your location -> stops -> destination) --------------
         Spacer(Modifier.height(12.dp))
-        StopRow(text = "Your location", color = Ktm.Muted2)
-        stops.forEachIndexed { i, s ->
-            StopRow(
-                text = "Stop ${i + 1}: ${s.label}",
-                color = Ktm.White,
-                canMoveUp = i > 0,
-                canMoveDown = i < stops.lastIndex,
-                onMoveUp = { onMoveStop(i, -1) },
-                onMoveDown = { onMoveStop(i, 1) },
-                onRemove = { onRemoveStop(i) },
-            )
+        // Per-leg time / distance / arrival, when the (multi-stop) route carries a matching breakdown.
+        // Only for the stops the routes were computed for: right after a reorder / add / remove the
+        // old legs would otherwise show against the new order until the recompute lands.
+        val legLines = remember(routes, selectedIndex, stops, routeStops) {
+            if (routeStops != stops) emptyList()
+            else StopLegs.lines(routes.getOrNull(selectedIndex)?.legs.orEmpty(), stops.size + 1, System.currentTimeMillis())
         }
-        StopRow(text = place.label, color = Ktm.Orange)
+        // Height of one stop slot (row + leg line), measured, to turn a drag distance into rows.
+        var slotPx by remember { mutableStateOf(0f) }
+        // The list scrolls when four stops + leg lines outgrow a small screen.
+        Column(Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
+            StopRow(text = "Your location", color = Ktm.Muted2)
+            LegLine(legLines.getOrNull(0))
+            stops.forEachIndexed { i, s ->
+                androidx.compose.runtime.key(i) {
+                    StopSlot(
+                        i = i, count = stops.size, label = "Stop ${i + 1}: ${s.label}",
+                        legLine = legLines.getOrNull(i + 1), slotPx = slotPx,
+                        onSlotSize = { slotPx = it },
+                        onMove = { delta -> onMoveStop(i, delta) },
+                        onRemove = { onRemoveStop(i) },
+                    )
+                }
+            }
+            StopRow(text = place.label, color = Ktm.Orange)
+        }
         if (stops.size < MAX_STOPS) {
             Spacer(Modifier.height(6.dp))
             Text(
@@ -1765,17 +1797,27 @@ private fun PreviewCard(
     }
 }
 
-/** One line in the preview stop list: a dot + label, with optional reorder/remove
- *  controls (shown only for editable intermediate stops). */
+/** "12 min · 8.4 km · arrive 14:32" between two stops; nothing when the route has no breakdown. */
+@Composable
+private fun LegLine(text: String?) {
+    if (text == null) return
+    Text(
+        text, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp, maxLines = 1,
+        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 18.dp, bottom = 2.dp),
+    )
+}
+
+/** One line in the preview stop list: a dot + label, with a drag handle and a remove button on
+ *  editable intermediate stops (drag the handle to reorder; TalkBack gets move up/down actions). */
 @Composable
 private fun StopRow(
     text: String,
     color: Color,
-    canMoveUp: Boolean = false,
-    canMoveDown: Boolean = false,
-    onMoveUp: (() -> Unit)? = null,
-    onMoveDown: (() -> Unit)? = null,
+    index: Int = 0,
+    count: Int = 0,
     onRemove: (() -> Unit)? = null,
+    onMoveBy: ((Int) -> Unit)? = null,
+    dragHandle: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
@@ -1790,25 +1832,79 @@ private fun StopRow(
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
         )
         if (onRemove != null) {
-            // ▲ move up (rotated chevron), ▼ move down, × remove.
-            TapTarget(enabled = canMoveUp, onClick = { onMoveUp?.invoke() }) {
-                Icon(
-                    OpenDashIcons.ChevronDown, "Move up",
-                    tint = if (canMoveUp) Ktm.TextSecondary else Ktm.Dim,
-                    modifier = Modifier.size(22.dp).rotate(180f),
-                )
-            }
-            TapTarget(enabled = canMoveDown, onClick = { onMoveDown?.invoke() }) {
-                Icon(
-                    OpenDashIcons.ChevronDown, "Move down",
-                    tint = if (canMoveDown) Ktm.TextSecondary else Ktm.Dim,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+            dragHandle?.invoke()
             TapTarget(onClick = { onRemove.invoke() }) {
                 Icon(OpenDashIcons.Close, "Remove stop", tint = Ktm.Danger, modifier = Modifier.size(22.dp))
             }
         }
+    }
+}
+
+/**
+ * One editable stop (row + leg line) as a draggable unit: the whole slot floats above its
+ * neighbours while dragged, and the handle's drag distance becomes whole-row moves.
+ */
+@Composable
+private fun StopSlot(
+    i: Int,
+    count: Int,
+    label: String,
+    legLine: String?,
+    slotPx: Float,
+    onSlotSize: (Float) -> Unit,
+    onMove: (Int) -> Unit,
+    onRemove: () -> Unit,
+) {
+    var dragY by remember { mutableStateOf(0f) }
+    val dragging = dragY != 0f
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    // The gesture must not restart when these change mid-drag (leg lines appear, size remeasures).
+    val slot by androidx.compose.runtime.rememberUpdatedState(slotPx)
+    val index by androidx.compose.runtime.rememberUpdatedState(i)
+    val total by androidx.compose.runtime.rememberUpdatedState(count)
+    val move by androidx.compose.runtime.rememberUpdatedState(onMove)
+    Column(
+        Modifier
+            .onSizeChanged { onSlotSize(it.height.toFloat()) }
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer { translationY = dragY }
+            .then(if (dragging) Modifier.background(Ktm.SurfaceAlt) else Modifier),
+    ) {
+        StopRow(
+            text = label, color = Ktm.White, index = i, count = count, onRemove = onRemove,
+            dragHandle = if (count > 1) {
+                {
+                    Box(
+                        modifier = Modifier.size(48.dp)
+                            .semantics {
+                                contentDescription = "Reorder stop ${i + 1}"
+                                customActions = buildList {
+                                    if (i > 0) add(CustomAccessibilityAction("Move up") { onMove(-1); true })
+                                    if (i < count - 1) add(CustomAccessibilityAction("Move down") { onMove(1); true })
+                                }
+                            }
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragStart = { dragY = 0.001f; haptics.tap() },
+                                    onDragEnd = {
+                                        val delta = StopLegs.dragDelta(dragY, slot, index, total)
+                                        dragY = 0f
+                                        if (delta != 0) move(delta)
+                                    },
+                                    onDragCancel = { dragY = 0f },
+                                ) { change, drag ->
+                                    change.consume()
+                                    dragY += drag.y
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.DragHandle, null, tint = Ktm.TextSecondary, modifier = Modifier.size(24.dp))
+                    }
+                }
+            } else null,
+        )
+        LegLine(legLine)
     }
 }
 
