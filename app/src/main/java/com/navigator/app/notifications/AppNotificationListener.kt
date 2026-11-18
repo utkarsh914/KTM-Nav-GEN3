@@ -41,13 +41,48 @@ class AppNotificationListener : NotificationListenerService() {
     // getters read prefs live, so runtime setting changes are still reflected.
     private val settings by lazy { AppSettings(this) }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
+    // Rendering the maneuver icon, hashing, TFLite and disk writes are far too heavy for
+    // the main thread (this callback is delivered there). One worker keeps strict ordering,
+    // and removals go through the SAME queue so a removal can never overtake the post it follows.
+    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "notif-worker").apply { isDaemon = true }
+    }
+
+    private fun runOnWorker(what: String, block: () -> Unit) {
         try {
-            handlePosted(sbn)
-        } catch (e: Exception) {
-            AppLogger.log("Notif", "!! onNotificationPosted failed: ${e.javaClass.simpleName}: ${e.message}")
+            worker.execute {
+                try { block() } catch (e: Exception) {
+                    AppLogger.log("Notif", "!! $what failed: ${e.javaClass.simpleName}: ${e.message}")
+                }
+            }
+        } catch (e: java.util.concurrent.RejectedExecutionException) {
+            // Service already destroyed.
         }
     }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        runOnWorker("onNotificationPosted") { handlePosted(sbn) }
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        // (Re)bound: pick up a navigation notification that is already showing, instead of
+        // waiting for its next update (and track its key for the removal logic).
+        runOnWorker("onListenerConnected sync") {
+            activeNotifications?.forEach { sbn ->
+                if (isNavigationNotification(sbn, settings)) handlePosted(sbn)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        worker.shutdown()
+        super.onDestroy()
+    }
+
+    // Last text mirrored per notification key, so repeated updates of the same message
+    // (progress, re-posts) aren't sent to the dash again.
+    private val lastMessageText = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     private fun handlePosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
@@ -77,6 +112,8 @@ class AppNotificationListener : NotificationListenerService() {
                 com.navigator.app.nav.providers.GoogleNavSdkProvider.isTripInProgress
             ) return
             val navText = if (title.isNotBlank()) "$title $text" else text
+            // The title is only the dash's distance field when it looks like a distance.
+            val distanceTitle = NavSubtextParser.dashDistanceLabel(title)
             AppLogger.log("Notif", "Nav update from $packageName: distance=${redact(title)} road=${redact(text)}")
             // Dump every extras key so we can see, from real logs, exactly which
             // field carries ETA/duration/remaining-distance - no guessing which
@@ -104,7 +141,7 @@ class AppNotificationListener : NotificationListenerService() {
             // the official app's field split: title="110 m" (TURN_DISTANCE),
             // text="towards 1st Cross Rd" (TURN_ROAD).
             NotificationNavProvider.pushGuidance(
-                distanceText = title.ifBlank { null }?.let { NavSubtextParser.compactDistance(NavSubtextParser.asciiDigits(it)) },
+                distanceText = distanceTitle,
                 roadText = text.ifBlank { null },
                 etaText = etaText,
                 remainingText = remainingDistanceText,
@@ -118,7 +155,7 @@ class AppNotificationListener : NotificationListenerService() {
                 com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
                 com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value
-                com.navigator.app.audio.TurnBeeper.onGuidance(title.ifBlank { null }, guessedIcon)
+                com.navigator.app.audio.TurnBeeper.onGuidance(distanceTitle, guessedIcon)
             }
             NotificationRepository.updateNavGuidance(
                 NotificationRepository.NavGuidance(
@@ -126,7 +163,7 @@ class AppNotificationListener : NotificationListenerService() {
                     road = text.ifBlank { null },
                     eta = etaText,
                     remaining = remainingDistanceText,
-                    maneuver = maneuverTextFor(guessedIcon),
+                    maneuver = ManeuverText.forIcon(guessedIcon),
                     turnIcon = guessedIcon,
                 )
             )
@@ -134,6 +171,12 @@ class AppNotificationListener : NotificationListenerService() {
         }
 
         if (packageName !in settings.notificationSourceApps) return
+        // Never mirror our own notifications, nor ongoing / foreground-service ones (media
+        // players, downloads, call timers): those are status, not messages.
+        if (packageName == this.packageName) return
+        if (sbn.notification.flags and
+            (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0
+        ) return
 
         // Only INDIVIDUAL conversations reach the dash: skip group chats
         // (WhatsApp groups, group MMS) and the per-app summary notifications
@@ -158,6 +201,11 @@ class AppNotificationListener : NotificationListenerService() {
         }
 
         val combined = if (title.isNotBlank()) "$title: $text" else text
+        // Same text AND same timestamp = the same message re-posted (a genuinely new message,
+        // even with identical text, carries a new `when`).
+        val signature = "$combined|${sbn.notification.`when`}"
+        if (lastMessageText.put(sbn.key, signature) == signature) return
+        if (lastMessageText.size > 200) lastMessageText.clear()
         AppLogger.log("Notif", "Captured from $packageName ($appLabel): ${redact(combined)}")
         // Quick-mute: skip pushing non-navigation notifications to the dash while
         // mirroring is off.
@@ -186,24 +234,6 @@ class AppNotificationListener : NotificationListenerService() {
     private fun parseEtaAndRemainingDistance(subText: String): Pair<String?, String?> =
         NavSubtextParser.parseEtaAndRemaining(subText)
 
-    /** Best-effort maneuver label for the Direction screen, derived from the guessed turn icon. */
-    private fun maneuverTextFor(icon: com.navigator.app.ble.BccuProtocol.TurnIcon?): String? {
-        val name = icon?.name ?: return null
-        // Specific families first: U-turn/highway/roundabout names also contain
-        // LEFT/RIGHT, so a plain LEFT/RIGHT check first mislabelled them as turns.
-        return when {
-            name.contains("UTURN") || name.contains("U_TURN") -> "Make a U-turn onto"
-            name.startsWith("ENTER_HIGHWAY") -> "Merge onto"
-            name.startsWith("LEAVE_HIGHWAY") -> "Take the exit onto"
-            name.startsWith("RAB_SECT") -> "At the roundabout, exit onto"
-            name.startsWith("KEEP_") -> if (name.endsWith("LEFT")) "Keep left onto" else "Keep right onto"
-            name.contains("LEFT") -> "Turn left onto"
-            name.contains("RIGHT") -> "Turn right onto"
-            name.contains("STRAIGHT") || name.contains("CONTINUE") -> "Continue onto"
-            else -> null
-        }
-    }
-
     /**
      * When the navigation app's own notification goes away (rider exited Maps,
      * arrived, or stopped guidance), tell the dash to clear its center guidance
@@ -212,11 +242,7 @@ class AppNotificationListener : NotificationListenerService() {
      * doesn't cause a flicker.
      */
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        try {
-            handleRemoved(sbn)
-        } catch (e: Exception) {
-            AppLogger.log("Notif", "!! onNotificationRemoved failed: ${e.javaClass.simpleName}: ${e.message}")
-        }
+        runOnWorker("onNotificationRemoved") { handleRemoved(sbn) }
     }
 
     private fun handleRemoved(sbn: StatusBarNotification) {
@@ -228,8 +254,10 @@ class AppNotificationListener : NotificationListenerService() {
             // dedup on every raw removal made the same turn beep again on each
             // repost. The provider debounces the removal and only emits a real
             // end (-> encoder clear) when navigation has genuinely stopped.
-            NotificationNavProvider.pushRemoved()
-            NotificationRepository.clearNav()
+            // The phone's mirror home clears together with the dash (when the debounced end
+            // fires), not on every transient remove+repost; if no end is pending (paused /
+            // not navigating) there is nothing to wait for, so clear now.
+            if (!NotificationNavProvider.pushRemoved()) NotificationRepository.clearNav()
         }
     }
 

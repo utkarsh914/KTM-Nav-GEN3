@@ -363,6 +363,7 @@ fun NavigationHomeScreen(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var searchFailed by remember { mutableStateOf(false) }
     var resolving by remember { mutableStateOf(false) }
     // In-flight place-details lookup; cancelled when the rider backs out so it can't
     // jump to CONFIRM later.
@@ -370,13 +371,15 @@ fun NavigationHomeScreen(
 
     LaunchedEffect(query) {
         val q = query.trim()
-        if (q.length < 3) { results = emptyList(); loading = false; return@LaunchedEffect }
+        if (q.length < 3) { results = emptyList(); searchFailed = false; loading = false; return@LaunchedEffect }
         loading = true
         delay(300)
-        results = PlacesClient.autocomplete(
+        val res = PlacesClient.autocompleteResult(
             input = q, sessionToken = sessionToken, auth = auth,
             originLat = origin?.first, originLng = origin?.second,
         )
+        results = res.items
+        searchFailed = res.failed
         loading = false
     }
 
@@ -864,6 +867,7 @@ fun NavigationHomeScreen(
                 onQuery = { query = it },
                 loading = loading || resolving,
                 results = results,
+                searchFailed = searchFailed,
                 recents = recents,
                 favorites = favorites,
                 origin = origin,

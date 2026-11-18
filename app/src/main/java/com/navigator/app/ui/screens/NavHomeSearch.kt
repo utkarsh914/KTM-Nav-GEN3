@@ -55,6 +55,7 @@ internal fun SearchPanel(
     onQuery: (String) -> Unit,
     loading: Boolean,
     results: List<PlaceSuggestion>,
+    searchFailed: Boolean = false,
     recents: List<SavedPlace>,
     favorites: List<FavoritePlace>,
     origin: Pair<Double, Double>?,
@@ -103,7 +104,7 @@ internal fun SearchPanel(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
                 )
                 showResults && results.isEmpty() -> Text(
-                    "No matches", color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp,
+                    if (searchFailed) "Couldn't search - check your connection" else "No matches", color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp,
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
                 )
                 showResults -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -76,4 +76,26 @@ class MapsUrlResolverTest {
         )
         assertEquals("Shared location", MapsUrlResolver.labelFrom("https://maps.google.com/?q=12.9,77.6"))
     }
+
+    @Test fun hostAllowlistAcceptsGoogleHostsOnly() {
+        assertTrue(MapsUrlResolver.isAllowedHost("https://maps.app.goo.gl/abc"))
+        assertTrue(MapsUrlResolver.isAllowedHost("https://goo.gl/maps/xyz"))
+        assertTrue(MapsUrlResolver.isAllowedHost("https://www.google.com/maps/place/X"))
+        assertTrue(MapsUrlResolver.isAllowedHost("https://maps.google.co.in/maps?q=1,2"))
+        assertTrue(MapsUrlResolver.isAllowedHost("https://google.de/maps"))
+        assertEquals(false, MapsUrlResolver.isAllowedHost("https://evil.com/?u=maps.app.goo.gl"))
+        assertEquals(false, MapsUrlResolver.isAllowedHost("https://maps.app.goo.gl.evil.com/x"))
+        assertEquals(false, MapsUrlResolver.isAllowedHost("https://notgoogle.com/maps"))
+        assertEquals(false, MapsUrlResolver.isAllowedHost("https://google.com.evil.io/maps"))
+        assertEquals(false, MapsUrlResolver.isAllowedHost("not a url"))
+    }
+
+    @Test fun shortLinkIsHostBased() {
+        assertEquals(false, MapsUrlResolver.isShortLink("https://evil.com/maps.app.goo.gl"))
+    }
+
+    @Test fun trailingPunctuationTrimmedFromSharedLinks() {
+        assertEquals("https://maps.app.goo.gl/abc123", MapsUrlResolver.trimUrl("https://maps.app.goo.gl/abc123)."))
+        assertEquals("https://maps.app.goo.gl/abc123", MapsUrlResolver.trimUrl("https://maps.app.goo.gl/abc123,"))
+    }
 }

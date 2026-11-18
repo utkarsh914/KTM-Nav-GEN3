@@ -37,7 +37,9 @@ object IconHashCache {
         // example once confirmed: -123456789 to BccuProtocol.TurnIcon.LIGHT_LEFT,
     )
 
-    private val seenHashesThisSession = mutableSetOf<Int>()
+    private const val MAX_SAVED_ICONS = 120
+
+    private val seenHashesThisSession = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
 
     fun lookup(bitmap: Bitmap, context: Context): BccuProtocol.TurnIcon? {
         val hash = bitmapPixelHash(bitmap)
@@ -85,6 +87,11 @@ object IconHashCache {
             if (file.exists()) return // same hash = same pixels, no need to rewrite
             FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             AppLogger.log("IconCache", "Saved unknown icon to ${file.absolutePath}")
+            // Keep the folder bounded: drop the oldest captures beyond the cap.
+            dir.listFiles { f -> f.name.startsWith("icon_") && f.name.endsWith(".png") }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(MAX_SAVED_ICONS)
+                ?.forEach { runCatching { it.delete() } }
         } catch (e: Exception) {
             AppLogger.log("IconCache", "!! Failed to save unknown icon: $e")
         }

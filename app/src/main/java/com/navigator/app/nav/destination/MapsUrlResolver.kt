@@ -64,10 +64,10 @@ object MapsUrlResolver {
         val trimmed = text.trim()
         parseCoordinates(trimmed)?.let { return@withContext it.toDest(labelFrom(trimmed)) }
 
-        val url = URL_REGEX.find(trimmed)?.value ?: return@withContext null
+        val url = URL_REGEX.find(trimmed)?.value?.let(::trimUrl) ?: return@withContext null
         parseCoordinates(url)?.let { return@withContext it.toDest(labelFrom(url)) }
 
-        if (!isShortLink(url) && !isGoogleMapsUrl(url)) return@withContext null
+        if (!isAllowedHost(url) || (!isShortLink(url) && !isGoogleMapsUrl(url))) return@withContext null
 
         val resolvedUrl = runCatching { fetchResolvedUrl(url) }.getOrElse {
             AppLogger.log("MapsUrl", "resolve error: ${it.message}")
@@ -90,6 +90,12 @@ object MapsUrlResolver {
     private fun fetchResolvedUrl(start: String): String? {
         var current = start
         repeat(6) {
+            // Every hop (not just the first) must stay on a Google host: a short link must not
+            // be able to bounce us to an arbitrary server.
+            if (!isAllowedHost(current)) {
+                AppLogger.log("MapsUrl", "redirect to a non-Google host refused")
+                return null
+            }
             val conn = (URL(current).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
                 requestMethod = "GET"
@@ -103,8 +109,10 @@ object MapsUrlResolver {
                 if (code in 300..399) {
                     val loc = conn.getHeaderField("Location") ?: return null
                     current = if (loc.startsWith("http")) loc else URL(URL(current), loc).toString()
+                } else if (code in 200..299 || parseCoordinates(current) != null) {
+                    return current // (a bot-blocked final page still names the place in its URL)
                 } else {
-                    return current
+                    return null // 4xx/5xx with nothing to read from the URL
                 }
             } finally {
                 conn.disconnect()
@@ -122,7 +130,18 @@ object MapsUrlResolver {
     }
 
     private fun isGoogleMapsUrl(url: String): Boolean =
-        url.contains("google.") && url.contains("/maps")
+        isAllowedHost(url) && url.contains("/maps")
+
+    /** Strip punctuation a chat message glues onto the end of a pasted link. */
+    fun trimUrl(url: String): String = url.trimEnd('.', ',', ')', ']', '}', '>', ';', '!', '?', '"', '\'')
+
+    private val GOOGLE_HOST_RE = Regex("""^(?:[a-z0-9-]+\.)*google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$""")
+
+    /** Hosts a Maps link may legitimately live on / redirect through. */
+    fun isAllowedHost(url: String): Boolean {
+        val host = hostOf(url) ?: return false
+        return host == "maps.app.goo.gl" || host == "goo.gl" || GOOGLE_HOST_RE.matches(host)
+    }
 
     /** Pure coordinate extraction from a URL/text string. */
     fun parseCoordinates(s: String): PlaceLocation? {
@@ -135,8 +154,14 @@ object MapsUrlResolver {
         return null
     }
 
-    fun isShortLink(url: String): Boolean =
-        url.contains("maps.app.goo.gl") || url.contains("goo.gl/maps") || url.contains("//goo.gl/")
+    fun isShortLink(url: String): Boolean {
+        val host = hostOf(url) ?: return false
+        return host == "maps.app.goo.gl" || host == "goo.gl"
+    }
+
+    // URL (not URI): lenient about characters like | { } ^ that chat apps leave in pasted links.
+    private fun hostOf(url: String): String? =
+        runCatching { URL(url).host }.getOrNull()?.lowercase()?.takeIf { it.isNotBlank() }
 
     /** Human label from `/maps/place/<name>/`, or a generic fallback. */
     fun labelFrom(url: String): String = placeName(url) ?: "Shared location"

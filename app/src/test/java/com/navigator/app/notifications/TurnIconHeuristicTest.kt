@@ -140,4 +140,28 @@ class TurnIconHeuristicTest {
         assertEquals(TurnIcon.UTURN_LEFT, parse("Make a U-turn", DrivingSide.RIGHT))
         assertEquals(TurnIcon.UTURN_LEFT, parse("Make a U-turn to the left", DrivingSide.LEFT))
     }
+
+    // --- Severity words only count right next to the instruction's own side word ---
+
+    @Test fun roadNamesWithSeverityWordsDoNotOverrideTheTurn() {
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right onto Bear Creek Rd"))
+        assertEquals(TurnIcon.QUITE_LEFT, parse("Turn left onto Sharp St"))
+        assertEquals(TurnIcon.QUITE_LEFT, parse("Turn left onto Hardware Rd"))
+        assertEquals(TurnIcon.QUITE_RIGHT, parse("Turn right, then continue on Soft Rock Ln left"))
+    }
+
+    @Test fun adjacentSeverityStillWins() {
+        assertEquals(TurnIcon.HEAVY_LEFT, parse("Turn sharp left onto Main St"))
+        assertEquals(TurnIcon.HEAVY_RIGHT, parse("Sharp right"))
+        assertEquals(TurnIcon.LIGHT_RIGHT, parse("Bear right onto Bear Creek Rd"))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slight left onto NH 48"))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slightly to the left"))
+    }
+
+    @Test fun lessCommonSeverityPhrasings() {
+        assertEquals(TurnIcon.HEAVY_RIGHT, parse("Make a sharp turn to the right"))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slight turn left"))
+        assertEquals(TurnIcon.LIGHT_LEFT, parse("Slightly to your left"))
+        assertEquals(TurnIcon.HEAVY_RIGHT, parse("Turn sharply to the right"))
+    }
 }

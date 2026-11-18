@@ -193,13 +193,19 @@ object TurnIconHeuristic {
             return if (uRight) BccuProtocol.TurnIcon.UTURN_RIGHT else BccuProtocol.TurnIcon.UTURN_LEFT
         }
 
-        // Sharp / hard.
-        if (has("sharp", "sharply", "hard") && (left || right)) {
-            return if (left) BccuProtocol.TurnIcon.HEAVY_LEFT else BccuProtocol.TurnIcon.HEAVY_RIGHT
-        }
-        // Slight / soft / bear.
-        if (has("slight", "slightly", "soft", "bear") && (left || right)) {
-            return if (left) BccuProtocol.TurnIcon.LIGHT_LEFT else BccuProtocol.TurnIcon.LIGHT_RIGHT
+        // Sharp / hard / slight / soft / bear: the severity word must sit DIRECTLY before the
+        // instruction's own side word ("sharp left", "bear right", "slightly to the left"). A
+        // severity word elsewhere is a road name ("Bear Creek Rd", "Sharp St", "Hardware Rd").
+        if (side != null) {
+            val firstSideAt = SIDE_RE.find(t)!!.range.first
+            fun severityBefore(re: Regex): Boolean =
+                re.findAll(t).any { it.groups[2]!!.range.first == firstSideAt }
+            if (severityBefore(SHARP_SIDE_RE)) {
+                return if (left) BccuProtocol.TurnIcon.HEAVY_LEFT else BccuProtocol.TurnIcon.HEAVY_RIGHT
+            }
+            if (severityBefore(SLIGHT_SIDE_RE)) {
+                return if (left) BccuProtocol.TurnIcon.LIGHT_LEFT else BccuProtocol.TurnIcon.LIGHT_RIGHT
+            }
         }
         // "Turn left to stay on NH 48" is a real turn - checked before keep/stay,
         // which would otherwise read it as a lane keep.
@@ -248,6 +254,8 @@ object TurnIconHeuristic {
     }
 
     private val SIDE_RE = Regex("""\b(left|right)\b""")
+    private val SHARP_SIDE_RE = Regex("""\b(sharp|sharply|hard)(?:\s+turn)?(?:\s+to\s+(?:the|your))?\s+(left|right)\b""")
+    private val SLIGHT_SIDE_RE = Regex("""\b(slight|slightly|soft|softly|bear)(?:\s+turn)?(?:\s+to\s+(?:the|your))?\s+(left|right)\b""")
     private val MERGE_SIDE_RE = Regex("""\bmerge\s+(left|right)\b""")
     private val TURN_SIDE_RE = Regex("""\bturn\s+(left|right)\b""")
     private val UTURN_RE = Regex("""\bu-?\s?turn\b|\bmake a u\b""")

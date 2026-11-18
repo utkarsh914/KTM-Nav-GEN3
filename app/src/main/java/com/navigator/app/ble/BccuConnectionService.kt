@@ -139,10 +139,13 @@ class BccuConnectionService : LifecycleService() {
         // Simple same-process bridge so other components (notification listener,
         // controller state machine) can reach the running service instance
         // without binder/messenger plumbing. Null when the service isn't running.
-        private var runningInstance: BccuConnectionService? = null
+        @Volatile private var runningInstance: BccuConnectionService? = null
 
         fun sendNotificationIfRunning(text: String, icon: BccuProtocol.NotificationIcon) {
-            runningInstance?.sendNotification(text, icon)
+            // Callers may be on a worker thread (notification listener); the banner state
+            // machine (jobs, marquee) is main-thread territory.
+            val svc = runningInstance ?: return
+            svc.lifecycleScope.launch { svc.sendNotification(text, icon) }
         }
 
         /** Low-priority live status (overspeed readout): yields to any message currently on the banner. */

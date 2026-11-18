@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import com.navigator.app.logging.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,28 +38,17 @@ object ConnectivityMonitor {
             caps.hasRealInternet()
         }.getOrDefault(true)
 
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-
+        // The DEFAULT network only: what the rider's traffic actually uses. (A generic
+        // INTERNET request fires for every network, including ones that aren't in use.)
         val callback = object : ConnectivityManager.NetworkCallback() {
-            // Track which networks are currently validated; online = any of them is.
-            private val validated = HashSet<Network>()
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) =
+                publish(caps.hasRealInternet())
 
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                if (caps.hasRealInternet()) validated += network else validated -= network
-                publish()
-            }
+            override fun onLost(network: Network) = publish(false)
 
-            override fun onLost(network: Network) {
-                validated -= network
-                publish()
-            }
+            override fun onUnavailable() = publish(false)
 
-            override fun onUnavailable() = publish()
-
-            private fun publish() {
-                val online = validated.isNotEmpty()
+            private fun publish(online: Boolean) {
                 if (_isOnline.value != online) {
                     _isOnline.value = online
                     AppLogger.log("Net", "connectivity -> ${if (online) "online" else "offline"}")
@@ -68,8 +56,8 @@ object ConnectivityMonitor {
             }
         }
 
-        runCatching { cm.registerNetworkCallback(request, callback) }
-            .onFailure { AppLogger.log("Net", "!! registerNetworkCallback failed: ${it.message}") }
+        runCatching { cm.registerDefaultNetworkCallback(callback) }
+            .onFailure { AppLogger.log("Net", "!! registerDefaultNetworkCallback failed: ${it.message}") }
     }
 
     private fun NetworkCapabilities?.hasRealInternet(): Boolean =

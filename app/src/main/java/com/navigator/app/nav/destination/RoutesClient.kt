@@ -66,8 +66,25 @@ object RoutesClient {
     ): List<RoutePreview> {
         val primary = if (preferred == TravelMode.DRIVING) "DRIVE" else "TWO_WHEELER"
         val secondary = if (primary == "DRIVE") "TWO_WHEELER" else "DRIVE"
-        return request(origin, dest, primary, auth, intermediates)
-            .ifEmpty { request(origin, dest, secondary, auth, intermediates) }
+        // Try the other travel mode only when the first one was ANSWERED with nothing
+        // (empty result / 4xx = "unsupported here"). A network failure or 5xx would just
+        // fail again - retrying it doubled the wait offline.
+        return when (val first = request(origin, dest, primary, auth, intermediates)) {
+            is RequestResult.Ok -> if (first.routes.isNotEmpty()) first.routes else
+                (request(origin, dest, secondary, auth, intermediates) as? RequestResult.Ok)?.routes.orEmpty()
+            is RequestResult.Rejected ->
+                if (!first.modeUnsupported) emptyList() else (request(origin, dest, secondary, auth, intermediates) as? RequestResult.Ok)?.routes.orEmpty()
+            RequestResult.Unavailable -> emptyList()
+        }
+    }
+
+    private sealed interface RequestResult {
+        class Ok(val routes: List<RoutePreview>) : RequestResult
+        /** HTTP 4xx. [modeUnsupported] only for 400/404/422 (travel mode not available here);
+         *  401/403/429 (key, quota, rate limit) would fail the same way in the other mode. */
+        class Rejected(val modeUnsupported: Boolean) : RequestResult
+        /** Offline, timeout, 5xx, no key: retrying another mode won't help. */
+        data object Unavailable : RequestResult
     }
 
     /** Map the Routes API travel-mode string to the app's [TravelMode]. */
@@ -106,9 +123,9 @@ object RoutesClient {
         travelMode: String,
         auth: AndroidClientAuth?,
         intermediates: List<Pair<Double, Double>> = emptyList(),
-    ): List<RoutePreview> = withContext(Dispatchers.IO) {
+    ): RequestResult = withContext(Dispatchers.IO) {
         val key = BuildConfig.NAV_SDK_API_KEY
-        if (key.isBlank()) return@withContext emptyList()
+        if (key.isBlank()) return@withContext RequestResult.Unavailable
 
         val body = buildRequestBody(origin, dest, travelMode, intermediates)
         val conn = (URL(URL_COMPUTE).openConnection() as HttpURLConnection).apply {
@@ -132,12 +149,14 @@ object RoutesClient {
             val text = readBody(conn, code)
             if (code !in 200..299) {
                 AppLogger.log("Routes", "computeRoutes($travelMode) HTTP $code: ${text.take(300)}")
-                return@withContext emptyList()
+                return@withContext if (code in 400..499) {
+                    RequestResult.Rejected(modeUnsupported = code == 400 || code == 404 || code == 422)
+                } else RequestResult.Unavailable
             }
-            parseRoutes(text, modeOf(travelMode))
+            RequestResult.Ok(parseRoutes(text, modeOf(travelMode)))
         } catch (e: Exception) {
             AppLogger.log("Routes", "computeRoutes($travelMode) error: ${e.message}")
-            emptyList()
+            RequestResult.Unavailable
         } finally {
             conn.disconnect()
         }
@@ -157,11 +176,11 @@ object RoutesClient {
         val routes = JSONObject(json).optJSONArray("routes") ?: return emptyList()
         val out = ArrayList<RoutePreview>(routes.length())
         for (i in 0 until routes.length()) {
-            val r = routes.getJSONObject(i)
+            val r = runCatching { routes.getJSONObject(i) }.getOrNull() ?: continue
             val distance = r.optInt("distanceMeters", 0)
-            // duration / staticDuration come as protobuf duration strings, e.g. "3120s".
-            val durationSec = r.optString("duration").removeSuffix("s").toIntOrNull() ?: 0
-            val staticSec = r.optString("staticDuration").removeSuffix("s").toIntOrNull() ?: durationSec
+            // duration / staticDuration come as protobuf duration strings, e.g. "3120s" or "3120.5s".
+            val durationSec = parseDurationSeconds(r.optString("duration")) ?: 0
+            val staticSec = parseDurationSeconds(r.optString("staticDuration")) ?: durationSec
             val delaySec = (durationSec - staticSec).coerceAtLeast(0)
             val encoded = r.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty()
             val points = decodePolyline(encoded)
@@ -174,13 +193,17 @@ object RoutesClient {
         return out
     }
 
+    /** "3120s" / "3120.5s" -> whole seconds; null when unparsable. */
+    internal fun parseDurationSeconds(s: String): Int? =
+        s.removeSuffix("s").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.toInt()
+
     /** Parse a route's `legs[]` array into [RouteLeg]s (empty for single-leg). */
     private fun parseLegs(legs: org.json.JSONArray?): List<RouteLeg> {
         if (legs == null || legs.length() <= 1) return emptyList()
         val out = ArrayList<RouteLeg>(legs.length())
         for (i in 0 until legs.length()) {
             val l = legs.getJSONObject(i)
-            val d = l.optString("duration").removeSuffix("s").toIntOrNull() ?: 0
+            val d = parseDurationSeconds(l.optString("duration")) ?: 0
             val dist = l.optInt("distanceMeters", 0)
             val pts = decodePolyline(l.optJSONObject("polyline")?.optString("encodedPolyline").orEmpty())
             out += RouteLeg(d, dist, pts)
@@ -200,6 +223,7 @@ object RoutesClient {
             var shift = 0
             var result = 0
             do {
+                if (index >= len) return poly // truncated polyline: keep what decoded cleanly
                 b = encoded[index++].code - 63
                 result = result or ((b and 0x1f) shl shift)
                 shift += 5
@@ -210,6 +234,7 @@ object RoutesClient {
             shift = 0
             result = 0
             do {
+                if (index >= len) return poly // cut off between lat and lng: drop the half point
                 b = encoded[index++].code - 63
                 result = result or ((b and 0x1f) shl shift)
                 shift += 5

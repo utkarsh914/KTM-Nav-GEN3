@@ -81,9 +81,21 @@ object PlacesClient {
         originLat: Double? = null,
         originLng: Double? = null,
         regionCode: String = "in",
-    ): List<PlaceSuggestion> = withContext(Dispatchers.IO) {
+    ): List<PlaceSuggestion> = autocompleteResult(input, sessionToken, auth, originLat, originLng, regionCode).items
+
+    /** Autocomplete outcome: [failed] distinguishes "offline / error" from "no matches". */
+    class AutocompleteResult(val items: List<PlaceSuggestion>, val failed: Boolean)
+
+    suspend fun autocompleteResult(
+        input: String,
+        sessionToken: String,
+        auth: AndroidClientAuth?,
+        originLat: Double? = null,
+        originLng: Double? = null,
+        regionCode: String = "in",
+    ): AutocompleteResult = withContext(Dispatchers.IO) {
         val key = BuildConfig.NAV_SDK_API_KEY
-        if (key.isBlank() || input.isBlank()) return@withContext emptyList()
+        if (key.isBlank() || input.isBlank()) return@withContext AutocompleteResult(emptyList(), failed = false)
 
         val body = JSONObject().apply {
             put("input", input)
@@ -108,12 +120,12 @@ object PlacesClient {
             val text = readBody(conn, code)
             if (code !in 200..299) {
                 AppLogger.log("Places", "autocomplete HTTP $code: ${text.take(200)}")
-                return@withContext emptyList()
+                return@withContext AutocompleteResult(emptyList(), failed = true)
             }
-            parseSuggestions(text)
+            AutocompleteResult(parseSuggestions(text), failed = false)
         } catch (e: Exception) {
             AppLogger.log("Places", "autocomplete error: ${e.message}")
-            emptyList()
+            AutocompleteResult(emptyList(), failed = true)
         } finally {
             conn.disconnect()
         }

@@ -40,4 +40,61 @@ class NavSubtextParserTest {
         assertEquals("200 ft", NavSubtextParser.compactDistance("200 feet"))
         assertEquals("110 m", NavSubtextParser.compactDistance("110 m"))
     }
+
+    // --- distanceMeters (turn beeper) ---
+
+    @Test fun distanceMetersUnitsAndSeparators() {
+        assertEquals(110, NavSubtextParser.distanceMeters("110 m"))
+        assertEquals(1200, NavSubtextParser.distanceMeters("1.2 km"))
+        assertEquals(1200, NavSubtextParser.distanceMeters("1,2 km"))        // decimal comma
+        assertEquals(1200, NavSubtextParser.distanceMeters("1,200 m"))       // thousands comma
+        assertEquals(1200, NavSubtextParser.distanceMeters("1.200 m"))       // thousands dot
+        assertEquals(482, NavSubtextParser.distanceMeters("0.3 mi"))
+        assertEquals(482, NavSubtextParser.distanceMeters("0.3 miles"))
+        assertEquals(457, NavSubtextParser.distanceMeters("500 yd"))
+        assertEquals(30, NavSubtextParser.distanceMeters("100 ft"))
+        assertEquals(350, NavSubtextParser.distanceMeters("\u0969\u096B\u0966 m")) // Devanagari digits
+    }
+
+    @Test fun distanceMetersMustLeadTheText() {
+        assertEquals(null, NavSubtextParser.distanceMeters("Turn left onto 5 m Rd"))
+        assertEquals(null, NavSubtextParser.distanceMeters("Main St"))
+        assertEquals(null, NavSubtextParser.distanceMeters(null))
+        assertEquals(null, NavSubtextParser.distanceMeters("5 minutes"))
+    }
+
+    @Test fun isDistanceOnlyForWholeDistanceLabels() {
+        assertEquals(true, NavSubtextParser.isDistance("110 m"))
+        assertEquals(true, NavSubtextParser.isDistance("1.2 km"))
+        assertEquals(false, NavSubtextParser.isDistance("Turn left"))
+        assertEquals(false, NavSubtextParser.isDistance("110 m then left"))
+    }
+
+    // --- NBSP / narrow NBSP and AM/PM token boundaries ---
+
+    @Test fun narrowNoBreakSpaceBeforeMeridiem() {
+        assertEquals("14:12" to "9.7 km", parse("22 min\u00A0·\u00A09.7\u00A0km · 2:12\u202FPM ETA"))
+        assertEquals("02:12", parse("2:12\u202Fam").first)
+    }
+
+    @Test fun meridiemMarkerMustBeAWholeToken() {
+        val ams = "AM" to "PM"
+        // "am" inside "Amsterdam" must not flip a 12-hour clock.
+        assertEquals("12:30", parse("12:30 Amsterdam", ams).first)
+    }
+
+    @Test fun dashDistanceLabelIsLenientAboutLocalisedUnitsButNotAboutText() {
+        assertEquals("0.3 mi", NavSubtextParser.dashDistanceLabel("0.3 miles"))
+        assertEquals("110 m", NavSubtextParser.dashDistanceLabel("110\u00A0m"))
+        assertEquals("110 मी", NavSubtextParser.dashDistanceLabel("110 मी"))      // localised unit still reaches the dash
+        assertEquals("1 200 m", NavSubtextParser.dashDistanceLabel("1 200 m"))
+        assertEquals(null, NavSubtextParser.dashDistanceLabel("Turn left"))
+        assertEquals(null, NavSubtextParser.dashDistanceLabel("2:12 pm"))
+        assertEquals(null, NavSubtextParser.dashDistanceLabel(""))
+    }
+
+    @Test fun leadingZeroCommaIsADecimalNotThousands() {
+        assertEquals(500, NavSubtextParser.distanceMeters("0,5 km"))
+        assertEquals(500, NavSubtextParser.distanceMeters("0,500 km"))
+    }
 }

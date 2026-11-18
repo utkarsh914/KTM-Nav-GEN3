@@ -119,4 +119,23 @@ class RoutesClientTest {
         val out = RoutesClient.parseRoutes(wrap(routeJson("1000s", "900s")))
         assertTrue(out[0].legs.isEmpty())
     }
+
+    @Test fun fractionalDurationsParse() {
+        val out = RoutesClient.parseRoutes(wrap(routeJson("3120.5s", "2700.25s")))
+        assertEquals(3120, out[0].durationSeconds)
+        assertEquals(420, out[0].delaySeconds)
+    }
+
+    @Test fun truncatedPolylineKeepsDecodedPrefixInsteadOfThrowing() {
+        val full = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
+        val pts = RoutesClient.decodePolyline(full.dropLast(3))
+        assertTrue(pts.isNotEmpty())
+        assertTrue(pts.size < RoutesClient.decodePolyline(full).size)
+        assertTrue(RoutesClient.decodePolyline("_p~iF").isEmpty()) // lat only: no half point
+    }
+
+    @Test fun garbageRouteEntryDoesNotDropTheOthers() {
+        val json = """{"routes":["junk", ${routeJson("100s", "100s")}]}"""
+        assertEquals(1, RoutesClient.parseRoutes(json).size)
+    }
 }

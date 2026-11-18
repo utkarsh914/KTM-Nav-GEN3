@@ -44,10 +44,6 @@ object ManeuverClassifier {
         "merge", "roundabout_generic",
     )
     @Volatile private var labels: Array<String>? = null
-    /** True when the loaded labels file predates the roundabout-label fix
-     *  (no [LegacyModelRemap.V2_HEADER]); its outputs go through [LegacyModelRemap]. */
-    @Volatile private var legacyLabels = false // embedded fallback matches the v2 model
-
     private fun labels(context: Context): Array<String> {
         labels?.let { return it }
         val loaded = try {
@@ -56,7 +52,6 @@ object ManeuverClassifier {
                 val lines = context.resources.openRawResource(id).bufferedReader().useLines { seq ->
                     seq.map { it.trim() }.filter { it.isNotEmpty() }.toList()
                 }
-                legacyLabels = lines.none { it == LegacyModelRemap.V2_HEADER }
                 // '#' lines are headers, not classes.
                 lines.filterNot { it.startsWith("#") }.toTypedArray().takeIf { it.isNotEmpty() }
             } else null
@@ -84,6 +79,9 @@ object ManeuverClassifier {
     // Cache by bitmap-pixel hash: the same maneuver bitmap recurs many times per
     // ride, so we only run the model once per distinct icon.
     private val cache = java.util.concurrent.ConcurrentHashMap<Int, BccuProtocol.TurnIcon>()
+    // "No confident match" is cached too (same bitmap, same answer): the rejected icon
+    // used to be re-run through the model - and re-logged - on every ~1 Hz update.
+    private val noMatch = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
 
     private fun ensureModel(context: Context): Interpreter? {
         interpreter?.let { return it }
@@ -113,8 +111,10 @@ object ManeuverClassifier {
         // different lane per driving side, so they can't share a cache entry.
         val hash = bitmapPixelHash(bitmap) * 31 + drivingSide.ordinal
         cache[hash]?.let { return it }
+        if (hash in noMatch) return null
         val model = ensureModel(context) ?: return null
         val lbls = labels(context)
+        var inferenceFailed = false
         val result = try {
             val input = preprocess(bitmap)
             val output = Array(1) { FloatArray(lbls.size) }
@@ -132,9 +132,10 @@ object ManeuverClassifier {
             }
         } catch (e: Throwable) {
             AppLogger.log("Maneuver", "!! inference failed: $e")
+            inferenceFailed = true
             null
         }
-        if (result != null) cache[hash] = result
+        if (result != null) cache[hash] = result else if (!inferenceFailed) noMatch.add(hash)
         return result
     }
 
@@ -150,7 +151,7 @@ object ManeuverClassifier {
                     rampOnLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide),
                 )
             }
-            return if (legacyLabels) LegacyModelRemap.correct(n) else BccuProtocol.TurnIcon.fromBinary(n)
+            return BccuProtocol.TurnIcon.fromBinary(n)
         }
         // "merge" has no left/right in the label - the ramp is on the driving
         // side (left-hand traffic joins from the left), consistent with the text path.

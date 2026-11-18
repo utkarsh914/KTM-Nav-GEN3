@@ -52,6 +52,7 @@ object NotificationNavProvider : NavigationProvider {
             endJob?.cancel()
             endJob = null
             _state.value = NormalizedNavigationState.IDLE
+            com.navigator.app.notifications.NotificationRepository.clearNav()
         }
     }
 
@@ -71,6 +72,7 @@ object NotificationNavProvider : NavigationProvider {
             endJob?.cancel()
             endJob = null
             _state.value = NormalizedNavigationState.IDLE
+            com.navigator.app.notifications.NotificationRepository.clearNav()
         }
     }
 
@@ -107,8 +109,9 @@ object NotificationNavProvider : NavigationProvider {
      * [pushGuidance] before then cancels it. Keeps the encoder's state machine
      * authoritative without churning on transient removes.
      */
-    fun pushRemoved() {
-        if (_state.value.sessionState != NavSessionState.ENROUTE) return
+    /** @return true when a (debounced) end was scheduled; false when there was nothing to end. */
+    fun pushRemoved(): Boolean {
+        if (_state.value.sessionState != NavSessionState.ENROUTE) return false
         val scheduledAt = synchronized(lock) {
             endJob?.cancel()
             generation
@@ -122,8 +125,11 @@ object NotificationNavProvider : NavigationProvider {
                     sessionState = NavSessionState.STOPPED,
                     producedAtMs = System.currentTimeMillis(),
                 )
+                // Guidance really ended: the phone-side mirror clears with the dash.
+                com.navigator.app.notifications.NotificationRepository.clearNav()
             }
         }
         synchronized(lock) { endJob = job }
+        return true
     }
 }

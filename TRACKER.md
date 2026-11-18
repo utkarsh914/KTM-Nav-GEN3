@@ -30,11 +30,11 @@ Target: **Android 16+ only (minSdk 36)**.
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
 | 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
-| 4 | Data integrity, parsing, network | 9 | 25 | Rides+places done (R1 partial); NP/NET pending |
+| 4 | Data integrity, parsing, network | 24 | 25 | R1/NP1 partial, NET2 dropped, NP4 deferred |
 | 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
 | 6 | UX polish & accessibility | 0 | 14 | Not started |
 | 7 | New features | 0 | 12 | Not started |
-| T | Tests to extend/add | 3 | 8 | T2-T4 done, T1 partial |
+| T | Tests to extend/add | 6 | 8 | T1 partial; T5 pending (stage state machine not extracted) |
 | H | Hardware verification | 0 | 5 | Not started |
 
 ---
@@ -168,25 +168,25 @@ Target: **Android 16+ only (minSdk 36)**.
 ### Notification parsing
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | NP1 | Off-main-thread nav processing (removals on same executor); cache no-match; lazy mmap model; shared calibration prefs | | |
-| [ ] | NP2 | `TurnBeeper.parseMeters` anchoring, thousands, `yd`, normalised title | | |
-| [ ] | NP3 | Severity words must be adjacent to left/right; parse instruction field first | | |
+| [~] | NP1 | Off-main-thread nav processing (removals on same executor); cache no-match; lazy mmap model; shared calibration prefs Done: worker executor (post+remove same queue), negative classifier cache. NOT done: mmap model, calibration via plain prefs (small gain) |
+| [x] | NP2 | `TurnBeeper.parseMeters` anchoring, thousands, `yd`, normalised title | | |
+| [x] | NP3 | Severity words must be adjacent to left/right; parse instruction field first | | |
 | [ ] | NP4 | Classifier preprocessing vs training: re-run 192/192 eval first, retrain if needed | | 🔎 🏍 DEFERRED until eval re-run |
-| [ ] | NP5 | Validate title as distance before sending | | |
-| [ ] | NP6 | Mirror-home clears on provider STOPPED | | |
-| [ ] | NP7 | Skip ongoing/own-package; dedup `(key, text)` | | |
-| [ ] | NP8 | NBSP/U+202F, AM/PM boundary, `maneuverTextFor` fixes | | |
-| [ ] | NP9 | Cap captured icons; sync `activeNotifications` on connect | | |
-| [ ] | NP10 | Delete `LegacyModelRemap` + its test | | |
+| [x] | NP5 | Validate title as distance before sending Lenient: any digit-led short label without ':' (localised units still reach the dash) |
+| [x] | NP6 | Mirror-home clears on provider STOPPED | | |
+| [x] | NP7 | Skip ongoing/own-package; dedup `(key, text)` | | |
+| [x] | NP8 | NBSP/U+202F, AM/PM boundary, `maneuverTextFor` fixes | | |
+| [x] | NP9 | Cap captured icons; sync `activeNotifications` on connect Cap 120 icons + onListenerConnected sync |
+| [x] | NP10 | Delete `LegacyModelRemap` + its test | | |
 
 ### Network
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | NET1 | `MapsUrlResolver` host allowlist, per-hop check, status check, trim punctuation (🟡/🟢) | | |
-| [ ] | NET2 | Derive `regionCode` | | |
-| [ ] | NET3 | `RoutesClient` retry only on empty 200; per-route polyline tolerance | | |
-| [ ] | NET4 | `autocomplete` result type (error vs empty) | | |
-| [ ] | NET5 | `registerDefaultNetworkCallback` | | |
+| [x] | NET1 | `MapsUrlResolver` host allowlist, per-hop check, status check, trim punctuation (🟡/🟢) | | |
+| [-] | NET2 | Derive `regionCode` DROPPED: device locale is a poor proxy (en-US phones in India); needs SIM/location-based design |
+| [x] | NET3 | `RoutesClient` retry only on empty 200; per-route polyline tolerance | | |
+| [x] | NET4 | `autocomplete` result type (error vs empty) | | |
+| [x] | NET5 | `registerDefaultNetworkCallback` | | |
 
 ## Phase 5: Settings, build, docs
 
@@ -251,9 +251,9 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | [x] | T3 | `SerialGattQueue` (extend): late completion after timeout | | |
 | [x] | T4 | Nav trip-token logic (pure class): stale result/NavInfo ignored; `ROUTE_CANCELED` never retried | | |
 | [ ] | T5 | Nav stage state machine: C2, C3, N4, U1, U2 | | |
-| [ ] | T6 | `TurnBeeper.parseMeters` (new), severity words, `NavSubtextParser` edge cases, `maneuverTextFor` | | |
-| [ ] | T7 | `MapsUrlResolver` (extend): allowlist, foreign redirect, trailing punctuation | | |
-| [ ] | T8 | `RoutesClient` (extend): malformed polyline, fractional durations | | |
+| [x] | T6 | `TurnBeeper.parseMeters` (new), severity words, `NavSubtextParser` edge cases, `maneuverTextFor` | | |
+| [x] | T7 | `MapsUrlResolver` (extend): allowlist, foreign redirect, trailing punctuation | | |
+| [x] | T8 | `RoutesClient` (extend): malformed polyline, fractional durations | | |
 
 ## Hardware verification
 

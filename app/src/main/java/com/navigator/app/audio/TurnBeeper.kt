@@ -83,6 +83,7 @@ object TurnBeeper {
      * Updates the live distance the running metronome reads its gap from;
      * starts/stops/re-sides the metronome as the maneuver comes and goes.
      */
+    @Synchronized
     fun onGuidance(distanceText: String?, icon: BccuProtocol.TurnIcon?) {
         val side = sideOf(icon)
         val meters = parseMeters(distanceText)
@@ -99,6 +100,7 @@ object TurnBeeper {
     }
 
     /** Navigation ended (debounced in the service) - stop and re-arm for the next route. */
+    @Synchronized
     fun reset() = stopPattern()
 
     /**
@@ -173,18 +175,7 @@ object TurnBeeper {
         }
     }
 
-    /** "110 m" -> 110, "1.2 km" -> 1200; null when the text isn't a distance. */
-    private fun parseMeters(text: String?): Int? {
-        if (text.isNullOrBlank()) return null
-        val m = Regex("""(\d+(?:[.,]\d+)?)\s*(km|mi|m|ft)""", RegexOption.IGNORE_CASE).find(text) ?: return null
-        val value = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return null
-        return when (m.groupValues[2].lowercase()) {
-            "km" -> (value * 1000).toInt()
-            "mi" -> (value * 1609).toInt()
-            "ft" -> (value * 0.3048).toInt()
-            else -> value.toInt()
-        }
-    }
+    private fun parseMeters(text: String?): Int? = com.navigator.app.notifications.NavSubtextParser.distanceMeters(text)
 
     private fun playBeep(side: Side, ducked: Boolean = duckedNow()) {
         // Volume: user setting, cut way down while the bike is provably waiting
