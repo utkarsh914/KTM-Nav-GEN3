@@ -7,9 +7,8 @@ import android.content.SharedPreferences
  * Single place for all persisted app configuration: bonded bike address,
  * notification source apps, nav-app override, and preferred call-audio device.
  * Backed by one plain SharedPreferences file (`opendash_pairing`): the app-private directory is
- * excluded from cloud backup and device transfer, and the previously encrypted values (low
- * sensitivity) were moved here by [LegacySettingsMigration]. See that class for why the bike's
- * session keys deliberately stay in the plain store.
+ * excluded from cloud backup and device transfer, and the bike's session keys deliberately stay
+ * in the plain store: an encrypted store that silently resets would force a re-pair.
  */
 class AppSettings(context: Context) {
 
@@ -25,19 +24,9 @@ class AppSettings(context: Context) {
 
     private val prefs: SharedPreferences get() = pairingPrefs
 
-    init {
-        // Once per install (cheap flag check afterwards): bring over what the old encrypted
-        // store held, before anything below is read.
-        LegacySettingsMigration.migrateIfNeeded(context, pairingPrefs)
-    }
-
-    /** Diagnostics: state of the one-time legacy-settings migration. */
-    val settingsMigrationSummary: String get() = LegacySettingsMigration.summary(pairingPrefs)
-
     // Bonded bike identity. A BLE MAC isn't a secret; a lost value throws the rider back to
     // the pairing screen ("always asking to re-pair", R21/R22 field reports), which is why this
-    // never lived in an encrypted store that can silently reset. Bikes paired by older builds
-    // were brought over by LegacySettingsMigration.
+    // never lived in an encrypted store that can silently reset.
     var bondedDeviceAddress: String?
         get() = pairingPrefs.getString(KEY_BONDED_ADDRESS, null)
         set(value) { pairingPrefs.edit().putString(KEY_BONDED_ADDRESS, value).commit() }

@@ -270,7 +270,7 @@ Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
 | [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
 | [x] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | CHANGED DESIGN (less risk): the encrypted file only held low-sensitivity keys (onboarding, name, mirror apps, ...); bike address/pairing flag/session keys were already plain. So AppSettings is now ONE plain store and LegacySettingsMigration copies the old encrypted+fallback contents once (plain wins, verified, retried up to 10 launches, skips Keystore when no legacy file). security-crypto stays ONLY as the read-only migration source: remove lib + LegacySettingsMigration after the first launch on every device. Settings > Diagnostics shows 'Settings storage: migrated (N keys)'. Session keys intentionally stay plain (a Keystore wrap that can silently reset = re-pair prompt). Revert alone with git revert |
 
-**Follow-up after smoke test 1 on every device:** remove `androidx.security:security-crypto` and `LegacySettingsMigration` (its only user).
+security-crypto and `LegacySettingsMigration` were removed after smoke test 1 passed (they only existed to migrate once). The old `opendash_settings*.xml` files stay unused on disk.
 
 ## Phase 9: Features (rev. 3)
 

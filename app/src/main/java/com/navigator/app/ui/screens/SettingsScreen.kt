@@ -730,11 +730,8 @@ fun SettingsScreen(
                             }
                         },
                     ) { Text("›", color = Ktm.Dim, fontSize = 18.sp) }
-                    SettingsRow("Build", showDivider = true) {
+                    SettingsRow("Build", showDivider = false) {
                         MonoValue(com.navigator.app.BuildConfig.VERSION_NAME)
-                    }
-                    SettingsRow("Settings storage", showDivider = false) {
-                        MonoValue(settings.settingsMigrationSummary)
                     }
                 }
             }
