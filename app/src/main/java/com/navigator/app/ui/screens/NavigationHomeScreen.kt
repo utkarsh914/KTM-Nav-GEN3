@@ -376,6 +376,26 @@ fun NavigationHomeScreen(
         loading = false
     }
 
+    // ---- Category search (chips in the search panel) --------------------------
+    var categoryUi by remember { mutableStateOf(CategoryUiState()) }
+    LaunchedEffect(categoryUi.active, stage) {
+        val c = categoryUi.active
+        if (c == null || stage != NavStage.SEARCH) return@LaunchedEffect
+        // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
+        val route: List<Pair<Double, Double>>? = when (searchTarget) {
+            SearchTarget.TRIP_STOP -> flow.tripRoute?.let { r ->
+                // Only what is still ahead of the rider.
+                (origin ?: lastLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
+            }
+            SearchTarget.STOP -> previewRoutes.getOrNull(selectedRoute)?.points?.map { it.latitude to it.longitude }
+            SearchTarget.DESTINATION -> null
+        }
+        categoryUi = categoryUi.copy(loading = true, failed = false, results = emptyList(), alongRoute = route != null)
+        val o = origin ?: lastLocation(context)
+        val res = PlacesClient.searchCategory(c, auth, o, route)
+        categoryUi = categoryUi.copy(loading = false, failed = res.failed, results = res.items)
+    }
+
     // Fetch the preview routes (incl. alternates, or a single multi-leg route when
     // there are stops) when entering PREVIEW or when the stops change.
     LaunchedEffect(stage, selected, stops) {
@@ -484,6 +504,7 @@ fun NavigationHomeScreen(
     }
 
     fun openSearch() {
+        categoryUi = CategoryUiState()
         origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
         results = emptyList()
@@ -493,6 +514,7 @@ fun NavigationHomeScreen(
 
     /** Open the search panel to add an intermediate stop (returns to PREVIEW). */
     fun openSearchForStop() {
+        categoryUi = CategoryUiState()
         origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
         results = emptyList()
@@ -500,8 +522,66 @@ fun NavigationHomeScreen(
         flow.update { it.openSearch(SearchTarget.STOP) }
     }
 
-    /** Apply a picked place either as the destination or as an appended stop. */
-    fun applyPicked(p: SavedPlace) = flow.update { it.applyPicked(p) }
+    /** Add a stop to the trip being navigated: re-plan from here via the stop, then on to the destination. */
+    fun addStopToTrip(p: SavedPlace) {
+        val d = lastStartedDest ?: return
+        if (d.stops.isNotEmpty()) return // (stops already passed can't be told apart yet)
+        if (arrivalLatched || !navState.sessionState.isActiveNav()) {
+            android.widget.Toast.makeText(context, "That trip has already ended", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        flow.tripBeforeStop = d // lets a failed re-plan fall back to the trip the rider had
+        // The old route token is for the old waypoints; continuesRide keeps the recording going.
+        val nd = d.copy(
+            routeToken = null,
+            stops = d.stops + com.navigator.app.nav.model.Stop(p.lat, p.lng, p.label),
+            continuesRide = true,
+        )
+        lastStartedDest = nd
+        arrivalLatched = false
+        arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
+        flow.tripRoute = null // the old polyline no longer matches the trip
+        onStartNavigation(nd)
+        android.widget.Toast.makeText(context, "Stop added: ${p.label}", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    /** Search for a stop while navigating (guidance keeps running underneath). */
+    fun openTripStopSearch() {
+        val d = lastStartedDest
+        when {
+            d == null || !navState.sessionState.isActiveNav() -> android.widget.Toast.makeText(
+                context, "Start navigating first", android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            !isOnline -> android.widget.Toast.makeText(
+                context, "Adding a stop needs a connection", android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            d.stops.isNotEmpty() -> android.widget.Toast.makeText(
+                context, "Trips that already have stops can't be extended yet", android.widget.Toast.LENGTH_LONG,
+            ).show()
+            else -> {
+                categoryUi = CategoryUiState()
+                origin = lastLocation(context) ?: origin
+                sessionToken = UUID.randomUUID().toString()
+                results = emptyList()
+                recents = store.recents(); favorites = store.favorites()
+                // Stepping into search must not be treated as the app taking over / ending the trip.
+                leftNavManually = true
+                flow.update { it.openSearch(SearchTarget.TRIP_STOP) }
+            }
+        }
+    }
+
+    /** Apply a picked place as the destination, an appended preview stop, or a live-trip stop. */
+    fun applyPicked(p: SavedPlace) {
+        // A late place lookup (or a pick racing the trip's end) must not act outside the search.
+        if (stage != NavStage.SEARCH) return
+        val wasTripStop = searchTarget == SearchTarget.TRIP_STOP
+        flow.update { it.applyPicked(p) }
+        if (wasTripStop) {
+            leftNavManually = false
+            addStopToTrip(p)
+        }
+    }
 
     fun choose(p: SavedPlace) = flow.update { it.choose(p) }
 
@@ -532,7 +612,9 @@ fun NavigationHomeScreen(
         val tripStops = stops.map { com.navigator.app.nav.model.Stop(it.lat, it.lng, it.label) }
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         lastStartedDest = dest
+        flow.tripBeforeStop = null
         flow.tripOrigin = origin
+        flow.tripRoute = sel?.points?.map { it.latitude to it.longitude }
         onStartNavigation(dest)
         arrivalLatched = false
         arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
@@ -570,6 +652,7 @@ fun NavigationHomeScreen(
     }
 
     fun resumeNav() {
+        searchTarget = SearchTarget.DESTINATION
         leftNavManually = false
         stage = NavStage.NAVIGATING
     }
@@ -585,6 +668,7 @@ fun NavigationHomeScreen(
         arrivalLatched = true
         leftNavManually = false
         GoogleNavSdkController.stop()
+        flow.tripBeforeStop = null
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
         finishedRide = null; finishedPoints = null; finishResolved = false
         flow.update { it.finishTrip() }
@@ -691,6 +775,24 @@ fun NavigationHomeScreen(
     LaunchedEffect(startFailure) {
         if (startFailure != null && stage == NavStage.BROWSE) resumeNav()
     }
+    // A failed mid-trip "add stop" re-plan must not strand the rider: go back to the trip they had.
+    LaunchedEffect(startFailure) {
+        val before = flow.tripBeforeStop
+        if (startFailure != null && before != null) {
+            flow.tripBeforeStop = null
+            GoogleNavSdkProvider.clearStartFailure()
+            lastStartedDest = before
+            arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
+            onStartNavigation(before.copy(continuesRide = true, routeToken = null))
+            android.widget.Toast.makeText(
+                context, "Couldn't add the stop \u2013 continuing your trip", android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+    // The re-plan worked: nothing to undo any more.
+    LaunchedEffect(navState.sessionState) {
+        if (navState.sessionState == NavSessionState.ENROUTE) flow.tripBeforeStop = null
+    }
 
     // A Google Maps link shared into the app -> resolve it and jump to CONFIRM.
     LaunchedEffect(sharedLink) {
@@ -781,7 +883,8 @@ fun NavigationHomeScreen(
 
 
 
-    BackHandler {
+    // One back path for the system Back and the on-screen arrows (they must never disagree).
+    fun performBack() {
         if (stage == NavStage.SEARCH) detailsJob?.cancel()
         val outcome = flow.state.back(tripLive = navState.sessionState.isActiveNav())
         flow.update { outcome.state }
@@ -793,6 +896,7 @@ fun NavigationHomeScreen(
             BackEffect.CONFIRM_EXIT -> showExitConfirm = true
         }
     }
+    BackHandler { performBack() }
 
     Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
         // --- Map surface -----------------------------------------------------
@@ -901,22 +1005,22 @@ fun NavigationHomeScreen(
 
             NavStage.SEARCH -> SearchPanel(
                 query = query,
-                onQuery = { query = it },
+                onQuery = {
+                    query = it
+                    // Typing replaces a category browse.
+                    if (it.isNotEmpty() && categoryUi.active != null) categoryUi = CategoryUiState()
+                },
+                target = searchTarget,
+                category = categoryUi,
+                onCategory = { c -> categoryUi = if (c == null) CategoryUiState() else CategoryUiState(active = c) },
+                onPickCategoryResult = { r -> applyPicked(SavedPlace(r.lat, r.lng, r.name, r.address)) },
                 loading = loading || resolving,
                 results = results,
                 searchFailed = searchFailed,
                 recents = recents,
                 favorites = favorites,
                 origin = origin,
-                onBack = {
-                    detailsJob?.cancel()
-                    if (searchTarget == SearchTarget.STOP) {
-                        searchTarget = SearchTarget.DESTINATION
-                        stage = NavStage.PREVIEW
-                    } else {
-                        backToBrowse()
-                    }
-                },
+                onBack = ::performBack,
                 onPickSuggestion = { s ->
                     if (!resolving) {
                         resolving = true
@@ -1164,6 +1268,11 @@ fun NavigationHomeScreen(
                             OpenDashIcons.Compass, "Reset orientation to north",
                             tint = Ktm.Danger, rotation = -mapBearing, cornerRadius = Ktm.RadiusCard,
                         ) { resetBearing(googleMap) }
+                    }
+                    if (navState.sessionState.isActiveNav() && lastStartedDest?.stops?.isEmpty() == true) {
+                        SquareMapControl(
+                            OpenDashIcons.Search, "Add a stop", cornerRadius = Ktm.RadiusCard,
+                        ) { openTripStopSearch() }
                     }
                     ConnectIconPill(onClick = onOpenConnect, cornerRadius = Ktm.RadiusCard)
                 }

@@ -73,13 +73,16 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     /** A requested trip: its generation id (unique per [startNavigation]) plus the
      *  destination. Ride recording keys on the id so a replaced/restarted trip is a
      *  new ride even when the destination value is identical or different. */
-    data class ActiveTrip(val id: Long, val dest: NavDestination)
+    data class ActiveTrip(val id: Long, val dest: NavDestination, val rideKey: Long = id)
 
     private val _activeTrip = MutableStateFlow<ActiveTrip?>(null)
     val activeTrip: StateFlow<ActiveTrip?> = _activeTrip.asStateFlow()
 
     private fun setTrip(id: Long, dest: NavDestination) {
-        _activeTrip.value = ActiveTrip(id, dest)
+        // A re-plan of the same ride (stop added mid-trip) keeps the ride identity, so the
+        // recording is not split in two; every other start is a new ride.
+        val rideKey = chooseRideKey(dest.continuesRide, _activeTrip.value?.rideKey, id)
+        _activeTrip.value = ActiveTrip(id, dest, rideKey)
         _currentDestination.value = dest
     }
 
@@ -547,3 +550,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private const val NUM_NEXT_STEPS_TO_PREVIEW = 3
     private const val FAILED_TRIP_TIMEOUT_MS = 10 * 60_000L
 }
+
+/** Ride identity for a (re)started trip: a re-plan of the same ride keeps it, anything else is a new ride. */
+internal fun chooseRideKey(continuesRide: Boolean, previousRideKey: Long?, tripId: Long): Long =
+    if (continuesRide && previousRideKey != null) previousRideKey else tripId

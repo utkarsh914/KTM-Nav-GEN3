@@ -13,7 +13,11 @@ import org.json.JSONObject
 internal enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }
 
 /** Where a place picked in the search panel should be applied. */
-internal enum class SearchTarget { DESTINATION, STOP }
+internal enum class SearchTarget {
+    DESTINATION, STOP,
+    /** Adding a stop to the trip that is being navigated right now (search opened from guidance). */
+    TRIP_STOP,
+}
 
 /** Maximum intermediate stops (Google Maps allows up to a handful; we cap at 4). */
 internal const val MAX_STOPS = 4
@@ -49,7 +53,10 @@ internal data class NavFlowState(
 
     /** Apply a picked place either as the destination or as an appended stop. */
     fun applyPicked(p: SavedPlace): NavFlowState =
-        if (searchTarget == SearchTarget.STOP) {
+        if (searchTarget == SearchTarget.TRIP_STOP) {
+            // Back to guidance; the screen re-plans the live trip with the new stop.
+            copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.NAVIGATING)
+        } else if (searchTarget == SearchTarget.STOP) {
             copy(
                 stops = if (stops.size < MAX_STOPS) stops + p else stops,
                 searchTarget = SearchTarget.DESTINATION,
@@ -94,10 +101,14 @@ internal data class NavFlowState(
         // Back while navigating steps away to the map WITHOUT ending the trip.
         NavStage.NAVIGATING -> BackOutcome(this, BackEffect.MOVE_AWAY_FROM_NAV)
         NavStage.TRIP_FINISHED -> BackOutcome(this, BackEffect.BACK_TO_BROWSE)
-        NavStage.SEARCH ->
-            if (searchTarget == SearchTarget.STOP) {
+        NavStage.SEARCH -> when (searchTarget) {
+            SearchTarget.STOP ->
                 BackOutcome(copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.PREVIEW))
-            } else BackOutcome(this, BackEffect.BACK_TO_BROWSE)
+            // Cancelled adding a stop: straight back to the live guidance.
+            SearchTarget.TRIP_STOP ->
+                BackOutcome(copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.NAVIGATING), BackEffect.RESUME_NAV)
+            SearchTarget.DESTINATION -> BackOutcome(this, BackEffect.BACK_TO_BROWSE)
+        }
         // At the map: a trip still running in the background is resumed, otherwise confirm exit.
         NavStage.BROWSE ->
             BackOutcome(this, if (tripLive) BackEffect.RESUME_NAV else BackEffect.CONFIRM_EXIT)
@@ -112,8 +123,11 @@ internal data class NavFlowState(
         val fresh = NavFlowState()
         return when (stage) {
             NavStage.BROWSE, NavStage.NAVIGATING, NavStage.TRIP_FINISHED -> fresh
-            NavStage.SEARCH ->
-                if (searchTarget == SearchTarget.STOP && selected == null) fresh else this
+            NavStage.SEARCH -> when {
+                searchTarget == SearchTarget.TRIP_STOP -> fresh // the live trip died with the process
+                searchTarget == SearchTarget.STOP && selected == null -> fresh
+                else -> this
+            }
             NavStage.CONFIRM, NavStage.PREVIEW -> if (selected == null) fresh else this
         }
     }
@@ -123,7 +137,8 @@ internal data class NavFlowState(
 internal object NavFlowRules {
     /** We "own" a trip on this screen while showing guidance, or while stepped away on the map with it still running. */
     fun owningTrip(stage: NavStage, leftNavManually: Boolean): Boolean =
-        stage == NavStage.NAVIGATING || (stage == NavStage.BROWSE && leftNavManually)
+        stage == NavStage.NAVIGATING ||
+            (leftNavManually && (stage == NavStage.BROWSE || stage == NavStage.SEARCH))
 
     /**
      * Resume the NAVIGATING view whenever a trip is live but we're not showing it (activity
@@ -234,6 +249,10 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
     var lastStartedDest by mutableStateOf<NavDestination?>(null)
     /** Where the current/last trip began (lat, lng), for "Ride back" when no track was recorded. */
     var tripOrigin by mutableStateOf<Pair<Double, Double>?>(null)
+    /** The route being navigated (lat, lng), for "search along route"; null after a reroute-less restore. */
+    var tripRoute by mutableStateOf<List<Pair<Double, Double>>?>(null)
+    /** The trip as it was before a mid-trip "add stop" re-plan, so a failed re-plan can be undone. */
+    var tripBeforeStop by mutableStateOf<NavDestination?>(null)
     var arrivalLatched by mutableStateOf(false)
     var arrivalProgress by mutableStateOf(ArrivalPolicy.Progress.start(0L))
 
@@ -262,6 +281,8 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
         lastStartAtMs = 0L
         lastStartedDest = null
         tripOrigin = null
+        tripRoute = null
+        tripBeforeStop = null
         arrivalLatched = false
         arrivalProgress = ArrivalPolicy.Progress.start(0L)
     }

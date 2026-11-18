@@ -202,6 +202,109 @@ object PlacesClient {
         }
     }
 
+    /**
+     * Category search (Text Search New): places matching [category] near [origin], or - when
+     * [routePoints] is given - along that route (searchAlongRouteParameters). Sorted by straight-line
+     * distance from [origin]. [failed] separates "offline / error" from "nothing found".
+     */
+    suspend fun searchCategory(
+        category: PlaceCategory,
+        auth: AndroidClientAuth?,
+        origin: Pair<Double, Double>?,
+        routePoints: List<Pair<Double, Double>>? = null,
+    ): CategorySearch = withContext(Dispatchers.IO) {
+        val key = BuildConfig.NAV_SDK_API_KEY
+        if (key.isBlank()) return@withContext CategorySearch(emptyList(), failed = true)
+
+        val body = buildCategoryBody(category, origin, routePoints)
+        val conn = (URL(TEXT_SEARCH_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("X-Goog-Api-Key", key)
+            setRequestProperty("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.location")
+            applyAndroidAuth(auth)
+            connectTimeout = 8_000
+            readTimeout = 8_000
+            doOutput = true
+        }
+        try {
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = conn.responseCode
+            val text = readBody(conn, code)
+            if (code !in 200..299) {
+                AppLogger.log("Places", "categorySearch HTTP $code: ${text.take(200)}")
+                return@withContext CategorySearch(emptyList(), failed = true)
+            }
+            CategorySearch(parseCategoryResults(text, origin), failed = false)
+        } catch (e: Exception) {
+            AppLogger.log("Places", "categorySearch error: ${e.message}")
+            CategorySearch(emptyList(), failed = true)
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /** Request body: along the route when given (exclusive), else biased to a 5 km circle around [origin]. */
+    internal fun buildCategoryBody(
+        category: PlaceCategory,
+        origin: Pair<Double, Double>?,
+        routePoints: List<Pair<Double, Double>>?,
+    ): JSONObject = JSONObject().apply {
+        put("textQuery", category.query)
+        put("regionCode", "in")
+        put("maxResultCount", 15)
+        if (routePoints != null && routePoints.size >= 2) {
+            put(
+                "searchAlongRouteParameters",
+                JSONObject().put(
+                    "polyline",
+                    JSONObject().put(
+                        "encodedPolyline",
+                        PolylineCodec.encode(PolylineCodec.thin(routePoints, MAX_ROUTE_POINTS)),
+                    ),
+                ),
+            )
+        } else if (origin != null) {
+            put(
+                "locationBias",
+                JSONObject().put(
+                    "circle",
+                    JSONObject()
+                        .put("center", JSONObject().put("latitude", origin.first).put("longitude", origin.second))
+                        .put("radius", 5000.0),
+                ),
+            )
+        }
+    }
+
+    class CategorySearch(val items: List<CategoryResult>, val failed: Boolean)
+
+    private const val MAX_ROUTE_POINTS = 1000
+
+    /** Parse a Text Search response into results, nearest first when [origin] is known. */
+    fun parseCategoryResults(json: String, origin: Pair<Double, Double>?): List<CategoryResult> {
+        val arr = runCatching { JSONObject(json).optJSONArray("places") }.getOrNull() ?: return emptyList()
+        val out = ArrayList<CategoryResult>(arr.length())
+        for (i in 0 until arr.length()) {
+            val p = runCatching { arr.getJSONObject(i) }.getOrNull() ?: continue
+            val loc = p.optJSONObject("location") ?: continue
+            if (!loc.has("latitude") || !loc.has("longitude")) continue
+            val lat = loc.optDouble("latitude", Double.NaN)
+            val lng = loc.optDouble("longitude", Double.NaN)
+            if (lat.isNaN() || lng.isNaN() || lat !in -90.0..90.0 || lng !in -180.0..180.0) continue
+            val name = p.optJSONObject("displayName")?.optString("text").orEmpty().ifBlank { continue }
+            out += CategoryResult(
+                name = name,
+                address = p.optString("formattedAddress").ifBlank { null },
+                lat = lat, lng = lng,
+                distanceMeters = origin?.let {
+                    com.navigator.app.ride.RideMetrics.haversineMeters(it.first, it.second, lat, lng).toInt()
+                },
+            )
+        }
+        return if (origin != null) out.sortedBy { it.distanceMeters } else out
+    }
+
     /** First place location from a Text Search response. */
     fun parseFirstPlaceLocation(json: String): PlaceLocation? {
         val places = JSONObject(json).optJSONArray("places") ?: return null

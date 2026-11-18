@@ -250,7 +250,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [x] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
 | [ ] | F4 | Richer ride data, elevation, charts | | |
 | [x] | F5 | "Ride home/work" chip + shortcut/widget | | |
-| [ ] | F6 | Quick categories + voice search | | |
+| [x] | F6 | Quick categories + voice search | | |
 | [ ] | F7 | Weather chip on map | | |
 | [x] | F8 | Mirror home freshness indicator + missing-notification hint | | |
 | [x] | F9 | Trip-finished actions (save destination, reverse route, share GPX) | | |
@@ -283,7 +283,7 @@ Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 inclu
 | [x] | B3 | F5: Home/Work chip + launcher shortcuts | Chips under the search bar (only set slots) -> preview directly; dynamic shortcuts 'Ride Home/Work' synced from PlacesStore + app start; ignored with a toast while NAVIGATING (reviewer must-fix). Needs on-device check: long-press the launcher icon, chip/banner spacing |
 | [x] | B4 | F8: mirror home freshness + missing-notification / access-revoked hint | MirrorHints (pure, tested): NO_ACCESS / LISTENER_DISCONNECTED (tap = requestRebind) / STALE (>30 s) / BATTERY tip; 'Updated N s ago' line; NotificationRepository.lastUpdateMs + listenerConnected. Small batch: no separate reviewer pass. Cannot detect 'Maps notifications blocked' (no API for other apps) |
 | [x] | B5 | F1: Live Updates navigation notification (promoted ongoing, progress style) | NavLiveUpdate (NotificationContentProviderBase via initForegroundServiceManagerProvider) + pure NavLiveContentBuilder: instruction / distance · remaining · ETA, status-bar chip (setShortCriticalText), whole-route ProgressStyle, setRequestPromotedOngoing guarded for pre-36.1; refresh only while guidance live and the SDK foreground notification is shown (no phantom card); fallback to the SDK default; Settings > Advanced > Live Updates toggle. Needs on-device check: chip only on Android 16 QPR2+ (system Settings > Notifications > Live updates must allow the app); lock-screen card; no notification left after End |
-| [ ] | B6 | F6 + N4: category chips, voice search, along-route search, Add as stop | |
+| [x] | B6 | F6 + N4: category chips, voice search, along-route search, Add as stop | Category chips (Fuel/Food/Coffee/Parking/ATM/Hospital/Pharmacy/EV) via Places Text Search (circle bias, or along the route AHEAD of the rider when adding a stop), mic button (RecognizerIntent), search control in guidance -> TRIP_STOP -> addStopToTrip (same ride key so recording isn't split; refused offline / when the trip already has stops; failed re-plan falls back to the previous trip). One back path (performBack) for system + on-screen back. NOT done: adding a stop to a trip that already has stops (passed stops unknown); stop ordering along the route. Needs on-device/dash check: re-plan mid-ride, guidance gap while recomputing, NAVIGATING bottom-right stack on small screens |
 
 Smoke test 2 (user) after B6.
 

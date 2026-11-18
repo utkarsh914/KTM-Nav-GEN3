@@ -71,7 +71,7 @@ class OpenDashApplication : Application() {
             // Keyed on the trip id, not the destination value: A -> B replacements and
             // same-destination restarts are separate rides.
             GoogleNavSdkProvider.activeTrip.collect { trip ->
-                if (recording && (trip == null || trip.id != recordingTripId)) {
+                if (recording && (trip == null || trip.rideKey != recordingTripId)) {
                     // A rider-started recording that took over meanwhile is theirs to stop.
                     if (!com.navigator.app.ride.RideSession.state.value.manual) {
                         RideRecordingService.stop(this@OpenDashApplication)
@@ -96,7 +96,7 @@ class OpenDashApplication : Application() {
                             destLat = trip.dest.lat,
                             destLng = trip.dest.lng,
                         )
-                        if (recording) recordingTripId = trip.id
+                        if (recording) recordingTripId = trip.rideKey
                     }
                 }
             }

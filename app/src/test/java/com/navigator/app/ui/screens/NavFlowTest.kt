@@ -124,6 +124,36 @@ class NavFlowTest {
         assertEquals(MAX_STOPS, NavFlowState().rideBack(place(0), many).stops.size)
     }
 
+    // ---- Adding a stop to the live trip -----------------------------------------
+
+    @Test fun tripStopSearchReturnsToGuidanceOnPickAndOnBack() {
+        val nav = NavFlowState(stage = NavStage.NAVIGATING, selected = place(9))
+        val search = nav.openSearch(SearchTarget.TRIP_STOP)
+        assertEquals(NavStage.SEARCH, search.stage)
+        val picked = search.applyPicked(place(1))
+        assertEquals(NavStage.NAVIGATING, picked.stage)
+        assertEquals(SearchTarget.DESTINATION, picked.searchTarget)
+        assertEquals(place(9), picked.selected)          // the trip's destination is untouched
+        assertTrue(picked.stops.isEmpty())                // the stop is applied to the live trip, not the preview list
+        val back = search.back(tripLive = true)
+        assertEquals(NavStage.NAVIGATING, back.state.stage)
+        assertEquals(BackEffect.RESUME_NAV, back.effect)
+        assertEquals(SearchTarget.DESTINATION, back.state.searchTarget)
+    }
+
+    @Test fun tripStopSearchDoesNotSurviveProcessDeath() {
+        val s = NavFlowState(stage = NavStage.SEARCH, searchTarget = SearchTarget.TRIP_STOP, selected = place(1))
+        assertEquals(NavFlowState(), s.restored())
+    }
+
+    @Test fun searchWhileSteppedAwayStillOwnsTheTrip() {
+        assertTrue(NavFlowRules.owningTrip(NavStage.SEARCH, leftNavManually = true))
+        assertFalse(NavFlowRules.owningTrip(NavStage.SEARCH, leftNavManually = false))
+        assertFalse(NavFlowRules.owningTrip(NavStage.CONFIRM, leftNavManually = true))
+        // ...and a live trip must not be auto-resumed out from under the search.
+        assertFalse(NavFlowRules.shouldAutoResume(true, NavStage.SEARCH, leftNavManually = true))
+    }
+
     // ---- Session rules (C2/C3/U1/U2) ---------------------------------------
 
     @Test fun autoResumeOnlyWhenTripLiveAndNotDeliberatelyAway() {

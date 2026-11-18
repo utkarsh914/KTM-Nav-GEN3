@@ -193,6 +193,9 @@ data class NavDestination(
      *  ([lat]/[lng]). Empty for a plain single-destination trip. Guided via
      *  `Navigator.setDestinations(waypoints)` (stops + final). */
     val stops: List<Stop> = emptyList(),
+    /** True for a re-plan of the SAME ride (a stop added mid-trip): ride recording continues
+     *  instead of finalising the ride and starting a new one. */
+    val continuesRide: Boolean = false,
 )
 
 /** A single intermediate stop on a multi-stop trip. */
