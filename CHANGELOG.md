@@ -10,6 +10,7 @@
   class resolved by driving side; direction-less roundabout icons give no arrow.
 
 ### Fixes
+- Reconnect robustness: with Bluetooth off at launch, the app could wait forever to "hear" the dash advertise (a dash already linked for media/calls may not) and ignore the dash's own link coming up. The scan is now bounded (45 s, balanced power), then falls back to a direct connect (phone-bonded dash) or a background connect (up to 10 min before recycling). The bike's own link coming up cuts a scan or a parked background connect short and connects directly, without overriding a handshake retry cooldown.
 - Merge (enter-highway) arrows now point the right way. Verified on the dash: code 14 is a ramp on
   the right bending left, code 15 a ramp on the left bending right. "Merge left" / the SDK's
   `MERGE_LEFT` was sent as the mirrored glyph; it now uses code 14 (and "merge right" code 15).

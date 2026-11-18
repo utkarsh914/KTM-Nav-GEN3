@@ -32,7 +32,7 @@ class AutoConnectReceiver : BroadcastReceiver() {
                 AppLogger.log("AutoConnect", "ACL_CONNECTED from ${device.address}, saved=$savedAddress")
                 if (device.address.equals(savedAddress, ignoreCase = true)) {
                     AppLogger.log("AutoConnect", "Match - starting BccuConnectionService")
-                    BccuConnectionService.start(context, savedAddress)
+                    BccuConnectionService.start(context, savedAddress, bikePresent = true)
                 }
             }
             BluetoothAdapter.ACTION_STATE_CHANGED -> {

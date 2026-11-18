@@ -93,19 +93,10 @@ class BccuConnectionService : LifecycleService() {
         private const val RETRY_COOLDOWN_LATER_MS = 45_000L
         /** How often the reconnect watchdog checks that we're linked (or retries). */
         private const val RECONNECT_WATCHDOG_MS = 20_000L
-        /** A foreground (direct) connect attempt stuck this long is recycled and retried. */
-        private const val STUCK_CONNECTING_MS = 45_000L
-        /**
-         * A background (autoConnect=true) attempt stuck this long is recycled once
-         * as a rare safety net for the "autoConnect silently never fires" quirk.
-         * Kept LONG (10 min): field logs proved autoConnect DOES relink on its own
-         * the instant the dash powers back on (ignition-on → reconnected in ~3 s),
-         * so recycling every 90 s just churned the radio with failed connects while
-         * the bike was simply off (dash BLE powers down with the ignition). Leaving
-         * the low-power autoConnect pending is both correct and battery-friendly.
-         */
-        private const val STUCK_BACKGROUND_MS = 600_000L
+        // Stuck-connect limits (direct vs. background autoConnect) live in [ReconnectPolicy].
         const val EXTRA_DEVICE_ADDRESS = "device_address"
+        /** Set by the ACL receiver: the bike's own link just came up, so it is certainly in range. */
+        const val EXTRA_BIKE_PRESENT = "bike_present"
 
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
@@ -114,9 +105,10 @@ class BccuConnectionService : LifecycleService() {
         private val _deviceName = MutableStateFlow<String?>(null)
         val deviceName: StateFlow<String?> = _deviceName
 
-        fun start(context: Context, deviceAddress: String) {
+        fun start(context: Context, deviceAddress: String, bikePresent: Boolean = false) {
             val intent = Intent(context, BccuConnectionService::class.java)
                 .putExtra(EXTRA_DEVICE_ADDRESS, deviceAddress)
+                .putExtra(EXTRA_BIKE_PRESENT, bikePresent)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -194,6 +186,10 @@ class BccuConnectionService : LifecycleService() {
     /** Pending scan-found -> connect delay (dash boot grace); active means "we will connect shortly". */
     private var settleJob: Job? = null
     private var scanCallback: android.bluetooth.le.ScanCallback? = null
+    /** Ends a scan that hears nothing and falls back to a background connect (see [ReconnectPolicy.SCAN_WINDOW_MS]). */
+    private var scanTimeoutJob: Job? = null
+    /** True once the current GATT client has actually reached STATE_CONNECTED (vs. a pending connect request). */
+    @Volatile private var linkUp = false
     @Volatile private var scanning: Boolean = false
     @Volatile private var scanTargetAddress: String? = null
 
@@ -389,6 +385,7 @@ class BccuConnectionService : LifecycleService() {
                     if (_connectionState.value == ConnectionState.AUTHENTICATED) continue
                     val adapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
                     if (adapter == null || !adapter.isEnabled) continue
+                    val stuckLimit = ReconnectPolicy.stuckLimitMs(pendingAutoConnect)
                     if (gatt == null) {
                         // Not linked and nothing in flight: make sure we're scanning
                         // for the bike so we grab it the moment it advertises. A
@@ -399,7 +396,7 @@ class BccuConnectionService : LifecycleService() {
                             startBleScan(address)
                         }
                     } else if (_connectionState.value == ConnectionState.CONNECTING &&
-                        System.currentTimeMillis() - connectingSinceMs > STUCK_CONNECTING_MS
+                        System.currentTimeMillis() - connectingSinceMs > stuckLimit
                     ) {
                         if (tempIv != null && !AppSettings(this@BccuConnectionService).hasPairedBefore(address)) {
                             // A FIRST-pair handshake is genuinely in progress (m1
@@ -417,7 +414,7 @@ class BccuConnectionService : LifecycleService() {
                         // Clear the op queue and any leftover crypto too: a lost
                         // in-flight op would otherwise leave the queue stuck busy
                         // and stall every op on the NEXT connection forever.
-                        AppLogger.log("BLE", "Watchdog: connect stuck >${STUCK_CONNECTING_MS}ms - recycling + scanning")
+                        AppLogger.log("BLE", "Watchdog: connect stuck >${stuckLimit}ms (background=$pendingAutoConnect) - recycling + scanning")
                         try { gatt?.disconnect(); gatt?.close() } catch (e: Exception) { /* ignore */ }
                         gatt = null
                         gattOps.clear()
@@ -465,13 +462,18 @@ class BccuConnectionService : LifecycleService() {
             override fun onScanFailed(errorCode: Int) {
                 AppLogger.log("BLE", "!! Scan failed: $errorCode")
                 scanning = false
+                scanTimeoutJob?.cancel(); scanTimeoutJob = null
+                if (gatt == null && settleJob?.isActive != true) {
+                    // Can't hear the bike at all - connect to the saved address instead.
+                    connect(target, autoConnect = true)
+                }
             }
         }
         val filters = listOf(
             android.bluetooth.le.ScanFilter.Builder().setDeviceAddress(address).build()
         )
         val settings = android.bluetooth.le.ScanSettings.Builder()
-            .setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_BALANCED)
             .build()
         try {
             scanner.startScan(filters, settings, cb)
@@ -479,7 +481,25 @@ class BccuConnectionService : LifecycleService() {
             scanTargetAddress = target
             scanning = true
             _connectionState.value = ConnectionState.CONNECTING
-            AppLogger.log("BLE", "Scanning for bike $address to reconnect")
+            AppLogger.log("BLE", "Scanning for bike $address to reconnect (window ${ReconnectPolicy.SCAN_WINDOW_MS / 1000}s)")
+            scanTimeoutJob?.cancel()
+            scanTimeoutJob = lifecycleScope.launch {
+                delay(ReconnectPolicy.SCAN_WINDOW_MS)
+                if (!scanning || gatt != null) return@launch
+                // The dash may be linked to the phone over classic Bluetooth and
+                // not advertising over BLE at all; waiting longer would hang
+                // forever. A phone-bonded dash is probably classic-linked: a
+                // direct connect works against it (re-pairing proved that), and a
+                // failed attempt falls back to scanning via the watchdog. An
+                // unbonded one gets a background connect that waits for it.
+                val bonded = runCatching {
+                    adapter.getRemoteDevice(target).bondState == android.bluetooth.BluetoothDevice.BOND_BONDED
+                }.getOrDefault(false)
+                AppLogger.log("BLE", "Scan heard nothing in ${ReconnectPolicy.SCAN_WINDOW_MS / 1000}s - falling back to a ${if (bonded) "direct" else "background"} connect")
+                scanTimeoutJob = null
+                stopBleScan()
+                connect(target, autoConnect = !bonded)
+            }
         } catch (e: Exception) {
             AppLogger.log("BLE", "!! startScan threw: $e")
         }
@@ -487,6 +507,7 @@ class BccuConnectionService : LifecycleService() {
 
     @SuppressLint("MissingPermission")
     private fun stopBleScan() {
+        scanTimeoutJob?.cancel(); scanTimeoutJob = null
         if (!scanning) return
         scanning = false
         scanTargetAddress = null
@@ -511,6 +532,28 @@ class BccuConnectionService : LifecycleService() {
         }
         val address = intent?.getStringExtra(EXTRA_DEVICE_ADDRESS) ?: AppSettings(this).bondedDeviceAddress
         if (address != null) {
+            val present = intent?.getBooleanExtra(EXTRA_BIKE_PRESENT, false) == true
+            if (present && gatt == null && handshakeTimeoutJob?.isActive == true) {
+                // A stalled handshake is cooling down; the bike's classic link
+                // coming up must not cut that pacing short (R21).
+                AppLogger.log("BLE", "Bike link is up but a handshake retry cooldown is running - leaving it to the cooldown")
+                return START_STICKY
+            }
+            if (ReconnectPolicy.shouldPreemptBackgroundConnect(present, pendingAutoConnect, gatt != null, linkUp)) {
+                // A background connect request is parked but nothing linked up, yet
+                // the bike's own link is here: recycle it into a direct connect.
+                AppLogger.log("BLE", "Bike link is up but background connect is still pending - connecting directly")
+                try { gatt?.disconnect(); gatt?.close() } catch (e: Exception) { /* ignore */ }
+                gatt = null
+                gattOps.clear()
+            }
+            if (ReconnectPolicy.shouldPreemptScan(present, scanning, gatt != null)) {
+                // The bike's own link is up, so it is here even if it isn't
+                // advertising over BLE - a scan would wait for nothing.
+                AppLogger.log("BLE", "Bike link is up - cutting the scan short and connecting directly")
+                stopBleScan()
+                settleJob?.cancel(); settleJob = null
+            }
             connect(address)
         }
         return START_STICKY
@@ -538,6 +581,7 @@ class BccuConnectionService : LifecycleService() {
         _connectionState.value = ConnectionState.CONNECTING
         connectingSinceMs = System.currentTimeMillis()
         pendingAutoConnect = autoConnect
+        linkUp = false
         // getSystemService(BluetoothManager) is the non-deprecated path (getDefaultAdapter()
         // is deprecated since API 31); on any BLE-capable minSdk-26 device this is non-null.
         val adapter = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
@@ -642,6 +686,8 @@ class BccuConnectionService : LifecycleService() {
                     return
                 }
                 if (newState == BluetoothGatt.STATE_CONNECTED) {
+                    linkUp = true
+                    connectingSinceMs = System.currentTimeMillis()
                     // Arm the handshake watchdog NOW, not when m1 arrives: a link
                     // where the BCCU never restarts auth (reused ACL) would
                     // otherwise sit silent with no timer guarding it at all.
@@ -652,6 +698,7 @@ class BccuConnectionService : LifecycleService() {
                     // range) closes this boot cycle - the next one deserves a
                     // fresh retry budget, not leftovers from the last stall.
                     if (_connectionState.value == ConnectionState.AUTHENTICATED) handshakeRecoveries = 0
+                    linkUp = false
                     _connectionState.value = ConnectionState.DISCONNECTED
                     handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
                     tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
