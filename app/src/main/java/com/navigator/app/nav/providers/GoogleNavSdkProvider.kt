@@ -403,6 +403,11 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         mainHandler.postDelayed(expiry, FAILED_TRIP_TIMEOUT_MS)
     }
 
+    /** Where the guidance is heading right now (the next waypoint), or null when unknown. Main thread. */
+    fun currentTarget(): Pair<Double, Double>? = runCatching {
+        navigator?.currentRouteSegment?.destinationLatLng?.let { it.latitude to it.longitude }
+    }.getOrNull()
+
     override fun stopNavigation() {
         // Stop consuming updates *before* tearing down guidance so any in-flight
         // NavInfo frame (or one produced by continued movement) can't flip the

@@ -539,19 +539,49 @@ fun NavigationHomeScreen(
         flow.update { it.openSearch(SearchTarget.STOP) }
     }
 
+    /** True (with a toast) while the previous added stop is still being re-planned. */
+    fun stopAddSettling(): Boolean {
+        if (System.currentTimeMillis() - flow.lastStopAddMs >= STOP_ADD_SETTLE_MS) return false
+        android.widget.Toast.makeText(context, "Still updating the route. Try again in a moment", android.widget.Toast.LENGTH_SHORT).show()
+        return true
+    }
+
+    /** The stops of [d] still ahead, from the SDK's current target; null when it can't be told. */
+    fun remainingStopsOf(d: NavDestination): List<com.navigator.app.nav.model.Stop>? {
+        if (d.stops.isEmpty()) return emptyList()
+        val target = GoogleNavSdkProvider.currentTarget() ?: return null
+        return com.navigator.app.nav.model.RemainingStops.resolve(d.stops, d.lat, d.lng, target.first, target.second)
+    }
+
     /** Add a stop to the trip being navigated: re-plan from here via the stop, then on to the destination. */
     fun addStopToTrip(p: SavedPlace) {
         val d = lastStartedDest ?: return
-        if (d.stops.isNotEmpty()) return // (stops already passed can't be told apart yet)
         if (arrivalLatched || !navState.sessionState.isActiveNav()) {
             android.widget.Toast.makeText(context, "That trip has already ended", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
-        flow.tripBeforeStop = d // lets a failed re-plan fall back to the trip the rider had
+        if (stopAddSettling()) return
+        // Stops already passed are dropped: only those still ahead stay in the trip.
+        val ahead = remainingStopsOf(d)
+        if (ahead == null) {
+            android.widget.Toast.makeText(context, "Couldn't tell which stop is next. Try again in a moment", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        if (ahead.size >= MAX_STOPS) {
+            android.widget.Toast.makeText(context, "That trip already has the maximum number of stops", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        val current = d.copy(stops = ahead)
+        flow.tripAllStopsBefore = flow.tripAllStops
+        flow.tripAllStops = flow.tripAllStops.take((flow.tripAllStops.size - ahead.size).coerceAtLeast(0)) +
+            com.navigator.app.nav.model.Stop(p.lat, p.lng, p.label) + ahead
+        flow.lastStopAddMs = System.currentTimeMillis()
+        flow.tripBeforeStop = current // lets a failed re-plan fall back to the trip the rider had
         // The old route token is for the old waypoints; continuesRide keeps the recording going.
-        val nd = d.copy(
+        // The new stop is visited next, then the stops that were still ahead, then the destination.
+        val nd = current.copy(
             routeToken = null,
-            stops = d.stops + com.navigator.app.nav.model.Stop(p.lat, p.lng, p.label),
+            stops = listOf(com.navigator.app.nav.model.Stop(p.lat, p.lng, p.label)) + ahead,
             continuesRide = true,
         )
         lastStartedDest = nd
@@ -572,8 +602,12 @@ fun NavigationHomeScreen(
             !isOnline -> android.widget.Toast.makeText(
                 context, "Adding a stop needs a connection", android.widget.Toast.LENGTH_SHORT,
             ).show()
-            d.stops.isNotEmpty() -> android.widget.Toast.makeText(
-                context, "Trips that already have stops can't be extended yet", android.widget.Toast.LENGTH_LONG,
+            stopAddSettling() -> Unit
+            remainingStopsOf(d) == null -> android.widget.Toast.makeText(
+                context, "Couldn't tell which stop is next. Try again in a moment", android.widget.Toast.LENGTH_LONG,
+            ).show()
+            (remainingStopsOf(d)?.size ?: 0) >= MAX_STOPS -> android.widget.Toast.makeText(
+                context, "That trip already has the maximum number of stops", android.widget.Toast.LENGTH_LONG,
             ).show()
             else -> {
                 categoryUi = CategoryUiState()
@@ -630,6 +664,9 @@ fun NavigationHomeScreen(
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         lastStartedDest = dest
         flow.tripBeforeStop = null
+        flow.tripAllStops = tripStops
+        flow.tripAllStopsBefore = null
+        flow.lastStopAddMs = 0L
         flow.tripOrigin = origin
         flow.tripRoute = sel?.points?.map { it.latitude to it.longitude }
         onStartNavigation(dest)
@@ -662,7 +699,7 @@ fun NavigationHomeScreen(
     // "Ride back": plan the reverse of the finished trip (start point as destination, stops reversed).
     fun rideBack() {
         val o = finishedPoints?.firstOrNull()?.let { it.lat to it.lng } ?: flow.tripOrigin ?: return
-        val reversedStops = lastStartedDest?.stops.orEmpty()
+        val reversedStops = flow.tripAllStops
             .map { SavedPlace(it.lat, it.lng, it.label ?: "Stop") }
         backToBrowse()
         flow.update { it.rideBack(SavedPlace(o.first, o.second, RIDE_BACK_LABEL), reversedStops) }
@@ -797,6 +834,9 @@ fun NavigationHomeScreen(
         val before = flow.tripBeforeStop
         if (startFailure != null && before != null) {
             flow.tripBeforeStop = null
+            flow.tripAllStopsBefore?.let { flow.tripAllStops = it }
+            flow.tripAllStopsBefore = null
+            flow.lastStopAddMs = 0L
             GoogleNavSdkProvider.clearStartFailure()
             lastStartedDest = before
             arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
@@ -1301,7 +1341,7 @@ fun NavigationHomeScreen(
                             tint = Ktm.Danger, rotation = -mapBearing, cornerRadius = Ktm.RadiusCard,
                         ) { resetBearing(googleMap) }
                     }
-                    if (navState.sessionState.isActiveNav() && lastStartedDest?.stops?.isEmpty() == true) {
+                    if (navState.sessionState.isActiveNav() && lastStartedDest != null) {
                         SquareMapControl(
                             OpenDashIcons.Search, "Add a stop", cornerRadius = Ktm.RadiusCard,
                         ) { openTripStopSearch() }

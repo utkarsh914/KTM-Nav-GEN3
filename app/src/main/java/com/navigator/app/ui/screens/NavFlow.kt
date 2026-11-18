@@ -22,6 +22,9 @@ internal enum class SearchTarget {
 /** Maximum intermediate stops (Google Maps allows up to a handful; we cap at 4). */
 internal const val MAX_STOPS = 4
 
+/** After adding a stop mid-trip, the next add waits this long so the SDK reports the new route's target. */
+internal const val STOP_ADD_SETTLE_MS = 8_000L
+
 /** What the screen must do besides applying the new [NavFlowState] after a Back press. */
 internal enum class BackEffect {
     NONE,
@@ -253,6 +256,11 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
     var tripRoute by mutableStateOf<List<Pair<Double, Double>>?>(null)
     /** The trip as it was before a mid-trip "add stop" re-plan, so a failed re-plan can be undone. */
     var tripBeforeStop by mutableStateOf<NavDestination?>(null)
+    /** Every stop of the trip in visiting order, passed ones included (for "Ride back"). */
+    var tripAllStops by mutableStateOf<List<com.navigator.app.nav.model.Stop>>(emptyList())
+    var tripAllStopsBefore by mutableStateOf<List<com.navigator.app.nav.model.Stop>?>(null)
+    /** When the last mid-trip "add stop" was applied: a second one waits until the route has settled. */
+    var lastStopAddMs by mutableStateOf(0L)
     var arrivalLatched by mutableStateOf(false)
     var arrivalProgress by mutableStateOf(ArrivalPolicy.Progress.start(0L))
 
@@ -283,6 +291,9 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
         tripOrigin = null
         tripRoute = null
         tripBeforeStop = null
+        tripAllStops = emptyList()
+        tripAllStopsBefore = null
+        lastStopAddMs = 0L
         arrivalLatched = false
         arrivalProgress = ArrivalPolicy.Progress.start(0L)
     }

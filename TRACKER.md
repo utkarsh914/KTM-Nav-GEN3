@@ -409,3 +409,9 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | 2026-11-18 | C4 and R4 applied directly (no shadow mode); mock locations still accepted in debug builds | User decision |
 | 2026-11-18 | Rides store both averages (moving + overall); Settings > Ride recording > Average speed picks which one the UI shows (default Moving); legacy rides backfilled at launch | Moving-only changed the numbers riders were used to |
 | 2026-11-18 | Debug-only Dash preview overlay is toggled in Settings > Diagnostics (default off) | Debug builds are the daily driver; the floating chip was always on |
+
+## Phase 11: Remaining no-bike items
+
+| St | ID | Item | Notes |
+|---|---|---|---|
+| [x] | D1 | Add a stop to a trip that already has stops | Remaining stops resolved from the SDK's current route segment (RemainingStops, 250 m match, unknown -> refused); new stop goes next, passed stops dropped from the live trip but kept in `tripAllStops` for Ride back; 8 s guard against a second add while the re-plan settles. Known limit: a stop located at the destination (loop trip) may be visited again |
