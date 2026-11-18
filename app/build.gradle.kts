@@ -118,6 +118,10 @@ android {
         // (ManeuverClassifier) instead of being copied onto the heap.
         noCompress += "tflite"
     }
+    testOptions {
+        // Robolectric (RideStore etc. need a real Context + filesystem) needs merged resources/manifest.
+        unitTests.isIncludeAndroidResources = true
+    }
     // composeOptions.kotlinCompilerExtensionVersion is obsolete under Kotlin 2.x;
     // the Compose compiler now comes from the org.jetbrains.kotlin.plugin.compose plugin.
     packaging {
@@ -205,4 +209,6 @@ dependencies {
     // Real org.json for JVM unit tests: android.jar ships stubs that throw
     // "not mocked", so tests parsing JSON (e.g. RoutesClient) need the actual impl.
     testImplementation("org.json:json:20240303")
+    // Android-framework unit tests on the JVM (RideStore needs a Context + files): no device.
+    testImplementation("org.robolectric:robolectric:4.16")
 }

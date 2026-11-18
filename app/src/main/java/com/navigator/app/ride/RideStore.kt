@@ -150,6 +150,11 @@ class RideStore(context: Context) {
         runCatching { trackFile(id).delete() }
     }
 
+    /** Test hook: mark a track as being recorded (or clear every mark with a null id). */
+    internal fun setActiveForTest(id: String?, active: Boolean = true) {
+        if (id == null) ACTIVE_TRACKS.clear() else if (active) ACTIVE_TRACKS.add(id) else ACTIVE_TRACKS.remove(id)
+    }
+
     /** The recorder is done with [id]'s track file (finalised or discarded). */
     fun markTrackClosed(id: String) {
         ACTIVE_TRACKS.remove(id)

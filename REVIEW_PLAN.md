@@ -339,14 +339,14 @@ C1 F4 richer ride data (altitude, elevation gain/loss, chart). C2 F10 rename/not
 
 ---
 
-## Done / Skipped / Pending (after Phase 10)
+## Done / Skipped / Pending (after Phase 11)
 
-**Done:** Phases S, 0-2, 4, 5; Phase 3 as bucket C (`a2fccb0`); Phase 6 except UX1 (partial), UX7, UX11; Phases 8-10 (A1-A5, B1-B6, C1-C5); features F1-F6 and F8-F12. Smoke tests 1 and 2 passed; smoke test 3 is awaiting the user.
+**Done:** Phases S, 0-2, 4, 5; Phase 3 as bucket C (`a2fccb0`); Phase 6; Phases 8-11 (A1-A5, B1-B6, C1-C5, D1-D4: add stop to trips with stops, resume pill on search, selective restore, RideStore tests); features F1-F6 and F8-F12. Smoke tests 1-3 passed.
 
-**Skipped / dropped:** F7 weather; NET2 regionCode; ST5 FileProvider authority; auto-pause (F3); GPX import as a nav route (F2).
+**Skipped / dropped:** F7 weather; UX7 units (stays km/m); NET2 regionCode; ST5 FileProvider authority; auto-pause (F3); GPX import as a nav route (F2).
 
-**Pending / deferred:**
+**Pending:**
 - Needs the bike: B11, N8, NP4, P2 (partial), UX11, H1-H5, plus on-device checks of bucket C, C3, C4 and N1.
-- No bike needed: UX7 (units), UX1 on the search panel, add a stop to a trip that already has stops, `RideStore` instrumented tests, selective restore.
+- Needs the user: smoke test 4 (resume pill on search, add stop to a trip with stops, selective restore).
 
-`TRACKER.md` ("Status overview") is the live version of this list.
+`TRACKER.md` is the live version of this list.

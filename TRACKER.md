@@ -32,38 +32,38 @@ Target: **Android 16+ only (minSdk 36)**.
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 25 | 25 | R1/NP1 done in A4; NET2 dropped, NP4 deferred |
 | 5 | Settings, build, docs hygiene | 10 | 11 | ST5 dropped; ST8, ST9 done in Phase 8 |
-| 6 | UX polish & accessibility | 12 | 14 | UX1 partial, UX8 done (C5); UX7/UX11 deferred |
+| 6 | UX polish & accessibility | 13 | 14 | UX7 skipped by decision; UX11 deferred (bike) |
 | 7 | New features | 11 | 12 | F1-F6, F8-F12 done (Phases 9/10); F7 weather skipped by decision |
-| T | Tests to extend/add | 7 | 8 | T1 partial (RideStore needs Android); T5 done (NavFlow) |
+| T | Tests to extend/add | 8 | 8 | Done (RideStore via Robolectric) |
 | H | Hardware verification | 0 | 5 | Not started (needs bike) |
+| 11 | Remaining no-bike items | 4 | 4 | D1-D4 done; smoke test 4 pending |
 
 ---
 
 ## Done / Skipped / Pending
 
-_Updated after Phase 10. Phase 10 is awaiting smoke test 3. Details live in the per-phase tables below._
+_Updated after Phase 11. Smoke tests 1-3 passed; Phase 11 awaits smoke test 4._
 
 ### 1. Done
-- **Phase S, 0, 1, 2, 4, 5**: safety net, minSdk 36 cleanup, crash/privacy fixes, navigation/UI state, data integrity, settings/build/docs (see tables).
+- **Phases S, 0, 1, 2, 4, 5**: safety net, minSdk 36 cleanup, crash/privacy fixes, navigation/UI state, data integrity, settings/build/docs.
 - **Phase 3 (BLE)**: bucket C in one revertable commit `a2fccb0` (B1, B2, B3 reduced, B4 reduced, B5, B6, B7 UI only, B8 reduced, B9, B10).
-- **Phase 6 (UX)**: UX2-UX6, UX8 (real sunrise/sunset), UX9, UX10, UX12-UX14; UX1 partly.
-- **Phase 8 (foundation)**: A1-A5 (deps/compileSdk 36.1, NavFlow ViewModel, edge/back, touch targets + off-main rides, single plain settings store).
-- **Phase 9 (features)**: B1 manual recording, B2 GPX + trip-finished actions, B3 Home/Work chips + shortcuts, B4 mirror hints, B5 Live Updates, B6 categories/voice/add stop.
-- **Phase 10**: C1 elevation + chart, C2 rename/notes/trim + backup/restore, C3 leg ETAs + drag reorder, C4 Latin dash text, C5 polish (pause breaks, GPX dedupe, Resume pill, sun-based day/night).
+- **Phase 6 (UX)**: UX1 (resume pill on every stage incl. search), UX2-UX6, UX8, UX9, UX10, UX12-UX14.
+- **Phase 8**: A1-A5. **Phase 9**: B1-B6. **Phase 10**: C1-C5.
+- **Phase 11**: D1 add a stop to a trip that already has stops, D2 resume pill on the search panel, D3 selective restore, D4 `RideStore` tests (Robolectric).
 - **Features F1-F6, F8-F12**; avg-speed selector; debug dash-preview toggle.
-- **Tests**: T1 (partial), T2-T8 added or extended; ~all pure logic is unit-tested.
-- **Verified by user**: smoke tests 1 and 2. **Awaiting**: smoke test 3 (Phase 10).
+- **Tests**: all pure logic unit-tested; `RideStore` covered by Robolectric tests.
 
-### 2. Skipped / dropped (decided, not planned)
+### 2. Skipped / dropped
 | ID | Item | Why |
 |---|---|---|
 | F7 | Weather chip on map | Skipped by decision |
+| UX7 | Units setting (miles/yards, 12/24 h) | Skipped by decision: the app stays km/m |
 | NET2 | Derive `regionCode` from locale | Dropped: locale is a poor proxy |
 | ST5 | FileProvider authority rename | Dropped: no install-conflict reason |
 | F3 part | Auto-pause | Decided against |
 | F2 part | GPX import as navigation route | Import as ride only |
 
-### 3. Pending / deferred (not done yet)
+### 3. Pending
 **Needs the bike (cannot be tested now)**
 | ID | Item |
 |---|---|
@@ -73,18 +73,12 @@ _Updated after Phase 10. Phase 10 is awaiting smoke test 3. Details live in the 
 | P2 | Save bike only on AUTHENTICATED (partly done) |
 | UX11 | Pairing RSSI bars and "Connected to <bike> · Disconnect" |
 | H1-H5 | Hardware verification: back-to-back trips, roundabouts/MERGE code 14, ignition-cycle reconnect, mirror mode, 1-2 h ride |
-| - | On-device behaviour of bucket C, C3/C4/N1 (shipped at >=50% confidence, unverified) |
+| - | On-device behaviour of bucket C, C3, C4 and N1 (shipped at >=50% confidence, unverified) |
 
-**Feature or polish work (no bike needed)**
-| ID | Item |
-|---|---|
-| UX7 | Units setting (miles/yards) and 12/24 h; leg-line distances are metric only until then |
-| UX1 | Resume pill on the full-screen search panel |
-| - | Add a stop to a trip that already has stops (N4 covers trips with none) |
-| T1 | `RideStore` instrumented tests (needs Android) |
-| - | Selective restore; replay chart on screens under 480 dp height |
-
-**Next step**: user runs smoke test 3, then fixes for any regressions (each maps to one commit).
+**Needs the user (no bike)**
+| Item |
+|---|
+| Smoke test 4: search while a trip runs and use the resume pill; add a stop mid-trip to a trip that already has 1-2 stops (also after passing one); selective restore with a mix of boxes |
 
 ---
 
@@ -368,7 +362,7 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [~] | T1 | `RideStore` / `PlacesStore` (new): corrupt entry, concurrency, prune, orphan-vs-active PlacesJson/RideJson/RideMetrics covered; RideStore itself needs Android (no instrumented tests) |
+| [x] | T1 | `RideStore` / `PlacesStore` (new): corrupt entry, concurrency, prune, orphan-vs-active PlacesJson/RideJson/RideMetrics covered; RideStore itself needs Android (no instrumented tests) |
 | [x] | T2 | `RideMetrics` (extend): jitter, spikes, backwards time, gaps, moving average | | |
 | [x] | T3 | `SerialGattQueue` (extend): late completion after timeout | | |
 | [x] | T4 | Nav trip-token logic (pure class): stale result/NavInfo ignored; `ROUTE_CANCELED` never retried | | |
@@ -417,3 +411,4 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | [x] | D1 | Add a stop to a trip that already has stops | Remaining stops resolved from the SDK's current route segment (RemainingStops, 250 m match, unknown -> refused); new stop goes next, passed stops dropped from the live trip but kept in `tripAllStops` for Ride back; 8 s guard against a second add while the re-plan settles. Known limit: a stop located at the destination (loop trip) may be visited again |
 | [x] | D2 | UX1 remainder: Resume pill on the full-screen search panel | Shown while a trip runs and the rider is searching for a destination / preview stop (not while adding a trip stop, which already belongs to the trip) |
 | [x] | D3 | Selective restore (per category) | Restore first inspects the file (read-through, nothing written), then a dialog with Rides (new / in file), Saved places, Settings checkboxes; only ticked parts are restored. Still merge-only for rides/places |
+| [x] | D4 | `RideStore` tests | Robolectric 4.16 (test-only dependency, API 36): import, delete, prune, rename/notes, trim (validation, active ride, damaged track, flags kept), backup import (lying index, no track, too few points), orphan recovery, tmp sweep, duplicate detection. Runs with the normal unit tests, no device |
