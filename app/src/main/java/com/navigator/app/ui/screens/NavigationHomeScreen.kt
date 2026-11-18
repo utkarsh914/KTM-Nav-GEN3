@@ -173,6 +173,8 @@ fun NavigationHomeScreen(
     onSharedLinkConsumed: () -> Unit = {},
     pendingPlace: SavedPlace? = null,
     onPendingPlaceConsumed: () -> Unit = {},
+    quickRoute: String? = null,
+    onQuickRouteConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -714,6 +716,36 @@ fun NavigationHomeScreen(
         choose(p)
     }
 
+    // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
+    fun rideTo(place: SavedPlace) {
+        // Mid-guidance a shortcut must not tear the planning flow out from under the live trip
+        // (the screen would stop owning it); ending/replacing a trip stays an explicit action.
+        if (stage == NavStage.NAVIGATING) {
+            android.widget.Toast.makeText(
+                context, "Navigation in progress \u2013 end it first to plan another ride", android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
+        backToBrowse()
+        flow.update { it.quickRoute(place) }
+    }
+    LaunchedEffect(quickRoute) {
+        val slot = quickRoute ?: return@LaunchedEffect
+        onQuickRouteConsumed()
+        val want = if (slot == "WORK") com.navigator.app.nav.destination.FavoriteSlot.WORK
+        else com.navigator.app.nav.destination.FavoriteSlot.HOME
+        val place = store.favorites().firstOrNull { it.slot == want }?.place
+        if (place != null) rideTo(place) else android.widget.Toast.makeText(
+            context,
+            "Set your ${if (want == com.navigator.app.nav.destination.FavoriteSlot.WORK) "Work" else "Home"} place in Saved places",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
+    }
+    // Home / Work favorites for the browse chips; re-read whenever the map is (re)shown.
+    LaunchedEffect(stage) {
+        if (stage == NavStage.BROWSE) favorites = store.favorites()
+    }
+
     // Don't leave this screen's map listeners / marker behind when it leaves composition
     // (unless another screen has already taken the shared map over).
     DisposableEffect(googleMap) {
@@ -805,11 +837,26 @@ fun NavigationHomeScreen(
                 ) {
                     IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
                 }
+                // Home / Work one-tap routes under the search bar (only the ones that are set).
+                val homePlace = favorites.firstOrNull { it.slot == com.navigator.app.nav.destination.FavoriteSlot.HOME }?.place
+                val workPlace = favorites.firstOrNull { it.slot == com.navigator.app.nav.destination.FavoriteSlot.WORK }?.place
+                val hasChips = homePlace != null || workPlace != null
+                if (hasChips) {
+                    Row(
+                        modifier = Modifier.align(Alignment.TopStart).edgePadding()
+                            .padding(start = 16.dp, top = 68.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // (stage guard: the chips stay tappable during the exit animation)
+                        homePlace?.let { QuickPlaceChip("Home", OpenDashIcons.House) { if (stage == NavStage.BROWSE) rideTo(it) } }
+                        workPlace?.let { QuickPlaceChip("Work", OpenDashIcons.Briefcase) { if (stage == NavStage.BROWSE) rideTo(it) } }
+                    }
+                }
                 // Position can't be shown/used: say why instead of a silently static map.
                 if (!locationReady) {
                     Box(
                         modifier = Modifier.align(Alignment.TopCenter).edgePadding()
-                            .padding(top = 74.dp, start = 16.dp, end = 16.dp),
+                            .padding(top = if (hasChips) 130.dp else 74.dp, start = 16.dp, end = 16.dp),
                     ) {
                         OfflineBanner(
                             text = if (!hasLocationPermission(context)) "Location permission is off" else "Location is off",
@@ -1426,6 +1473,32 @@ private fun TripFinishedCard(
         } else {
             KtmPrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth(), onClick = onDone)
         }
+    }
+}
+
+/** "Home" / "Work" pill on the browse map: one tap to the route preview. */
+@Composable
+private fun QuickPlaceChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    Row(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(
+                onClickLabel = "Ride to $label",
+                role = androidx.compose.ui.semantics.Role.Button,
+            ) { haptics.tap(); onClick() }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = Ktm.Orange, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label.uppercase(), color = Ktm.White, fontFamily = BarlowCondensed,
+            fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, maxLines = 1,
+        )
     }
 }
 

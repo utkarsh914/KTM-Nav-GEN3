@@ -109,6 +109,16 @@ class NavFlowTest {
         assertEquals(NavStage.CONFIRM, s.back(false).state.stage)
     }
 
+    @Test fun quickRouteGoesStraightToPreviewAndBackLandsOnConfirm() {
+        val s = NavFlowState(stage = NavStage.SEARCH, query = "x").quickRoute(place(7))
+        assertEquals(NavStage.PREVIEW, s.stage)
+        assertEquals(place(7), s.selected)
+        assertTrue(s.stops.isEmpty())
+        assertEquals("", s.query)
+        assertEquals(NavStage.CONFIRM, s.back(false).state.stage)
+        assertEquals(BackEffect.BACK_TO_BROWSE, s.back(false).state.back(false).effect)
+    }
+
     @Test fun rideBackNeverExceedsTheStopCap() {
         val many = (1..MAX_STOPS + 2).map { place(it) }
         assertEquals(MAX_STOPS, NavFlowState().rideBack(place(0), many).stops.size)

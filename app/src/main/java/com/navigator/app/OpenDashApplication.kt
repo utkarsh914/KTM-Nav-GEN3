@@ -31,6 +31,9 @@ class OpenDashApplication : Application() {
         }
         recoverOrphanRides()
         observeNavForRecording()
+        appScope.launch(Dispatchers.IO) {
+            runCatching { com.navigator.app.nav.destination.PlacesStore(this@OpenDashApplication).syncShortcuts() }
+        }
     }
 
     /**

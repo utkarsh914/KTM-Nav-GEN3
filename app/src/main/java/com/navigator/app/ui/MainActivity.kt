@@ -68,6 +68,9 @@ class MainActivity : ComponentActivity() {
          */
         val openNavRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+        /** "HOME" / "WORK" requested by a launcher shortcut; consumed by the map home. */
+        val quickRouteRequest = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
         /** Notification deep-link extra: bring up the active navigation screen. */
         const val EXTRA_OPEN_NAV = "com.navigator.app.extra.OPEN_NAV"
     }
@@ -164,6 +167,8 @@ class MainActivity : ComponentActivity() {
 
         handleSendIntent(intent)
         handleOpenNavIntent(intent)
+        // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
+        if (savedInstanceState == null) handleQuickRouteIntent(intent)
 
         setContent {
             OpenDashApp(settings = settings, onExit = { exitApp() })
@@ -190,6 +195,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleSendIntent(intent)
         handleOpenNavIntent(intent)
+        handleQuickRouteIntent(intent)
+    }
+
+    /** Launcher shortcut "Ride home / work": ask Compose to open that route preview. */
+    private fun handleQuickRouteIntent(intent: Intent?) {
+        com.navigator.app.nav.destination.PlaceShortcuts.slotFrom(intent)?.let {
+            quickRouteRequest.value = it.name
+        }
     }
 
     /** Notification tap while navigating: ask Compose to show the nav screen. */
@@ -387,6 +400,22 @@ private fun OpenDashApp(
             MainActivity.sharedNavLink.value = null
         }
     }
+    // Launcher shortcut "Ride home / work" -> map home, which opens the route preview.
+    val quickRoute by MainActivity.quickRouteRequest.collectAsState()
+    LaunchedEffect(quickRoute) {
+        if (quickRoute == null) return@LaunchedEffect
+        if (route == AppRoute.ONBOARDING || route == AppRoute.BRAND || route == AppRoute.PAIRING) {
+            MainActivity.quickRouteRequest.value = null // setup first; a stale request must not fire later
+        } else if (googleNavOffered) {
+            goTo(homeRoute())
+        } else {
+            android.widget.Toast.makeText(
+                appContext, "Ride shortcuts need in-app maps (Settings > Navigation engine)",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            MainActivity.quickRouteRequest.value = null
+        }
+    }
     // Notification tapped while navigating -> jump to the map home, which resumes
     // the NAVIGATING view from the live session state.
     val openNav by MainActivity.openNavRequest.collectAsState()
@@ -541,6 +570,8 @@ private fun OpenDashApp(
                 onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
                 pendingPlace = pendingPlace,
                 onPendingPlaceConsumed = { pendingPlace = null },
+                quickRoute = quickRoute,
+                onQuickRouteConsumed = { MainActivity.quickRouteRequest.value = null },
             )
             AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
                 onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.SETTINGS) },

@@ -29,8 +29,8 @@ data class FavoritePlace(
  */
 class PlacesStore(context: Context) {
 
-    private val prefs =
-        context.applicationContext.getSharedPreferences("places_store", Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences("places_store", Context.MODE_PRIVATE)
 
     // ---- Recents ----------------------------------------------------------
 
@@ -110,7 +110,12 @@ class PlacesStore(context: Context) {
 
     private fun writeFavorites(favs: List<FavoritePlace>) {
         prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs)).apply()
+        // Keep the launcher's "Ride home / work" shortcuts in step with Home / Work.
+        PlaceShortcuts.sync(appContext, favs)
     }
+
+    /** Re-publish the launcher shortcuts from what is stored (app start). */
+    fun syncShortcuts() = PlaceShortcuts.sync(appContext, favorites())
 
     private fun coordKey(lat: Double, lng: Double): String = PlacesJson.coordKey(lat, lng)
 

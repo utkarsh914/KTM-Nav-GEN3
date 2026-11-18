@@ -74,6 +74,9 @@ internal data class NavFlowState(
     fun finishTrip(): NavFlowState =
         copy(stage = NavStage.TRIP_FINISHED, query = "", stops = emptyList(), searchTarget = SearchTarget.DESTINATION)
 
+    /** One-tap route to a saved place (Home / Work chip, launcher shortcut): straight to the preview. */
+    fun quickRoute(place: SavedPlace): NavFlowState = rideBack(place, emptyList())
+
     /** "Ride back": plan the reverse trip from the finished one (origin becomes the destination, stops reversed). */
     fun rideBack(origin: SavedPlace, tripStops: List<SavedPlace>): NavFlowState =
         NavFlowState(
