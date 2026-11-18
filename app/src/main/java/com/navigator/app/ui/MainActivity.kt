@@ -329,6 +329,11 @@ private fun OpenDashApp(
         while (true) {
             val here = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
+                    // (explicit permission check: no fix without location permission -> fixed 06-18 rule)
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(
+                            appContext, android.Manifest.permission.ACCESS_FINE_LOCATION,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) return@runCatching null
                     val lm = appContext.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
                     listOf(
                         android.location.LocationManager.GPS_PROVIDER,
