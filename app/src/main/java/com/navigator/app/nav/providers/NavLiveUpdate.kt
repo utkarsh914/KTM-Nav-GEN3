@@ -118,7 +118,11 @@ class NavLiveUpdate(
             // Both calls are newer than API 36.0: a NoSuchMethodError on older builds just
             // leaves the regular ongoing notification.
             content.chip?.let { chip -> runCatching { b.setShortCriticalText(chip) } }
-            runCatching { b.setRequestPromotedOngoing(true) }
+            // setRequestPromotedOngoing is API 36.1: gate it so older 36.0 builds never reach it
+            // (the runCatching stays as a belt-and-braces for OEM builds).
+            if (android.os.Build.VERSION.SDK_INT_FULL >= android.os.Build.VERSION_CODES_FULL.BAKLAVA_1) {
+                runCatching { b.setRequestPromotedOngoing(true) }
+            }
         }
         return b.build()
     }

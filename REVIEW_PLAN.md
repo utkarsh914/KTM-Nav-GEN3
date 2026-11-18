@@ -328,3 +328,5 @@ Added after smoke test of batches 1-11. Detailed status in TRACKER.md (Phase 8 /
 - **A4** UX4 remainder, R1 (ride list off main thread), NP1 (mmap model).
 - **A5** ST9 (revised): the encrypted file held only low-sensitivity keys, so settings become ONE plain store with a one-time verified migration from the legacy encrypted store (library kept only as migration source, to be removed after first launch); session keys stay plain by design.
 - **B1** F3 manual recording (no auto-pause). **B2** F2/F9 GPX export + import-as-ride + trip-finished actions. **B3** F5 home/work chip + shortcuts. **B4** F8 freshness/hint. **B5** F1 Live Updates (own notification through the Nav SDK's NotificationContentProvider hook; in-app engine only). **B6** F6 categories + voice + along-route + N4 Add as stop.
+
+**Status (rev. 3):** Phases 8 and 9 are implemented (see TRACKER.md commit log). Open: smoke test 2 on the phone, bike checks (H1-H5), F4/F7/F10/F11/F12, remaining deferred items listed in TRACKER.md.

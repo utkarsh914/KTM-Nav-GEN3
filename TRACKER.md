@@ -26,15 +26,15 @@ Target: **Android 16+ only (minSdk 36)**.
 | Phase | Scope | Done | Total | Status |
 |---|---|---|---|---|
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
-| 0 | minSdk 36, delete legacy paths | 6 | 7 | 0.6 (on-device Android 16 checks) pending |
+| 0 | minSdk 36, delete legacy paths | 7 | 7 | 0.6 code review done in A3; visual check by user |
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
-| 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
+| 2 | Navigation state, UI state, pairing | 22 | 23 | N8 deferred (dash), P2 partial; U7 + N4 done in Phases 8/9 |
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
-| 4 | Data integrity, parsing, network | 24 | 25 | R1/NP1 partial, NET2 dropped, NP4 deferred |
+| 4 | Data integrity, parsing, network | 25 | 25 | R1/NP1 done in A4; NET2 dropped, NP4 deferred |
 | 5 | Settings, build, docs hygiene | 10 | 11 | ST5 dropped; ST8, ST9 done in Phase 8 |
-| 6 | UX polish & accessibility | 9 | 14 | UX4 partial; UX1/7/8/11 deferred |
-| 7 | New features | 0 | 12 | Not started |
-| T | Tests to extend/add | 6 | 8 | T1 partial; T5 pending (stage state machine not extracted) |
+| 6 | UX polish & accessibility | 10 | 14 | UX4 mostly done (A4); UX1/7/8/11 deferred |
+| 7 | New features | 7 | 12 | F1/F2/F3/F5/F6/F8/F9 done (Phase 9); F4/F7/F10/F11/F12 not started |
+| T | Tests to extend/add | 7 | 8 | T1 partial (RideStore needs Android); T5 done (NavFlow) |
 | H | Hardware verification | 0 | 5 | Not started |
 
 ---
@@ -54,6 +54,18 @@ Target: **Android 16+ only (minSdk 36)**.
 | 9 | Notification parsing + network | `605e1fd` |
 | 10 | Settings, build, docs | `35061c5` |
 | 11 | UX polish | `7004c3f` |
+| 12 | Avg speed selector + dash preview toggle | `68c232e` |
+| 8.A1 | Dependency bumps, compileSdk 36.1 | `9527e1f` |
+| 8.A2 | Nav flow ViewModel + configChanges | `d88c3df` |
+| 8.A3 | Android 16 edge/back | `09669ee` |
+| 8.A4 | Touch targets, off-main rides, mmap model | `3423e6c` |
+| 8.A5 | Single plain settings store (+ later removal of security-crypto `8cab306`) | `802f7c6` |
+| 9.B1 | Manual recording | `7d46346` |
+| 9.B2 | GPX + finish actions | `b62c80f` |
+| 9.B3 | Home/Work chips + shortcuts | `a3baffa` |
+| 9.B4 | Mirror hints | `f69891d` |
+| 9.B5 | Live Updates | `2b4ac3e` |
+| 9.B6 | Categories, voice, add stop | `ebd8707` |
 
 Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit tests all green.
 
@@ -117,7 +129,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 |---|---|---|---|---|
 | [x] | N2 | Quit `NavInfoReceivingService` HandlerThread in `onDestroy` | | |
 | [x] | N3 | ARRIVED not conflated: one-shot `tripEnded` SharedFlow (don't skip `stopNavigation()` in `detach()`) | | |
-| [x] | N4 | Trip ownership from provider; ARRIVED/STOPPED in any stage; mid-trip "Add stop / Replace" | | 🏍 Replace-confirm added; 'Add as stop' NOT done |
+| [x] | N4 | Trip ownership from provider; ARRIVED/STOPPED in any stage; mid-trip "Add stop / Replace" | | 🏍 Replace-confirm + 'Add stop' (B6; only for trips without stops yet) |
 | [x] | N5 | Decide recording-vs-route-failure behaviour independent of BLE state (keep recording until user ends, or clear everywhere) | | 🔎 Decision: failed trip parks on the card (recording continues) until Retry/Back/Close or 10-min expiry (not while app foreground); independent of BLE |
 | [x] | N6 | `NotificationNavProvider` generation counter; fix pause semantics/comment | | |
 | [x] | N7 | Ride recording keyed on N1 trip token | | |

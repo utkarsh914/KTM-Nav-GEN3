@@ -130,6 +130,13 @@ class RideRecorder(private val context: Context) {
     fun resume() {
         if (!started || !paused) return
         val ht = thread ?: return
+        // Permission may have been revoked while paused.
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            AppLogger.log("Ride", "Can't resume: location permission is off")
+            return
+        }
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         try {
             gapNext = true
