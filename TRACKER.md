@@ -26,10 +26,10 @@ Target: **Android 16+ only (minSdk 36)**.
 | Phase | Scope | Done | Total | Status |
 |---|---|---|---|---|
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
-| 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
+| 0 | minSdk 36, delete legacy paths | 6 | 7 | 0.6 (on-device Android 16 checks) pending |
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
 | 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
-| 3 | BLE robustness | 0 | 11 | Not started |
+| 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 0 | 25 | Not started |
 | 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
 | 6 | UX polish & accessibility | 0 | 14 | Not started |
@@ -57,12 +57,12 @@ Target: **Android 16+ only (minSdk 36)**.
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
 | [x] | 0.1 | `minSdk = 36` (`app/build.gradle.kts:28`) | | |
-| [~] | 0.2 | Remove all `SDK_INT` branches (27 sites) incl. receiver-flag else-branches and O/Q/T channel/FGS guards | | All non-BLE sites done; 5 BLE-service sites go in the bucket C commit |
+| [x] | 0.2 | Remove all `SDK_INT` branches (27 sites) incl. receiver-flag else-branches and O/Q/T channel/FGS guards | | All non-BLE sites done; 5 BLE-service sites go in the bucket C commit |
 | [x] | 0.3 | Manifest cleanup + `tools:node="remove"` for Nav-SDK-merged `WRITE_EXTERNAL_STORAGE`/`BLUETOOTH*`; verify merged manifest | | 🔎 |
-| [ ] | 0.4 | BLE dead code: delete pre-33 write/descriptor branches and legacy `onCharacteristicChanged/Read` overloads (behaviour unchanged) | | Bucket C commit |
+| [x] | 0.4 | BLE dead code: delete pre-33 write/descriptor branches and legacy `onCharacteristicChanged/Read` overloads (behaviour unchanged) | | Bucket C commit |
 | [x] | 0.5 | Keep desugaring (Nav SDK requires it); fix stale comments (`:86`, `:180`); remove no-op multiDex | | |
 | [ ] | 0.6 | Android 16 checks: edge-to-edge insets, predictive back, large-screen orientation | | 🏍 |
-| [~] | 0.7 | Docs after Phase 0: `ENGINEERING_NOTES.md:221-237`, `architecture.md:264, 276` | | |
+| [x] | 0.7 | Docs after Phase 0: `ENGINEERING_NOTES.md:221-237`, `architecture.md:264, 276` | | |
 
 ## Phase 1: Critical bugs, crashes, privacy
 
@@ -133,16 +133,16 @@ Target: **Android 16+ only (minSdk 36)**.
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | B1 | GATT callbacks on one looper: dedicated BLE HandlerThread | | 🏍 Bucket C commit |
-| [ ] | B2 | `SerialGattQueue.finish(uuid)` op match; 2 s timeout unchanged | | Bucket C commit |
-| [ ] | B3 | Control-message safety: keep derived key pool aside until AUTHENTICATED (no new incoming validation) | | 🔎 🏍 Bucket C commit |
-| [ ] | B4 | Unified backoff: dash-drop reuses 15/45 s cooldown; absent-bike cap 2 min; reset on bike link up / adapter-on / foreground; keep "no retry cap" | | 🏍 Bucket C commit |
-| [ ] | B5 | `onStartCommand` cooldown guard for non-present starts | | Bucket C commit |
-| [ ] | B6 | Validate persisted key pool (16×16 B); catch in `sendEncrypted` | | Bucket C commit |
-| [ ] | B7 | "Re-pair needed" UI after N failed handshakes; **statuses 3/4 NOT sent** (verify official SDK first); check `ACTION_KEY_MISSING` | | 🔎 🏍 Bucket C commit (UI part only) |
-| [ ] | B8 | Post-auth heartbeat liveness (>30 s silence → recycle; drop first if it misbehaves) | | 🏍 Bucket C commit |
-| [ ] | B9 | Single `teardownLink(reason)` | | Bucket C commit |
-| [ ] | B10 | Small items: discover/MTU checks, priority→BALANCED, monotonic clock, scan filter `target`, encrypt inside op (marquee width excluded) | | Bucket C commit |
+| [x] | B1 | GATT callbacks on one looper: dedicated BLE HandlerThread | | 🏍 Bucket C commit |
+| [x] | B2 | `SerialGattQueue.finish(uuid)` op match; 2 s timeout unchanged | | Bucket C commit |
+| [~] | B3 | Control-message safety: keep derived key pool aside until AUTHENTICATED (no new incoming validation) | | 🔎 🏍 Bucket C commit Dropped: deferred persist (reviewer: a link drop between ComputeKeyArr and AssignKeyIndex would leave phone/dash pools mismatched). Immediate persist kept; B6 validation covers malformed pools |
+| [~] | B4 | Unified backoff: dash-drop reuses 15/45 s cooldown; absent-bike cap 2 min; reset on bike link up / adapter-on / foreground; keep "no retry cap" | | 🏍 Bucket C commit Only absent-bike backoff shipped (1.5/5/15/30 s cap; reset on link up/auth/adapter-on/ACL present/foreground). Pre-auth-drop 15/45 s cooldown dropped (would slow ignition-on connects); B5 guard ships |
+| [x] | B5 | `onStartCommand` cooldown guard for non-present starts | | Bucket C commit |
+| [x] | B6 | Validate persisted key pool (16×16 B); catch in `sendEncrypted` | | Bucket C commit |
+| [x] | B7 | "Re-pair needed" UI after N failed handshakes; **statuses 3/4 NOT sent** (verify official SDK first); check `ACTION_KEY_MISSING` | | 🔎 🏍 Bucket C commit (UI part only) UI hint only (flag + notification + Settings pill); statuses 3/4 NOT sent |
+| [~] | B8 | Post-auth heartbeat liveness (>30 s silence → recycle; drop first if it misbehaves) | | 🏍 Bucket C commit Shipped as LOG-ONLY (heartbeat not confirmed in field logs); promote to recycle after a capture |
+| [x] | B9 | Single `teardownLink(reason)` | | Bucket C commit |
+| [x] | B10 | Small items: discover/MTU checks, priority→BALANCED, monotonic clock, scan filter `target`, encrypt inside op (marquee width excluded) | | Bucket C commit BALANCED-priority change dropped (untested latency effect); other items shipped |
 | [ ] | B11 | CompanionDeviceManager replacing `AutoConnectReceiver` (manifest/feature/service/permissions, migration dialog, `MY_PACKAGE_REPLACED`) | | 🔎 🏍 DEFERRED: <50% confidence, needs dash |
 
 ## Phase 4: Data integrity, parsing, network

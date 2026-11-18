@@ -201,7 +201,7 @@ class AppSettings(context: Context) {
      * disconnect that often follows authentication.
      */
     fun storeSessionKeys(deviceAddress: String, keys: List<ByteArray>) {
-        val joined = keys.joinToString(",") { hex(it) }
+        val joined = SessionKeyCodec.encode(keys)
         pairingPrefs.edit()
             .putString(KEY_SESSION_KEYS_PREFIX + deviceAddress.uppercase(), joined)
             .commit()
@@ -210,15 +210,12 @@ class AppSettings(context: Context) {
     /** The persisted session-key pool for this bike, or null if none stored. */
     fun loadSessionKeys(deviceAddress: String): List<ByteArray>? {
         val stored = pairingPrefs.getString(KEY_SESSION_KEYS_PREFIX + deviceAddress.uppercase(), null)
-        if (stored.isNullOrEmpty()) return null
-        return stored.split(",").map { unhex(it) }
+        val keys = SessionKeyCodec.decode(stored)
+        if (keys == null && !stored.isNullOrEmpty()) {
+            com.navigator.app.logging.AppLogger.log("Auth", "!! stored session key pool is malformed - ignoring it")
+        }
+        return keys
     }
-
-    private fun hex(bytes: ByteArray): String =
-        bytes.joinToString("") { "%02x".format(it) }
-
-    private fun unhex(s: String): ByteArray =
-        ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
 
     /** Stereo beep pattern as a turn approaches (left ear = left turn). */
     var turnBeepEnabled: Boolean

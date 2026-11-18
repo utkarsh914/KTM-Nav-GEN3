@@ -135,6 +135,7 @@ fun SettingsScreen(
 
     var rideRecordingOn by remember { mutableStateOf(settings.rideRecordingEnabled) }
     var showRepairConfirm by remember { mutableStateOf(false) }
+    val repairHint by BccuConnectionService.repairHint.collectAsState()
     var publicLogMirror by remember { mutableStateOf(com.navigator.app.logging.AppLogger.publicMirrorEnabled) }
     var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
     var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
@@ -319,7 +320,7 @@ fun SettingsScreen(
                         }
                     }
                     SettingsRow("Re-pair vehicle", showDivider = true, onClick = { showRepairConfirm = true }) {
-                        OutlinedPill("RE-PAIR")
+                        OutlinedPill(if (repairHint) "RE-PAIR SUGGESTED" else "RE-PAIR")
                     }
                     SettingsRow("Change bike / brand", showDivider = true, onClick = onChangeBrand) {
                         MonoValue("${com.navigator.app.ui.theme.themeFor(settings.brand).displayName} ›")

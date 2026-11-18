@@ -218,20 +218,16 @@ Practical consequences:
 
 ---
 
-## BLE GATT API modernization — why deprecated paths are still present
+## BLE GATT API (minSdk 36)
 
-`BccuConnectionService.kt` targets `minSdk` 26 but the API-33+ GATT callbacks/write methods use
-value-carrying overloads (`writeDescriptor(desc, value)`, `writeCharacteristic(char, value,
-writeType)`, checked against `BluetoothStatusCodes.SUCCESS`) that don't exist below API 33. The
-file intentionally keeps **both** paths:
-- API 33+ (`Build.VERSION.SDK_INT >= TIRAMISU`): the new value-carrying overloads.
-- API 26–32 fallback: the deprecated `setValue()` + write path, scoped with
-  `@Suppress("DEPRECATION")`.
-- The two legacy GATT *callback* overrides (`onCharacteristicChanged(g,c)` /
-  `onCharacteristicRead(g,c,status)`) are also kept — they're the actual dispatch path on API
-  <33, not dead code.
+The app only runs on Android 16+ (`minSdk` 36), so `BccuConnectionService.kt` uses only the
+value-carrying GATT APIs (`writeDescriptor(desc, value)`, `writeCharacteristic(char, value,
+writeType)`, checked against `BluetoothStatusCodes.SUCCESS`, and the 3/4-argument callbacks
+`onCharacteristicChanged(g,c,value)` / `onCharacteristicRead(g,c,value,status)`). The pre-33
+`setValue()` paths and the legacy callback overloads were removed; behaviour on API 33+ is
+unchanged.
 
-No behavioural change on any API level; this is purely a deprecation-warning cleanup, not a
-protocol-layer change. (`BluetoothAdapter.getDefaultAdapter()` was separately removed as a
-fallback — the code already preferred `getSystemService(BluetoothManager).adapter`, so the
-fallback was dead on minSdk 26 regardless.)
+GATT callbacks run on a dedicated `BccuGatt` HandlerThread (`connectGatt(..., handler)`), so
+they are serialised and never run on main or on concurrent binder threads. `connect()` publishes
+the new `BluetoothGatt` under `gattLock`, which the first callback also takes, so it can't look
+"stale" before it is assigned. All link teardown goes through `teardownLink()`.

@@ -69,4 +69,35 @@ class SerialGattQueueTest {
         q.finish()
         assertEquals(listOf("busy", "new"), ran)
     }
+
+    @Test fun lateCompletionOfTimedOutOpDoesNotReleaseTheNextOp() {
+        val ran = mutableListOf<String>()
+        val a = UUID.randomUUID(); val b = UUID.randomUUID()
+        q.enqueue(null, target = a) { ran += "A" }   // its completion is lost, then arrives late
+        q.enqueue(null, target = b) { ran += "B" }
+        fireTimeouts()                                // A released by timeout, B now in flight
+        assertEquals(listOf("A", "B"), ran)
+        val c = UUID.randomUUID()
+        q.enqueue(null, target = c) { ran += "C" }
+        assertEquals(false, q.finish(a))              // late completion for A: ignored
+        assertEquals(listOf("A", "B"), ran)           // C must still be waiting behind B
+        assertEquals(true, q.finish(b))               // B's own completion releases it
+        assertEquals(listOf("A", "B", "C"), ran)
+    }
+
+    @Test fun completionWithoutUuidAlwaysReleases() {
+        val ran = mutableListOf<Int>()
+        q.enqueue(null, target = UUID.randomUUID()) { ran += 1 }
+        q.enqueue { ran += 2 }
+        q.finish()
+        assertEquals(listOf(1, 2), ran)
+    }
+
+    @Test fun completionForUnknownTargetReleases() {
+        val ran = mutableListOf<Int>()
+        q.enqueue { ran += 1 }                        // no target recorded
+        q.enqueue { ran += 2 }
+        q.finish(UUID.randomUUID())
+        assertEquals(listOf(1, 2), ran)
+    }
 }
