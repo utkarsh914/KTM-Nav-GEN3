@@ -114,6 +114,25 @@ class PlacesStore(context: Context) {
         PlaceShortcuts.sync(appContext, favs)
     }
 
+    /** The raw stored lists, for a backup file. */
+    fun exportRaw(): Pair<String, String> = synchronized(LOCK) {
+        (prefs.getString(KEY_RECENTS, null) ?: "[]") to (prefs.getString(KEY_FAVORITES, null) ?: "[]")
+    }
+
+    /**
+     * Merge places from a backup: what is already here wins (see [PlacesMerge]). Returns how many
+     * places were added.
+     */
+    fun mergeFromBackup(recentsRaw: String?, favoritesRaw: String?): Int = synchronized(LOCK) {
+        val haveFavs = favorites()
+        val favs = PlacesMerge.favorites(haveFavs, PlacesJson.parseFavorites(favoritesRaw).items)
+        if (favs.size != haveFavs.size) writeFavorites(favs)
+        val haveRecents = recents()
+        val rec = PlacesMerge.recents(haveRecents, PlacesJson.parsePlaces(recentsRaw).items, MAX_RECENTS)
+        if (rec != haveRecents) prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(rec)).apply()
+        (favs.size - haveFavs.size) + (rec.size - haveRecents.size).coerceAtLeast(0)
+    }
+
     /** Re-publish the launcher shortcuts from what is stored (app start). */
     fun syncShortcuts() = PlaceShortcuts.sync(appContext, favorites())
 

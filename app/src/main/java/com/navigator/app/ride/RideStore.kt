@@ -182,6 +182,128 @@ class RideStore(context: Context) {
     }
 
     /**
+     * Add rides from a restored backup: only ids not already here, and only those whose track was
+     * extracted. Existing rides are never touched. Returns how many were added.
+     */
+    fun importBackup(rides: List<RecordedRide>, tracks: Map<String, File>): Int = synchronized(LOCK) {
+        val have = readIndex().map { it.id }.toHashSet()
+        val added = ArrayList<RecordedRide>()
+        val claimed = ArrayList<String>()
+        try {
+            for (r in rides) {
+                if (r.id in have) continue
+                val src = tracks[r.id] ?: continue
+                val dst = trackFile(r.id)
+                if (dst.exists()) continue
+                // The file's index metadata is not trusted: the stats are recomputed from the track
+                // itself (same math as recovery) and text fields are cleaned and capped.
+                val pts = ArrayList<RidePoint>()
+                runCatching {
+                    BufferedReader(FileReader(src)).use { rd -> rd.forEachLine { l -> RideJson.parsePoint(l)?.let { pts += it } } }
+                }
+                if (pts.size < 2) continue
+                ACTIVE_TRACKS.add(r.id) // keep orphan recovery away until the index entry exists
+                claimed += r.id
+                try {
+                    src.copyTo(dst)
+                } catch (e: Exception) {
+                    runCatching { dst.delete() }
+                    continue
+                }
+                val st = RideMetrics.summarize(pts)
+                added += r.copy(
+                    startMs = st.startMs, endMs = st.endMs, distanceMeters = st.distanceMeters,
+                    durationSeconds = st.durationSeconds, avgSpeedKmh = st.avgSpeedKmh,
+                    movingSeconds = st.movingSeconds, avgOverallSpeedKmh = st.avgOverallSpeedKmh,
+                    maxSpeedKmh = st.maxSpeedKmh, pointCount = st.pointCount,
+                    elevGainM = st.elevGainM, elevLossM = st.elevLossM,
+                    destinationLabel = RideTrim.cleanName(r.destinationLabel),
+                    notes = RideTrim.cleanNotes(r.notes),
+                )
+            }
+            if (added.isNotEmpty()) writeIndex(readIndex() + added)
+            if (added.any { it.saved }) writeSavedIds(savedIds() + added.filter { it.saved }.map { it.id })
+        } finally {
+            claimed.forEach { ACTIVE_TRACKS.remove(it) }
+        }
+        added.size
+    }
+
+    /** Rename a ride and/or change its note. Returns the updated ride, or null when it no longer exists. */
+    fun updateMeta(id: String, label: String?, notes: String?): RecordedRide? = synchronized(LOCK) {
+        var updated: RecordedRide? = null
+        writeIndex(readIndex().map { r ->
+            if (r.id != id) r else r.copy(
+                destinationLabel = RideTrim.cleanName(label),
+                notes = RideTrim.cleanNotes(notes),
+            ).also { updated = it }
+        })
+        updated
+    }
+
+    /**
+     * Cut a ride to the fixes [from]..[to] (inclusive) and recompute its stats. Destructive: the
+     * track is rewritten (temp file, then an atomic replace) and the old points are gone.
+     */
+    fun trimRide(id: String, from: Int, to: Int): RecordedRide? {
+        if (id in ACTIVE_TRACKS) return null // still being recorded
+        val file = trackFile(id)
+        val sizeBefore = file.length()
+        val modifiedBefore = file.lastModified()
+        val pts = points(id)
+        // A read that lost lines would permanently truncate the ride: refuse unless it matches the index.
+        val expected = get(id)?.pointCount ?: return null
+        if (expected > 0 && pts.size < expected) return null
+        val kept = RideTrim.trim(pts, from, to) ?: return null
+        val stats = RideMetrics.summarize(kept)
+        val tmp = File(ridesDir, "$id.jsonl.tmp")
+        try {
+            val meta = readMetaLine(id)
+            FileOutputStream(tmp).use { fos ->
+                java.io.BufferedWriter(java.io.OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
+                    meta?.let { w.write(it); w.write("\n") }
+                    kept.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
+                    w.flush()
+                }
+                fos.fd.sync() // data on disk BEFORE the rename can make it the track
+            }
+            synchronized(LOCK) {
+                // Re-validate under the lock: deleted / pruned / re-recorded / rewritten meanwhile -> abort.
+                if (id in ACTIVE_TRACKS || readIndex().none { it.id == id } ||
+                    file.length() != sizeBefore || file.lastModified() != modifiedBefore
+                ) {
+                    tmp.delete()
+                    return null
+                }
+                java.nio.file.Files.move(
+                    tmp.toPath(), trackFile(id).toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                )
+                var updated: RecordedRide? = null
+                writeIndex(readIndex().map { r ->
+                    if (r.id != id) r else r.copy(
+                        startMs = stats.startMs, endMs = stats.endMs,
+                        distanceMeters = stats.distanceMeters, durationSeconds = stats.durationSeconds,
+                        avgSpeedKmh = stats.avgSpeedKmh, movingSeconds = stats.movingSeconds,
+                        avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh,
+                        pointCount = stats.pointCount, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
+                    ).also { updated = it }
+                })
+                AppLogger.log("Ride", "Trimmed ride $id to ${kept.size} of ${pts.size} points")
+                return updated
+            }
+        } catch (e: Exception) {
+            runCatching { tmp.delete() }
+            AppLogger.log("Ride", "!! trim failed: ${e.javaClass.simpleName}")
+            return null
+        }
+    }
+
+    private fun readMetaLine(id: String): String? = runCatching {
+        BufferedReader(FileReader(trackFile(id))).use { r -> r.readLine()?.takeIf { RideJson.parseMeta(it) != null } }
+    }.getOrNull()
+
+    /**
      * Store an imported track (GPX) as a ride. Written in one pass (no per-point flush: the file is
      * complete before the index entry exists). Marked saved so the history limit never prunes it.
      * Returns null when the track is too short to be a ride.
@@ -276,6 +398,8 @@ class RideStore(context: Context) {
      */
     fun recoverOrphans(minDistanceMeters: Int, minDurationSeconds: Int) {
         val indexed = list().map { it.id }.toHashSet()
+        // Leftovers of an interrupted trim.
+        ridesDir.listFiles { f -> f.name.endsWith(".jsonl.tmp") }?.forEach { runCatching { it.delete() } }
         val files = ridesDir.listFiles { f -> f.name.endsWith(".jsonl") } ?: return
         for (f in files) {
             val id = f.name.removeSuffix(".jsonl")

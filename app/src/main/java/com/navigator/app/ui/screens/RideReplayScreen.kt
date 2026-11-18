@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -150,7 +151,11 @@ fun RideReplayScreen(
     var points by remember(rideId) { mutableStateOf<List<RidePoint>?>(null) }
     // Resampled once per loaded track (not per recomposition / playback tick).
     val chart = remember(points) { points?.let { com.navigator.app.ride.RideChart.build(it) } }
-    LaunchedEffect(rideId) {
+    // Bumped after a trim so the (rewritten) track is read again.
+    var reloadKey by remember(rideId) { mutableStateOf(0) }
+    var showEdit by remember { mutableStateOf(false) }
+    var showTrim by remember { mutableStateOf(false) }
+    LaunchedEffect(rideId, reloadKey) {
         // Index parse + track read are disk work: off the main thread. `ride` is set before
         // `points` so the "no data" branch (points loaded, ride missing) can't flash.
         val (r, p) = withContext(Dispatchers.IO) {
@@ -463,8 +468,49 @@ fun RideReplayScreen(
                         }
                     }
 
+                    if (showEdit) {
+                        EditRideDialog(
+                            name = r.destinationLabel.orEmpty(), notes = r.notes.orEmpty(),
+                            onSave = { n, t ->
+                                showEdit = false
+                                scope.launch {
+                                    val updated = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                                        store.updateMeta(r.id, n, t)
+                                    }
+                                    if (updated != null) ride = updated
+                                }
+                            },
+                            onTrim = { showEdit = false; showTrim = true },
+                            onDismiss = { showEdit = false },
+                        )
+                    }
+                    if (showTrim && pts.size >= 2) {
+                        TrimRideDialog(
+                            points = pts,
+                            onApply = { from, to ->
+                                showTrim = false
+                                scope.launch {
+                                    val updated = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                                        store.trimRide(r.id, from, to)
+                                    }
+                                    if (updated != null) {
+                                        playing = false
+                                        currentIndex = 0
+                                        ride = updated
+                                        points = null
+                                        reloadKey++
+                                    } else {
+                                        android.widget.Toast.makeText(context, "Couldn't trim this ride", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            onDismiss = { showTrim = false },
+                        )
+                    }
                     ReplayControls(
                         title = r.destinationLabel ?: "Ride",
+                        notes = r.notes,
+                        onEdit = { showEdit = true },
                         dateText = formatRideDate(r.startMs),
                         distanceText = DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
                         durationText = formatDurationShort(r.durationSeconds),
@@ -783,6 +829,8 @@ private fun ResetNorthControl(
 @Composable
 private fun ReplayControls(
     title: String,
+    notes: String?,
+    onEdit: () -> Unit,
     dateText: String,
     distanceText: String,
     durationText: String,
@@ -829,6 +877,19 @@ private fun ReplayControls(
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(dateText, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp)
+                if (!notes.isNullOrBlank()) {
+                    Text(
+                        notes, color = Ktm.TextSecondary, fontFamily = Barlow, fontSize = 12.sp,
+                        maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(Ktm.RadiusButton))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onEdit),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Edit, "Edit ride", tint = Ktm.Muted2, modifier = Modifier.size(22.dp))
             }
             // Save / pin toggle with a subtle pop animation.
             Box(

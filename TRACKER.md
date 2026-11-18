@@ -266,7 +266,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [ ] | F7 | Weather chip on map | | |
 | [x] | F8 | Mirror home freshness indicator + missing-notification hint | | |
 | [x] | F9 | Trip-finished actions (save destination, reverse route, share GPX) | | |
-| [ ] | F10 | Ride rename / notes / trim; SAF backup/restore | | |
+| [x] | F10 | Ride rename / notes / trim; SAF backup/restore | | |
 | [ ] | F11 | Per-leg ETA; drag-to-reorder stops | | |
 | [ ] | F12 | Non-Latin road-name transliteration / ref fallback | | |
 
@@ -306,7 +306,7 @@ Decisions: F7 weather skipped; backup = rides + places + prefs (never the bike p
 | St | ID | Item | Notes |
 |---|---|---|---|
 | [x] | C1 | F4: altitude per fix, elevation gain/loss, speed+elevation chart in Replay, GPX ele in/out | Altitude per fix ('a' in the track), ElevationTracker (median-3 + 4 m hysteresis, pause re-anchor), elev gain/loss on rides (unknown for old rides), cached-path RideChartView + up/down text above the seek bar (hidden below 480dp height), <ele> in GPX. Old rides have no altitude so no chart elevation. Needs on-device check: chart/card height on the replay screen |
-| [ ] | C2 | F10: ride rename/notes/trim; backup + restore (SAF, merge-only) | |
+| [x] | C2 | F10: ride rename/notes/trim; backup + restore (SAF, merge-only) | Edit dialog (name, notes) + trim dialog (range slider; destructive, atomic fsynced rewrite validated under the lock); Settings > Backup: zip (rides, tracks, places, prefs) via SAF. Restore is merge-only for rides/places; prefs go through a strict allowlist (exact types, clamped ranges) because a wrong-typed value would crash the getters; pairing/onboarding/call-audio never exported; restored ride stats recomputed from the track. Needs on-device check: trim + restore round trip on the phone. NOT done: RideStore instrumented tests (needs Android), selective restore |
 | [ ] | C3 | F11: per-leg ETA in the preview, drag-to-reorder stops | |
 | [ ] | C4 | F12: Latin transliteration / road ref for the dash | check dash font first |
 | [ ] | C5 | Polish: replay line breaks at pauses, GPX import dedupe, Resume pill on more stages (UX1), real sunrise/sunset (UX8) | |

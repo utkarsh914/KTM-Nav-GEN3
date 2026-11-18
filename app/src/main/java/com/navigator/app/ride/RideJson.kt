@@ -78,6 +78,7 @@ object RideJson {
         put("saved", r.saved)
         put("elevGainM", r.elevGainM)
         put("elevLossM", r.elevLossM)
+        r.notes?.let { put("notes", it) }
     }
 
     fun rideFromJson(o: JSONObject): RecordedRide = RecordedRide(
@@ -97,5 +98,6 @@ object RideJson {
         saved = o.optBoolean("saved", false),
         elevGainM = o.optInt("elevGainM", ELEV_UNKNOWN),
         elevLossM = o.optInt("elevLossM", ELEV_UNKNOWN),
+        notes = o.optString("notes").ifBlank { null },
     )
 }

@@ -38,6 +38,8 @@ data class RecordedRide(
     /** Total climb / descent in metres; [ELEV_UNKNOWN] for rides recorded without altitude. */
     val elevGainM: Int = ELEV_UNKNOWN,
     val elevLossM: Int = ELEV_UNKNOWN,
+    /** Free-text note the rider added in Replay. */
+    val notes: String? = null,
 )
 
 const val MOVING_UNKNOWN = -1
