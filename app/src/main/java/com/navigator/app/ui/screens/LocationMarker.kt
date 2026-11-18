@@ -59,6 +59,8 @@ import kotlin.math.sin
 @Composable
 internal fun rememberDeviceHeadingState(active: Boolean = true): State<Float?> {
     val context = LocalContext.current
+    val started = rememberLifecycleStarted()
+    val active = active && started
     val headingState = remember { mutableStateOf<Float?>(null) }
     var heading by headingState
     DisposableEffect(active) {
@@ -160,6 +162,21 @@ internal fun rememberDeviceHeadingState(active: Boolean = true): State<Float?> {
     return headingState
 }
 
+/** True while the host lifecycle is at least STARTED (sensors/GPS stop when backgrounded). */
+@Composable
+internal fun rememberLifecycleStarted(): Boolean {
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var started by remember { mutableStateOf(owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) }
+    DisposableEffect(owner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, _ ->
+            started = owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+    return started
+}
+
 private const val SMOOTHING = 0.15f
 // Minimum smoothed-heading change (degrees) before publishing a new value.
 private const val HEADING_MIN_DELTA_DEG = 2f
@@ -189,6 +206,8 @@ private fun computeFallback(
 @Composable
 internal fun rememberDeviceLatLng(active: Boolean = true): LatLng? {
     val context = LocalContext.current
+    val started = rememberLifecycleStarted()
+    val active = active && started
     var latLng by remember { mutableStateOf<LatLng?>(null) }
     DisposableEffect(active) {
         if (!active || !hasLocationPermission(context)) {

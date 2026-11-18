@@ -73,6 +73,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
             staleHandler.postDelayed(this, BEEP_INTERVAL_MS)
         }
     }
+    private val speedStale = Runnable { _speedKmh.value = null }
     private var lastDashSpeed = -1
     private var lastDashSentAtMs = 0L
 
@@ -100,6 +101,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         started = false
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         runCatching { lm.removeUpdates(this) }
+        staleHandler.removeCallbacks(speedStale)
         clearAlert()
         toneGenerator?.let { runCatching { it.release() } }
         toneGenerator = null
@@ -110,10 +112,14 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         if (!location.hasSpeed()) return
         val kmh = location.speed * 3.6f
         _speedKmh.value = kmh
+        // No further fix within the stale window -> report "unknown" instead of a frozen speed.
+        staleHandler.removeCallbacks(speedStale)
+        staleHandler.postDelayed(speedStale, STALE_FIX_MS)
         if (!settings.overspeedEnabled) { if (alerting) clearAlert(); return }
 
         val limit = settings.overspeedLimitKmh
-        val clearBelow = limit - HYSTERESIS_KMH
+        // Hysteresis can't exceed half the limit, or a low limit (< 10) would never clear.
+        val clearBelow = limit - minOf(HYSTERESIS_KMH, limit / 2)
         if (!alerting && kmh > limit) {
             alerting = true
             AppLogger.log("Speed", "OVERSPEED: %.0f km/h > $limit km/h".format(kmh))

@@ -167,6 +167,8 @@ private const val ARRIVAL_STALL_MS = 45_000L
  *  and resets the stall timer. Below this the rider is effectively stopped. */
 private const val ARRIVAL_PROGRESS_EPS_M = 15.0
 
+private const val START_DEBOUNCE_MS = 1_500L
+
 /** Route preview polyline colors (ARGB). */
 private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
@@ -303,12 +305,14 @@ fun NavigationHomeScreen(
     var leftNavManually by remember { mutableStateOf(false) }
     // Confirm before actually ending an in-progress trip.
     var showEndConfirm by remember { mutableStateOf(false) }
+    var lastStartAtMs by remember { mutableStateOf(0L) }
     // Destination awaiting "replace the current trip?" confirmation.
     var confirmReplaceFor by remember { mutableStateOf<SavedPlace?>(null) }
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
     var tripStartMs by remember { mutableStateOf(0L) }
+    var finishedDurationSec by remember { mutableStateOf(0) }
     // The just-finished ride (route + stats), its points, and whether we've
     // learned the recording outcome yet (Saved / Discarded / no-recording).
     var finishedRide by remember { mutableStateOf<RecordedRide?>(null) }
@@ -352,12 +356,17 @@ fun NavigationHomeScreen(
 
     // ---- Search state -----------------------------------------------------
     val auth = remember { PlacesClient.androidAuth(context) }
-    val origin = remember { lastLocation(context) }
+    // Refreshed whenever search opens and after a fresh fix in the preview, so distances,
+    // autocomplete bias and preview bounds don't use a stale launch-time position.
+    var origin by remember { mutableStateOf(lastLocation(context)) }
     var sessionToken by remember { mutableStateOf(UUID.randomUUID().toString()) }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var resolving by remember { mutableStateOf(false) }
+    // In-flight place-details lookup; cancelled when the rider backs out so it can't
+    // jump to CONFIRM later.
+    var detailsJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     LaunchedEffect(query) {
         val q = query.trim()
@@ -387,6 +396,7 @@ fun NavigationHomeScreen(
         previewLoading = true
         val o = (withTimeoutOrNull(4000) { freshLocation(context) }) ?: origin ?: lastLocation(context)
         if (o == null) { previewLoading = false; previewFailed = true; return@LaunchedEffect }
+        origin = o
         val routes = RoutesClient.computeRoutes(
             o, p.lat to p.lng, auth, appSettings.vehicleMode,
             intermediates = stops.map { it.lat to it.lng },
@@ -475,6 +485,7 @@ fun NavigationHomeScreen(
     }
 
     fun openSearch() {
+        origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
         query = ""; results = emptyList()
         recents = store.recents(); favorites = store.favorites()
@@ -484,6 +495,7 @@ fun NavigationHomeScreen(
 
     /** Open the search panel to add an intermediate stop (returns to PREVIEW). */
     fun openSearchForStop() {
+        origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
         query = ""; results = emptyList()
         recents = store.recents(); favorites = store.favorites()
@@ -499,13 +511,15 @@ fun NavigationHomeScreen(
             stage = NavStage.PREVIEW
         } else {
             selected = p
+            stops = emptyList() // stops belong to the previous destination
             stage = NavStage.CONFIRM
         }
     }
 
-    fun choose(p: SavedPlace) { selected = p; stage = NavStage.CONFIRM }
+    fun choose(p: SavedPlace) { selected = p; stops = emptyList(); stage = NavStage.CONFIRM }
 
     fun backToBrowse() {
+        detailsJob?.cancel()
         stage = NavStage.BROWSE; selected = null; query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
         stops = emptyList(); searchTarget = SearchTarget.DESTINATION
@@ -516,13 +530,17 @@ fun NavigationHomeScreen(
     }
 
     fun startTo(p: SavedPlace) {
+        // Ignore a double tap: a second startNavigation would supersede the first mid-compute.
+        val nowMs = System.currentTimeMillis()
+        if (nowMs - lastStartAtMs < START_DEBOUNCE_MS) return
+        lastStartAtMs = nowMs
         GoogleNavSdkProvider.clearStartFailure()
         store.addRecent(p)
         recents = store.recents()
         val sel = previewRoutes.getOrNull(selectedRoute)
         // Carry the mode that produced the token so the SDK consumes it with the
         // same mode (else it rejects the token and silently picks its own route).
-        val mode = sel?.travelMode ?: com.navigator.app.nav.model.TravelMode.TWO_WHEELER
+        val mode = sel?.travelMode ?: appSettings.vehicleMode
         val tripStops = stops.map { com.navigator.app.nav.model.Stop(it.lat, it.lng, it.label) }
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         lastStartedDest = dest
@@ -566,6 +584,8 @@ fun NavigationHomeScreen(
     // finished-ride state so the screen reloads this trip's result.
     fun finishTrip() {
         if (stage == NavStage.TRIP_FINISHED) return
+        // Freeze the duration now; computing it during composition kept growing it.
+        finishedDurationSec = if (tripStartMs > 0L) ((System.currentTimeMillis() - tripStartMs) / 1000).toInt() else 0
         arrivalLatched = true
         leftNavManually = false
         GoogleNavSdkController.stop()
@@ -709,6 +729,24 @@ fun NavigationHomeScreen(
         choose(p)
     }
 
+    // Don't leave this screen's map listeners / marker behind when it leaves composition
+    // (unless another screen has already taken the shared map over).
+    DisposableEffect(googleMap) {
+        val gm = googleMap
+        onDispose {
+            // Our own marker is always ours to remove; the shared listeners only if
+            // no other screen has taken the map over.
+            runCatching { userMarker.remove() }
+            if (gm != null && retainedNav.mapOwner === HomeMapOwner) {
+                runCatching {
+                    gm.setOnCameraMoveListener(null)
+                    gm.setOnMapLongClickListener(null)
+                    gm.setOnPolylineClickListener(null)
+                }
+            }
+        }
+    }
+
     // Track map bearing for the compass (shown only when rotated) and let the
     // user long-press the map to drop a destination pin.
     LaunchedEffect(googleMap) {
@@ -733,7 +771,12 @@ fun NavigationHomeScreen(
             // Back while navigating steps away to the map WITHOUT ending the trip.
             NavStage.NAVIGATING -> moveAwayFromNav()
             NavStage.TRIP_FINISHED -> backToBrowse()
-            NavStage.SEARCH -> backToBrowse()
+            NavStage.SEARCH ->
+                if (searchTarget == SearchTarget.STOP) {
+                    detailsJob?.cancel()
+                    searchTarget = SearchTarget.DESTINATION
+                    stage = NavStage.PREVIEW
+                } else backToBrowse()
             // At the map: if a trip is still running in the background, Back returns
             // to it; otherwise confirm closing the app.
             NavStage.BROWSE ->
@@ -825,6 +868,7 @@ fun NavigationHomeScreen(
                 favorites = favorites,
                 origin = origin,
                 onBack = {
+                    detailsJob?.cancel()
                     if (searchTarget == SearchTarget.STOP) {
                         searchTarget = SearchTarget.DESTINATION
                         stage = NavStage.PREVIEW
@@ -835,10 +879,19 @@ fun NavigationHomeScreen(
                 onPickSuggestion = { s ->
                     if (!resolving) {
                         resolving = true
-                        scope.launch {
-                            val loc = PlacesClient.details(s.placeId, sessionToken, auth)
-                            resolving = false
-                            if (loc != null) applyPicked(SavedPlace(loc.lat, loc.lng, s.primary, s.secondary))
+                        detailsJob = scope.launch {
+                            try {
+                                val loc = PlacesClient.details(s.placeId, sessionToken, auth)
+                                if (loc != null) {
+                                    applyPicked(SavedPlace(loc.lat, loc.lng, s.primary, s.secondary))
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        context, "Couldn't load that place", android.widget.Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            } finally {
+                                resolving = false
+                            }
                         }
                     }
                 },
@@ -954,6 +1007,7 @@ fun NavigationHomeScreen(
                             GoogleNavSdkProvider.clearStartFailure()
                             GoogleNavSdkController.stop()
                             leftNavManually = false
+                            lastStartAtMs = 0L
                             stage = NavStage.PREVIEW
                         },
                         onClose = {
@@ -1087,9 +1141,7 @@ fun NavigationHomeScreen(
                         destinationLabel = selected?.label,
                         ride = finishedRide,
                         resolved = finishResolved,
-                        fallbackDurationSec = if (tripStartMs > 0L) {
-                            ((System.currentTimeMillis() - tripStartMs) / 1000).toInt()
-                        } else 0,
+                        fallbackDurationSec = finishedDurationSec,
                         onDone = ::backToBrowse,
                         onOpenReplay = { finishedRide?.let { onOpenReplay(it.id) } },
                         modifier = Modifier.onGloballyPositioned {
@@ -1180,6 +1232,7 @@ private fun BrowseMap(
         navView.getMapAsync { gm ->
             mapRef = gm
             onMap(gm)
+            retainedNav.mapOwner = HomeMapOwner
             gm.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
             gm.uiSettings.isCompassEnabled = false          // custom controls instead
             // The SDK's own puck is only used during active navigation (its
@@ -1249,6 +1302,9 @@ private fun BrowseMap(
     }
     DisposableEffect(Unit) { onDispose { onMap(null) } }
 }
+
+/** Owner token for the shared map while the map home is the active screen. */
+private object HomeMapOwner
 
 /**
  * "Trip finished" summary card, anchored to the bottom over the map (which shows
@@ -1825,6 +1881,11 @@ class RetainedNavigationView(
      *  the camera back to the starting location. */
     var mapInitialized: Boolean = false
 
+    /** Which screen last configured the shared map's listeners/overlays. A screen
+     *  being disposed only cleans the map if it is still the owner - with animated
+     *  route transitions the NEW screen sets up before the OLD one is disposed. */
+    @Volatile var mapOwner: Any? = null
+
     /** Create the view on first use, bringing it up to the current lifecycle
      *  state; subsequent calls return the same retained instance. */
     fun getOrCreate(): NavigationView {
@@ -1960,11 +2021,10 @@ private fun lastLocation(context: Context): Pair<Double, Double>? {
             LocationManager.NETWORK_PROVIDER,
             LocationManager.PASSIVE_PROVIDER,
         )
-        for (p in providers) {
-            val loc = runCatching { lm.getLastKnownLocation(p) }.getOrNull()
-            if (loc != null) return loc.latitude to loc.longitude
-        }
-        null
+        // Newest fix across providers (the first non-null one could be hours stale).
+        providers.mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
     } catch (e: SecurityException) {
         null
     }

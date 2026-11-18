@@ -147,6 +147,7 @@ fun RideReplayScreen(
     }
 
     var gm by remember { mutableStateOf<GoogleMap?>(null) }
+    val mapOwnerToken = remember { Any() }
     var marker by remember { mutableStateOf<Marker?>(null) }
     // Custom compass-driven "you are here" marker (SDK puck is small + GPS-only).
     val userMarker = remember {
@@ -247,6 +248,7 @@ fun RideReplayScreen(
             runCatching { navView.setNavigationUiEnabled(false) }
             navView.getMapAsync { map ->
                 gm = map
+                retainedNav.mapOwner = mapOwnerToken
                 map.uiSettings.isMyLocationButtonEnabled = false
                 map.uiSettings.isCompassEnabled = false
                 // We draw our own compass-driven location marker (see below), so
@@ -357,8 +359,11 @@ fun RideReplayScreen(
 
         DisposableEffect(Unit) {
             onDispose {
-                // Leave the shared map clean for the next screen that reuses it.
-                runCatching {
+                // Leave the shared map clean for the next screen that reuses it - but
+                // only if that screen hasn't already taken it over (the incoming screen
+                // is composed before this one is disposed during the transition).
+                runCatching { userMarker.remove() } // our own marker, whoever owns the map now
+                if (retainedNav.mapOwner === mapOwnerToken) runCatching {
                     gm?.setOnCameraMoveListener(null)
                     gm?.setOnCameraIdleListener(null)
                     gm?.setOnCameraMoveStartedListener(null)

@@ -28,7 +28,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
 | 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
-| 2 | Navigation state, UI state, pairing | 6 | 23 | N2-N7 done; N8 deferred; U*/P* pending (batch 6) |
+| 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
 | 3 | BLE robustness | 0 | 11 | Not started |
 | 4 | Data integrity, parsing, network | 0 | 25 | Not started |
 | 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
@@ -108,26 +108,26 @@ Target: **Android 16+ only (minSdk 36)**.
 ### UI state
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | U1 | Hardware Back in SEARCH respects `searchTarget` | | |
-| [ ] | U2 | Clear `stops` on new destination | | |
-| [ ] | U3 | Start-before-routes default mode = `vehicleMode` | | |
-| [ ] | U4 | Cancel place-details job on back; error on null | | |
-| [ ] | U5 | `starting` guard against double Start | | |
-| [ ] | U6 | Greeting banner `try/finally` | | |
-| [ ] | U7 | Nav UI state → ViewModel/`SavedStateHandle` | | |
-| [ ] | U8 | Permission request only on fresh launch & when not granted | | |
-| [ ] | U9 | Map owner token; Home `DisposableEffect` cleanup; Replay no longer clears shared map | | |
-| [ ] | U10 | Compass/GPS listeners gated on lifecycle ≥ STARTED | | |
-| [ ] | U11 | Live origin for search; freshest `lastLocation` | | |
-| [ ] | U12 | Stale-GPS speed → null; low-limit clear fix | | |
-| [ ] | U13 | Freeze fallback trip time in `finishTrip()` | | |
+| [x] | U1 | Hardware Back in SEARCH respects `searchTarget` | | |
+| [x] | U2 | Clear `stops` on new destination | | |
+| [x] | U3 | Start-before-routes default mode = `vehicleMode` | | |
+| [x] | U4 | Cancel place-details job on back; error on null | | |
+| [x] | U5 | `starting` guard against double Start | | |
+| [x] | U6 | Greeting banner `try/finally` | | |
+| [ ] | U7 | Nav UI state → ViewModel/`SavedStateHandle` DEFERRED: large refactor, can't be verified without UI testing (alt: manifest configChanges) |
+| [x] | U8 | Permission request only on fresh launch & when not granted | | |
+| [x] | U9 | Map owner token; Home `DisposableEffect` cleanup; Replay no longer clears shared map | | |
+| [x] | U10 | Compass/GPS listeners gated on lifecycle ≥ STARTED | | |
+| [x] | U11 | Live origin for search; freshest `lastLocation` | | |
+| [x] | U12 | Stale-GPS speed → null; low-limit clear fix | | |
+| [x] | U13 | Freeze fallback trip time in `finishTrip()` | | |
 
 ### Pairing
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | P1 | Reset `connectingAddress` after failure | | |
-| [ ] | P2 | Save bike only on AUTHENTICATED; stop scan on leave/connect; "Bluetooth off" state | | |
-| [ ] | P3 | Re-pair confirm dialog + return route | | |
+| [x] | P1 | Reset `connectingAddress` after failure | | |
+| [~] | P2 | Save bike only on AUTHENTICATED; stop scan on leave/connect; "Bluetooth off" state Done: stop scan, Bluetooth-off state. NOT done: save bike only on AUTHENTICATED (service uses the saved address for first-pair recovery rescans; needs dash) |
+| [x] | P3 | Re-pair confirm dialog + return route | | |
 
 ## Phase 3: BLE robustness (B9 → B4; S1 + NP1 before B1)
 

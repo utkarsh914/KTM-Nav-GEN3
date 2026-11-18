@@ -134,6 +134,7 @@ fun SettingsScreen(
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
 
     var rideRecordingOn by remember { mutableStateOf(settings.rideRecordingEnabled) }
+    var showRepairConfirm by remember { mutableStateOf(false) }
     var publicLogMirror by remember { mutableStateOf(com.navigator.app.logging.AppLogger.publicMirrorEnabled) }
     var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
     var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
@@ -317,7 +318,7 @@ fun SettingsScreen(
                             MonoValue(vehicleName, color = if (connected) Ktm.Green else Ktm.Dim)
                         }
                     }
-                    SettingsRow("Re-pair vehicle", showDivider = true, onClick = onRepair) {
+                    SettingsRow("Re-pair vehicle", showDivider = true, onClick = { showRepairConfirm = true }) {
                         OutlinedPill("RE-PAIR")
                     }
                     SettingsRow("Change bike / brand", showDivider = true, onClick = onChangeBrand) {
@@ -710,6 +711,22 @@ fun SettingsScreen(
     }
 
     // ===== Dialogs =====
+    if (showRepairConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRepairConfirm = false },
+            containerColor = Ktm.Surface,
+            titleContentColor = Ktm.White,
+            textContentColor = Ktm.TextSecondary,
+            title = { Text("Re-pair vehicle?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+            text = { Text("This forgets the current bike and its keys, disconnects it, and starts pairing again.", fontFamily = Barlow) },
+            confirmButton = {
+                TextButton(onClick = { showRepairConfirm = false; onRepair() }) { Text("RE-PAIR", color = Ktm.Orange) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRepairConfirm = false }) { Text("CANCEL", color = Ktm.TextPrimary) }
+            },
+        )
+    }
     when (dialog) {
         SettingsDialog.NAME -> TextFieldDialog(
             title = "Your name", initial = userName, label = "Name",

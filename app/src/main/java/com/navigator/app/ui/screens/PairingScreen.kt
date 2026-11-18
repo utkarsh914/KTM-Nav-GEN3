@@ -123,6 +123,13 @@ fun PairingScreen(
         }
     }
 
+    fun stopScan() {
+        scanning = false
+        try { adapter?.bluetoothLeScanner?.stopScan(scanCallback) } catch (e: Exception) { /* permission/BT off */ }
+    }
+
+    var btEnabled by remember { mutableStateOf(adapter?.isEnabled == true) }
+
     fun startScan() {
         // Guarded so a missing permission or disabled Bluetooth degrades to a
         // prompt instead of throwing a SecurityException / NPE.
@@ -164,8 +171,42 @@ fun PairingScreen(
         }, 8000)
     }
 
+    // An attempt that never authenticates must free the device list again (it used to stay
+    // locked on the tapped device forever). The service retries a stalled handshake on its
+    // own for a while (first-pair budget 75 s + cooldowns), so only give up after a long
+    // cap, and stop the service so the unlocked state is honest.
+    androidx.compose.runtime.LaunchedEffect(connectingAddress) {
+        if (connectingAddress == null) return@LaunchedEffect
+        kotlinx.coroutines.delay(PAIRING_ATTEMPT_TIMEOUT_MS)
+        if (BccuConnectionService.connectionState.value != BccuConnectionService.ConnectionState.AUTHENTICATED) {
+            AppLogger.log("Pairing", "Pairing attempt timed out - unlocking the device list")
+            BccuConnectionService.stop(context)
+            connectingAddress = null
+            if (OpenDashPermissions.bluetoothGranted(context) && adapter?.isEnabled == true) startScan()
+        }
+    }
+
     // Kick off a scan once we actually have permission (and re-scan when it's granted).
-    androidx.compose.runtime.LaunchedEffect(btGranted) { if (btGranted) startScan() }
+    androidx.compose.runtime.LaunchedEffect(btGranted, btEnabled) { if (btGranted && btEnabled) startScan() }
+
+    // Track Bluetooth on/off so the screen can say so instead of scanning nothing; stop
+    // scanning when the screen goes away.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+                btEnabled = adapter?.isEnabled == true
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            context, receiver,
+            android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        onDispose {
+            runCatching { context.unregisterReceiver(receiver) }
+            stopScan()
+        }
+    }
 
     val connecting = connectingAddress != null &&
         connectionState != BccuConnectionService.ConnectionState.DISCONNECTED
@@ -211,6 +252,7 @@ fun PairingScreen(
         Spacer(Modifier.height(30.dp))
         val title = when {
             !btGranted -> "Bluetooth needed"
+            !btEnabled -> "Bluetooth is off"
             connecting -> "Connecting to bike"
             else -> "Scanning for bike"
         }
@@ -225,6 +267,8 @@ fun PairingScreen(
         Text(
             if (!btGranted)
                 "KTM Navigator needs the Nearby devices\npermission to find your bike's dash."
+            else if (!btEnabled)
+                "Turn Bluetooth on to find your bike."
             else
                 "Turn the ignition on and keep\nyour phone near the dash.",
             color = Ktm.Muted2,
@@ -263,6 +307,7 @@ fun PairingScreen(
                         isKtm = isKtm,
                         onClick = {
                             if (connectingAddress == null) {
+                                stopScan()
                                 settings.bondedDeviceAddress = found.device.address
                                 settings.bondedDeviceName = found.device.name
                                 connectingAddress = found.device.address
@@ -505,3 +550,6 @@ private fun PrimaryButton(text: String, enabled: Boolean, onClick: () -> Unit) {
         )
     }
 }
+
+/** How long a pairing attempt may take before the device list is unlocked again. */
+private const val PAIRING_ATTEMPT_TIMEOUT_MS = 120_000L

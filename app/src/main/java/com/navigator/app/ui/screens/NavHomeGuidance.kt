@@ -206,6 +206,8 @@ private fun laneShapeIcon(shape: LaneShape): TurnIcon = when (shape) {
 @Composable
 internal fun rememberNavSpeedKmh(active: Boolean): Float? {
     val context = LocalContext.current
+    val started = rememberLifecycleStarted()
+    val active = active && started
     var speed by remember { mutableStateOf<Float?>(null) }
     DisposableEffect(active) {
         if (!active || !hasLocationPermission(context)) {
@@ -213,11 +215,18 @@ internal fun rememberNavSpeedKmh(active: Boolean): Float? {
             return@DisposableEffect onDispose { }
         }
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        // Without fixes (tunnel, GPS off) the last speed would freeze on screen: drop it.
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val staleClear = Runnable { speed = null }
         // Full LocationListener impl (not a SAM lambda): pre-API-30 the extra
         // callbacks are abstract, so a lambda would AbstractMethodError at runtime.
         val listener = object : android.location.LocationListener {
             override fun onLocationChanged(loc: Location) {
-                if (loc.hasSpeed()) speed = loc.speed * 3.6f
+                if (loc.hasSpeed()) {
+                    speed = loc.speed * 3.6f
+                    handler.removeCallbacks(staleClear)
+                    handler.postDelayed(staleClear, 5_000L)
+                }
             }
             @Deprecated("Deprecated in API 29 but still abstract on older devices")
             override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
@@ -228,6 +237,7 @@ internal fun rememberNavSpeedKmh(active: Boolean): Float? {
             lm?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
         }
         onDispose {
+            handler.removeCallbacks(staleClear)
             runCatching { lm?.removeUpdates(listener) }
             speed = null
         }

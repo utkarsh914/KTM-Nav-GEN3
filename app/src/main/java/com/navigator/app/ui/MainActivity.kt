@@ -122,7 +122,10 @@ class MainActivity : ComponentActivity() {
 
         // First-run users grant permissions with context in the onboarding flow;
         // returning users get a silent top-up request for anything since revoked.
-        if (settings.onboardingComplete) requestRuntimePermissions()
+        // Only on a fresh launch (not rotation/recreation) and only when something is missing.
+        if (savedInstanceState == null && settings.onboardingComplete &&
+            OpenDashPermissions.runtimePermissions().any { !OpenDashPermissions.isGranted(this, it) }
+        ) requestRuntimePermissions()
 
         // Auto-connect: if we already have a bonded bike, bring the connection
         // service up as soon as the app is opened (it's a foreground service and
@@ -444,14 +447,15 @@ private fun OpenDashApp(
     var showGreeting by remember { mutableStateOf(false) }
     var prevConn by remember { mutableStateOf(connState) }
     LaunchedEffect(connState) {
+        val was = prevConn
+        prevConn = connState
         if (connState == BccuConnectionService.ConnectionState.AUTHENTICATED &&
-            prevConn != BccuConnectionService.ConnectionState.AUTHENTICATED
+            was != BccuConnectionService.ConnectionState.AUTHENTICATED
         ) {
             showGreeting = true
-            delay(4000)
-            showGreeting = false
+            // finally: a state change cancels this effect mid-delay; never leave the banner stuck.
+            try { delay(4000) } finally { showGreeting = false }
         }
-        prevConn = connState
     }
 
     // Retained map surface: created lazily on first map use and kept alive across
@@ -494,7 +498,12 @@ private fun OpenDashApp(
             )
             AppRoute.PAIRING -> PairingScreen(
                 settings = settings,
-                onPaired = { goTo(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null },
+                onPaired = {
+                    // After a re-pair from Settings, land on the home screen (Settings was only
+                    // the back target while pairing).
+                    goTo(pairingReturnRoute?.takeIf { it != AppRoute.SETTINGS } ?: homeRoute())
+                    pairingReturnRoute = null
+                },
                 onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; goTo(AppRoute.LOGS) },
                 onBack = pairingReturnRoute?.let { back -> { goBack(back); pairingReturnRoute = null } },
             )
@@ -557,6 +566,7 @@ private fun OpenDashApp(
                     settings.bondedDeviceAddress = null
                     settings.bondedDeviceName = null
                     BccuConnectionService.stop(context)
+                    pairingReturnRoute = AppRoute.SETTINGS
                     goTo(AppRoute.PAIRING)
                 }
             )
