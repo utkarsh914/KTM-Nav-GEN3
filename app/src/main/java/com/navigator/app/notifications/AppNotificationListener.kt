@@ -37,8 +37,7 @@ class AppNotificationListener : NotificationListenerService() {
      */
     private val dashIcon = BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
 
-    // Built once (EncryptedSharedPreferences + MasterKey are expensive); the
-    // getters read prefs live, so runtime setting changes are still reflected.
+    // Built once; the getters read prefs live, so runtime setting changes are still reflected.
     private val settings by lazy { AppSettings(this) }
 
     // Rendering the maneuver icon, hashing, TFLite and disk writes are far too heavy for

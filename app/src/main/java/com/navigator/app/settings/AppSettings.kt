@@ -2,55 +2,49 @@ package com.navigator.app.settings
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 /**
  * Single place for all persisted app configuration: bonded bike address,
  * notification source apps, nav-app override, and preferred call-audio device.
- * Backed by EncryptedSharedPreferences (pairing keys are secrets worth
- * protecting at rest).
+ * Backed by one plain SharedPreferences file (`opendash_pairing`): the app-private directory is
+ * excluded from cloud backup and device transfer, and the previously encrypted values (low
+ * sensitivity) were moved here by [LegacySettingsMigration]. See that class for why the bike's
+ * session keys deliberately stay in the plain store.
  */
 class AppSettings(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val prefs: SharedPreferences = encryptedPrefs(context)
-
-    // Plain (unencrypted) prefs for non-secret pairing state. EncryptedSharedPreferences
-    // is deprecated and prone to silent corruption/reset on some devices; the
-    // "have we paired this bike before" flag MUST persist reliably, because if it
-    // doesn't the app re-triggers the bike's physical "add device" prompt on every
-    // reconnect and the handshake stalls at "handshaking". None of this is secret.
+    // The single settings store. The "have we paired this bike before" flag and the session
+    // keys MUST persist reliably, because if they don't the app re-triggers the bike's
+    // physical "add device" prompt on every reconnect and the handshake stalls at
+    // "handshaking" (EncryptedSharedPreferences silently resets on some devices, which is why
+    // it is gone).
     private val pairingPrefs: SharedPreferences =
         context.getSharedPreferences("opendash_pairing", Context.MODE_PRIVATE)
 
-    // Bonded bike identity lives in the PLAIN store: EncryptedSharedPreferences
-    // silently resets on some devices/updates (documented on pairingPrefs), and
-    // every reset threw the rider back to the pairing screen ("always asking to
-    // re-pair", R21/R22 field reports - observed directly after the R21 update).
-    // A BLE MAC isn't a secret. Reads fall back to the legacy encrypted store
-    // once, migrating bikes paired by older builds; writes clear the legacy copy
-    // so a stale encrypted value can't resurrect after "Re-pair vehicle".
+    private val prefs: SharedPreferences get() = pairingPrefs
+
+    init {
+        // Once per install (cheap flag check afterwards): bring over what the old encrypted
+        // store held, before anything below is read.
+        LegacySettingsMigration.migrateIfNeeded(context, pairingPrefs)
+    }
+
+    /** Diagnostics: state of the one-time legacy-settings migration. */
+    val settingsMigrationSummary: String get() = LegacySettingsMigration.summary(pairingPrefs)
+
+    // Bonded bike identity. A BLE MAC isn't a secret; a lost value throws the rider back to
+    // the pairing screen ("always asking to re-pair", R21/R22 field reports), which is why this
+    // never lived in an encrypted store that can silently reset. Bikes paired by older builds
+    // were brought over by LegacySettingsMigration.
     var bondedDeviceAddress: String?
         get() = pairingPrefs.getString(KEY_BONDED_ADDRESS, null)
-            ?: runCatching { prefs.getString(KEY_BONDED_ADDRESS, null) }.getOrNull()?.also {
-                pairingPrefs.edit().putString(KEY_BONDED_ADDRESS, it).apply()
-            }
-        set(value) {
-            pairingPrefs.edit().putString(KEY_BONDED_ADDRESS, value).commit()
-            runCatching { prefs.edit().remove(KEY_BONDED_ADDRESS).apply() }
-        }
+        set(value) { pairingPrefs.edit().putString(KEY_BONDED_ADDRESS, value).commit() }
 
     var bondedDeviceName: String?
         get() = pairingPrefs.getString(KEY_BONDED_NAME, null)
-            ?: runCatching { prefs.getString(KEY_BONDED_NAME, null) }.getOrNull()?.also {
-                pairingPrefs.edit().putString(KEY_BONDED_NAME, it).apply()
-            }
-        set(value) {
-            pairingPrefs.edit().putString(KEY_BONDED_NAME, value).commit()
-            runCatching { prefs.edit().remove(KEY_BONDED_NAME).apply() }
-        }
+        set(value) { pairingPrefs.edit().putString(KEY_BONDED_NAME, value).commit() }
 
     /** Whether the first-run onboarding (name + permissions) has been completed. */
     var onboardingComplete: Boolean
@@ -59,7 +53,7 @@ class AppSettings(context: Context) {
 
     /**
      * Selected motorcycle brand — drives the whole app's theme (KTM dark/orange,
-     * Husqvarna light/blue). Plain store so it survives the encrypted-prefs reset
+     * Husqvarna light/blue). Stored in the plain store
      * that also wiped the bonded bike (see [bondedDeviceAddress]).
      */
     var brand: com.navigator.app.ui.theme.Brand
@@ -73,7 +67,7 @@ class AppSettings(context: Context) {
 
     /**
      * Light / dark / follow-system appearance. Independent of brand (which now
-     * only supplies the accent). Plain store so it survives the encrypted-prefs
+     * only supplies the accent). Stored in the plain store
      * reset, like [brand].
      */
     var themeMode: com.navigator.app.ui.theme.ThemeMode
@@ -82,7 +76,7 @@ class AppSettings(context: Context) {
 
     /**
      * App font: the bundled brand fonts (default) or the phone's system font.
-     * Plain store so it survives the encrypted-prefs reset, like [themeMode].
+     * Stored in the plain store, like [themeMode].
      */
     var fontMode: com.navigator.app.ui.theme.FontMode
         get() = com.navigator.app.ui.theme.FontMode.fromId(pairingPrefs.getString(KEY_FONT_MODE, null))
@@ -100,7 +94,7 @@ class AppSettings(context: Context) {
      * Chosen app accent, independent of the bike brand. Null (default) follows the
      * brand's own accent (KTM orange / Husqvarna blue); a non-null id selects one
      * of [com.navigator.app.ui.theme.AccentPalettes]. Plain store so it survives
-     * the encrypted-prefs reset, like [brand]/[themeMode].
+     * the old encrypted store, like [brand]/[themeMode].
      */
     var accentColorId: String?
         get() = pairingPrefs.getString(KEY_ACCENT_COLOR, null)
@@ -156,10 +150,7 @@ class AppSettings(context: Context) {
      */
     fun hasPairedBefore(deviceAddress: String): Boolean {
         val key = KEY_PAIRED_PREFIX + deviceAddress.uppercase()
-        // Check the reliable plain store first, then fall back to the legacy
-        // encrypted store so bikes paired by older builds aren't re-prompted.
-        return pairingPrefs.getBoolean(key, false) ||
-            runCatching { prefs.getBoolean(key, false) }.getOrDefault(false)
+        return pairingPrefs.getBoolean(key, false)
     }
 
     fun markPairedBefore(deviceAddress: String) {
@@ -173,8 +164,7 @@ class AppSettings(context: Context) {
      * (cmd 0) and the dash shows its physical "add device" prompt to establish
      * fresh keys. Required when the dash has lost its side of the pairing:
      * otherwise we keep replying GENERATE_KEYS against a dash that no longer
-     * knows us and the handshake stalls forever at "handshaking". Clears both
-     * the plain and legacy-encrypted stores.
+     * knows us and the handshake stalls forever at "handshaking".
      */
     fun clearPairedBefore(deviceAddress: String) {
         val key = KEY_PAIRED_PREFIX + deviceAddress.uppercase()
@@ -186,7 +176,6 @@ class AppSettings(context: Context) {
             .remove(key)
             .remove(KEY_SESSION_KEYS_PREFIX + deviceAddress.uppercase())
             .commit()
-        runCatching { prefs.edit().remove(key).commit() }
     }
 
     /**
@@ -408,41 +397,6 @@ class AppSettings(context: Context) {
     }
 
     companion object {
-        // Either the encrypted store, or (after a failure) the plain fallback. Once
-        // chosen it is kept for the whole process so settings never flip stores
-        // mid-session; a process restart retries the encrypted store.
-        @Volatile private var cachedEncrypted: SharedPreferences? = null
-
-        /**
-         * Process-wide encrypted store. Keystore / EncryptedSharedPreferences can throw
-         * (corrupt file, locked or reset keystore); that used to crash ride recording,
-         * the notification listener and the app scope. On failure fall back to a plain
-         * store for the rest of the process (retried on next launch).
-         */
-        private fun encryptedPrefs(context: Context): SharedPreferences {
-            cachedEncrypted?.let { return it }
-            synchronized(this) {
-                cachedEncrypted?.let { return it }
-                val app = context.applicationContext
-                return try {
-                    val masterKey = MasterKey.Builder(app)
-                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                        .build()
-                    EncryptedSharedPreferences.create(
-                        app,
-                        "opendash_settings",
-                        masterKey,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    ).also { cachedEncrypted = it }
-                } catch (e: Exception) {
-                    com.navigator.app.logging.AppLogger.log("Settings", "!! encrypted prefs unavailable, using fallback store: ${e.javaClass.simpleName}")
-                    app.getSharedPreferences("opendash_settings_fallback", Context.MODE_PRIVATE)
-                        .also { cachedEncrypted = it }
-                }
-            }
-        }
-
         private const val KEY_AVG_SPEED_MODE = "avg_speed_mode"
         private const val KEY_DASH_PREVIEW_OVERLAY = "dash_preview_overlay"
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"

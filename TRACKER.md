@@ -31,7 +31,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 24 | 25 | R1/NP1 partial, NET2 dropped, NP4 deferred |
-| 5 | Settings, build, docs hygiene | 8 | 11 | ST5 dropped; ST8, ST9 deferred |
+| 5 | Settings, build, docs hygiene | 10 | 11 | ST5 dropped; ST8, ST9 done in Phase 8 |
 | 6 | UX polish & accessibility | 9 | 14 | UX4 partial; UX1/7/8/11 deferred |
 | 7 | New features | 0 | 12 | Not started |
 | T | Tests to extend/add | 6 | 8 | T1 partial; T5 pending (stage state machine not extracted) |
@@ -218,7 +218,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [x] | ST6 | Deterministic, monotonic `versionCode`/`versionName` versionCode = 100000 + commit count (above old day-based values; shallow clones fall back) |
 | [x] | ST7 | `.gitignore` keystores; remove tracked `my-logs.txt` | | |
 | [x] | ST8 | Bump old AndroidX/coroutines within toolchain limits DEFERRED: bumps can't be validated without device testing |
-| [-] | ST9 | Migrate off `security-crypto`; decide session-key storage; fix KDoc mismatches DEFERRED: needs a read-legacy-then-rewrite migration of every setting, best done with a device test |
+| [x] | ST9 | Migrate off `security-crypto`; decide session-key storage; fix KDoc mismatches DEFERRED: needs a read-legacy-then-rewrite migration of every setting, best done with a device test |
 | [x] | ST10 | Docs corrections (protocol doc, architecture.md, stale comments, logging scope) | | |
 | [x] | ST11 | Backup decision (`allowBackup=false` already set; device-to-device transfer of plain-prefs keys) data_extraction_rules.xml: pairing + encrypted prefs excluded from device transfer |
 
@@ -268,7 +268,9 @@ Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
 | [x] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | NavFlow.kt (pure NavFlowState/Rules/ArrivalPolicy/Codec + NavFlowViewModel, attach/detach counting), MainActivity routes rememberSaveable, manifest configChanges (locale still recreates, now safe). ~20 new tests. Needs on-device check: rotate on each stage, background-kill restore |
 | [x] | A3 | Android 16 checks (0.6): insets on every screen, predictive back, landscape / large screen | Code review only. `edgePadding()` (system bars + display cutout) replaces systemBarsPadding everywhere; `enableOnBackInvokedCallback=true` (all back handling already via BackHandler, no onBackPressed); system-bar icon colours already theme-driven. NOT done: wide-screen content width caps. Visual check in landscape by user |
 | [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
-| [ ] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | revert alone if pairing breaks |
+| [x] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | CHANGED DESIGN (less risk): the encrypted file only held low-sensitivity keys (onboarding, name, mirror apps, ...); bike address/pairing flag/session keys were already plain. So AppSettings is now ONE plain store and LegacySettingsMigration copies the old encrypted+fallback contents once (plain wins, verified, retried up to 10 launches, skips Keystore when no legacy file). security-crypto stays ONLY as the read-only migration source: remove lib + LegacySettingsMigration after the first launch on every device. Settings > Diagnostics shows 'Settings storage: migrated (N keys)'. Session keys intentionally stay plain (a Keystore wrap that can silently reset = re-pair prompt). Revert alone with git revert |
+
+**Follow-up after smoke test 1 on every device:** remove `androidx.security:security-crypto` and `LegacySettingsMigration` (its only user).
 
 ## Phase 9: Features (rev. 3)
 
