@@ -2,8 +2,6 @@ package com.navigator.app.logging
 
 import android.content.ContentValues
 import android.content.Context
-import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -32,7 +30,6 @@ object AppLogger {
 
     private lateinit var appContext: Context
     private lateinit var logFile: File
-    private var publicLogFile: File? = null
     private var initialized = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -54,29 +51,9 @@ object AppLogger {
         val dir = appContext.getExternalFilesDir(null) ?: appContext.filesDir
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         logFile = File(dir, "opendash_log_$stamp.txt")
-        publicLogFile = preparePublicLogFile(stamp)
         initialized = true
         installCrashHandler()
         log("App", "OpenDash logging started: ${logFile.absolutePath}")
-        publicLogFile?.let { log("App", "Also mirrored to: ${it.absolutePath}") }
-    }
-
-    /**
-     * Pre-API29 only: a plain file under the public Downloads directory,
-     * visible to any file manager without needing our app to be running.
-     * On API29+ scoped storage blocks direct File access to public
-     * directories, so writeToPublicCopy() uses MediaStore instead.
-     */
-    private fun preparePublicLogFile(stamp: String): File? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return null
-        return try {
-            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val folder = File(downloads, "OpenDash")
-            folder.mkdirs()
-            File(folder, "opendash_log_$stamp.txt")
-        } catch (e: Exception) {
-            null
-        }
     }
 
     private fun installCrashHandler() {
@@ -112,11 +89,7 @@ object AppLogger {
 
     private fun writeToPublicCopy(line: String) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                writeToMediaStoreDownloads(line)
-            } else {
-                publicLogFile?.appendText(line + "\n")
-            }
+            writeToMediaStoreDownloads(line)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write public log copy", e)
         }

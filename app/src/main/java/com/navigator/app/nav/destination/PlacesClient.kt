@@ -2,7 +2,6 @@ package com.navigator.app.nav.destination
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -67,13 +66,8 @@ object PlacesClient {
 
     private fun signingCertSha1Hex(context: Context, pkg: String): String {
         val pm = context.packageManager
-        val signatures = if (Build.VERSION.SDK_INT >= 28) {
-            val info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES)
-            info.signingInfo?.apkContentsSigners ?: emptyArray()
-        } else {
-            @Suppress("DEPRECATION", "PackageManagerGetSignatures")
-            pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES).signatures ?: emptyArray()
-        }
+        val info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES)
+        val signatures = info.signingInfo?.apkContentsSigners ?: emptyArray()
         val cert = signatures.firstOrNull() ?: return ""
         val digest = MessageDigest.getInstance("SHA-1").digest(cert.toByteArray())
         // Base16, uppercase, no delimiters - the X-Android-Cert header format.

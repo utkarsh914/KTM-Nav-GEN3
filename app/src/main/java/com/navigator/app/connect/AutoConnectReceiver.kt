@@ -51,12 +51,6 @@ class AutoConnectReceiver : BroadcastReceiver() {
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun getDeviceExtra(intent: Intent): BluetoothDevice? {
-        return if (android.os.Build.VERSION.SDK_INT >= 33) {
-            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-        } else {
-            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-        }
-    }
+    private fun getDeviceExtra(intent: Intent): BluetoothDevice? =
+        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
 }

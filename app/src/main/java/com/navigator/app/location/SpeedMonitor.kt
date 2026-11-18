@@ -10,7 +10,6 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioManager
 import android.media.ToneGenerator
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
@@ -168,10 +167,8 @@ class SpeedMonitor(private val context: Context) : LocationListener {
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(CHANNEL_ID, "Overspeed alert", NotificationManager.IMPORTANCE_HIGH)
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
-        }
+        val ch = NotificationChannel(CHANNEL_ID, "Overspeed alert", NotificationManager.IMPORTANCE_HIGH)
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
     @Deprecated("Deprecated in API 29 but still called on older devices")

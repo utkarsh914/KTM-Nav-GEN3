@@ -2,7 +2,6 @@ package com.navigator.app.ui
 
 import android.Manifest
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
@@ -153,11 +152,7 @@ class MainActivity : ComponentActivity() {
             }
         }.also {
             val filter = android.content.IntentFilter(BccuConnectionService.ACTION_FINISH_ACTIVITY)
-            if (Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(it, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(it, filter)
-            }
+            registerReceiver(it, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
         }
 
         handleSendIntent(intent)
@@ -180,11 +175,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val filter = android.content.IntentFilter("com.navigator.app.EXPORT_MANEUVERS")
-            if (Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(maneuverExportReceiver, filter, android.content.Context.RECEIVER_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(maneuverExportReceiver, filter)
-            }
+            registerReceiver(maneuverExportReceiver, filter, android.content.Context.RECEIVER_EXPORTED)
         }
     }
 
@@ -252,8 +243,7 @@ class MainActivity : ComponentActivity() {
         if (btPrompted) return
         val adapter = getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return
         if (adapter.isEnabled) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED
         ) return
         btPrompted = true
@@ -270,8 +260,6 @@ class MainActivity : ComponentActivity() {
     /**
      * Keep the screen on and show over the lock screen while navigating so the
      * rider can glance at guidance without unlocking (mirrors Google Maps).
-     * setShowWhenLocked/setTurnScreenOn is API 27+; older devices fall back to
-     * the (now-deprecated but still honoured) window flags.
      */
     private fun applyNavWindowFlags(active: Boolean) {
         if (active) {
@@ -279,26 +267,13 @@ class MainActivity : ComponentActivity() {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(active)
-            setTurnScreenOn(active)
-        } else {
-            @Suppress("DEPRECATION")
-            val flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-            if (active) window.addFlags(flags) else window.clearFlags(flags)
-        }
+        setShowWhenLocked(active)
+        setTurnScreenOn(active)
     }
 
     private fun requestRuntimePermissions() {
-        // Shared source of truth (BLUETOOTH_*, location, POST_NOTIFICATIONS) plus
-        // the one extra this entry point needs: legacy storage for the log export
-        // on pre-Android-10.
-        val perms = OpenDashPermissions.runtimePermissions().toMutableList()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            perms += Manifest.permission.WRITE_EXTERNAL_STORAGE
-        }
-        permissionLauncher.launch(perms.toTypedArray())
+        // Shared source of truth (BLUETOOTH_*, location, POST_NOTIFICATIONS).
+        permissionLauncher.launch(OpenDashPermissions.runtimePermissions())
     }
 }
 

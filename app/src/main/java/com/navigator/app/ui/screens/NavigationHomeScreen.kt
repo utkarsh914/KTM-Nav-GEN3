@@ -7,7 +7,6 @@ import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
 import androidx.activity.compose.BackHandler
@@ -1777,7 +1776,6 @@ private suspend fun freshLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocationPermission(context)) return lastLocation(context)
     val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         ?: return lastLocation(context)
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return lastLocation(context)
     val provider = when {
         lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
         lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER

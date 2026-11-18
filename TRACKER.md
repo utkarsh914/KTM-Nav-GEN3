@@ -26,7 +26,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | Phase | Scope | Done | Total | Status |
 |---|---|---|---|---|
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
-| 0 | minSdk 36, delete legacy paths | 0 | 7 | Not started |
+| 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
 | 1 | Critical bugs, crashes, log privacy | 0 | 14 | Not started |
 | 2 | Navigation state, UI state, pairing | 0 | 23 | Not started |
 | 3 | BLE robustness | 0 | 11 | Not started |
@@ -56,13 +56,13 @@ Target: **Android 16+ only (minSdk 36)**.
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | 0.1 | `minSdk = 36` (`app/build.gradle.kts:28`) | | |
-| [ ] | 0.2 | Remove all `SDK_INT` branches (27 sites) incl. receiver-flag else-branches and O/Q/T channel/FGS guards | | |
-| [ ] | 0.3 | Manifest cleanup + `tools:node="remove"` for Nav-SDK-merged `WRITE_EXTERNAL_STORAGE`/`BLUETOOTH*`; verify merged manifest | | 🔎 |
+| [x] | 0.1 | `minSdk = 36` (`app/build.gradle.kts:28`) | | |
+| [~] | 0.2 | Remove all `SDK_INT` branches (27 sites) incl. receiver-flag else-branches and O/Q/T channel/FGS guards | | All non-BLE sites done; 5 BLE-service sites go in the bucket C commit |
+| [x] | 0.3 | Manifest cleanup + `tools:node="remove"` for Nav-SDK-merged `WRITE_EXTERNAL_STORAGE`/`BLUETOOTH*`; verify merged manifest | | 🔎 |
 | [ ] | 0.4 | BLE dead code: delete pre-33 write/descriptor branches and legacy `onCharacteristicChanged/Read` overloads (behaviour unchanged) | | Bucket C commit |
-| [ ] | 0.5 | Keep desugaring (Nav SDK requires it); fix stale comments (`:86`, `:180`); remove no-op multiDex | | |
+| [x] | 0.5 | Keep desugaring (Nav SDK requires it); fix stale comments (`:86`, `:180`); remove no-op multiDex | | |
 | [ ] | 0.6 | Android 16 checks: edge-to-edge insets, predictive back, large-screen orientation | | 🏍 |
-| [ ] | 0.7 | Docs after Phase 0: `ENGINEERING_NOTES.md:221-237`, `architecture.md:264, 276` | | |
+| [~] | 0.7 | Docs after Phase 0: `ENGINEERING_NOTES.md:221-237`, `architecture.md:264, 276` | | |
 
 ## Phase 1: Critical bugs, crashes, privacy
 

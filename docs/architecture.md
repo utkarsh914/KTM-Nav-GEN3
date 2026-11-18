@@ -261,7 +261,7 @@ Confirmed against Nav SDK **7.9.0**. The load-bearing points:
 | Primary provider | Google Navigation SDK, abstraction ready for Routes API |
 | API key | `local.properties` → `BuildConfig`, applied at runtime via `NavigationApi.setApiKey()`; opt-in |
 | Packaging | Single APK, runtime-gated (SDK compiled in; active only with key + Play Services) |
-| SDK level | compileSdk/targetSdk 36; minSdk 26; Kotlin 2.3 / AGP 8.13.2 / Gradle 8.13 |
+| SDK level | compileSdk/targetSdk 36; minSdk 36 (Android 16+ only); Kotlin 2.3 / AGP 8.13.2 / Gradle 8.13 |
 | Provider default | Nav SDK when key + Play Services present, user-toggleable in Settings |
 | APK size | Accepted (~29 MB debug). Levers: `abiFilters("arm64-v8a")`, `androidResources.localeFilters("en")`; **minify off** (protects TFLite + reflection-heavy BLE) |
 | Domain model | `NormalizedManeuver` mirrors the SDK set; single lossy collapse in `KtmManeuverMapping` |
@@ -274,7 +274,7 @@ Confirmed against Nav SDK **7.9.0**. The load-bearing points:
 
 ### 6.1 Toolchain
 Kotlin 2.3.0, AGP 8.13.2, Gradle 8.13, JDK 17+, compileSdk/targetSdk 36, core-library
-desugaring, multidex. Open in a recent Android Studio; it uses its bundled JDK (JBR). There are
+desugaring (required by the Nav SDK AAR). Open in a recent Android Studio; it uses its bundled JDK (JBR). There are
 a couple of version-ceiling gotchas when bumping any of these — see
 [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md#toolchain-version-constraints-kotlin-2x--agp-8132--compilesdk-36)
 before upgrading the Compose BOM or the Kotlin plugin.

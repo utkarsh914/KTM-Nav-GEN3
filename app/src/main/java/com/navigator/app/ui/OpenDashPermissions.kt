@@ -3,7 +3,6 @@ package com.navigator.app.ui
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
@@ -15,22 +14,17 @@ import androidx.core.content.ContextCompat
  */
 object OpenDashPermissions {
 
-    /** Runtime permissions to request together (varies by SDK level). */
+    /** Runtime permissions to request together. */
     fun runtimePermissions(): Array<String> {
         val perms = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            perms += Manifest.permission.BLUETOOTH_CONNECT
-            perms += Manifest.permission.BLUETOOTH_SCAN
-        }
-        // GPS features (overspeed, waypoint, route recording) on every SDK; on
-        // pre-Android-12 this also covers the BLE scan requirement. FINE must be
+        perms += Manifest.permission.BLUETOOTH_CONNECT
+        perms += Manifest.permission.BLUETOOTH_SCAN
+        // GPS features (overspeed, waypoint, route recording). FINE must be
         // requested TOGETHER WITH COARSE: on Android 12+ a request containing
         // FINE alone is silently ignored (no dialog, nothing granted).
         perms += Manifest.permission.ACCESS_FINE_LOCATION
         perms += Manifest.permission.ACCESS_COARSE_LOCATION
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            perms += Manifest.permission.POST_NOTIFICATIONS
-        }
+        perms += Manifest.permission.POST_NOTIFICATIONS
         return perms.toTypedArray()
     }
 
@@ -39,17 +33,11 @@ object OpenDashPermissions {
 
     /** True when the app may scan/connect over BLE (the permission that, if missing, crashed the scan). */
     fun bluetoothGranted(context: Context): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            isGranted(context, Manifest.permission.BLUETOOTH_SCAN) &&
-                isGranted(context, Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            isGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+        isGranted(context, Manifest.permission.BLUETOOTH_SCAN) &&
+            isGranted(context, Manifest.permission.BLUETOOTH_CONNECT)
 
     fun notificationsPostGranted(context: Context): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            isGranted(context, Manifest.permission.POST_NOTIFICATIONS)
-        } else true
+        isGranted(context, Manifest.permission.POST_NOTIFICATIONS)
 
     /** Special access (not a runtime permission): notification listener, granted from system settings. */
     fun notificationAccessGranted(context: Context): Boolean =

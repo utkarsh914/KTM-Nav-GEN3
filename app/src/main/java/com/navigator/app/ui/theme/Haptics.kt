@@ -1,6 +1,5 @@
 package com.navigator.app.ui.theme
 
-import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.runtime.Composable
@@ -41,14 +40,12 @@ class Haptics(private val view: View) {
 
     /** Positive confirmation (accept / save / start). */
     fun confirm() = perform(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
-        else HapticFeedbackConstants.CONTEXT_CLICK,
+        HapticFeedbackConstants.CONFIRM,
     )
 
     /** Destructive / rejecting action (delete, close, end navigation). */
     fun warn() = perform(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.REJECT
-        else HapticFeedbackConstants.LONG_PRESS,
+        HapticFeedbackConstants.REJECT,
     )
 
     /** Long-press recognised (enter multi-select, drop a pin). */

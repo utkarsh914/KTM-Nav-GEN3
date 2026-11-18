@@ -25,11 +25,8 @@ android {
         // namespace (still com.navigator.app) - Google recommends a stable
         // namespace, and the API key + install identity key off applicationId.
         applicationId = "com.navigator.ktm"
-        minSdk = 26
+        minSdk = 36
         targetSdk = 36
-        // Navigation SDK (Phase 2) pushes the method count past 64K; enable now
-        // so the toolchain state is final before the SDK lands.
-        multiDexEnabled = true
         // Days-since-epoch: monotonically increasing across builds, so every
         // new APK is a clean in-place update (Play Protect also treats a
         // never-incrementing versionCode as a suspicion signal).
@@ -83,7 +80,7 @@ android {
     }
 
     compileOptions {
-        // Required by the Navigation SDK (Phase 2); harmless to enable now.
+        // Required by the Navigation SDK AAR.
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -177,7 +174,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Backports java.time/java.nio APIs the Navigation SDK relies on to minSdk 26.
+    // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 
     // JVM unit tests for the pure-Kotlin navigation core (model, formatters,

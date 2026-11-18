@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
@@ -529,7 +528,7 @@ fun SettingsScreen(
                     // dialog - without it, GPS features are dead whenever the
                     // service auto-started in the background (boot / bike
                     // reconnect) rather than from the app being open.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    run {
                         var bgLocationGranted by remember {
                             mutableStateOf(
                                 androidx.core.content.ContextCompat.checkSelfPermission(
@@ -679,16 +678,14 @@ fun SettingsScreen(
                     SettingsRow(
                         "Battery optimization", showDivider = true,
                         onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                val powerManager = context.getSystemService(PowerManager::class.java)
-                                if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
-                                    context.startActivity(
-                                        Intent(
-                                            AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                            Uri.parse("package:${context.packageName}"),
-                                        ),
-                                    )
-                                }
+                            val powerManager = context.getSystemService(PowerManager::class.java)
+                            if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                                context.startActivity(
+                                    Intent(
+                                        AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                        Uri.parse("package:${context.packageName}"),
+                                    ),
+                                )
                             }
                         },
                     ) { Text("›", color = Ktm.Dim, fontSize = 18.sp) }
