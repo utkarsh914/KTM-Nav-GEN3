@@ -647,6 +647,7 @@ private fun OpenDashApp(
         ) {
             ConnectGreeting(name = settings.userName?.trim().orEmpty())
         }
+        if (com.navigator.app.BuildConfig.DEBUG) DashPreviewPanel()
       }
     }
 }

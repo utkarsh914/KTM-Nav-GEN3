@@ -247,7 +247,7 @@ class BccuConnectionService : LifecycleService() {
         navCoordinator = com.navigator.app.nav.NavigationCoordinator(
             scope = lifecycleScope,
             fallbackProvider = com.navigator.app.nav.providers.NotificationNavProvider,
-            output = output,
+            output = if (BuildConfig.DEBUG) com.navigator.app.nav.DashPreviewTee(output) else output,
         ).also {
             it.start()
             // Service (re)started mid-trip (bike connected after in-app nav began,
