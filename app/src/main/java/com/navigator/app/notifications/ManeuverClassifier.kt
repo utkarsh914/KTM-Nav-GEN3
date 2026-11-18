@@ -89,16 +89,33 @@ object ManeuverClassifier {
         synchronized(this) {
             interpreter?.let { return it }
             return try {
-                val bytes = context.resources.openRawResource(R.raw.maneuver_model).use { it.readBytes() }
-                val buf = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
-                buf.put(bytes); buf.rewind()
-                Interpreter(buf).also { interpreter = it }
+                Interpreter(loadModel(context)).also { interpreter = it }
             } catch (e: Throwable) {
                 AppLogger.log("Maneuver", "!! Failed to load TFLite model: $e")
                 unavailable = true
                 null
             }
         }
+    }
+
+    /**
+     * Memory-map the model from the APK (stored uncompressed, see noCompress in build.gradle);
+     * falls back to copying it into a direct buffer if the resource can't be mapped.
+     */
+    private fun loadModel(context: Context): ByteBuffer {
+        runCatching {
+            // The fd is owned by the descriptor: close it exactly once (createInputStream's
+            // channel shares it, and the mapping stays valid after it is closed).
+            context.resources.openRawResourceFd(R.raw.maneuver_model).use { afd ->
+                return afd.createInputStream().channel.map(
+                    java.nio.channels.FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength,
+                )
+            }
+        }.onFailure { AppLogger.log("Maneuver", "model mmap unavailable (${it.javaClass.simpleName}); copying") }
+        val bytes = context.resources.openRawResource(R.raw.maneuver_model).use { it.readBytes() }
+        val buf = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+        buf.put(bytes); buf.rewind()
+        return buf
     }
 
     /** Classify a nav maneuver bitmap into a dash TurnIcon, or null if the model isn't confident. */

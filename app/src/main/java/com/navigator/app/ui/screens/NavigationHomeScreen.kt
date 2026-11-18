@@ -18,6 +18,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1437,11 +1440,9 @@ private fun PreviewCard(
             .padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.size(24.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
-            )
-            Spacer(Modifier.size(6.dp))
+            TapTarget(onClick = onBack) {
+                Icon(OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary, modifier = Modifier.size(24.dp))
+            }
             Text(place.label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1)
         }
 
@@ -1466,7 +1467,8 @@ private fun PreviewCard(
                 "+ Add stop",
                 color = Ktm.Orange, fontFamily = Barlow, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAddStop)
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                    .defaultMinSize(minHeight = 48.dp).wrapContentHeight(Alignment.CenterVertically)
+                    .padding(horizontal = 4.dp),
             )
         }
 
@@ -1529,28 +1531,23 @@ private fun StopRow(
         )
         if (onRemove != null) {
             // ▲ move up (rotated chevron), ▼ move down, × remove.
-            Icon(
-                OpenDashIcons.ChevronDown, "Move up",
-                tint = if (canMoveUp) Ktm.TextSecondary else Ktm.Dim,
-                modifier = Modifier.size(22.dp).rotate(180f)
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable(enabled = canMoveUp) { onMoveUp?.invoke() },
-            )
-            Spacer(Modifier.size(4.dp))
-            Icon(
-                OpenDashIcons.ChevronDown, "Move down",
-                tint = if (canMoveDown) Ktm.TextSecondary else Ktm.Dim,
-                modifier = Modifier.size(22.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable(enabled = canMoveDown) { onMoveDown?.invoke() },
-            )
-            Spacer(Modifier.size(4.dp))
-            Icon(
-                OpenDashIcons.Close, "Remove stop", tint = Ktm.Danger,
-                modifier = Modifier.size(22.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable { onRemove.invoke() },
-            )
+            TapTarget(enabled = canMoveUp, onClick = { onMoveUp?.invoke() }) {
+                Icon(
+                    OpenDashIcons.ChevronDown, "Move up",
+                    tint = if (canMoveUp) Ktm.TextSecondary else Ktm.Dim,
+                    modifier = Modifier.size(22.dp).rotate(180f),
+                )
+            }
+            TapTarget(enabled = canMoveDown, onClick = { onMoveDown?.invoke() }) {
+                Icon(
+                    OpenDashIcons.ChevronDown, "Move down",
+                    tint = if (canMoveDown) Ktm.TextSecondary else Ktm.Dim,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            TapTarget(onClick = { onRemove.invoke() }) {
+                Icon(OpenDashIcons.Close, "Remove stop", tint = Ktm.Danger, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -1634,6 +1631,24 @@ private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
+/** 48dp (minimum) tap area around a small icon, centred; the icon keeps its visual size. */
+@Composable
+private fun TapTarget(enabled: Boolean = true, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+/** Dialog button sized for gloved thumbs (used by the dialogs shown while riding). */
+@Composable
+private fun BigDialogButton(text: String, color: Color, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 56.dp)) {
+        Text(text, color = color, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+    }
+}
+
 /** Confirm before ending an in-progress trip (the END button / dash guidance). */
 @Composable
 private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
@@ -1644,8 +1659,8 @@ private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         textContentColor = Ktm.TextSecondary,
         title = { Text("End navigation?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
         text = { Text("This stops guidance to the dash and finishes the trip.", fontFamily = Barlow) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("END", color = Ktm.Danger) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
+        confirmButton = { BigDialogButton("END", Ktm.Danger, onConfirm) },
+        dismissButton = { BigDialogButton("CANCEL", Ktm.TextPrimary, onDismiss) },
     )
 }
 
@@ -1664,8 +1679,8 @@ private fun ReplaceTripConfirmDialog(destination: String?, onConfirm: () -> Unit
                 fontFamily = Barlow,
             )
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("REPLACE", color = Ktm.Orange) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("KEEP CURRENT", color = Ktm.TextPrimary) } },
+        confirmButton = { BigDialogButton("REPLACE", Ktm.Orange, onConfirm) },
+        dismissButton = { BigDialogButton("KEEP CURRENT", Ktm.TextPrimary, onDismiss) },
     )
 }
 

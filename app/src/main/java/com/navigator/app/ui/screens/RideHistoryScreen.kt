@@ -119,14 +119,26 @@ fun RideHistoryScreen(
 ) {
     val context = LocalContext.current
     val store = remember { RideStore(context) }
-    var rides by remember { mutableStateOf(store.list()) }
+    val ioScope = rememberCoroutineScope()
+    // null until the first (off-main) load finishes, so "No rides yet" can't flash.
+    var loadedRides by remember { mutableStateOf<List<RecordedRide>?>(null) }
+    val rides = loadedRides ?: emptyList()
     // Confirmation target: a single ride id, or the sentinel for "delete selected".
     var confirmDelete by remember { mutableStateOf<DeleteTarget?>(null) }
     // Held here (outside AnimatedContent) so it survives the list<->empty swaps
     // and can be reset when the visible set changes.
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
-    fun refresh() { rides = store.list() }
+    // Only the newest load may publish: overlapping reloads can finish out of order.
+    var loadSeq by remember { mutableStateOf(0) }
+    fun refresh() {
+        val my = ++loadSeq
+        ioScope.launch {
+            val list = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.list() }
+            if (my == loadSeq) loadedRides = list
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) { refresh() }
 
     fun toggle(id: String) {
         onSelectedIdsChange(if (id in selectedIds) selectedIds - id else selectedIds + id)
@@ -185,7 +197,9 @@ fun RideHistoryScreen(
             }
         }
 
-        if (rides.isEmpty()) {
+        if (loadedRides == null) {
+            Box(Modifier.fillMaxWidth().weight(1f))
+        } else if (rides.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Text(
                     "No rides recorded yet.\nStart a navigation to record one.",
@@ -244,7 +258,7 @@ fun RideHistoryScreen(
                                         selected = ride.id in validSelected,
                                         onTap = { if (selectionMode) toggle(ride.id) else onOpen(ride.id) },
                                         onLongPress = { if (!selectionMode) enterSelection(ride.id) else toggle(ride.id) },
-                                        onToggleSave = { toggleSave(ride, store, context, ::refresh) },
+                                        onToggleSave = { toggleSave(ride, store, context, ioScope, ::refresh) },
                                         onDelete = { confirmDelete = DeleteTarget.Single(ride.id) },
                                     )
                                 }
@@ -259,7 +273,7 @@ fun RideHistoryScreen(
                                     selected = ride.id in validSelected,
                                     onTap = { if (selectionMode) toggle(ride.id) else onOpen(ride.id) },
                                     onLongPress = { if (!selectionMode) enterSelection(ride.id) else toggle(ride.id) },
-                                    onToggleSave = { toggleSave(ride, store, context, ::refresh) },
+                                    onToggleSave = { toggleSave(ride, store, context, ioScope, ::refresh) },
                                     onDelete = { confirmDelete = DeleteTarget.Single(ride.id) },
                                 )
                             }
@@ -270,14 +284,22 @@ fun RideHistoryScreen(
         }
     }
 
-    RideDeleteDialog(confirmDelete, validSelected, store, ::refresh, ::exitSelection) { confirmDelete = it }
+    RideDeleteDialog(confirmDelete, validSelected, store, ioScope, ::refresh, ::exitSelection) { confirmDelete = it }
 }
 
 /** Toggle a ride's saved/pinned flag and show a brief confirmation toast. */
-private fun toggleSave(ride: RecordedRide, store: RideStore, context: android.content.Context, refresh: () -> Unit) {
+private fun toggleSave(
+    ride: RecordedRide, store: RideStore, context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope, refresh: () -> Unit,
+) {
     val newSaved = !ride.saved
-    store.setSaved(ride.id, newSaved)
-    refresh()
+    scope.launch {
+        // NonCancellable: leaving the screen right after the tap must not drop the write.
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+            store.setSaved(ride.id, newSaved)
+        }
+        refresh()
+    }
     android.widget.Toast.makeText(
         context,
         if (newSaved) "Ride saved" else "Ride unsaved",
@@ -291,6 +313,7 @@ private fun RideDeleteDialog(
     target: DeleteTarget?,
     validSelected: Set<String>,
     store: RideStore,
+    scope: kotlinx.coroutines.CoroutineScope,
     refresh: () -> Unit,
     exitSelection: () -> Unit,
     setTarget: (DeleteTarget?) -> Unit,
@@ -304,15 +327,17 @@ private fun RideDeleteDialog(
         title = if (count > 1) "Delete $count rides?" else "Delete this ride?",
         message = "This permanently removes the recorded track. This can't be undone.",
         onConfirm = {
-            when (target) {
-                is DeleteTarget.Single -> store.delete(target.id)
-                DeleteTarget.Selected -> {
-                    store.deleteAll(validSelected)
-                    exitSelection()
-                }
+            val ids = when (target) {
+                is DeleteTarget.Single -> listOf(target.id)
+                DeleteTarget.Selected -> validSelected.toList().also { exitSelection() }
             }
-            refresh()
             setTarget(null)
+            scope.launch {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                    store.deleteAll(ids)
+                }
+                refresh()
+            }
         },
         onDismiss = { setTarget(null) },
     )

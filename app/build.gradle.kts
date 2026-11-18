@@ -114,6 +114,9 @@ android {
     // deprecated defaultConfig.resourceConfigurations.)
     androidResources {
         localeFilters += listOf("en")
+        // Stored uncompressed so the TFLite model can be memory-mapped straight from the APK
+        // (ManeuverClassifier) instead of being copied onto the heap.
+        noCompress += "tflite"
     }
     // composeOptions.kotlinCompilerExtensionVersion is obsolete under Kotlin 2.x;
     // the Compose compiler now comes from the org.jetbrains.kotlin.plugin.compose plugin.

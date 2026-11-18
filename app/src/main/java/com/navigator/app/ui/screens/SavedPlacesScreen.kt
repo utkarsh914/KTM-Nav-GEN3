@@ -399,11 +399,11 @@ private fun PlacePicker(
             .padding(horizontal = 16.dp).padding(top = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
-            )
-            Spacer(Modifier.size(8.dp))
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) { Icon(OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary, modifier = Modifier.size(28.dp)) }
             Text(title, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 1.sp)
         }
         Spacer(Modifier.height(12.dp))

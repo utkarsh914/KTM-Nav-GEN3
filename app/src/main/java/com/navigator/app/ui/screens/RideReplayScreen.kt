@@ -75,6 +75,7 @@ import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
@@ -132,6 +133,7 @@ fun RideReplayScreen(
 ) {
     val context = LocalContext.current
     val store = remember { RideStore(context) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     // Speed-band colouring scheme (Advanced settings), read once per screen entry.
     val speedBands = remember {
         val s = com.navigator.app.settings.AppSettings(context)
@@ -142,11 +144,17 @@ fun RideReplayScreen(
     // Extra map bottom padding on top of the measured card height (its outer
     // margin + a small gap), so the framed/centred track clears the card.
     val bottomMarginPx = with(LocalDensity.current) { 28.dp.roundToPx() }
-    var ride by remember(rideId) { mutableStateOf(rideId?.let { store.get(it) }) }
+    var ride by remember(rideId) { mutableStateOf<com.navigator.app.ride.RecordedRide?>(null) }
 
     var points by remember(rideId) { mutableStateOf<List<RidePoint>?>(null) }
     LaunchedEffect(rideId) {
-        points = withContext(Dispatchers.IO) { rideId?.let { store.points(it) } ?: emptyList() }
+        // Index parse + track read are disk work: off the main thread. `ride` is set before
+        // `points` so the "no data" branch (points loaded, ride missing) can't flash.
+        val (r, p) = withContext(Dispatchers.IO) {
+            rideId?.let { store.get(it) } to (rideId?.let { store.points(it) } ?: emptyList())
+        }
+        ride = r
+        points = p
     }
 
     var gm by remember { mutableStateOf<GoogleMap?>(null) }
@@ -487,8 +495,8 @@ fun RideReplayScreen(
                         },
                         onToggleSave = {
                             val newSaved = !r.saved
-                            store.setSaved(r.id, newSaved)
                             ride = r.copy(saved = newSaved)
+                            scope.launch(Dispatchers.IO + kotlinx.coroutines.NonCancellable) { store.setSaved(r.id, newSaved) }
                             android.widget.Toast.makeText(
                                 context,
                                 if (newSaved) "Ride saved" else "Ride unsaved",
