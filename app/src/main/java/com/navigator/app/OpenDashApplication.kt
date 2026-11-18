@@ -29,6 +29,9 @@ class OpenDashApplication : Application() {
         runCatching {
             com.navigator.app.ui.theme.AppFonts.apply(AppSettings(this).fontMode)
         }
+        // Dash text: ICU transliterator (null = pass-through) + the rider's switch.
+        com.navigator.app.ble.DashText.transliterate = com.navigator.app.ble.DashText.icuTransliterator()
+        com.navigator.app.ble.DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)
         recoverOrphanRides()
         observeNavForRecording()
         appScope.launch(Dispatchers.IO) {

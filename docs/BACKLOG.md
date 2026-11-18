@@ -27,8 +27,9 @@ of the shipped work.
   that "merge left" → code 14 is the right way round (glyphs 14/15 themselves are verified).
 - **NAVIGATION_STATE guidanceOn is never sent OFF** — the dash may stay in guidance mode
   (GPS icon lit) while idle. Needs a dash test before changing.
-- **Non-Latin road names** (e.g. Kannada) are sent as UTF-8; the dash font is likely
-  Latin-only. Consider transliteration or falling back to the road ref.
+- **Non-Latin road names**: now transliterated to Latin for TURN_ROAD / TURN_INFO / banner text
+  (`DashText`, Settings > Navigation > Latin text on dash). Unverified on the dash: if it renders
+  Kannada/Devanagari natively, turn the setting off (or revert the commit).
 - **Delete `LegacyModelRemap`** — the bundled model is now v2 (`#labels-v2`), so the remap is
   dormant.
 - **Revisit notification-path passthrough overrides** — the notification provider currently

@@ -30,7 +30,7 @@ object PrefsBackup {
         "overspeed_enabled" to Rule(T.B), "overspeed_limit_kmh" to Rule(T.I, 30, 200),
         "ride_recording_enabled" to Rule(T.B), "ride_min_distance_m" to Rule(T.I, 50, 50_000),
         "ride_min_duration_s" to Rule(T.I, 10, 3_600), "ride_history_limit" to Rule(T.I, 10, 1_000),
-        "nav_provider" to Rule(T.S), "full_sdk_nav_ui" to Rule(T.B), "live_updates_enabled" to Rule(T.B),
+        "nav_provider" to Rule(T.S), "latin_dash_text" to Rule(T.B), "full_sdk_nav_ui" to Rule(T.B), "live_updates_enabled" to Rule(T.B),
         "speed_band_base_kmh" to Rule(T.I, 10, 120), "speed_band_step_kmh" to Rule(T.I, 1, 100),
         "speed_band_count" to Rule(T.I, 1, 20), "location_marker_style" to Rule(T.S),
         "driving_side" to Rule(T.S), "vehicle_mode" to Rule(T.S),

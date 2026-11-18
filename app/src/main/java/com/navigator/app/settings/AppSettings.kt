@@ -276,6 +276,11 @@ class AppSettings(context: Context) {
         get() = navProvider != NAV_PROVIDER_NOTIFICATION
         set(value) { navProvider = if (value) NAV_PROVIDER_GOOGLE_NAV_SDK else NAV_PROVIDER_NOTIFICATION }
 
+    /** Transliterate non-Latin road names / messages to Latin for the dash (its font is believed Latin-only). On by default. */
+    var latinDashText: Boolean
+        get() = pairingPrefs.getBoolean(KEY_LATIN_DASH_TEXT, true)
+        set(value) = pairingPrefs.edit().putBoolean(KEY_LATIN_DASH_TEXT, value).apply()
+
     /** Show the guidance notification as an Android 16 Live Update (status-bar chip); on by default. */
     var liveUpdatesEnabled: Boolean
         get() = pairingPrefs.getBoolean(KEY_LIVE_UPDATES, true)
@@ -436,6 +441,7 @@ class AppSettings(context: Context) {
 
         private const val KEY_FULL_SDK_NAV_UI = "full_sdk_nav_ui"
         private const val KEY_LIVE_UPDATES = "live_updates_enabled"
+        private const val KEY_LATIN_DASH_TEXT = "latin_dash_text"
 
         private const val KEY_SPEED_BAND_BASE = "speed_band_base_kmh"
         private const val KEY_SPEED_BAND_STEP = "speed_band_step_kmh"

@@ -149,6 +149,7 @@ fun SettingsScreen(
     // Advanced settings.
     var fullSdkNavUi by remember { mutableStateOf(settings.fullSdkNavUi) }
     var liveUpdates by remember { mutableStateOf(settings.liveUpdatesEnabled) }
+    var latinDash by remember { mutableStateOf(settings.latinDashText) }
 
     // ---- Backup / restore (SAF: no storage permission) ----
     val backupScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -518,6 +519,20 @@ fun SettingsScreen(
             // ===== Navigation =====
             item {
                 GroupCard("Navigation", icon = com.navigator.app.ui.theme.OpenDashIcons.TurnArrow) {
+                    // Road names / messages in Kannada, Hindi, Arabic... become Latin on the dash.
+                    SettingsRow("Latin text on dash", showDivider = true) {
+                        KtmToggle(latinDash, {
+                            latinDash = it
+                            settings.latinDashText = it
+                            com.navigator.app.ble.DashText.enabled = it
+                        })
+                    }
+                    Text(
+                        "The dash font is believed to show Latin letters only, so non-Latin road names " +
+                            "and messages are transliterated. Turn off if your dash shows them correctly.",
+                        color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
+                    )
                     SettingsRow("Auto-detect nav app", showDivider = true) {
                         KtmToggle(navAutoDetect, { on ->
                             navAutoDetect = on

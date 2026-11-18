@@ -136,7 +136,7 @@ object BccuProtocol {
 
     /** Build a NOTIFICATION characteristic payload: [visibility][iconByte][UTF-8 text, max 16 chars]. */
     fun buildNotificationPayload(icon: NotificationIcon, text: String, visibility: Visibility = Visibility.FULL): ByteArray {
-        val truncated = safePrefix(text, 16)
+        val truncated = safePrefix(DashText.forDash(text), 16)
         val textBytes = truncated.toByteArray(Charsets.UTF_8)
         val out = ByteArray(2 + textBytes.size)
         out[0] = visibility.binary.toByte()
@@ -209,8 +209,12 @@ object BccuProtocol {
     }
 
     /** Shared [visibility][UTF-8 text] shape used by TURN_DISTANCE/TURN_INFO/TURN_ROAD/ETA/REMAINING_DISTANCE. */
-    private fun buildLabelPayload(text: String, maxLen: Int, visibility: Visibility): ByteArray {
-        val textBytes = elipse(text, maxLen).toByteArray(Charsets.UTF_8)
+    private fun buildLabelPayload(
+        text: String, maxLen: Int, visibility: Visibility, latin: Boolean = false,
+    ): ByteArray {
+        // Free text (road, secondary maneuver) is made Latin BEFORE truncating (lengths change);
+        // unit labels (distance, ETA, remaining) are never transliterated: see DashText.
+        val textBytes = elipse(if (latin) DashText.forDash(text) else text, maxLen).toByteArray(Charsets.UTF_8)
         return byteArrayOf(visibility.binary.toByte()) + textBytes
     }
 
@@ -227,14 +231,14 @@ object BccuProtocol {
      * Confirmed from TurnInfo.java (max 16 chars).
      */
     fun buildTurnInfoPayload(text: String, visibility: Visibility = Visibility.FULL) =
-        buildLabelPayload(text, 16, visibility)
+        buildLabelPayload(text, 16, visibility, latin = true)
 
     /**
      * TURN_ROAD (0707): street/road name shown in the dash's center guidance
      * view, e.g. "towards 1st Cross Rd". Confirmed from TurnRoad.java (max 32 chars).
      */
     fun buildTurnRoadPayload(text: String, visibility: Visibility = Visibility.FULL) =
-        buildLabelPayload(text, 32, visibility)
+        buildLabelPayload(text, 32, visibility, latin = true)
 
     /** ETA (0708): arrival time label, e.g. "12:45". Confirmed from Eta.java (max 8 chars). */
     fun buildEtaPayload(text: String, visibility: Visibility = Visibility.FULL) =
