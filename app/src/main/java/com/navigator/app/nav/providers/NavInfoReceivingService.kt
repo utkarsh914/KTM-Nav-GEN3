@@ -24,6 +24,7 @@ class NavInfoReceivingService : Service() {
 
     private lateinit var incomingMessenger: Messenger
     private lateinit var turnByTurnManager: TurnByTurnManager
+    private var handlerThread: HandlerThread? = null
 
     private inner class IncomingHandler(looper: Looper) : Handler(looper) {
         override fun handleMessage(msg: Message) {
@@ -43,9 +44,16 @@ class NavInfoReceivingService : Service() {
         super.onCreate()
         turnByTurnManager = TurnByTurnManager.createInstance()
         val thread = HandlerThread("NavInfoReceiving", Process.THREAD_PRIORITY_DEFAULT).apply { start() }
+        handlerThread = thread
         incomingMessenger = Messenger(IncomingHandler(thread.looper))
         AppLogger.log("Nav", "NavInfoReceivingService created")
     }
 
     override fun onBind(intent: Intent?): IBinder = incomingMessenger.binder
+
+    override fun onDestroy() {
+        handlerThread?.quitSafely()
+        handlerThread = null
+        super.onDestroy()
+    }
 }

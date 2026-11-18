@@ -45,8 +45,10 @@ object NotificationNavProvider : NavigationProvider {
     fun setPaused(value: Boolean) {
         if (_paused.value == value) return
         _paused.value = value
-        // Pausing clears the dash immediately; resuming waits for the next update.
-        if (value) {
+        // Pausing publishes IDLE, which the encoder turns into a *debounced* guidance
+        // clear (only STOPPED clears immediately); resuming waits for the next update.
+        if (value) synchronized(lock) {
+            generation++
             endJob?.cancel()
             endJob = null
             _state.value = NormalizedNavigationState.IDLE
@@ -56,12 +58,20 @@ object NotificationNavProvider : NavigationProvider {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var endJob: Job? = null
 
+    /** Guards [generation]/[_state] writes: the debounce coroutine runs on Default
+     *  while the listener pushes from main, so cancel() alone can't order them. */
+    private val lock = Any()
+    private var generation = 0L
+
     override fun attach() { /* passive - the listener drives it */ }
 
     override fun detach() {
-        endJob?.cancel()
-        endJob = null
-        _state.value = NormalizedNavigationState.IDLE
+        synchronized(lock) {
+            generation++
+            endJob?.cancel()
+            endJob = null
+            _state.value = NormalizedNavigationState.IDLE
+        }
     }
 
     /** A fresh guidance update parsed from a nav-app notification. */
@@ -74,17 +84,20 @@ object NotificationNavProvider : NavigationProvider {
         nowMs: Long = System.currentTimeMillis(),
     ) {
         if (_paused.value) return // user paused mirroring to the dash
-        endJob?.cancel()
-        endJob = null
-        _state.value = NormalizedNavigationState(
-            sessionState = NavSessionState.ENROUTE,
-            resolvedIcon = icon,
-            preformattedDistance = distanceText?.ifBlank { null },
-            preformattedEta = etaText?.ifBlank { null },
-            preformattedRemaining = remainingText?.ifBlank { null },
-            roadName = roadText?.ifBlank { null },
-            producedAtMs = nowMs,
-        )
+        synchronized(lock) {
+            generation++
+            endJob?.cancel()
+            endJob = null
+            _state.value = NormalizedNavigationState(
+                sessionState = NavSessionState.ENROUTE,
+                resolvedIcon = icon,
+                preformattedDistance = distanceText?.ifBlank { null },
+                preformattedEta = etaText?.ifBlank { null },
+                preformattedRemaining = remainingText?.ifBlank { null },
+                roadName = roadText?.ifBlank { null },
+                producedAtMs = nowMs,
+            )
+        }
     }
 
     /**
@@ -96,13 +109,21 @@ object NotificationNavProvider : NavigationProvider {
      */
     fun pushRemoved() {
         if (_state.value.sessionState != NavSessionState.ENROUTE) return
-        endJob?.cancel()
-        endJob = scope.launch {
-            delay(SESSION_END_DEBOUNCE_MS)
-            _state.value = NormalizedNavigationState(
-                sessionState = NavSessionState.STOPPED,
-                producedAtMs = System.currentTimeMillis(),
-            )
+        val scheduledAt = synchronized(lock) {
+            endJob?.cancel()
+            generation
         }
+        val job = scope.launch {
+            delay(SESSION_END_DEBOUNCE_MS)
+            synchronized(lock) {
+                // A newer push/pause/detach since scheduling supersedes this end.
+                if (generation != scheduledAt) return@launch
+                _state.value = NormalizedNavigationState(
+                    sessionState = NavSessionState.STOPPED,
+                    producedAtMs = System.currentTimeMillis(),
+                )
+            }
+        }
+        synchronized(lock) { endJob = job }
     }
 }

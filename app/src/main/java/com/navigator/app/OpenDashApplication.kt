@@ -13,6 +13,7 @@ import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class OpenDashApplication : Application() {
@@ -62,27 +63,39 @@ class OpenDashApplication : Application() {
     private fun observeNavForRecording() {
         appScope.launch {
             var recording = false
-            GoogleNavSdkProvider.currentDestination.collect { dest ->
-                when {
-                    dest != null && !recording -> {
-                        val settings = AppSettings(this@OpenDashApplication)
-                        if (settings.rideRecordingEnabled && hasLocationPermission()) {
-                            RideRecordingService.start(
-                                this@OpenDashApplication,
-                                destLabel = dest.label,
-                                destLat = dest.lat,
-                                destLng = dest.lng,
-                            )
-                            recording = true
-                        }
+            var recordingTripId = -1L
+            // Keyed on the trip id, not the destination value: A -> B replacements and
+            // same-destination restarts are separate rides.
+            GoogleNavSdkProvider.activeTrip.collect { trip ->
+                if (recording && (trip == null || trip.id != recordingTripId)) {
+                    RideRecordingService.stop(this@OpenDashApplication)
+                    recording = false
+                    // Let the service finalise the old ride before the next one starts.
+                    if (trip != null) {
+                        delay(RIDE_RESTART_GAP_MS)
+                        // The old ride has been finalised: drop its result so the new
+                        // trip's finish screen can't pick it up.
+                        com.navigator.app.ride.RideEvents.clear()
                     }
-                    dest == null && recording -> {
-                        RideRecordingService.stop(this@OpenDashApplication)
-                        recording = false
+                }
+                if (trip != null && !recording) {
+                    val settings = AppSettings(this@OpenDashApplication)
+                    if (settings.rideRecordingEnabled && hasLocationPermission()) {
+                        recording = RideRecordingService.start(
+                            this@OpenDashApplication,
+                            destLabel = trip.dest.label,
+                            destLat = trip.dest.lat,
+                            destLng = trip.dest.lng,
+                        )
+                        if (recording) recordingTripId = trip.id
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        const val RIDE_RESTART_GAP_MS = 600L
     }
 
     private fun hasLocationPermission(): Boolean =

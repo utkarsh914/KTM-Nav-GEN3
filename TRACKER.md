@@ -28,7 +28,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
 | 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
-| 2 | Navigation state, UI state, pairing | 0 | 23 | Not started |
+| 2 | Navigation state, UI state, pairing | 6 | 23 | N2-N7 done; N8 deferred; U*/P* pending (batch 6) |
 | 3 | BLE robustness | 0 | 11 | Not started |
 | 4 | Data integrity, parsing, network | 0 | 25 | Not started |
 | 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
@@ -97,12 +97,12 @@ Target: **Android 16+ only (minSdk 36)**.
 ### Navigation state
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | N2 | Quit `NavInfoReceivingService` HandlerThread in `onDestroy` | | |
-| [ ] | N3 | ARRIVED not conflated: one-shot `tripEnded` SharedFlow (don't skip `stopNavigation()` in `detach()`) | | |
-| [ ] | N4 | Trip ownership from provider; ARRIVED/STOPPED in any stage; mid-trip "Add stop / Replace" | | 🏍 |
-| [ ] | N5 | Decide recording-vs-route-failure behaviour independent of BLE state (keep recording until user ends, or clear everywhere) | | 🔎 |
-| [ ] | N6 | `NotificationNavProvider` generation counter; fix pause semantics/comment | | |
-| [ ] | N7 | Ride recording keyed on N1 trip token | | |
+| [x] | N2 | Quit `NavInfoReceivingService` HandlerThread in `onDestroy` | | |
+| [x] | N3 | ARRIVED not conflated: one-shot `tripEnded` SharedFlow (don't skip `stopNavigation()` in `detach()`) | | |
+| [x] | N4 | Trip ownership from provider; ARRIVED/STOPPED in any stage; mid-trip "Add stop / Replace" | | 🏍 Replace-confirm added; 'Add as stop' NOT done |
+| [x] | N5 | Decide recording-vs-route-failure behaviour independent of BLE state (keep recording until user ends, or clear everywhere) | | 🔎 Decision: failed trip parks on the card (recording continues) until Retry/Back/Close or 10-min expiry (not while app foreground); independent of BLE |
+| [x] | N6 | `NotificationNavProvider` generation counter; fix pause semantics/comment | | |
+| [x] | N7 | Ride recording keyed on N1 trip token | | |
 | [ ] | N8 | `NAVIGATION_STATE guidanceOn` idle behaviour (after dash test) | | 🔎 🏍 DEFERRED: needs dash |
 
 ### UI state

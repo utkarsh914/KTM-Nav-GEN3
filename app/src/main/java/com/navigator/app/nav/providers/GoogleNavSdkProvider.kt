@@ -17,7 +17,10 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.TravelMode
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -67,6 +70,32 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private val _currentDestination = MutableStateFlow<NavDestination?>(null)
     val currentDestination: StateFlow<NavDestination?> = _currentDestination.asStateFlow()
 
+    /** A requested trip: its generation id (unique per [startNavigation]) plus the
+     *  destination. Ride recording keys on the id so a replaced/restarted trip is a
+     *  new ride even when the destination value is identical or different. */
+    data class ActiveTrip(val id: Long, val dest: NavDestination)
+
+    private val _activeTrip = MutableStateFlow<ActiveTrip?>(null)
+    val activeTrip: StateFlow<ActiveTrip?> = _activeTrip.asStateFlow()
+
+    private fun setTrip(id: Long, dest: NavDestination) {
+        _activeTrip.value = ActiveTrip(id, dest)
+        _currentDestination.value = dest
+    }
+
+    private fun clearTrip() {
+        _activeTrip.value = null
+        _currentDestination.value = null
+    }
+
+    enum class TripEnd { ARRIVED }
+
+    /** One-shot trip-end events. The state flow is conflated, so an ARRIVED state can be
+     *  overwritten (by the coordinator's revert -> stopNavigation) before the UI
+     *  collects it; this event can't be lost that way. */
+    private val _tripEnded = MutableSharedFlow<TripEnd>(extraBufferCapacity = 8)
+    val tripEnded: SharedFlow<TripEnd> = _tripEnded.asSharedFlow()
+
     /** Generation of the trip in progress; every async callback checks it. See [TripGeneration]. */
     private val trips = TripGeneration()
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -76,7 +105,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private val _startFailure = MutableStateFlow<StartFailure?>(null)
     val startFailure: StateFlow<StartFailure?> = _startFailure.asStateFlow()
 
-    fun clearStartFailure() { _startFailure.value = null }
+    fun clearStartFailure() {
+        failureExpiry?.let { mainHandler.removeCallbacks(it) }
+        _startFailure.value = null
+    }
+
+    private var failureExpiry: Runnable? = null
 
     /** Record a failure that happened before the provider could start the trip
      *  (e.g. no navigator). The trip counts as ended. */
@@ -85,7 +119,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             trips.invalidate()
             guidanceActive = false
             stopSdkGuidance()
-            _currentDestination.value = null
+            clearTrip()
             _startFailure.value = reason
             _state.value = NormalizedNavigationState(
                 sessionState = NavSessionState.STOPPED,
@@ -117,11 +151,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             guidanceActive = false
             lastEnroute = null
             lastLoggedStep = null
-            _currentDestination.value = null
+            clearTrip()
             _state.value = NormalizedNavigationState(
                 sessionState = NavSessionState.ARRIVED,
                 producedAtMs = System.currentTimeMillis(),
             )
+            _tripEnded.tryEmit(TripEnd.ARRIVED)
         }
     }
 
@@ -129,11 +164,15 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** True while an in-app trip is requested or being guided. */
     val isTripInProgress: Boolean
-        get() = _currentDestination.value != null || _state.value.sessionState.let {
+        get() = (_startFailure.value == null && _currentDestination.value != null) || _state.value.sessionState.let {
             it == NavSessionState.ENROUTE || it == NavSessionState.REROUTING
         }
 
     override fun detach() {
+        // After a failed start the trip is parked on the failure card (Retry /
+        // Back / Close own the exit); the coordinator reverting to the mirror must
+        // not end it behind the card - that made recording depend on BLE state.
+        if (_startFailure.value != null) return
         stopNavigation()
     }
 
@@ -165,8 +204,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         // Frames from a previous trip still being guided must not update state
         // while the new route is computed (guidanceActive is set again on route OK).
         guidanceActive = false
-        _startFailure.value = null
-        _currentDestination.value = dest
+        clearStartFailure()
+        setTrip(trip, dest)
         // Drop the previous trip's terminal state (STOPPED/ARRIVED) so nothing
         // collecting this flow for the new trip mistakes it for this trip ending.
         _state.value = NormalizedNavigationState(
@@ -343,6 +382,22 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             sessionState = NavSessionState.STOPPED,
             producedAtMs = System.currentTimeMillis(),
         )
+        // Nobody may ever act on the card (app backgrounded): don't keep a failed
+        // trip - and its ride recording - alive forever.
+        val expiry = Runnable {
+            if (_startFailure.value != null && _activeTrip.value?.id == trip) {
+                if (com.navigator.app.ui.AppForegroundState.isForeground) {
+                    // The rider may still be reading the card: don't pull it away.
+                    failureExpiry?.let { mainHandler.postDelayed(it, FAILED_TRIP_TIMEOUT_MS) }
+                    return@Runnable
+                }
+                AppLogger.log("Nav", "Failed trip not acted on - ending it")
+                clearStartFailure()
+                stopNavigation()
+            }
+        }
+        failureExpiry = expiry
+        mainHandler.postDelayed(expiry, FAILED_TRIP_TIMEOUT_MS)
     }
 
     override fun stopNavigation() {
@@ -353,7 +408,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         guidanceActive = false
         lastEnroute = null
         lastLoggedStep = null
-        _currentDestination.value = null
+        failureExpiry?.let { mainHandler.removeCallbacks(it) }
+        clearTrip()
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
             runCatching { nav.clearDestinations() }
@@ -489,4 +545,5 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private val IMPERIAL_COUNTRIES = setOf("US", "GB", "LR", "MM")
 
     private const val NUM_NEXT_STEPS_TO_PREVIEW = 3
+    private const val FAILED_TRIP_TIMEOUT_MS = 10 * 60_000L
 }

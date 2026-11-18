@@ -303,6 +303,8 @@ fun NavigationHomeScreen(
     var leftNavManually by remember { mutableStateOf(false) }
     // Confirm before actually ending an in-progress trip.
     var showEndConfirm by remember { mutableStateOf(false) }
+    // Destination awaiting "replace the current trip?" confirmation.
+    var confirmReplaceFor by remember { mutableStateOf<SavedPlace?>(null) }
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
@@ -507,7 +509,9 @@ fun NavigationHomeScreen(
         stage = NavStage.BROWSE; selected = null; query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
         stops = emptyList(); searchTarget = SearchTarget.DESTINATION
-        leftNavManually = false
+        // Keep the "stepped away" flag while a trip is still running so arrival/auto-resume
+        // logic still treats this screen as owning it (only reset once nothing is live).
+        if (!navState.sessionState.isActiveNav()) leftNavManually = false
         finishedRide = null; finishedPoints = null; finishResolved = false
     }
 
@@ -561,6 +565,7 @@ fun NavigationHomeScreen(
     // destination; clears the transient search/preview state and resets the
     // finished-ride state so the screen reloads this trip's result.
     fun finishTrip() {
+        if (stage == NavStage.TRIP_FINISHED) return
         arrivalLatched = true
         leftNavManually = false
         GoogleNavSdkController.stop()
@@ -593,6 +598,15 @@ fun NavigationHomeScreen(
             stage = NavStage.NAVIGATING
         } else if (owningTrip && navState.sessionState == NavSessionState.ARRIVED) {
             finishTrip()
+        }
+    }
+
+    // ARRIVED as a one-shot event: the state flow is conflated and can be overwritten
+    // (coordinator revert -> STOPPED) before the effect above ever sees ARRIVED. Any
+    // in-app trip is owned by this screen, whichever stage the rider is looking at.
+    LaunchedEffect(Unit) {
+        GoogleNavSdkProvider.tripEnded.collect { end ->
+            if (end == GoogleNavSdkProvider.TripEnd.ARRIVED && !arrivalLatched) finishTrip()
         }
     }
 
@@ -888,7 +902,14 @@ fun NavigationHomeScreen(
                                 stops = stops.toMutableList().apply { add(to, removeAt(idx)) }
                             }
                         },
-                        onStart = { selected?.let(::startTo) },
+                        onStart = {
+                            selected?.let { p ->
+                                // A trip is already running (rider stepped away to the map):
+                                // starting another replaces it, so ask first.
+                                val tripLive = GoogleNavSdkProvider.activeTrip.value != null && startFailure == null
+                                if (tripLive || navState.sessionState.isActiveNav()) confirmReplaceFor = p else startTo(p)
+                            }
+                        },
                         onBack = { stage = NavStage.CONFIRM },
                     )
                 }
@@ -1086,6 +1107,14 @@ fun NavigationHomeScreen(
             ExitConfirmDialog(
                 onConfirm = { showExitConfirm = false; onExit() },
                 onDismiss = { showExitConfirm = false },
+            )
+        }
+
+        confirmReplaceFor?.let { p ->
+            ReplaceTripConfirmDialog(
+                destination = p.label,
+                onConfirm = { confirmReplaceFor = null; startTo(p) },
+                onDismiss = { confirmReplaceFor = null },
             )
         }
 
@@ -1589,6 +1618,26 @@ private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         text = { Text("This stops guidance to the dash and finishes the trip.", fontFamily = Barlow) },
         confirmButton = { TextButton(onClick = onConfirm) { Text("END", color = Ktm.Danger) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
+    )
+}
+
+@Composable
+private fun ReplaceTripConfirmDialog(destination: String?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Ktm.Surface,
+        titleContentColor = Ktm.White,
+        textContentColor = Ktm.TextSecondary,
+        title = { Text("Replace current trip?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
+        text = {
+            Text(
+                "Your current navigation will stop and a new trip" +
+                    (destination?.let { " to $it" } ?: "") + " will start.",
+                fontFamily = Barlow,
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("REPLACE", color = Ktm.Orange) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("KEEP CURRENT", color = Ktm.TextPrimary) } },
     )
 }
 

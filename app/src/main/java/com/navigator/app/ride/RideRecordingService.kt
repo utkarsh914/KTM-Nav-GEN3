@@ -101,15 +101,15 @@ class RideRecordingService : Service() {
         private const val EXTRA_LNG = "lng"
 
         /** Start recording a trip toward the (optional) destination. */
-        fun start(context: Context, destLabel: String?, destLat: Double?, destLng: Double?) {
+        fun start(context: Context, destLabel: String?, destLat: Double?, destLng: Double?): Boolean {
             val intent = Intent(context, RideRecordingService::class.java).apply {
                 putExtra(EXTRA_LABEL, destLabel)
                 destLat?.let { putExtra(EXTRA_LAT, it) }
                 destLng?.let { putExtra(EXTRA_LNG, it) }
             }
-            runCatching {
+            return runCatching {
                 context.startForegroundService(intent)
-            }.onFailure { AppLogger.log("Ride", "!! start service failed: $it") }
+            }.onFailure { AppLogger.log("Ride", "!! start service failed: $it") }.isSuccess
         }
 
         /** Stop recording and finalise the ride. */
