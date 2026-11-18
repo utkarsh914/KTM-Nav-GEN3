@@ -6,6 +6,7 @@ import android.service.notification.StatusBarNotification
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
 
@@ -56,11 +57,12 @@ class AppNotificationListener : NotificationListenerService() {
         // Debug only: logs the package + category of EVERY app's notification, which
         // would otherwise be mirrored to the public Downloads log in release.
         if (com.navigator.app.BuildConfig.DEBUG) {
-            AppLogger.log("Notif", "Posted: pkg=$packageName category=${sbn.notification.category} title=${redact(title)}")
+            AppLogger.log("Notif", "Posted: pkg=$packageName category=${sbn.notification.category} flags=0x${Integer.toHexString(sbn.notification.flags)} title=${redact(title)}")
         }
         if (title.isBlank() && text.isBlank()) return
 
         val isNav = isNavigationNotification(sbn, settings)
+        if (isNav) navKeys.add(sbn.key)
         val appLabel = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
         } catch (e: Exception) {
@@ -71,7 +73,9 @@ class AppNotificationListener : NotificationListenerService() {
             // Keep the two navigation engines mutually exclusive: when the in-app
             // Google Nav SDK is the selected engine, it owns the dash - don't also
             // mirror another nav app's turn notifications to it.
-            if (settings.googleNavEnabled) return
+            if (GoogleNavSdkController.isActive(this, settings) ||
+                com.navigator.app.nav.providers.GoogleNavSdkProvider.isTripInProgress
+            ) return
             val navText = if (title.isNotBlank()) "$title $text" else text
             AppLogger.log("Notif", "Nav update from $packageName: distance=${redact(title)} road=${redact(text)}")
             // Dump every extras key so we can see, from real logs, exactly which
@@ -216,7 +220,8 @@ class AppNotificationListener : NotificationListenerService() {
     }
 
     private fun handleRemoved(sbn: StatusBarNotification) {
-        if (isNavigationNotification(sbn, settings)) {
+        val trackedNav = navKeys.remove(sbn.key)
+        if (trackedNav || isNavigationNotification(sbn, settings)) {
             AppLogger.log("Notif", "Nav notification removed from ${sbn.packageName} - scheduling guidance clear")
             // TurnBeeper.reset() deliberately NOT called here: Maps routinely
             // removes+reposts its notification mid-route, and resetting the beep
@@ -264,15 +269,19 @@ class AppNotificationListener : NotificationListenerService() {
      */
     private fun redact(s: String): String = if (s.isEmpty()) "<empty>" else "<${s.length} chars>"
 
-    private fun isNavigationNotification(sbn: StatusBarNotification, settings: AppSettings): Boolean {
-        val override = settings.navAppOverride
-        if (override != null) {
-            return sbn.packageName == override
-        }
-        // Any notification from a known nav app counts, not just ones tagged
-        // CATEGORY_NAVIGATION - several maps apps don't reliably set that
-        // category on their turn-by-turn notification, so requiring both
-        // was silently dropping real navigation updates.
-        return sbn.packageName in AppSettings.KNOWN_NAV_APPS
-    }
+    // Keys of notifications accepted as navigation guidance, so a removal is only
+    // treated as "guidance ended" for those (not for Maps' traffic/sharing alerts).
+    private val navKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    // Any notification from a known nav app counts (several apps don't reliably set
+    // CATEGORY_NAVIGATION - requiring it dropped real updates), except for Google
+    // Maps, whose non-guidance notifications are filtered out; see NavNotificationFilter.
+    private fun isNavigationNotification(sbn: StatusBarNotification, settings: AppSettings): Boolean =
+        NavNotificationFilter.isNavigation(
+            packageName = sbn.packageName,
+            flags = sbn.notification.flags,
+            category = sbn.notification.category,
+            navAppOverride = settings.navAppOverride,
+            knownNavApps = AppSettings.KNOWN_NAV_APPS,
+        )
 }

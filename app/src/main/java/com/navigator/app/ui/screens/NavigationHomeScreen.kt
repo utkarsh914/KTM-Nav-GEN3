@@ -120,6 +120,7 @@ import com.navigator.app.ui.theme.Motion
 import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -316,6 +317,10 @@ fun NavigationHomeScreen(
 
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
+    // Why the requested trip couldn't start (route failure / navigator unavailable).
+    val startFailure by GoogleNavSdkProvider.startFailure.collectAsState()
+    // Last destination handed to the SDK, so the failure card can Retry it.
+    var lastStartedDest by remember { mutableStateOf<NavDestination?>(null) }
 
     // Internet reachability, for the offline banner during active navigation.
     val isOnline by ConnectivityMonitor.isOnline.collectAsState()
@@ -507,6 +512,7 @@ fun NavigationHomeScreen(
     }
 
     fun startTo(p: SavedPlace) {
+        GoogleNavSdkProvider.clearStartFailure()
         store.addRecent(p)
         recents = store.recents()
         val sel = previewRoutes.getOrNull(selectedRoute)
@@ -514,7 +520,9 @@ fun NavigationHomeScreen(
         // same mode (else it rejects the token and silently picks its own route).
         val mode = sel?.travelMode ?: com.navigator.app.nav.model.TravelMode.TWO_WHEELER
         val tripStops = stops.map { com.navigator.app.nav.model.Stop(it.lat, it.lng, it.label) }
-        onStartNavigation(NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops))
+        val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
+        lastStartedDest = dest
+        onStartNavigation(dest)
         arrivalLatched = false
         arrivalBestRemainingM = Double.MAX_VALUE
         arrivalLastProgressMs = System.currentTimeMillis()
@@ -523,6 +531,17 @@ fun NavigationHomeScreen(
         // Clear any prior ride-finish result so the next emission is this trip's.
         RideEvents.clear()
         stage = NavStage.NAVIGATING
+    }
+
+    fun retryStart() {
+        val dest = lastStartedDest ?: return
+        arrivalLatched = false
+        arrivalBestRemainingM = Double.MAX_VALUE
+        arrivalLastProgressMs = System.currentTimeMillis()
+        leftNavManually = false
+        RideEvents.clear()
+        stage = NavStage.NAVIGATING
+        onStartNavigation(dest)
     }
 
     // Leave the active-navigation view but KEEP the trip running (foreground
@@ -635,9 +654,15 @@ fun NavigationHomeScreen(
     // stalled for ARRIVAL_STALL_MS (rider parked just shy of the point, or
     // guidance stalled near the end), finish the trip. Ticks on a timer so it
     // fires even when no fresh NavInfo frames arrive (e.g. stuck offline reroute).
+    // Keyed on `stage` etc. but NOT on the session state: startTo() enters NAVIGATING
+    // while the session is still IDLE, so the loop must outlive that and re-check the
+    // live conditions every tick (a loop conditioned on isActiveNav() exited at once
+    // and never restarted when ENROUTE arrived).
     LaunchedEffect(stage, arrivalLatched, leftNavManually) {
-        while (owningTrip && !arrivalLatched && navState.sessionState.isActiveNav()) {
+        while (isActive && !arrivalLatched) {
             delay(5_000)
+            val owning = stage == NavStage.NAVIGATING || (stage == NavStage.BROWSE && leftNavManually)
+            if (!owning || !navState.sessionState.isActiveNav()) continue
             val remaining = navState.remainingDistanceMeters ?: continue
             val stalled = System.currentTimeMillis() - arrivalLastProgressMs >= ARRIVAL_STALL_MS
             if (remaining <= ARRIVAL_OUTER_RADIUS_M && stalled) {
@@ -645,6 +670,11 @@ fun NavigationHomeScreen(
                 break
             }
         }
+    }
+
+    // A failed start while the rider stepped away to the map: bring the failure card up.
+    LaunchedEffect(startFailure) {
+        if (startFailure != null && stage == NavStage.BROWSE) resumeNav()
     }
 
     // A Google Maps link shared into the app -> resolve it and jump to CONFIRM.
@@ -891,13 +921,43 @@ fun NavigationHomeScreen(
                 // In full-SDK mode Google draws its own header/lanes/speedometer/ETA,
                 // so we suppress ours AND keep the top zone clear (the SDK header is
                 // full-width there); the offline banner is relocated below.
+                startFailure?.let { failure ->
+                    RouteFailureCard(
+                        failure = failure,
+                        canRetry = lastStartedDest != null,
+                        onRetry = {
+                            GoogleNavSdkProvider.clearStartFailure()
+                            retryStart()
+                        },
+                        onBackToPreview = {
+                            GoogleNavSdkProvider.clearStartFailure()
+                            GoogleNavSdkController.stop()
+                            leftNavManually = false
+                            stage = NavStage.PREVIEW
+                        },
+                        onClose = {
+                            GoogleNavSdkProvider.clearStartFailure()
+                            GoogleNavSdkController.stop()
+                            backToBrowse()
+                        },
+                        modifier = Modifier.align(Alignment.Center).systemBarsPadding().padding(24.dp),
+                    )
+                }
                 if (!fullSdkNavUi) {
                     Column(
                         modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
                             .padding(start = 12.dp, end = 12.dp, top = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        NavGuidanceHeader(
+                        if (startFailure != null) {
+                            // The failure card owns the screen.
+                        } else if (navState.sessionState == NavSessionState.IDLE ||
+                            navState.sessionState == NavSessionState.STOPPED
+                        ) {
+                            // Route still being computed (token -> retry -> mode fallback can
+                            // legitimately take a while): say so instead of a blank header.
+                            OfflineBanner(text = "Calculating route…")
+                        } else NavGuidanceHeader(
                             nav = navState,
                             // Safeguard: while lanes show, drop the "Then" chip so the
                             // top cluster can't grow tall enough to crowd other elements.
@@ -1552,6 +1612,54 @@ private fun OfflineBanner(text: String) {
             color = Ktm.White,
             fontFamily = Barlow,
             fontSize = 13.sp,
+        )
+    }
+}
+
+/** Shown on the navigation screen when the requested trip could not be started. */
+@Composable
+private fun RouteFailureCard(
+    failure: com.navigator.app.nav.providers.StartFailure,
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+    onBackToPreview: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .background(Ktm.Surface)
+            .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "Navigation didn't start", color = Ktm.White, fontFamily = BarlowCondensed,
+            fontWeight = FontWeight.Bold, fontSize = 20.sp,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(failure.message, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Spacer(Modifier.height(16.dp))
+        if (canRetry) {
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(Ktm.RadiusButton)).background(Ktm.Orange)
+                    .clickable { haptics.confirm(); onRetry() }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("Retry", color = Ktm.OnAccent, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+            Spacer(Modifier.height(8.dp))
+        }
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(Ktm.RadiusButton)).border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
+                .clickable { haptics.tap(); onBackToPreview() }.padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text("Back to route preview", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Close", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
+            modifier = Modifier.clickable { haptics.tap(); onClose() }.padding(12.dp),
         )
     }
 }

@@ -55,6 +55,11 @@ object GoogleNavSdkController {
             GoogleApiAvailability.getInstance()
                 .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
 
+    /** True when the in-app Nav SDK engine is both available and selected in Settings
+     *  (the single source of truth for notification mirroring vs in-app guidance). */
+    fun isActive(context: Context, settings: com.navigator.app.settings.AppSettings): Boolean =
+        settings.googleNavEnabled && isAvailable(context)
+
     /** Set the Nav SDK API key once (idempotent). Safe to call before showing the map. */
     fun ensureApiKey() {
         if (!apiKeySet && BuildConfig.NAV_SDK_API_KEY.isNotBlank()) {
@@ -98,8 +103,10 @@ object GoogleNavSdkController {
     }
 
     fun startNavigation(activity: Activity, dest: NavDestination) {
+        GoogleNavSdkProvider.clearStartFailure()
         if (!isAvailable(activity)) {
             AppLogger.log("Nav", "Google Nav SDK unavailable (no key or Play services); ignoring")
+            GoogleNavSdkProvider.reportStartFailure(StartFailure.UNAVAILABLE)
             return
         }
         if (!apiKeySet) {
@@ -118,6 +125,7 @@ object GoogleNavSdkController {
 
             override fun onError(errorCode: Int) {
                 AppLogger.log("Nav", "!! getNavigator error code=$errorCode (see NavigationApi.ErrorCode)")
+                GoogleNavSdkProvider.reportStartFailure(StartFailure.NAVIGATOR_UNAVAILABLE)
             }
         })
     }

@@ -67,24 +67,62 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private val _currentDestination = MutableStateFlow<NavDestination?>(null)
     val currentDestination: StateFlow<NavDestination?> = _currentDestination.asStateFlow()
 
-    private val arrivalListener = Navigator.ArrivalListener { event ->
-        if (!event.isFinalDestination) {
-            // Reached an intermediate stop: advance to the next waypoint and keep
-            // guidance running. Do NOT emit ARRIVED (that would end the trip).
-            AppLogger.log("Nav", "Nav SDK arrival at stop - continuing to next destination")
-            runCatching { navigator?.continueToNextDestination() }
-            runCatching { navigator?.startGuidance() }
-            return@ArrivalListener
+    /** Generation of the trip in progress; every async callback checks it. See [TripGeneration]. */
+    private val trips = TripGeneration()
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Why the last requested trip couldn't start (null while fine). Drives the
+     *  route-failure card; cleared when a new trip starts or the rider dismisses it. */
+    private val _startFailure = MutableStateFlow<StartFailure?>(null)
+    val startFailure: StateFlow<StartFailure?> = _startFailure.asStateFlow()
+
+    fun clearStartFailure() { _startFailure.value = null }
+
+    /** Record a failure that happened before the provider could start the trip
+     *  (e.g. no navigator). The trip counts as ended. */
+    fun reportStartFailure(reason: StartFailure) {
+        onMain {
+            trips.invalidate()
+            guidanceActive = false
+            stopSdkGuidance()
+            _currentDestination.value = null
+            _startFailure.value = reason
+            _state.value = NormalizedNavigationState(
+                sessionState = NavSessionState.STOPPED,
+                producedAtMs = System.currentTimeMillis(),
+            )
         }
-        AppLogger.log("Nav", "Nav SDK arrival (final)")
-        guidanceActive = false
-        lastEnroute = null
-        lastLoggedStep = null
-        _currentDestination.value = null
-        _state.value = NormalizedNavigationState(
-            sessionState = NavSessionState.ARRIVED,
-            producedAtMs = System.currentTimeMillis(),
-        )
+    }
+
+    /** Run [block] on the main thread (SDK callbacks may arrive on other threads;
+     *  all trip state transitions are serialised on main). */
+    private fun onMain(block: () -> Unit) {
+        if (android.os.Looper.myLooper() === android.os.Looper.getMainLooper()) block() else mainHandler.post(block)
+    }
+
+    private val arrivalListener = Navigator.ArrivalListener { event ->
+        val isFinal = event.isFinalDestination
+        onMain {
+            if (!guidanceActive) return@onMain // late event from a trip that already ended
+            if (!isFinal) {
+                // Reached an intermediate stop: advance to the next waypoint and keep
+                // guidance running. Do NOT emit ARRIVED (that would end the trip).
+                AppLogger.log("Nav", "Nav SDK arrival at stop - continuing to next destination")
+                runCatching { navigator?.continueToNextDestination() }
+                runCatching { navigator?.startGuidance() }
+                return@onMain
+            }
+            AppLogger.log("Nav", "Nav SDK arrival (final)")
+            trips.invalidate()
+            guidanceActive = false
+            lastEnroute = null
+            lastLoggedStep = null
+            _currentDestination.value = null
+            _state.value = NormalizedNavigationState(
+                sessionState = NavSessionState.ARRIVED,
+                producedAtMs = System.currentTimeMillis(),
+            )
+        }
     }
 
     override fun attach() { /* driven by the controller once the navigator is ready */ }
@@ -120,8 +158,14 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     override fun startNavigation(dest: NavDestination, mode: TravelMode) {
         val nav = navigator ?: run {
             AppLogger.log("Nav", "!! startNavigation with no navigator")
+            reportStartFailure(StartFailure.NAVIGATOR_UNAVAILABLE)
             return
         }
+        val trip = trips.next()
+        // Frames from a previous trip still being guided must not update state
+        // while the new route is computed (guidanceActive is set again on route OK).
+        guidanceActive = false
+        _startFailure.value = null
         _currentDestination.value = dest
         // Drop the previous trip's terminal state (STOPPED/ARRIVED) so nothing
         // collecting this flow for the new trip mistakes it for this trip ending.
@@ -134,12 +178,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         val waypoints = buildWaypoints(dest)
         val token = dest.routeToken
         if (!token.isNullOrBlank()) {
-            if (guideWithToken(nav, waypoints, token, mode)) return
+            if (guideWithToken(nav, trip, waypoints, token, mode)) return
             // Token path couldn't even be attempted (SDK threw) - the started
             // route will be the SDK's own, so tell the rider.
             notifyRouteSubstituted()
         }
-        setDestinationAndGuide(nav, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+        setDestinationAndGuide(nav, trip, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
     }
 
     /** Stops (in order) + final destination as SDK [Waypoint]s. */
@@ -171,6 +215,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
      */
     private fun guideWithToken(
         nav: Navigator,
+        trip: Long,
         waypoints: List<Waypoint>,
         token: String,
         mode: TravelMode,
@@ -188,20 +233,32 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             .build()
         AppLogger.log("Nav", "setDestinations(routeToken, $mode, ${waypoints.size} wp) -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
         nav.setDestinations(waypoints, options).setOnResultListener { status ->
-            when {
-                status == Navigator.RouteStatus.OK -> {
-                    AppLogger.log("Nav", "Route (token) OK - starting guidance")
-                    guidanceActive = true
-                    nav.startGuidance()
+            onMain {
+                if (!trips.isCurrent(trip)) {
+                    AppLogger.log("Nav", "Route (token) result $status ignored - trip superseded/ended")
+                    return@onMain
                 }
-                retriesLeft > 0 -> {
-                    AppLogger.log("Nav", "token route failed ($status) - retrying token ($retriesLeft left)")
-                    guideWithToken(nav, waypoints, token, mode, retriesLeft - 1)
-                }
-                else -> {
-                    AppLogger.log("Nav", "token route failed ($status) - falling back to default route")
-                    notifyRouteSubstituted()
-                    setDestinationAndGuide(nav, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+                when (RouteResultPolicy.decide(
+                    ok = status == Navigator.RouteStatus.OK,
+                    canceled = status == Navigator.RouteStatus.ROUTE_CANCELED,
+                    canRetry = true,
+                )) {
+                    RouteResultAction.START -> {
+                        AppLogger.log("Nav", "Route (token) OK - starting guidance")
+                        guidanceActive = true
+                        nav.startGuidance()
+                    }
+                    // Canceled while this trip is still current: something outside the
+                    // provider replaced the request. Never retried; end the trip visibly.
+                    RouteResultAction.IGNORE_CANCELED -> failTrip(trip, "token route canceled by the SDK")
+                    else -> if (retriesLeft > 0) {
+                        AppLogger.log("Nav", "token route failed ($status) - retrying token ($retriesLeft left)")
+                        guideWithToken(nav, trip, waypoints, token, mode, retriesLeft - 1)
+                    } else {
+                        AppLogger.log("Nav", "token route failed ($status) - falling back to default route")
+                        notifyRouteSubstituted()
+                        setDestinationAndGuide(nav, trip, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+                    }
                 }
             }
         }
@@ -226,6 +283,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     private fun setDestinationAndGuide(
         nav: Navigator,
+        trip: Long,
         waypoints: List<Waypoint>,
         mode: TravelMode,
         allowFallback: Boolean,
@@ -239,31 +297,59 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         )
         AppLogger.log("Nav", "setDestinations mode=$mode, ${waypoints.size} wp -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
         nav.setDestinations(waypoints, options).setOnResultListener { status ->
-            when {
-                status == Navigator.RouteStatus.OK -> {
-                    AppLogger.log("Nav", "Route OK - starting guidance")
-                    guidanceActive = true
-                    nav.startGuidance()
+            onMain {
+                if (!trips.isCurrent(trip)) {
+                    AppLogger.log("Nav", "Route result $status ignored - trip superseded/ended")
+                    return@onMain
                 }
-                allowFallback -> {
-                    AppLogger.log("Nav", "TWO_WHEELER route failed ($status) - retrying DRIVING")
-                    setDestinationAndGuide(nav, waypoints, TravelMode.DRIVING, allowFallback = false)
-                }
-                else -> {
-                    AppLogger.log("Nav", "!! Route failed: $status")
-                    _state.value = NormalizedNavigationState(
-                        sessionState = NavSessionState.STOPPED,
-                        producedAtMs = System.currentTimeMillis(),
-                    )
+                when (RouteResultPolicy.decide(
+                    ok = status == Navigator.RouteStatus.OK,
+                    canceled = status == Navigator.RouteStatus.ROUTE_CANCELED,
+                    canRetry = allowFallback,
+                )) {
+                    RouteResultAction.START -> {
+                        AppLogger.log("Nav", "Route OK - starting guidance")
+                        guidanceActive = true
+                        nav.startGuidance()
+                    }
+                    RouteResultAction.IGNORE_CANCELED -> failTrip(trip, "route canceled by the SDK")
+                    RouteResultAction.RETRY -> {
+                        AppLogger.log("Nav", "TWO_WHEELER route failed ($status) - retrying DRIVING")
+                        setDestinationAndGuide(nav, trip, waypoints, TravelMode.DRIVING, allowFallback = false)
+                    }
+                    RouteResultAction.FAIL -> failTrip(trip, "route failed: $status")
                 }
             }
         }
+    }
+
+    /** Make sure the SDK isn't still guiding (and voicing) a route the app no longer tracks. */
+    private fun stopSdkGuidance() {
+        navigator?.let { nav ->
+            runCatching { nav.stopGuidance() }
+            runCatching { nav.clearDestinations() }
+        }
+    }
+
+    /** The requested route could not be started: end the trip and surface the reason. */
+    private fun failTrip(trip: Long, why: String) {
+        if (!trips.isCurrent(trip)) return
+        AppLogger.log("Nav", "!! $why")
+        trips.invalidate()
+        guidanceActive = false
+        stopSdkGuidance()
+        _startFailure.value = StartFailure.ROUTE
+        _state.value = NormalizedNavigationState(
+            sessionState = NavSessionState.STOPPED,
+            producedAtMs = System.currentTimeMillis(),
+        )
     }
 
     override fun stopNavigation() {
         // Stop consuming updates *before* tearing down guidance so any in-flight
         // NavInfo frame (or one produced by continued movement) can't flip the
         // state back to ENROUTE and resume navigation.
+        trips.invalidate()
         guidanceActive = false
         lastEnroute = null
         lastLoggedStep = null
@@ -280,6 +366,15 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** Forwarded from [NavInfoReceivingService] on each ~1 Hz update. */
     fun onNavInfo(navInfo: NavInfo) {
+        // Arrives on the SDK's HandlerThread; hop to main so the guidance check and
+        // the state write can't interleave with stopNavigation()/arrival there.
+        val trip = trips.current()
+        onMain {
+            if (trips.isCurrent(trip)) handleNavInfo(navInfo)
+        }
+    }
+
+    private fun handleNavInfo(navInfo: NavInfo) {
         // Ignore updates once the trip has ended (stopped or arrived). The SDK's
         // NavInfo stream keeps delivering ENROUTE frames while the rider moves
         // past the destination; without this guard those frames would overwrite

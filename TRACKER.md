@@ -27,7 +27,7 @@ Target: **Android 16+ only (minSdk 36)**.
 |---|---|---|---|---|
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
 | 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
-| 1 | Critical bugs, crashes, log privacy | 9 | 14 | S1-S6, PR1-PR3 done; C1-C4, N1 pending (batch 4) |
+| 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
 | 2 | Navigation state, UI state, pairing | 0 | 23 | Not started |
 | 3 | BLE robustness | 0 | 11 | Not started |
 | 4 | Data integrity, parsing, network | 0 | 25 | Not started |
@@ -69,11 +69,11 @@ Target: **Android 16+ only (minSdk 36)**.
 ### Broken features
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | C1 | `navSdkActive = isAvailable && setting` shared by listener, home route, settings | | |
-| [ ] | C2 | Idle auto-finish loop keyed on `isActiveNav()` / `while (isActive)` | | |
-| [ ] | C4 | Nav notification: `ONGOING \|\| CATEGORY_NAVIGATION` per package, track `sbn.key`, clear only that key, skip summaries (do NOT require category alone) | | 🔎 🏍 Applied directly (no shadow mode); check with real Maps notifications |
-| [ ] | N1 | Trip generation token; main-thread state writes; **`ROUTE_CANCELED` terminal, never retried** (prereq for C3) | | 🏍 |
-| [ ] | C3 | Route-failure card (Retry / Back to preview / Use Maps mirror); "Still calculating…" instead of auto-abort (after N1) | | 🏍 |
+| [x] | C1 | `navSdkActive = isAvailable && setting` shared by listener, home route, settings | | |
+| [x] | C2 | Idle auto-finish loop keyed on `isActiveNav()` / `while (isActive)` | | |
+| [x] | C4 | Nav notification: `ONGOING \|\| CATEGORY_NAVIGATION` per package, track `sbn.key`, clear only that key, skip summaries (do NOT require category alone) | | 🔎 🏍 Applied directly (no shadow mode); check with real Maps notifications Reviewer caveat: ongoing location-sharing notifs may still pass; check `flags=` in the debug 'Posted:' log with real Maps notifs and tighten if needed |
+| [x] | N1 | Trip generation token; main-thread state writes; **`ROUTE_CANCELED` terminal, never retried** (prereq for C3) | | 🏍 |
+| [x] | C3 | Route-failure card (Retry / Back to preview / Use Maps mirror); "Still calculating…" instead of auto-abort (after N1) | | 🏍 Card has Retry / Back to preview / Close (no 'Use Maps mirror' button) |
 
 ### Crashes
 | Done | ID | Item | Commit | Notes |

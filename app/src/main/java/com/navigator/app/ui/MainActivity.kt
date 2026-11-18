@@ -314,9 +314,7 @@ private fun OpenDashApp(
     // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
     // available) -> the mirror home. The two engines stay mutually exclusive.
     fun homeRoute(): AppRoute =
-        if (com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
-            settings.googleNavEnabled
-        ) AppRoute.NAV_HOME else AppRoute.MIRROR_HOME
+        if (com.navigator.app.nav.providers.GoogleNavSdkController.isActive(appContext, settings)) AppRoute.NAV_HOME else AppRoute.MIRROR_HOME
     var route by remember {
         mutableStateOf(
             when {
@@ -359,8 +357,7 @@ private fun OpenDashApp(
 
     // In-app Google navigation is offered when a key + Play Services are present
     // AND the user hasn't switched to mirror-only in Settings.
-    val googleNavOffered = com.navigator.app.nav.providers.GoogleNavSdkController.isAvailable(appContext) &&
-        settings.googleNavEnabled
+    val googleNavOffered = com.navigator.app.nav.providers.GoogleNavSdkController.isActive(appContext, settings)
 
     // A Google Maps link shared into the app -> open the map home, which resolves
     // the link and drops into the confirm stage.
