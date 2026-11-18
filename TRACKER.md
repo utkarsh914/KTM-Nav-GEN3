@@ -39,6 +39,24 @@ Target: **Android 16+ only (minSdk 36)**.
 
 ---
 
+## Commit log (batches)
+
+| Batch | Scope | Commit |
+|---|---|---|
+| 1 | Safety net (SF1-SF4) | `34062bc` |
+| 2 | minSdk 36 cleanup | `a579397` |
+| 3 | Crash-proofing + log privacy | `8056314` |
+| 4 | Navigation core (C1-C4, N1) | `d028a3e` |
+| 5 | Navigation state (N2-N7) | `24594f2` |
+| 6 | UI state + pairing | `0717a43` |
+| 7 | **Bucket C (dash-dependent), single commit** | `a2fccb0` |
+| 8 | Rides + places | `ad25ad0` |
+| 9 | Notification parsing + network | `605e1fd` |
+| 10 | Settings, build, docs | `35061c5` |
+| 11 | UX polish | `7004c3f` |
+
+Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit tests all green.
+
 ## Phase S: Safety net & verification protocol (first; no dash available)
 
 | Done | ID | Item | Commit | Notes |
