@@ -132,7 +132,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [x] | U4 | Cancel place-details job on back; error on null | | |
 | [x] | U5 | `starting` guard against double Start | | |
 | [x] | U6 | Greeting banner `try/finally` | | |
-| [ ] | U7 | Nav UI state → ViewModel/`SavedStateHandle` DEFERRED: large refactor, can't be verified without UI testing (alt: manifest configChanges) |
+| [x] | U7 | Nav UI state → ViewModel/`SavedStateHandle` DEFERRED: large refactor, can't be verified without UI testing (alt: manifest configChanges) |
 | [x] | U8 | Permission request only on fresh launch & when not granted | | |
 | [x] | U9 | Map owner token; Home `DisposableEffect` cleanup; Replay no longer clears shared map | | |
 | [x] | U10 | Compass/GPS listeners gated on lifecycle ≥ STARTED | | |
@@ -265,7 +265,7 @@ Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
 | St | ID | Item | Notes |
 |---|---|---|---|
 | [x] | A1 | Dependency bumps within AGP 8.13.2 / Gradle 8.13 limits (ST8); compileSdk 36.1 (needed by F1) | core-ktx 1.17.0 (1.19 needs compileSdk 37/AGP 9.1), appcompat 1.7.1, material 1.13.0, activity-compose 1.12.4, lifecycle 2.10.0, coroutines 1.11.0, gms-base 18.11.1; compileSdk 36.1, targetSdk 36. Tests+lint unchanged (6 errors). ST8 done |
-| [ ] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | |
+| [x] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | NavFlow.kt (pure NavFlowState/Rules/ArrivalPolicy/Codec + NavFlowViewModel, attach/detach counting), MainActivity routes rememberSaveable, manifest configChanges (locale still recreates, now safe). ~20 new tests. Needs on-device check: rotate on each stage, background-kill restore |
 | [ ] | A3 | Android 16 checks (0.6): insets on every screen, predictive back, landscape / large screen | code review only; visual check by user |
 | [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
 | [ ] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | revert alone if pairing breaks |
@@ -295,7 +295,7 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | [x] | T2 | `RideMetrics` (extend): jitter, spikes, backwards time, gaps, moving average | | |
 | [x] | T3 | `SerialGattQueue` (extend): late completion after timeout | | |
 | [x] | T4 | Nav trip-token logic (pure class): stale result/NavInfo ignored; `ROUTE_CANCELED` never retried | | |
-| [ ] | T5 | Nav stage state machine: C2, C3, N4, U1, U2 | | |
+| [x] | T5 | Nav stage state machine: C2, C3, N4, U1, U2 | | |
 | [x] | T6 | `TurnBeeper.parseMeters` (new), severity words, `NavSubtextParser` edge cases, `maneuverTextFor` | | |
 | [x] | T7 | `MapsUrlResolver` (extend): allowlist, foreign redirect, trailing punctuation | | |
 | [x] | T8 | `RoutesClient` (extend): malformed polyline, fractional durations | | |

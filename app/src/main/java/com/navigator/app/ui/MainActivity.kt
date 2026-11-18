@@ -322,7 +322,9 @@ private fun OpenDashApp(
     // available) -> the mirror home. The two engines stay mutually exclusive.
     fun homeRoute(): AppRoute =
         if (com.navigator.app.nav.providers.GoogleNavSdkController.isActive(appContext, settings)) AppRoute.NAV_HOME else AppRoute.MIRROR_HOME
-    var route by remember {
+    // rememberSaveable: after the process was killed in the background the rider lands back
+    // on the screen they were on (enums are Serializable, so no custom saver is needed).
+    var route by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf(
             when {
                 !settings.brandChosen -> AppRoute.BRAND      // first run: pick the bike brand first
@@ -355,12 +357,12 @@ private fun OpenDashApp(
 
     // Where "Change bike / brand" returns to: Settings when reached from there,
     // null (forward-only to pairing) on first run.
-    var brandReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
+    var brandReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<AppRoute?>(null) }
     // Return targets for screens reachable from more than one parent.
-    var settingsReturnRoute by remember { mutableStateOf(homeRoute()) }
+    var settingsReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(homeRoute()) }
     // Non-null when Pairing is reached from the map home's Connect pill (so it
     // gets a back affordance); null on the forced first-run pairing step.
-    var pairingReturnRoute by remember { mutableStateOf<AppRoute?>(null) }
+    var pairingReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<AppRoute?>(null) }
 
     // In-app Google navigation is offered when a key + Play Services are present
     // AND the user hasn't switched to mirror-only in Settings.
@@ -397,16 +399,16 @@ private fun OpenDashApp(
         if (openNav) MainActivity.openNavRequest.value = false
     }
 
-    var logsReturnRoute by remember { mutableStateOf(AppRoute.SETTINGS) }
+    var logsReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(AppRoute.SETTINGS) }
     // Settings scroll position, hoisted above the route switch so opening a
     // sub-section (and coming back) restores the exact scroll offset instead of
     // snapping to the top (SettingsScreen leaves composition on navigation).
     val settingsListState = androidx.compose.foundation.lazy.rememberLazyListState()
     // Where RIDE_REPLAY returns to (history list by default; the map home when a
     // finished trip is opened straight into replay).
-    var replayReturnRoute by remember { mutableStateOf(AppRoute.RECORDINGS) }
+    var replayReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(AppRoute.RECORDINGS) }
     // The ride selected in the history list, shown on the replay screen.
-    var selectedRideId by remember { mutableStateOf<String?>(null) }
+    var selectedRideId by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     // A saved place the rider tapped in Saved Places -> dropped as a pin on the
     // map home (consumed by NavigationHomeScreen on entry, like a shared link).
     var pendingPlace by remember { mutableStateOf<com.navigator.app.nav.destination.SavedPlace?>(null) }

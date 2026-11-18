@@ -131,14 +131,6 @@ import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.math.abs
 
-private enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }
-
-/** Where a place picked in the search panel should be applied. */
-private enum class SearchTarget { DESTINATION, STOP }
-
-/** Maximum intermediate stops (Google Maps allows up to a handful; we cap at 4). */
-private const val MAX_STOPS = 4
-
 /** Transition between [NavStage] chrome. The full-screen SEARCH panel slides up
  *  from / down to the bottom; every other stage change is a gentle fade + small
  *  vertical drift so cards/overlays never hard-cut. */
@@ -147,27 +139,6 @@ private fun stageTransition(initial: NavStage, target: NavStage): ContentTransfo
     initial == NavStage.SEARCH -> Motion.bottomSheetTransition(rising = false)
     else -> Motion.driftTransition()
 }
-
-/** Auto-finish the trip once we're within this many metres of the destination.
- *  Kept generous (vs the old 10 m) because GPS scatter and destinations set off
- *  the road often mean a fix never lands within a tight radius, leaving the trip
- *  running until the SDK's own (sometimes missed) arrival callback. */
-private const val ARRIVAL_RADIUS_M = 40
-
-/** Idle-fallback: once the remaining distance is within this outer radius of the
- *  destination but hasn't dropped below [ARRIVAL_RADIUS_M], finish the trip if it
- *  stops making progress for [ARRIVAL_STALL_MS]. Catches the case where the rider
- *  parks just shy of the exact point, or guidance stalls (offline reroute) near
- *  the end and the SDK arrival callback never fires. */
-private const val ARRIVAL_OUTER_RADIUS_M = 150
-
-/** How long the remaining distance must stall (within the outer radius, not
- *  meaningfully decreasing) before the idle fallback finishes the trip. */
-private const val ARRIVAL_STALL_MS = 45_000L
-
-/** Minimum drop in remaining distance (m) that counts as "still making progress"
- *  and resets the stall timer. Below this the rider is effectively stopped. */
-private const val ARRIVAL_PROGRESS_EPS_M = 15.0
 
 private const val START_DEBOUNCE_MS = 1_500L
 
@@ -247,8 +218,18 @@ fun NavigationHomeScreen(
 
     // ---- Flow state -------------------------------------------------------
     val store = remember { PlacesStore(context) }
-    var stage by remember { mutableStateOf(NavStage.BROWSE) }
-    var selected by remember { mutableStateOf<SavedPlace?>(null) }
+    // Planning-flow state lives in a ViewModel: it survives activity recreation and (the
+    // planning part) process death. See NavFlow.kt for the pure transitions.
+    val flow: NavFlowViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    var stage by flow::stage
+    var selected by flow::selected
+    DisposableEffect(flow) {
+        flow.attach()
+        onDispose {
+            // Leaving the screen for good resets the flow; a configuration change must not.
+            flow.detach(configChange = activity?.isChangingConfigurations == true)
+        }
+    }
     var recents by remember { mutableStateOf(store.recents()) }
     var favorites by remember { mutableStateOf(store.favorites()) }
 
@@ -296,28 +277,28 @@ fun NavigationHomeScreen(
     var previewFailed by remember { mutableStateOf(false) }
     // Intermediate stops (up to MAX_STOPS), in visit order, shown/edited in the
     // preview. Feeds the Routes API `intermediates` and the SDK waypoint list.
-    var stops by remember { mutableStateOf<List<SavedPlace>>(emptyList()) }
+    var stops by flow::stops
     // Where a search pick should go: the destination (normal) or an added stop.
-    var searchTarget by remember { mutableStateOf(SearchTarget.DESTINATION) }
+    var searchTarget by flow::searchTarget
     // True when the CONFIRM card was reached from the search list (Back returns there).
-    var confirmFromSearch by remember { mutableStateOf(true) }
+    var confirmFromSearch by flow::confirmFromSearch
     var resolvingLink by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
     // The rider stepped away from the active-navigation view (Back / minimise)
     // without ending the trip; suppresses auto-resume so they stay on the map,
     // and drives the "Resume navigation" pill. Reset when a new trip starts or
     // the rider explicitly resumes.
-    var leftNavManually by remember { mutableStateOf(false) }
+    var leftNavManually by flow::leftNavManually
     // Confirm before actually ending an in-progress trip.
     var showEndConfirm by remember { mutableStateOf(false) }
-    var lastStartAtMs by remember { mutableStateOf(0L) }
+    var lastStartAtMs by flow::lastStartAtMs
     // Destination awaiting "replace the current trip?" confirmation.
     var confirmReplaceFor by remember { mutableStateOf<SavedPlace?>(null) }
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
-    var tripStartMs by remember { mutableStateOf(0L) }
-    var finishedDurationSec by remember { mutableStateOf(0) }
+    var tripStartMs by flow::tripStartMs
+    var finishedDurationSec by flow::finishedDurationSec
     // The just-finished ride (route + stats), its points, and whether we've
     // learned the recording outcome yet (Saved / Discarded / no-recording).
     var finishedRide by remember { mutableStateOf<RecordedRide?>(null) }
@@ -331,7 +312,7 @@ fun NavigationHomeScreen(
     // Why the requested trip couldn't start (route failure / navigator unavailable).
     val startFailure by GoogleNavSdkProvider.startFailure.collectAsState()
     // Last destination handed to the SDK, so the failure card can Retry it.
-    var lastStartedDest by remember { mutableStateOf<NavDestination?>(null) }
+    var lastStartedDest by flow::lastStartedDest
 
     // Internet reachability, for the offline banner during active navigation.
     val isOnline by ConnectivityMonitor.isOnline.collectAsState()
@@ -350,14 +331,13 @@ fun NavigationHomeScreen(
     // proximity or the SDK's arrival callback) and reset only when a new trip
     // starts, so continued movement past the destination can't re-run the
     // proximity auto-finish or otherwise re-trigger arrival handling.
-    var arrivalLatched by remember { mutableStateOf(false) }
+    var arrivalLatched by flow::arrivalLatched
 
     // Idle-fallback bookkeeping: the smallest remaining-distance seen this trip
     // and the wall-clock time it last meaningfully decreased. Used to finish a
     // trip that stalls near (but not exactly at) the destination without an SDK
     // arrival callback. Reset when a new trip starts (see startTo/backToBrowse).
-    var arrivalBestRemainingM by remember { mutableStateOf(Double.MAX_VALUE) }
-    var arrivalLastProgressMs by remember { mutableStateOf(0L) }
+    var arrivalProgress by flow::arrivalProgress
 
     // ---- Search state -----------------------------------------------------
     val auth = remember { PlacesClient.androidAuth(context) }
@@ -365,7 +345,7 @@ fun NavigationHomeScreen(
     // autocomplete bias and preview bounds don't use a stale launch-time position.
     var origin by remember { mutableStateOf(lastLocation(context)) }
     var sessionToken by remember { mutableStateOf(UUID.randomUUID().toString()) }
-    var query by remember { mutableStateOf("") }
+    var query by flow::query
     var results by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var searchFailed by remember { mutableStateOf(false) }
@@ -495,43 +475,29 @@ fun NavigationHomeScreen(
     fun openSearch() {
         origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
-        query = ""; results = emptyList()
+        results = emptyList()
         recents = store.recents(); favorites = store.favorites()
-        searchTarget = SearchTarget.DESTINATION
-        stage = NavStage.SEARCH
+        flow.update { it.openSearch(SearchTarget.DESTINATION) }
     }
 
     /** Open the search panel to add an intermediate stop (returns to PREVIEW). */
     fun openSearchForStop() {
         origin = lastLocation(context) ?: origin
         sessionToken = UUID.randomUUID().toString()
-        query = ""; results = emptyList()
+        results = emptyList()
         recents = store.recents(); favorites = store.favorites()
-        searchTarget = SearchTarget.STOP
-        stage = NavStage.SEARCH
+        flow.update { it.openSearch(SearchTarget.STOP) }
     }
 
     /** Apply a picked place either as the destination or as an appended stop. */
-    fun applyPicked(p: SavedPlace) {
-        if (searchTarget == SearchTarget.STOP) {
-            if (stops.size < MAX_STOPS) stops = stops + p
-            searchTarget = SearchTarget.DESTINATION
-            stage = NavStage.PREVIEW
-        } else {
-            selected = p
-            stops = emptyList() // stops belong to the previous destination
-            confirmFromSearch = true
-            stage = NavStage.CONFIRM
-        }
-    }
+    fun applyPicked(p: SavedPlace) = flow.update { it.applyPicked(p) }
 
-    fun choose(p: SavedPlace) { selected = p; stops = emptyList(); confirmFromSearch = false; stage = NavStage.CONFIRM }
+    fun choose(p: SavedPlace) = flow.update { it.choose(p) }
 
     fun backToBrowse() {
         detailsJob?.cancel()
-        stage = NavStage.BROWSE; selected = null; query = ""
+        flow.update { it.backToBrowse() }
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
-        stops = emptyList(); searchTarget = SearchTarget.DESTINATION
         // Keep the "stepped away" flag while a trip is still running so arrival/auto-resume
         // logic still treats this screen as owning it (only reset once nothing is live).
         if (!navState.sessionState.isActiveNav()) leftNavManually = false
@@ -555,8 +521,7 @@ fun NavigationHomeScreen(
         lastStartedDest = dest
         onStartNavigation(dest)
         arrivalLatched = false
-        arrivalBestRemainingM = Double.MAX_VALUE
-        arrivalLastProgressMs = System.currentTimeMillis()
+        arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
         leftNavManually = false
         tripStartMs = System.currentTimeMillis()
         // Clear any prior ride-finish result so the next emission is this trip's.
@@ -567,8 +532,7 @@ fun NavigationHomeScreen(
     fun retryStart() {
         val dest = lastStartedDest ?: return
         arrivalLatched = false
-        arrivalBestRemainingM = Double.MAX_VALUE
-        arrivalLastProgressMs = System.currentTimeMillis()
+        arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
         leftNavManually = false
         RideEvents.clear()
         stage = NavStage.NAVIGATING
@@ -598,11 +562,9 @@ fun NavigationHomeScreen(
         arrivalLatched = true
         leftNavManually = false
         GoogleNavSdkController.stop()
-        query = ""
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
-        stops = emptyList(); searchTarget = SearchTarget.DESTINATION
         finishedRide = null; finishedPoints = null; finishResolved = false
-        stage = NavStage.TRIP_FINISHED
+        flow.update { it.finishTrip() }
     }
 
     // Keep the stage in sync with the real session:
@@ -613,17 +575,9 @@ fun NavigationHomeScreen(
     //  - show the "Trip finished" screen once the SDK reports arrival.
     // We "own" the trip on this screen while showing guidance OR while stepped
     // away on the map with a trip still running — arrival should finish it either way.
-    val owningTrip = stage == NavStage.NAVIGATING || (stage == NavStage.BROWSE && leftNavManually)
+    val owningTrip = NavFlowRules.owningTrip(stage, leftNavManually)
     LaunchedEffect(navState.sessionState) {
-        if (navState.sessionState.isActiveNav() &&
-            stage != NavStage.NAVIGATING &&
-            // Don't drag the user back into navigation from the completion screen:
-            // late/continued ENROUTE frames after arrival must not resume the trip.
-            stage != NavStage.TRIP_FINISHED &&
-            // ...nor when the rider deliberately stepped away (they keep the map;
-            // a "Resume navigation" pill brings them back on their own terms).
-            !leftNavManually
-        ) {
+        if (NavFlowRules.shouldAutoResume(navState.sessionState.isActiveNav(), stage, leftNavManually)) {
             stage = NavStage.NAVIGATING
         } else if (owningTrip && navState.sessionState == NavSessionState.ARRIVED) {
             finishTrip()
@@ -670,7 +624,7 @@ fun NavigationHomeScreen(
     }
 
     // Proximity auto-finish: end guidance and show "Trip finished" as soon as we
-    // come within ARRIVAL_RADIUS_M of the destination, rather than waiting for the
+    // come within ArrivalPolicy.RADIUS_M of the destination, rather than waiting for the
     // SDK's own (sometimes later) arrival callback. remainingDistanceMeters is the
     // SDK's distance to the final destination, updated ~1 Hz while en route.
     // Also tracks progress for the idle-fallback below: whenever the remaining
@@ -681,20 +635,16 @@ fun NavigationHomeScreen(
         val eligible = owningTrip && !arrivalLatched && navState.sessionState.isActiveNav()
         if (!eligible || remaining == null) return@LaunchedEffect
 
-        val remD = remaining.toDouble()
         // Record forward progress (resets the stall timer).
-        if (remD < arrivalBestRemainingM - ARRIVAL_PROGRESS_EPS_M) {
-            arrivalBestRemainingM = remD
-            arrivalLastProgressMs = System.currentTimeMillis()
-        }
+        arrivalProgress = ArrivalPolicy.track(arrivalProgress, remaining, System.currentTimeMillis())
 
-        if (remaining <= ARRIVAL_RADIUS_M) {
+        if (ArrivalPolicy.reached(remaining)) {
             finishTrip()
         }
     }
 
     // Idle-fallback auto-finish: if we're inside the outer radius but progress has
-    // stalled for ARRIVAL_STALL_MS (rider parked just shy of the point, or
+    // stalled for ArrivalPolicy.STALL_MS (rider parked just shy of the point, or
     // guidance stalled near the end), finish the trip. Ticks on a timer so it
     // fires even when no fresh NavInfo frames arrive (e.g. stuck offline reroute).
     // Keyed on `stage` etc. but NOT on the session state: startTo() enters NAVIGATING
@@ -704,11 +654,10 @@ fun NavigationHomeScreen(
     LaunchedEffect(stage, arrivalLatched, leftNavManually) {
         while (isActive && !arrivalLatched) {
             delay(5_000)
-            val owning = stage == NavStage.NAVIGATING || (stage == NavStage.BROWSE && leftNavManually)
+            val owning = NavFlowRules.owningTrip(stage, leftNavManually)
             if (!owning || !navState.sessionState.isActiveNav()) continue
             val remaining = navState.remainingDistanceMeters ?: continue
-            val stalled = System.currentTimeMillis() - arrivalLastProgressMs >= ARRIVAL_STALL_MS
-            if (remaining <= ARRIVAL_OUTER_RADIUS_M && stalled) {
+            if (ArrivalPolicy.stalledNearDestination(arrivalProgress, remaining, System.currentTimeMillis())) {
                 finishTrip()
                 break
             }
@@ -780,25 +729,15 @@ fun NavigationHomeScreen(
 
 
     BackHandler {
-        when (stage) {
-            NavStage.PREVIEW -> stage = NavStage.CONFIRM
-            NavStage.CONFIRM ->
-                // Back goes where the rider came from: the search list if they picked from it,
-                // the map if they dropped a pin / opened a link / tapped a saved place.
-                if (confirmFromSearch) { stage = NavStage.SEARCH; selected = null } else backToBrowse()
-            // Back while navigating steps away to the map WITHOUT ending the trip.
-            NavStage.NAVIGATING -> moveAwayFromNav()
-            NavStage.TRIP_FINISHED -> backToBrowse()
-            NavStage.SEARCH ->
-                if (searchTarget == SearchTarget.STOP) {
-                    detailsJob?.cancel()
-                    searchTarget = SearchTarget.DESTINATION
-                    stage = NavStage.PREVIEW
-                } else backToBrowse()
-            // At the map: if a trip is still running in the background, Back returns
-            // to it; otherwise confirm closing the app.
-            NavStage.BROWSE ->
-                if (navState.sessionState.isActiveNav()) resumeNav() else showExitConfirm = true
+        if (stage == NavStage.SEARCH) detailsJob?.cancel()
+        val outcome = flow.state.back(tripLive = navState.sessionState.isActiveNav())
+        flow.update { outcome.state }
+        when (outcome.effect) {
+            BackEffect.NONE -> {}
+            BackEffect.BACK_TO_BROWSE -> backToBrowse()
+            BackEffect.MOVE_AWAY_FROM_NAV -> moveAwayFromNav()
+            BackEffect.RESUME_NAV -> resumeNav()
+            BackEffect.CONFIRM_EXIT -> showExitConfirm = true
         }
     }
 
