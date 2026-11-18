@@ -39,7 +39,7 @@ Target: **Android 16+ only (minSdk 36)**.
 
 ---
 
-## Status overview (done / skipped / pending)
+## Done / Skipped / Pending
 
 _Updated after Phase 10. Phase 10 is awaiting smoke test 3. Details live in the per-phase tables below._
 

@@ -339,7 +339,7 @@ C1 F4 richer ride data (altitude, elevation gain/loss, chart). C2 F10 rename/not
 
 ---
 
-## Status summary (after Phase 10)
+## Done / Skipped / Pending (after Phase 10)
 
 **Done:** Phases S, 0-2, 4, 5; Phase 3 as bucket C (`a2fccb0`); Phase 6 except UX1 (partial), UX7, UX11; Phases 8-10 (A1-A5, B1-B6, C1-C5); features F1-F6 and F8-F12. Smoke tests 1 and 2 passed; smoke test 3 is awaiting the user.
 
