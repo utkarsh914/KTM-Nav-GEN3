@@ -30,11 +30,11 @@ Target: **Android 16+ only (minSdk 36)**.
 | 1 | Critical bugs, crashes, log privacy | 14 | 14 | Done (C3/C4/N1 need on-device check) |
 | 2 | Navigation state, UI state, pairing | 20 | 23 | N8 deferred (dash), U7 deferred, P2 partial |
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
-| 4 | Data integrity, parsing, network | 0 | 25 | Not started |
+| 4 | Data integrity, parsing, network | 9 | 25 | Rides+places done (R1 partial); NP/NET pending |
 | 5 | Settings, build, docs hygiene | 0 | 11 | Not started |
 | 6 | UX polish & accessibility | 0 | 14 | Not started |
 | 7 | New features | 0 | 12 | Not started |
-| T | Tests to extend/add | 0 | 8 | Not started |
+| T | Tests to extend/add | 3 | 8 | T2-T4 done, T1 partial |
 | H | Hardware verification | 0 | 5 | Not started |
 
 ---
@@ -150,20 +150,20 @@ Target: **Android 16+ only (minSdk 36)**.
 ### Rides
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | R1 | `RideStore` lock/single-thread + `commit()` + `StateFlow`; I/O off main | | |
-| [ ] | R2 | Tolerant parsing; no write-back after parse failure; persist `saved` in meta | | |
-| [ ] | R3 | Orphan recovery skips active track (🟢, theoretical) | | |
-| [ ] | R4 | GPS filtering; moving time/avg; monotonic duration (independent of Phase 0); mock fixes allowed in debug | | 🏍 Applied directly |
-| [ ] | R5 | Prune by creation id | | |
-| [ ] | R6 | Ride service: stop on failed start, `stopSelfResult`, contentIntent + Stop action | | |
-| [ ] | R7 | fsync, haversine clamp, missing `t` handling | | |
+| [~] | R1 | `RideStore` lock/single-thread + `commit()` + `StateFlow`; I/O off main Lock + commit-free consistency done; StateFlow and moving index reads off main NOT done (small prefs reads) |
+| [x] | R2 | Tolerant parsing; no write-back after parse failure; persist `saved` in meta | | |
+| [x] | R3 | Orphan recovery skips active track (🟢, theoretical) | | |
+| [x] | R4 | GPS filtering; moving time/avg; monotonic duration (independent of Phase 0); mock fixes allowed in debug | | 🏍 Applied directly Accuracy gate 40 m; avg speed = distance/moving time (semantic change); resync after 5 rejected fixes |
+| [x] | R5 | Prune by creation id | | |
+| [x] | R6 | Ride service: stop on failed start, `stopSelfResult`, contentIntent + Stop action | | |
+| [x] | R7 | fsync, haversine clamp, missing `t` handling | | |
 
 ### Places
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | PL1 | Tolerant parsing | | |
-| [ ] | PL2 | `removeFavorite(s)` only `slot == OTHER` | | |
-| [ ] | PL3 | `Locale.ROOT` in `coordKey` | | |
+| [x] | PL1 | Tolerant parsing | | |
+| [x] | PL2 | `removeFavorite(s)` only `slot == OTHER` | | |
+| [x] | PL3 | `Locale.ROOT` in `coordKey` | | |
 
 ### Notification parsing
 | Done | ID | Item | Commit | Notes |
@@ -246,10 +246,10 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | T1 | `RideStore` / `PlacesStore` (new): corrupt entry, concurrency, prune, orphan-vs-active | | |
-| [ ] | T2 | `RideMetrics` (extend): jitter, spikes, backwards time, gaps, moving average | | |
-| [ ] | T3 | `SerialGattQueue` (extend): late completion after timeout | | |
-| [ ] | T4 | Nav trip-token logic (pure class): stale result/NavInfo ignored; `ROUTE_CANCELED` never retried | | |
+| [~] | T1 | `RideStore` / `PlacesStore` (new): corrupt entry, concurrency, prune, orphan-vs-active PlacesJson/RideJson/RideMetrics covered; RideStore itself needs Android (no instrumented tests) |
+| [x] | T2 | `RideMetrics` (extend): jitter, spikes, backwards time, gaps, moving average | | |
+| [x] | T3 | `SerialGattQueue` (extend): late completion after timeout | | |
+| [x] | T4 | Nav trip-token logic (pure class): stale result/NavInfo ignored; `ROUTE_CANCELED` never retried | | |
 | [ ] | T5 | Nav stage state machine: C2, C3, N4, U1, U2 | | |
 | [ ] | T6 | `TurnBeeper.parseMeters` (new), severity words, `NavSubtextParser` edge cases, `maneuverTextFor` | | |
 | [ ] | T7 | `MapsUrlResolver` (extend): allowlist, foreign redirect, trailing punctuation | | |

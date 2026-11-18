@@ -13,7 +13,7 @@ package com.navigator.app.ride
  * @param destinationLabel human label of where the ride was headed, if known
  * @param destLat destination latitude, if known
  * @param destLng destination longitude, if known
- * @param avgSpeedKmh average speed across fixes that carried a speed value
+ * @param avgSpeedKmh average speed = distance / MOVING time (stops excluded). Rides recorded before this definition used the mean of the fix speeds, stops included
  * @param maxSpeedKmh peak recorded speed
  * @param pointCount number of recorded fixes
  * @param saved pinned to keep permanently; excluded from the history-limit prune

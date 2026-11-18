@@ -18,32 +18,95 @@ class RideMetricsTest {
         assertEquals(5.56, d, 0.6)
     }
 
+    // 0.0002 deg lng at the equator ~ 22.2 m; one hop per second ~ 80 km/h.
+    private fun cruise(n: Int, startMs: Long = 0L, speed: Float = 80f) =
+        (0 until n).map { RidePoint(0.0, it * 0.0002, startMs + 1_000L * it, speed) }
+
     @Test fun summarize_distanceMaxAvgAndDuration() {
-        val pts = listOf(
-            RidePoint(0.0, 0.0, 1_000L, 10f),
-            RidePoint(0.0, 0.001, 2_000L, 20f),
-            RidePoint(0.0, 0.002, 3_000L, 30f),
-        )
-        val s = RideMetrics.summarize(pts)
-        // ~111.2 m per 0.001 deg lng at the equator (R=6371 km), two hops ≈ 222 m.
-        assertEquals(222.4, s.distanceMeters.toDouble(), 3.0)
-        assertEquals(2, s.durationSeconds)
-        assertEquals(20f, s.avgSpeedKmh, 0.001f)
-        assertEquals(30f, s.maxSpeedKmh, 0.001f)
-        assertEquals(3, s.pointCount)
-        assertEquals(1_000L, s.startMs)
-        assertEquals(3_000L, s.endMs)
+        val s = RideMetrics.summarize(cruise(11))
+        assertEquals(222.4, s.distanceMeters.toDouble(), 3.0)   // 10 hops ~ 22.2 m
+        assertEquals(10, s.durationSeconds)
+        assertEquals(10, s.movingSeconds)
+        assertEquals(80f, s.avgSpeedKmh, 1.5f)                 // distance / moving time
+        assertEquals(80f, s.maxSpeedKmh, 0.001f)
+        assertEquals(11, s.pointCount)
+        assertEquals(0L, s.startMs)
+        assertEquals(10_000L, s.endMs)
     }
 
-    @Test fun avgFallsBackToDistanceOverTimeWhenNoSpeeds() {
-        // 0.01 deg lng ≈ 1113 m at equator over 100 s ≈ 40 km/h.
-        val pts = listOf(
-            RidePoint(0.0, 0.0, 0L, null),
-            RidePoint(0.0, 0.01, 100_000L, null),
-        )
+    @Test fun avgUsesImpliedSpeedWhenFixesCarryNoSpeed() {
+        // 0.01 deg lng ~ 1113 m over 100 s ~ 40 km/h.
+        val pts = listOf(RidePoint(0.0, 0.0, 0L, null), RidePoint(0.0, 0.01, 100_000L, null))
         val s = RideMetrics.summarize(pts)
         assertEquals(40f, s.avgSpeedKmh, 2f)
         assertEquals(0f, s.maxSpeedKmh, 0.001f)
+    }
+
+    @Test fun stationaryJitterAddsNoDistanceAndNoMovingTime() {
+        // Parked: 1 m wobble each second at 0 km/h.
+        val pts = (0 until 60).map { RidePoint(0.0, (it % 2) * 0.00001, 1_000L * it, 0f) }
+        val s = RideMetrics.summarize(pts)
+        assertEquals(0, s.distanceMeters)
+        assertEquals(0, s.movingSeconds)
+        assertEquals(0f, s.avgSpeedKmh, 0.001f)
+        assertEquals(59, s.durationSeconds)
+    }
+
+    @Test fun slowRidingIsNotMistakenForJitter() {
+        // 2.8 m per second = ~10 km/h: hops are under 3 m but speed says moving.
+        val pts = (0 until 11).map { RidePoint(0.0, it * 0.000025, 1_000L * it, 10f) }
+        val s = RideMetrics.summarize(pts)
+        assertEquals(27.8, s.distanceMeters.toDouble(), 2.0)
+        assertEquals(10, s.movingSeconds)
+    }
+
+    @Test fun teleportSpikeIsIgnored() {
+        val pts = cruise(5) + RidePoint(10.0, 10.0, 5_000L, 80f) + cruise(5, startMs = 6_000L).map { it.copy(lng = it.lng + 0.0010) }
+        val clean = RideMetrics.summarize(cruise(5)).distanceMeters
+        val s = RideMetrics.summarize(pts)
+        // The 1500 km jump must not be counted.
+        assertTrue("distance=${s.distanceMeters}", s.distanceMeters < clean + 400)
+    }
+
+    @Test fun backwardsTimeFixIsSkipped() {
+        val pts = cruise(5) + RidePoint(0.0, 5 * 0.0002, 2_000L, 80f) + cruise(1, startMs = 5_000L).map { it.copy(lng = 5 * 0.0002) }
+        val s = RideMetrics.summarize(pts)
+        assertEquals(5_000L, s.endMs)
+        assertEquals(6, s.pointCount)
+    }
+
+    @Test fun maxSpeedIgnoresASingleSpike() {
+        val pts = listOf(60f, 62f, 250f, 64f, 66f).mapIndexed { i, v ->
+            RidePoint(0.0, i * 0.0002, 1_000L * i, v)
+        }
+        assertEquals(66f, RideMetrics.summarize(pts).maxSpeedKmh, 0.001f) // never the 250 spike
+    }
+
+    @Test fun badFirstFixDoesNotKillTheWholeRide() {
+        // First fix is wildly wrong and far in the future; every real fix after it must still count.
+        val bad = RidePoint(50.0, 50.0, 9_000_000_000L, 80f)
+        val pts = listOf(bad) + cruise(30, startMs = 1_000L)
+        val s = RideMetrics.summarize(pts)
+        assertTrue("points=${s.pointCount}", s.pointCount >= 25)
+        assertTrue("distance=${s.distanceMeters}", s.distanceMeters in 400..700)
+    }
+
+    @Test fun jitterWithoutSpeedIsNotMovingTime() {
+        val pts = (0 until 30).map { RidePoint(0.0, (it % 2) * 0.00002, 1_000L * it, null) }
+        assertEquals(0, RideMetrics.summarize(pts).movingSeconds)
+    }
+
+    @Test fun haversineHandlesAntipodalPointsWithoutNaN() {
+        val d = RideMetrics.haversineMeters(0.0, 0.0, 0.0, 180.0)
+        assertEquals(20_015_000.0, d, 20_000.0)
+    }
+
+    @Test fun pruneUsesCreationIdNotGpsStartTime() {
+        // Newest ride (id by creation) has a bogus ancient GPS startMs; it must NOT be pruned.
+        val rides = listOf(
+            ride("1000", 9_000_000L), ride("2000", 8_000_000L), ride("3000", 1L),
+        )
+        assertEquals(setOf("1000"), RideMetrics.ridesToPrune(rides, 2).toSet())
     }
 
     @Test fun incrementalMatchesWholeList() {

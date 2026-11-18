@@ -41,6 +41,11 @@ class RideRecorder(private val context: Context) {
 
     val isRecording: Boolean get() = started
 
+    private companion object {
+        /** Fixes less accurate than this (metres) are dropped (generous: a phone in a tank bag is rarely sharp). */
+        const val MAX_ACCURACY_M = 40f
+    }
+
     private val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) = onFix(location)
 
@@ -51,13 +56,14 @@ class RideRecorder(private val context: Context) {
     }
 
     /** Begin recording a new ride toward the given (optional) destination. */
-    fun start(destLabel: String?, destLat: Double?, destLng: Double?) {
-        if (started) return
+    /** @return true when recording is running (also if it already was). */
+    fun start(destLabel: String?, destLat: Double?, destLng: Double?): Boolean {
+        if (started) return true
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
             AppLogger.log("Ride", "No location permission - recording skipped")
-            return
+            return false
         }
         this.destLabel = destLabel
         this.destLat = destLat
@@ -72,23 +78,30 @@ class RideRecorder(private val context: Context) {
             activeId = id
             started = true
             AppLogger.log("Ride", "Recording started ($id) -> ${AppLogger.sensitive(destLabel)}")
+            return true
         } catch (e: Exception) {
             AppLogger.log("Ride", "!! start failed: $e")
             runCatching { writer?.close() }
             writer = null
+            store.discardTrack(id)
             ht.quitSafely()
+            return false
         }
     }
 
     private fun onFix(location: Location) {
         val w = writer ?: return
+        // Poor fixes (urban canyon, cold start) add phantom distance and speed spikes.
+        if (location.hasAccuracy() && location.accuracy > MAX_ACCURACY_M) return
+        // Mock providers are accepted in debug builds only, so mock-location testing still works.
+        if (location.isMock && !com.navigator.app.BuildConfig.DEBUG) return
         val point = RidePoint(
             lat = location.latitude,
             lng = location.longitude,
             timeMs = if (location.time > 0L) location.time else System.currentTimeMillis(),
             speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
         )
-        acc.add(point)
+        if (!acc.add(point)) return // rejected as a glitch (time went backwards / impossible jump)
         runCatching { store.appendPoint(w, point) }
     }
 
@@ -101,7 +114,7 @@ class RideRecorder(private val context: Context) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         runCatching { lm.removeUpdates(listener) }
 
-        val finalize = Runnable {
+        val finalize = Runnable { try {
             runCatching { writer?.flush(); writer?.close() }
             writer = null
             val stats = acc.stats()
@@ -132,8 +145,10 @@ class RideRecorder(private val context: Context) {
                 AppLogger.log("Ride", "Discarded short ride $id (${stats.distanceMeters}m / ${stats.durationSeconds}s)")
                 RideEvents.publish(RideFinish.Discarded)
             }
+        } finally {
+            store.markTrackClosed(id)
             ht?.quitSafely()
-        }
+        } }
         // Run finalisation on the recorder thread so it serialises after any
         // in-flight fix; fall back to inline if the thread is already gone.
         if (ht != null) Handler(ht.looper).post(finalize) else finalize.run()

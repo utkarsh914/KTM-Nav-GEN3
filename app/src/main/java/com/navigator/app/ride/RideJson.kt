@@ -38,11 +38,12 @@ object RideJson {
         if (line.isBlank()) return null
         return runCatching {
             val o = JSONObject(line)
-            if (o.optBoolean("meta", false) || !o.has("lat")) return null
+            // A fix without a timestamp can't be placed in time: skip it rather than as t=0.
+            if (o.optBoolean("meta", false) || !o.has("lat") || !o.has("t")) return null
             RidePoint(
                 lat = o.getDouble("lat"),
                 lng = o.getDouble("lng"),
-                timeMs = o.optLong("t", 0L),
+                timeMs = o.getLong("t"),
                 speedKmh = if (o.has("s")) o.getDouble("s").toFloat() else null,
             )
         }.getOrNull()

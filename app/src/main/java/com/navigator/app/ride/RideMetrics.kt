@@ -14,18 +14,31 @@ data class RideStats(
     val pointCount: Int,
     val startMs: Long,
     val endMs: Long,
+    /** Time spent actually moving (stopped time excluded); not persisted. */
+    val movingSeconds: Int = 0,
 )
 
 /**
  * Pure ride math shared by the live recorder and crash-recovery, so both paths
  * compute identical figures. No Android dependencies → JVM unit-testable.
  *
- * Distance uses the haversine great-circle formula. Average speed is the mean of
- * fixes that carried a GPS speed; if none did, it falls back to distance/time.
+ * Distance uses the haversine great-circle formula, ignoring GPS noise: fixes that go
+ * back in time, jumps implying more than [MAX_PLAUSIBLE_KMH], and sub-[JITTER_HOP_M]
+ * hops while stationary don't count. Average speed is distance / MOVING time (stops
+ * excluded); max speed is the best 3-fix median so a single spike can't set it.
  */
 object RideMetrics {
 
     private const val EARTH_RADIUS_M = 6_371_000.0
+
+    /** A hop implying more than this is a GPS glitch, not riding. */
+    const val MAX_PLAUSIBLE_KMH = 300.0
+    /** Stationary jitter: hops shorter than this at (near-)zero speed add no distance. */
+    const val JITTER_HOP_M = 3.0
+    /** Consecutive rejected fixes after which the next one becomes the new baseline. */
+    const val RESYNC_AFTER_REJECTS = 5
+    /** At/above this speed the rider counts as moving. */
+    const val MOVING_KMH = 2.0
 
     /** Great-circle distance between two lat/lng points, in metres. */
     fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
@@ -34,7 +47,8 @@ object RideMetrics {
         val a = sin(dLat / 2) * sin(dLat / 2) +
             cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
             sin(dLng / 2) * sin(dLng / 2)
-        return EARTH_RADIUS_M * 2 * atan2(sqrt(a), sqrt(1 - a))
+        val c = a.coerceIn(0.0, 1.0) // float error can push a just past 1 for antipodal points
+        return EARTH_RADIUS_M * 2 * atan2(sqrt(c), sqrt(1 - c))
     }
 
     /**
@@ -50,37 +64,63 @@ object RideMetrics {
         private var havePrev = false
         private var distanceM = 0.0
         private var maxSpeed = 0f
-        private var speedSum = 0.0
-        private var speedSamples = 0
+        private var movingMs = 0L
         private var count = 0
+        private val recentSpeeds = ArrayDeque<Float>()
+        private var rejectStreak = 0
 
-        fun add(p: RidePoint) {
-            if (!started) {
+        /** Feed one fix; returns false when it was rejected as a glitch (and must not be recorded). */
+        fun add(p: RidePoint): Boolean {
+            var resync = false
+            if (started) {
+                val dtMs = p.timeMs - lastMs
+                // Clock went backwards, or a hop that would need an impossible speed: GPS glitch.
+                val glitch = dtMs < 0 || (havePrev && dtMs > 0 &&
+                    haversineMeters(prevLat, prevLng, p.lat, p.lng) / (dtMs / 1000.0) * 3.6 > MAX_PLAUSIBLE_KMH)
+                if (glitch) {
+                    // If the BASELINE was the bad fix, every later good fix would look like a
+                    // glitch for the rest of the ride: after a streak, adopt the new fix as
+                    // the baseline (no distance for the jump).
+                    if (++rejectStreak < RESYNC_AFTER_REJECTS) return false
+                    resync = true
+                }
+            }
+            rejectStreak = 0
+            if (havePrev && !resync) {
+                val dtMs = p.timeMs - lastMs
+                val hop = haversineMeters(prevLat, prevLng, p.lat, p.lng)
+                val speed = p.speedKmh
+                val stationaryJitter = hop < JITTER_HOP_M && (speed == null || speed < MOVING_KMH)
+                if (!stationaryJitter) distanceM += hop
+                val impliedKmh = if (dtMs > 0) hop / (dtMs / 1000.0) * 3.6 else 0.0
+                val moving = !stationaryJitter &&
+                    (if (speed != null) speed >= MOVING_KMH else impliedKmh >= MOVING_KMH)
+                if (moving && dtMs > 0) movingMs += dtMs
+            }
+            if (!started || (resync && count <= RESYNC_AFTER_REJECTS)) {
                 firstMs = p.timeMs
                 started = true
             }
             lastMs = p.timeMs
-            if (havePrev) {
-                distanceM += haversineMeters(prevLat, prevLng, p.lat, p.lng)
-            }
             prevLat = p.lat
             prevLng = p.lng
             havePrev = true
             p.speedKmh?.let { s ->
-                if (s > maxSpeed) maxSpeed = s
-                speedSum += s
-                speedSamples++
+                recentSpeeds.addLast(s)
+                if (recentSpeeds.size > 3) recentSpeeds.removeFirst()
+                if (recentSpeeds.size == 3) {
+                    val median = recentSpeeds.sorted()[1]
+                    if (median > maxSpeed) maxSpeed = median
+                }
             }
             count++
+            return true
         }
 
         fun stats(): RideStats {
             val durationSec = if (lastMs > firstMs) ((lastMs - firstMs) / 1000).toInt() else 0
-            val avg = when {
-                speedSamples > 0 -> (speedSum / speedSamples).toFloat()
-                durationSec > 0 -> (distanceM / durationSec * 3.6).toFloat()
-                else -> 0f
-            }
+            val movingSec = (movingMs / 1000).toInt()
+            val avg = if (movingSec > 0) (distanceM / movingSec * 3.6).toFloat() else 0f
             return RideStats(
                 distanceMeters = distanceM.toInt(),
                 durationSeconds = durationSec,
@@ -89,6 +129,7 @@ object RideMetrics {
                 pointCount = count,
                 startMs = firstMs,
                 endMs = lastMs,
+                movingSeconds = movingSec,
             )
         }
     }
@@ -96,7 +137,7 @@ object RideMetrics {
     /** Whole-list computation (crash recovery, tests) — identical math to live. */
     fun summarize(points: List<RidePoint>): RideStats {
         val acc = Accumulator()
-        points.forEach(acc::add)
+        points.forEach { acc.add(it) }
         return acc.stats()
     }
 
@@ -119,7 +160,10 @@ object RideMetrics {
      */
     fun ridesToPrune(rides: List<RecordedRide>, limit: Int): List<String> {
         if (limit <= 0) return emptyList()
-        val unsavedNewestFirst = rides.filterNot { it.saved }.sortedByDescending { it.startMs }
+        // Newest by CREATION order (the id is the creation time in millis), not by GPS
+        // startMs - a bad clock/fix time must not make a fresh ride look old.
+        val unsavedNewestFirst = rides.filterNot { it.saved }
+            .sortedByDescending { it.id.toLongOrNull() ?: it.startMs }
         if (unsavedNewestFirst.size <= limit) return emptyList()
         return unsavedNewestFirst.drop(limit).map { it.id }
     }

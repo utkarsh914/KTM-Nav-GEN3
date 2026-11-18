@@ -89,4 +89,9 @@ class RideJsonTest {
         assertNull(back.destLng)
         assertEquals(false, back.saved)
     }
+
+    @Test fun pointWithoutTimestampIsSkippedNotPlacedAtEpoch() {
+        assertEquals(null, RideJson.parsePoint("""{"lat":1.0,"lng":2.0}"""))
+        assertEquals(5L, RideJson.parsePoint("""{"lat":1.0,"lng":2.0,"t":5}""")?.timeMs)
+    }
 }

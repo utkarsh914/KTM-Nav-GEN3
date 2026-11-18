@@ -1,8 +1,6 @@
 package com.navigator.app.nav.destination
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 
 /** A place the rider has navigated to or saved. */
 data class SavedPlace(
@@ -36,38 +34,29 @@ class PlacesStore(context: Context) {
 
     // ---- Recents ----------------------------------------------------------
 
-    fun recents(): List<SavedPlace> =
-        readPlaces(prefs.getString(KEY_RECENTS, null))
+    fun recents(): List<SavedPlace> = readList(KEY_RECENTS, PlacesJson::parsePlaces)
 
-    fun addRecent(place: SavedPlace) {
+    fun addRecent(place: SavedPlace) = synchronized(LOCK) {
         val key = coordKey(place.lat, place.lng)
         val updated = buildList {
             add(place)
             recents().forEach { if (coordKey(it.lat, it.lng) != key) add(it) }
         }.take(MAX_RECENTS)
-        prefs.edit().putString(KEY_RECENTS, writePlaces(updated)).apply()
+        prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(updated)).apply()
     }
 
     // ---- Favorites --------------------------------------------------------
 
-    fun favorites(): List<FavoritePlace> {
-        val raw = prefs.getString(KEY_FAVORITES, null) ?: return emptyList()
-        return runCatching {
-            val arr = JSONArray(raw)
-            (0 until arr.length()).map { i ->
-                val o = arr.getJSONObject(i)
-                FavoritePlace(
-                    place = SavedPlace(
-                        lat = o.getDouble("lat"),
-                        lng = o.getDouble("lng"),
-                        label = o.optString("label"),
-                        address = o.optString("address").ifBlank { null },
-                    ),
-                    slot = runCatching { FavoriteSlot.valueOf(o.optString("slot", "OTHER")) }
-                        .getOrDefault(FavoriteSlot.OTHER),
-                )
-            }
-        }.getOrDefault(emptyList())
+    fun favorites(): List<FavoritePlace> = readList(KEY_FAVORITES, PlacesJson::parseFavorites)
+
+    /** Tolerant read; an unreadable list is moved aside (not left to be overwritten by the next write). */
+    private fun <T> readList(key: String, parse: (String?) -> PlacesJson.Parsed<T>): List<T> = synchronized(LOCK) {
+        val raw = prefs.getString(key, null)
+        val parsed = parse(raw)
+        if (parsed.corrupt && raw != null) {
+            prefs.edit().putString(key + "_corrupt", raw).remove(key).apply()
+        }
+        parsed.items
     }
 
     /** True if this place is in the SAVED (OTHER) list (by rounded coords). */
@@ -80,7 +69,7 @@ class PlacesStore(context: Context) {
      * Save [place] as a favorite in [slot]. HOME/WORK replace any existing entry
      * in that slot; OTHER replaces any existing favorite at the same coordinates.
      */
-    fun saveFavorite(place: SavedPlace, slot: FavoriteSlot) {
+    fun saveFavorite(place: SavedPlace, slot: FavoriteSlot) = synchronized(LOCK) {
         val key = coordKey(place.lat, place.lng)
         val kept = favorites().filterNot { fav ->
             when (slot) {
@@ -91,70 +80,44 @@ class PlacesStore(context: Context) {
         writeFavorites(kept + FavoritePlace(place, slot))
     }
 
-    fun removeFavorite(lat: Double, lng: Double) {
+    fun removeFavorite(lat: Double, lng: Double) = synchronized(LOCK) {
         val key = coordKey(lat, lng)
-        writeFavorites(favorites().filterNot { coordKey(it.place.lat, it.place.lng) == key })
+        // Only the plain saved list: Home/Work live in their own slots (removeFavoriteSlot) and
+        // must not vanish because a saved place happens to share their coordinates.
+        writeFavorites(favorites().filterNot {
+            it.slot == FavoriteSlot.OTHER && coordKey(it.place.lat, it.place.lng) == key
+        })
     }
 
     /** Bulk-remove favorites whose rounded coordinates match any of [coordKeys]
      *  (see [favoriteKey]). Rewrites the list once. */
-    fun removeFavorites(coordKeys: Set<String>) {
-        if (coordKeys.isEmpty()) return
-        writeFavorites(favorites().filterNot { coordKey(it.place.lat, it.place.lng) in coordKeys })
+    fun removeFavorites(coordKeys: Set<String>) = synchronized(LOCK) {
+        if (coordKeys.isEmpty()) return@synchronized
+        writeFavorites(favorites().filterNot {
+            it.slot == FavoriteSlot.OTHER && coordKey(it.place.lat, it.place.lng) in coordKeys
+        })
     }
 
     /** Stable selection/identity key for a favorite place (rounded coords). */
     fun favoriteKey(place: SavedPlace): String = coordKey(place.lat, place.lng)
 
     /** Remove the favorite occupying [slot] (used for HOME/WORK). */
-    fun removeFavoriteSlot(slot: FavoriteSlot) {
+    fun removeFavoriteSlot(slot: FavoriteSlot) = synchronized(LOCK) {
         writeFavorites(favorites().filterNot { it.slot == slot })
     }
 
-    // ---- JSON helpers -----------------------------------------------------
-
-    private fun readPlaces(raw: String?): List<SavedPlace> {
-        raw ?: return emptyList()
-        return runCatching {
-            val arr = JSONArray(raw)
-            (0 until arr.length()).map { i ->
-                val o = arr.getJSONObject(i)
-                SavedPlace(
-                    lat = o.getDouble("lat"),
-                    lng = o.getDouble("lng"),
-                    label = o.optString("label"),
-                    address = o.optString("address").ifBlank { null },
-                )
-            }
-        }.getOrDefault(emptyList())
-    }
-
-    private fun writePlaces(places: List<SavedPlace>): String {
-        val arr = JSONArray()
-        places.forEach { arr.put(placeJson(it)) }
-        return arr.toString()
-    }
+    // ---- helpers ----------------------------------------------------------
 
     private fun writeFavorites(favs: List<FavoritePlace>) {
-        val arr = JSONArray()
-        favs.forEach { fav ->
-            arr.put(placeJson(fav.place).put("slot", fav.slot.name))
-        }
-        prefs.edit().putString(KEY_FAVORITES, arr.toString()).apply()
+        prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs)).apply()
     }
 
-    private fun placeJson(p: SavedPlace): JSONObject = JSONObject().apply {
-        put("lat", p.lat)
-        put("lng", p.lng)
-        put("label", p.label)
-        p.address?.let { put("address", it) }
-    }
-
-    private fun coordKey(lat: Double, lng: Double): String = "%.4f,%.4f".format(lat, lng)
+    private fun coordKey(lat: Double, lng: Double): String = PlacesJson.coordKey(lat, lng)
 
     private companion object {
         const val KEY_RECENTS = "recents"
         const val KEY_FAVORITES = "favorites"
         const val MAX_RECENTS = 15
+        val LOCK = Any()
     }
 }

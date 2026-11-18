@@ -2,6 +2,7 @@ package com.navigator.app.ride
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -44,12 +45,19 @@ class RideRecordingService : Service() {
                     return START_NOT_STICKY
                 }
                 if (recorder == null) {
-                    recorder = RideRecorder(applicationContext).also {
-                        it.start(
-                            destLabel = intent?.getStringExtra(EXTRA_LABEL),
-                            destLat = intent?.doubleOrNull(EXTRA_LAT),
-                            destLng = intent?.doubleOrNull(EXTRA_LNG),
-                        )
+                    val r = RideRecorder(applicationContext)
+                    val ok = r.start(
+                        destLabel = intent?.getStringExtra(EXTRA_LABEL),
+                        destLat = intent?.doubleOrNull(EXTRA_LAT),
+                        destLng = intent?.doubleOrNull(EXTRA_LNG),
+                    )
+                    if (ok) {
+                        recorder = r
+                    } else {
+                        // Don't leave an empty "Recording ride" foreground notification behind.
+                        AppLogger.log("Ride", "Recorder failed to start - stopping the service")
+                        stopRecordingAndSelf()
+                        return START_NOT_STICKY
                     }
                 }
             }
@@ -79,13 +87,28 @@ class RideRecordingService : Service() {
         )
     }
 
-    private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("Recording ride")
-        .setContentText("Saving your GPS track for this trip")
-        .setSmallIcon(R.drawable.ic_notification)
-        .setOngoing(true)
-        .setPriority(NotificationCompat.PRIORITY_LOW)
-        .build()
+    private fun buildNotification(): android.app.Notification {
+        val open = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, com.navigator.app.ui.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val stop = PendingIntent.getService(
+            this, 1,
+            Intent(this, RideRecordingService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Recording ride")
+            .setContentText("Saving your GPS track for this trip")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(open)
+            .addAction(0, "Stop", stop)
+            .build()
+    }
 
     private fun createChannel() {
         val ch = NotificationChannel(CHANNEL_ID, "Ride recording", NotificationManager.IMPORTANCE_LOW)
