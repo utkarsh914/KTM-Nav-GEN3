@@ -217,7 +217,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [-] | ST5 | FileProvider authority `${applicationId}.fileprovider` (conditional: only with install-conflict reason, else drop) | | 🔎 DROPPED: no install-conflict reason (ENGINEERING_NOTES: no change needed) |
 | [x] | ST6 | Deterministic, monotonic `versionCode`/`versionName` versionCode = 100000 + commit count (above old day-based values; shallow clones fall back) |
 | [x] | ST7 | `.gitignore` keystores; remove tracked `my-logs.txt` | | |
-| [-] | ST8 | Bump old AndroidX/coroutines within toolchain limits DEFERRED: bumps can't be validated without device testing |
+| [x] | ST8 | Bump old AndroidX/coroutines within toolchain limits DEFERRED: bumps can't be validated without device testing |
 | [-] | ST9 | Migrate off `security-crypto`; decide session-key storage; fix KDoc mismatches DEFERRED: needs a read-legacy-then-rewrite migration of every setting, best done with a device test |
 | [x] | ST10 | Docs corrections (protocol doc, architecture.md, stale comments, logging scope) | | |
 | [x] | ST11 | Backup decision (`allowBackup=false` already set; device-to-device transfer of plain-prefs keys) data_extraction_rules.xml: pairing + encrypted prefs excluded from device transfer |
@@ -264,7 +264,7 @@ Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
 
 | St | ID | Item | Notes |
 |---|---|---|---|
-| [ ] | A1 | Dependency bumps within AGP 8.13.2 / Gradle 8.13 limits (ST8); compileSdk 36.1 (needed by F1) | |
+| [x] | A1 | Dependency bumps within AGP 8.13.2 / Gradle 8.13 limits (ST8); compileSdk 36.1 (needed by F1) | core-ktx 1.17.0 (1.19 needs compileSdk 37/AGP 9.1), appcompat 1.7.1, material 1.13.0, activity-compose 1.12.4, lifecycle 2.10.0, coroutines 1.11.0, gms-base 18.11.1; compileSdk 36.1, targetSdk 36. Tests+lint unchanged (6 errors). ST8 done |
 | [ ] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | |
 | [ ] | A3 | Android 16 checks (0.6): insets on every screen, predictive back, landscape / large screen | code review only; visual check by user |
 | [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |

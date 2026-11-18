@@ -191,6 +191,11 @@ track the selected route reliably once actually moving/riding along it.
   compileSdk 36 — BOM 2026.08.00 pins Compose 1.12.0, which requires compileSdk 37 + AGP
   9.1.0 and fails `checkDebugAarMetadata`. Bump AGP/compileSdk together with the BOM, not
   independently.
+- **AndroidX ceiling (AGP 8.13.2, compileSdk 36/36.1):** core-ktx 1.19.x needs compileSdk 37 + AGP 9.1,
+  so stay on **core-ktx 1.17.0**. Currently: appcompat 1.7.1, material 1.13.0, activity-compose
+  1.12.4, lifecycle 2.10.0, coroutines 1.11.0, play-services-base 18.11.1. Re-check
+  `checkDebugAarMetadata` before raising any of them. compileSdk is 36.1 (QPR2: promoted-ongoing
+  notification APIs); targetSdk stays 36.
 - **Kotlin 2.x `jvmTarget` DSL:** the old `android.kotlinOptions { jvmTarget }` block is a hard
   error under Kotlin 2.3 — use the top-level
   `kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }` instead.

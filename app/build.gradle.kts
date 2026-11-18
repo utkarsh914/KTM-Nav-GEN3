@@ -28,7 +28,10 @@ plugins {
 
 android {
     namespace = "com.navigator.app"
-    compileSdk = 36
+    // 36.1 (QPR2) exposes the promoted-ongoing / Live Update notification APIs.
+    compileSdk {
+        version = release(36) { minorApiLevel = 1 }
+    }
 
     defaultConfig {
         // App identity on the device / Play Store. Kept separate from the code
@@ -154,7 +157,7 @@ dependencies {
 
     // GoogleApiAvailability / ConnectionResult for the Play-services runtime check.
     // The Nav SDK bundles play-services-basement but not -base, so add it explicitly.
-    implementation("com.google.android.gms:play-services-base:18.7.2")
+    implementation("com.google.android.gms:play-services-base:18.11.1")
 
     // On-device maneuver-icon classifier (ported from the KTM Gen-3 companion
     // app's approach): a small TFLite CNN recognises the nav app's turn-icon
@@ -169,16 +172,16 @@ dependencies {
     // (align 2**14). All other bundled natives (Nav SDK libgmm-jni, graphics-path) are
     // already 16 KB-aligned, and AGP 8.13 page-aligns the uncompressed .so in the APK.
     implementation("com.google.ai.edge.litert:litert:1.4.2")
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.activity:activity-compose:1.9.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-service:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.material:material:1.13.0")
+    implementation("androidx.activity:activity-compose:1.12.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-service:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     // Provides androidx.lifecycle.compose.LocalLifecycleOwner - the non-deprecated
     // home of the composition local (moved out of androidx.compose.ui.platform).
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
 
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.ui:ui")
@@ -189,7 +192,7 @@ dependencies {
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
@@ -197,7 +200,7 @@ dependencies {
     // JVM unit tests for the pure-Kotlin navigation core (model, formatters,
     // maneuver map, encoder) - no Android/SDK dependencies, run on the JVM.
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     // Real org.json for JVM unit tests: android.jar ships stubs that throw
     // "not mocked", so tests parsing JSON (e.g. RoutesClient) need the actual impl.
     testImplementation("org.json:json:20240303")
