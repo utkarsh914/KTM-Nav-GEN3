@@ -63,8 +63,14 @@ class AppNotificationListener : NotificationListenerService() {
         runOnWorker("onNotificationPosted") { handlePosted(sbn) }
     }
 
+    override fun onListenerDisconnected() {
+        NotificationRepository.setListenerConnected(false)
+        super.onListenerDisconnected()
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
+        NotificationRepository.setListenerConnected(true)
         // (Re)bound: pick up a navigation notification that is already showing, instead of
         // waiting for its next update (and track its key for the removal logic).
         runOnWorker("onListenerConnected sync") {
@@ -75,6 +81,7 @@ class AppNotificationListener : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        NotificationRepository.setListenerConnected(false)
         worker.shutdown()
         super.onDestroy()
     }

@@ -81,11 +81,31 @@ fun MirrorHomeScreen(
     // without it the mirror never sees any guidance. Re-check on resume so the
     // banner clears right after the user grants it in system settings.
     var notifAccess by remember { mutableStateOf(OpenDashPermissions.notificationAccessGranted(context)) }
+    fun batteryOk() = runCatching {
+        context.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
+    }.getOrDefault(true)
+    var ignoringBattery by remember { mutableStateOf(batteryOk()) }
+    val listenerConnected by NotificationRepository.listenerConnected.collectAsState()
+    val lastUpdateMs by NotificationRepository.lastUpdateMs.collectAsState()
+    // Coarse clock (the hints only care about ~30 s staleness); the freshness line ticks itself.
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    androidx.compose.runtime.LaunchedEffect(hasNav) {
+        while (hasNav) {
+            nowMs = System.currentTimeMillis()
+            kotlinx.coroutines.delay(5_000)
+        }
+    }
+    val ageMs = if (hasNav && lastUpdateMs > 0L) (nowMs - lastUpdateMs).coerceAtLeast(0L) else null
+    val hints = com.navigator.app.notifications.MirrorHints.compute(
+        accessGranted = notifAccess, listenerConnected = listenerConnected, paused = paused,
+        hasNav = hasNav, ageMs = ageMs, ignoringBatteryOptimizations = ignoringBattery,
+    )
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val obs = LifecycleEventObserver { _, e ->
             if (e == Lifecycle.Event.ON_RESUME) {
                 notifAccess = OpenDashPermissions.notificationAccessGranted(context)
+                ignoringBattery = batteryOk()
             }
         }
         lifecycleOwner.lifecycle.addObserver(obs)
@@ -120,10 +140,45 @@ fun MirrorHomeScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            if (!notifAccess) {
-                NotifAccessBanner {
-                    runCatching {
-                        context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            hints.forEach { kind ->
+                when (kind) {
+                    com.navigator.app.notifications.MirrorHints.Kind.NO_ACCESS -> HintCard(
+                        "Notification access needed",
+                        "Mirror mode reads Google Maps' turn notifications. Tap to grant access.",
+                    ) {
+                        runCatching {
+                            context.startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        }
+                    }
+                    com.navigator.app.notifications.MirrorHints.Kind.LISTENER_DISCONNECTED -> HintCard(
+                        "Notification listener isn't running",
+                        "Android stopped it, so no turns reach the dash. Tap to reconnect.",
+                    ) {
+                        runCatching {
+                            android.service.notification.NotificationListenerService.requestRebind(
+                                android.content.ComponentName(
+                                    context, com.navigator.app.notifications.AppNotificationListener::class.java,
+                                ),
+                            )
+                        }
+                    }
+                    com.navigator.app.notifications.MirrorHints.Kind.STALE -> HintCard(
+                        "No update from the nav app for ${com.navigator.app.notifications.MirrorHints.ageLabel(ageMs ?: 0L).removeSuffix(" ago")}",
+                        "The turns shown may be old. Check that the trip is still running in Google Maps.",
+                        null,
+                    )
+                    com.navigator.app.notifications.MirrorHints.Kind.BATTERY -> HintCard(
+                        "Keep the mirror alive in the background",
+                        "Allow unrestricted battery use so Android doesn't stop turn-by-turn mid-ride. Tap to allow.",
+                    ) {
+                        runCatching {
+                            context.startActivity(
+                                Intent(
+                                    AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    Uri.parse("package:${context.packageName}"),
+                                ),
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -147,6 +202,10 @@ fun MirrorHomeScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MirrorStatTile("ETA", guidance?.eta ?: "—", Modifier.weight(1f))
                     MirrorStatTile("Remaining", guidance?.remaining ?: "—", Modifier.weight(1f))
+                }
+                if (lastUpdateMs > 0L) {
+                    Spacer(Modifier.height(10.dp))
+                    FreshnessLine(lastUpdateMs, paused)
                 }
                 Spacer(Modifier.weight(1f))
             }
@@ -184,25 +243,44 @@ fun MirrorHomeScreen(
     }
 }
 
+/** A "something is stopping the mirror" notice; tappable when there is a fix to open. */
 @Composable
-private fun NotifAccessBanner(onGrant: () -> Unit) {
+private fun HintCard(title: String, body: String, onClick: (() -> Unit)?) {
+    val base = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(Ktm.RadiusRow))
+        .background(Ktm.SurfaceAlt)
+        .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Ktm.RadiusRow))
-            .background(Ktm.SurfaceAlt)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusRow))
-            .clickable(onClick = onGrant)
+        modifier = (if (onClick != null) base.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick) else base)
             .padding(16.dp),
     ) {
-        Text("Notification access needed", color = Ktm.Orange, fontFamily = BarlowCondensed,
+        Text(title, color = Ktm.Orange, fontFamily = BarlowCondensed,
             fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(4.dp))
-        Text(
-            "Mirror mode reads Google Maps' turn notifications. Tap to grant access.",
-            color = Ktm.Muted2, fontFamily = Barlow, fontSize = 13.sp,
-        )
+        Text(body, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 13.sp)
     }
+}
+
+/** "Updated 12 s ago" for the mirrored guidance; turns orange when it has gone quiet. */
+@Composable
+private fun FreshnessLine(lastUpdateMs: Long, paused: Boolean) {
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    androidx.compose.runtime.LaunchedEffect(lastUpdateMs) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+    val age = (now - lastUpdateMs).coerceAtLeast(0L)
+    val stale = !paused && age > com.navigator.app.notifications.MirrorHints.STALE_AFTER_MS
+    Text(
+        if (paused) "Paused \u00b7 not sending to the dash"
+        else "Updated ${com.navigator.app.notifications.MirrorHints.ageLabel(age)}",
+        color = if (stale) Ktm.Orange else Ktm.Dim,
+        fontFamily = Barlow, fontSize = 12.sp,
+        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
+    )
 }
 
 // A leading token like "400 m" / "1.2 km" / "550 ft" (the distance-to-turn),

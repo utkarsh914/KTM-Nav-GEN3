@@ -32,13 +32,27 @@ object NotificationRepository {
     private val _navGuidance = MutableStateFlow<NavGuidance?>(null)
     val navGuidance: StateFlow<NavGuidance?> = _navGuidance
 
+    /** When guidance last arrived from the nav app (epoch ms), 0 when none; drives the freshness line. */
+    private val _lastUpdateMs = MutableStateFlow(0L)
+    val lastUpdateMs: StateFlow<Long> = _lastUpdateMs
+
+    /** Whether the notification listener is currently bound by the system. */
+    private val _listenerConnected = MutableStateFlow(false)
+    val listenerConnected: StateFlow<Boolean> = _listenerConnected
+
+    fun setListenerConnected(connected: Boolean) {
+        _listenerConnected.value = connected
+    }
+
     fun updateNavGuidance(guidance: NavGuidance) {
         _navGuidance.value = guidance
+        _lastUpdateMs.value = System.currentTimeMillis()
     }
 
     fun updateNavText(packageName: String, text: String) {
         _currentNavPackage.value = packageName
         _currentNavText.value = text
+        _lastUpdateMs.value = System.currentTimeMillis()
     }
 
     /** Reset navigation state when guidance ends (nav app notification removed). */
@@ -46,5 +60,6 @@ object NotificationRepository {
         _currentNavText.value = null
         _currentNavPackage.value = null
         _navGuidance.value = null
+        _lastUpdateMs.value = 0L
     }
 }
