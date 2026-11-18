@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -104,7 +104,7 @@ fun OnboardingScreen(settings: AppSettings, onComplete: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Ktm.Screen)
-            .systemBarsPadding()
+            .edgePadding()
             .padding(horizontal = 22.dp)
             .padding(top = 12.dp, bottom = 18.dp),
     ) {

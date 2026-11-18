@@ -18,7 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clip
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
         // Draw edge-to-edge from the very first frame so the layout fills the
         // screen immediately instead of settling once the window insets arrive
-        // (each screen applies systemBarsPadding() to keep content clear of the
+        // (each screen applies edgePadding() to keep content clear of the
         // status/nav bars). Without this the UI visibly "jumped" on launch.
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -657,7 +657,7 @@ private fun OpenDashApp(
 private fun ConnectGreeting(name: String) {
     val text = if (name.isNotBlank()) "Hi $name!" else "Welcome!"
     androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize().systemBarsPadding().padding(top = 108.dp),
+        modifier = androidx.compose.ui.Modifier.fillMaxSize().edgePadding().padding(top = 108.dp),
         contentAlignment = androidx.compose.ui.Alignment.TopCenter,
     ) {
         androidx.compose.foundation.layout.Row(

@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -66,7 +66,7 @@ fun BrandSelectScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Ktm.Screen)
-            .systemBarsPadding()
+            .edgePadding()
             .padding(horizontal = 24.dp)
             .padding(top = 26.dp, bottom = 26.dp),
     ) {

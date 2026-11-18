@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,7 +69,7 @@ internal fun SearchPanel(
 
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen)
-            .systemBarsPadding().padding(horizontal = 16.dp).padding(top = 10.dp),
+            .edgePadding().padding(horizontal = 16.dp).padding(top = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(

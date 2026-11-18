@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,7 +42,7 @@ fun LogsScreen(onBack: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
+        modifier = Modifier.fillMaxSize().background(Ktm.Screen).edgePadding(),
     ) {
         com.navigator.app.ui.components.ScreenTopBar(
             title = "Logs",

@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -382,7 +382,7 @@ fun RideReplayScreen(
 
         // ---- Back button -----------------------------------------------------
         Box(
-            modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
+            modifier = Modifier.align(Alignment.TopStart).edgePadding()
                 .padding(start = 16.dp, top = 10.dp),
         ) {
             CircleBackButton(onClick = onBack)
@@ -395,7 +395,7 @@ fun RideReplayScreen(
             ) { CircularProgressIndicator(color = Ktm.Orange) }
 
             points!!.isEmpty() || ride == null -> Box(
-                modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding().padding(16.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).edgePadding().padding(16.dp),
             ) {
                 Text(
                     "This recording has no track data.",
@@ -413,7 +413,7 @@ fun RideReplayScreen(
                 // anchored to the bottom so button visibility never shifts it.
                 Column(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                        .systemBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                        .edgePadding().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
                     Column(

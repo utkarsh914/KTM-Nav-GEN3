@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -772,14 +772,14 @@ fun NavigationHomeScreen(
             NavStage.BROWSE -> {
                 // Search bar (leaves room on the right for the Settings button).
                 Box(
-                    modifier = Modifier.fillMaxWidth().systemBarsPadding()
+                    modifier = Modifier.fillMaxWidth().edgePadding()
                         .padding(start = 16.dp, end = 74.dp, top = 10.dp),
                 ) {
                     SearchBar(modifier = Modifier.fillMaxWidth(), onClick = ::openSearch)
                 }
                 // Top-right: Settings.
                 Box(
-                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
                         .padding(end = 16.dp, top = 10.dp),
                 ) {
                     IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
@@ -787,7 +787,7 @@ fun NavigationHomeScreen(
                 // Position can't be shown/used: say why instead of a silently static map.
                 if (!locationReady) {
                     Box(
-                        modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
+                        modifier = Modifier.align(Alignment.TopCenter).edgePadding()
                             .padding(top = 74.dp, start = 16.dp, end = 16.dp),
                     ) {
                         OfflineBanner(
@@ -798,7 +798,7 @@ fun NavigationHomeScreen(
                 // Bottom-right control stack (the app-wide standard location):
                 // compass (only when rotated) above the recenter button.
                 Column(
-                    modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.BottomEnd).edgePadding()
                         .padding(end = 16.dp, bottom = 16.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -814,14 +814,14 @@ fun NavigationHomeScreen(
                     }
                 }
                 // Bottom-left connect pill.
-                Box(Modifier.align(Alignment.BottomStart).systemBarsPadding().padding(16.dp)) {
+                Box(Modifier.align(Alignment.BottomStart).edgePadding().padding(16.dp)) {
                     ConnectPill(onClick = onOpenConnect)
                 }
                 // A trip is still running in the background -> offer to jump back.
                 if (navState.sessionState.isActiveNav()) {
                     ResumeNavPill(
                         onClick = ::resumeNav,
-                        modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                        modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
                             .padding(bottom = 84.dp),
                     )
                 }
@@ -890,7 +890,7 @@ fun NavigationHomeScreen(
                 }
                 // Top-right control column: Clear, then Compass (only when rotated).
                 Column(
-                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
                         .padding(end = 16.dp, top = 16.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -937,7 +937,7 @@ fun NavigationHomeScreen(
                 }
                 // Top-right control column: Clear, then Compass (only when rotated).
                 Column(
-                    modifier = Modifier.align(Alignment.TopEnd).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
                         .padding(end = 16.dp, top = 16.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -984,12 +984,12 @@ fun NavigationHomeScreen(
                             GoogleNavSdkController.stop()
                             backToBrowse()
                         },
-                        modifier = Modifier.align(Alignment.Center).systemBarsPadding().padding(24.dp),
+                        modifier = Modifier.align(Alignment.Center).edgePadding().padding(24.dp),
                     )
                 }
                 if (!fullSdkNavUi) {
                     Column(
-                        modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
+                        modifier = Modifier.align(Alignment.TopCenter).edgePadding()
                             .padding(start = 12.dp, end = 12.dp, top = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -1030,7 +1030,7 @@ fun NavigationHomeScreen(
                         Speedometer(
                             kmh = kmh,
                             limitKmh = if (appSettings.overspeedEnabled) appSettings.overspeedLimitKmh else null,
-                            modifier = Modifier.align(Alignment.CenterStart).systemBarsPadding()
+                            modifier = Modifier.align(Alignment.CenterStart).edgePadding()
                                 .padding(start = 16.dp),
                         )
                     }
@@ -1041,7 +1041,7 @@ fun NavigationHomeScreen(
                         nav = navState,
                         onEnd = { showEndConfirm = true },
                         onMinimize = ::moveAwayFromNav,
-                        modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                        modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
                             .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     )
                 } else {
@@ -1050,7 +1050,7 @@ fun NavigationHomeScreen(
                     // so they never overlap the SDK's full-width header, and relocate
                     // the offline banner to bottom-centre above the SDK ETA card.
                     Column(
-                        modifier = Modifier.align(Alignment.BottomStart).systemBarsPadding()
+                        modifier = Modifier.align(Alignment.BottomStart).edgePadding()
                             .padding(start = 16.dp, bottom = 104.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -1065,7 +1065,7 @@ fun NavigationHomeScreen(
                     }
                     if (!isOnline) {
                         Box(
-                            modifier = Modifier.align(Alignment.BottomCenter).systemBarsPadding()
+                            modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
                                 .padding(start = 12.dp, end = 12.dp, bottom = 170.dp),
                         ) {
                             OfflineBanner(
@@ -1082,7 +1082,7 @@ fun NavigationHomeScreen(
                 // above the bike-connection button. In full-SDK mode raise it higher
                 // so it clears the SDK's own ETA card / re-center button.
                 Column(
-                    modifier = Modifier.align(Alignment.BottomEnd).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.BottomEnd).edgePadding()
                         .padding(end = 16.dp, bottom = if (fullSdkNavUi) 170.dp else 104.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1101,7 +1101,7 @@ fun NavigationHomeScreen(
                 // Top-left back returns to the browse map (keeps the trip's route
                 // on the map behind the summary card).
                 Box(
-                    modifier = Modifier.align(Alignment.TopStart).systemBarsPadding()
+                    modifier = Modifier.align(Alignment.TopStart).edgePadding()
                         .padding(start = 16.dp, top = 10.dp),
                 ) {
                     CircleBackButton(onClick = ::backToBrowse)
@@ -1295,7 +1295,7 @@ private fun TripFinishedCard(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().systemBarsPadding()
+        modifier = modifier.fillMaxWidth().edgePadding()
             .padding(16.dp)
             .clip(RoundedCornerShape(Ktm.RadiusCard))
             .background(Ktm.Surface)
@@ -1429,7 +1429,7 @@ private fun PreviewCard(
 ) {
     place ?: return
     Column(
-        modifier = Modifier.fillMaxWidth().systemBarsPadding()
+        modifier = Modifier.fillMaxWidth().edgePadding()
             .padding(16.dp)
             .clip(RoundedCornerShape(Ktm.RadiusCard))
             .background(Ktm.Surface)
@@ -1769,7 +1769,7 @@ private fun ConfirmCard(
     place ?: return
 
     Column(
-        modifier = Modifier.fillMaxWidth().systemBarsPadding()
+        modifier = Modifier.fillMaxWidth().edgePadding()
             .padding(16.dp)
             .clip(RoundedCornerShape(Ktm.RadiusCard))
             .background(Ktm.Surface)

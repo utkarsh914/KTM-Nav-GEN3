@@ -1,6 +1,11 @@
 package com.navigator.app.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -89,3 +94,13 @@ fun OpenDashTheme(
         )
     }
 }
+
+/**
+ * Keeps content clear of the system bars AND the display cutout. Plain `systemBarsPadding()`
+ * ignores cutouts, which under Android 16's enforced edge-to-edge puts content behind the
+ * notch/camera in landscape (and on foldable/large-screen layouts). In portrait the two
+ * insets overlap, so the result is unchanged there.
+ */
+@androidx.compose.runtime.Composable
+fun androidx.compose.ui.Modifier.edgePadding(): androidx.compose.ui.Modifier =
+    this.windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))

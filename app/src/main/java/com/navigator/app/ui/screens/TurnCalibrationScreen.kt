@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -74,7 +74,7 @@ fun TurnCalibrationScreen(onBack: () -> Unit) {
     val candidates = remember { candidateOrder() }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
+        modifier = Modifier.fillMaxSize().background(Ktm.Screen).edgePadding(),
     ) {
         com.navigator.app.ui.components.ScreenTopBar(
             title = "Turn icon calibration",

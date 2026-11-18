@@ -57,7 +57,7 @@ internal const val LANE_HINT_DISTANCE_M = 400
 
 /**
  * Custom top maneuver header replacing the SDK's green banner. Renders below the
- * status bar (caller applies systemBarsPadding). Shows the current turn icon,
+ * status bar (caller applies edgePadding). Shows the current turn icon,
  * distance-to-maneuver, the instruction/road, an optional exit-number chip, and a
  * compact "Then <icon>" hint for the following step. During REROUTING it shows a
  * "Rerouting…" label with the retained maneuver dimmed. Corner radius matches the

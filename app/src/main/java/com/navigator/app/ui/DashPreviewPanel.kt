@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,7 +30,7 @@ fun DashPreviewPanel() {
     val s by DashPreview.state.collectAsState()
     var expanded by remember { mutableStateOf(false) }
     Box(
-        modifier = Modifier.fillMaxSize().systemBarsPadding().padding(start = 8.dp, bottom = 96.dp),
+        modifier = Modifier.fillMaxSize().edgePadding().padding(start = 8.dp, bottom = 96.dp),
         contentAlignment = Alignment.BottomStart,
     ) {
         Column(

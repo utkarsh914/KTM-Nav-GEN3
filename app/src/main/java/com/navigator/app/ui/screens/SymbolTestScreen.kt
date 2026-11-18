@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,7 +51,7 @@ fun SymbolTestScreen(onBack: () -> Unit) {
     val settings = remember { AppSettings(context) }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
+        modifier = Modifier.fillMaxSize().background(Ktm.Screen).edgePadding(),
     ) {
         com.navigator.app.ui.components.ScreenTopBar(
             title = "Symbol testing",

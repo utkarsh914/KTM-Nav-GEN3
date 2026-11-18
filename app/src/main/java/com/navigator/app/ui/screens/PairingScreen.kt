@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -215,7 +215,7 @@ fun PairingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Ktm.Screen)
-            .systemBarsPadding()
+            .edgePadding()
             .padding(horizontal = 22.dp)
             .padding(top = 8.dp, bottom = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
