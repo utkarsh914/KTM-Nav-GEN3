@@ -84,6 +84,8 @@ internal fun SearchPanel(
     category: CategoryUiState = CategoryUiState(),
     onCategory: (PlaceCategory?) -> Unit = {},
     onPickCategoryResult: (CategoryResult) -> Unit = {},
+    /** Set while a trip is still running underneath: shows a one-tap way back to it. */
+    onResumeTrip: (() -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val speech = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -171,6 +173,9 @@ internal fun SearchPanel(
         }
 
         Spacer(Modifier.height(10.dp))
+        if (onResumeTrip != null) {
+            ResumeNavPill(onClick = onResumeTrip, modifier = Modifier.padding(bottom = 10.dp))
+        }
         if (target == SearchTarget.TRIP_STOP) {
             Text(
                 "Add a stop to your trip",

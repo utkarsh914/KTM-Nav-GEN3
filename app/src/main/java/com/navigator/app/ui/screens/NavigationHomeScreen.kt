@@ -1098,6 +1098,9 @@ fun NavigationHomeScreen(
                     }
                 },
                 onPickSaved = { applyPicked(it) },
+                onResumeTrip = if (navState.sessionState.isActiveNav() && leftNavManually &&
+                    searchTarget != SearchTarget.TRIP_STOP
+                ) ::resumeNav else null,
             )
 
             NavStage.CONFIRM -> {
@@ -1710,7 +1713,7 @@ private fun TripStat(label: String, value: String) {
 
 /** Pill shown on the browse map while a trip keeps running in the background. */
 @Composable
-private fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = com.navigator.app.ui.theme.rememberHaptics()
     Row(
         modifier = modifier

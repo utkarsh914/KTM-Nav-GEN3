@@ -287,7 +287,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [~] | UX1 | "Resume navigation" pill in every stage DEFERRED: needs per-stage layout work to avoid overlapping bottom cards (verify on device) |
+| [x] | UX1 | "Resume navigation" pill in every stage DEFERRED: needs per-stage layout work to avoid overlapping bottom cards (verify on device) |
 | [x] | UX2 | Banners: location off/denied, Bluetooth off, Nearby devices denied | | |
 | [x] | UX3 | Search: clear button, IME action, shared-link feedback | | |
 | [~] | UX4 | Touch targets ≥ 48 dp; glove mode 64 dp; large END-confirm buttons | | 🏍 Done: search back/clear, KtmToggle, Home/Work remove (48dp). NOT done: preview/stop-row icons, glove-mode 64dp, END-confirm buttons. Toggle rows are now ~12dp taller |
@@ -415,3 +415,4 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 | St | ID | Item | Notes |
 |---|---|---|---|
 | [x] | D1 | Add a stop to a trip that already has stops | Remaining stops resolved from the SDK's current route segment (RemainingStops, 250 m match, unknown -> refused); new stop goes next, passed stops dropped from the live trip but kept in `tripAllStops` for Ride back; 8 s guard against a second add while the re-plan settles. Known limit: a stop located at the destination (loop trip) may be visited again |
+| [x] | D2 | UX1 remainder: Resume pill on the full-screen search panel | Shown while a trip runs and the rider is searching for a destination / preview stop (not while adding a trip stop, which already belongs to the trip) |
