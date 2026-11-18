@@ -108,11 +108,17 @@ object TurnBeeper {
      */
     fun preview() {
         scope.launch {
-            playBeep(Side.LEFT, ducked = false)
-            delay(500)
-            playBeep(Side.RIGHT, ducked = false)
-            delay(500)
-            playBeep(Side.LEFT, ducked = false)
+            try {
+                playBeep(Side.LEFT, ducked = false)
+                delay(500)
+                playBeep(Side.RIGHT, ducked = false)
+                delay(500)
+                playBeep(Side.LEFT, ducked = false)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                com.navigator.app.logging.AppLogger.log("Beep", "!! preview failed: ${e.javaClass.simpleName}")
+            }
         }
     }
 

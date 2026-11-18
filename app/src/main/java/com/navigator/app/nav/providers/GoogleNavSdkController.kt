@@ -110,7 +110,7 @@ object GoogleNavSdkController {
         // getNavigator(Activity, ...) shows the ToS dialog itself if not accepted.
         NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
             override fun onNavigatorReady(navigator: Navigator) {
-                AppLogger.log("Nav", "Navigator ready - starting guidance to ${dest.label}")
+                AppLogger.log("Nav", "Navigator ready - starting guidance to ${AppLogger.sensitive(dest.label)}")
                 GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext)
                 BccuConnectionService.setNavProviderIfRunning(GoogleNavSdkProvider)
                 GoogleNavSdkProvider.startNavigation(dest, dest.travelMode)

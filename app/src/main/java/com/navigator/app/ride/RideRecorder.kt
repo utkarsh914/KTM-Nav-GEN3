@@ -71,7 +71,7 @@ class RideRecorder(private val context: Context) {
             thread = ht
             activeId = id
             started = true
-            AppLogger.log("Ride", "Recording started ($id) -> ${destLabel ?: "unknown"}")
+            AppLogger.log("Ride", "Recording started ($id) -> ${AppLogger.sensitive(destLabel)}")
         } catch (e: Exception) {
             AppLogger.log("Ride", "!! start failed: $e")
             runCatching { writer?.close() }

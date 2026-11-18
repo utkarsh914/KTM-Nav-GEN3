@@ -41,11 +41,23 @@ class AppNotificationListener : NotificationListenerService() {
     private val settings by lazy { AppSettings(this) }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        try {
+            handlePosted(sbn)
+        } catch (e: Exception) {
+            AppLogger.log("Notif", "!! onNotificationPosted failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    private fun handlePosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        AppLogger.log("Notif", "Posted: pkg=$packageName category=${sbn.notification.category} title=${redact(title)}")
+        // Debug only: logs the package + category of EVERY app's notification, which
+        // would otherwise be mirrored to the public Downloads log in release.
+        if (com.navigator.app.BuildConfig.DEBUG) {
+            AppLogger.log("Notif", "Posted: pkg=$packageName category=${sbn.notification.category} title=${redact(title)}")
+        }
         if (title.isBlank() && text.isBlank()) return
 
         val isNav = isNavigationNotification(sbn, settings)
@@ -128,7 +140,7 @@ class AppNotificationListener : NotificationListenerService() {
             return
         }
         if (extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)) {
-            AppLogger.log("Notif", "Skipping GROUP conversation from $packageName: \"$title\"")
+            AppLogger.log("Notif", "Skipping GROUP conversation from $packageName (title ${redact(title)})")
             return
         }
         // WhatsApp fallback for older notification styles: group messages title
@@ -137,7 +149,7 @@ class AppNotificationListener : NotificationListenerService() {
             (extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) != null &&
                 extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, true))
         ) {
-            AppLogger.log("Notif", "Skipping WhatsApp group (conversation title present): \"$title\"")
+            AppLogger.log("Notif", "Skipping WhatsApp group (conversation title present, title ${redact(title)})")
             return
         }
 
@@ -196,6 +208,14 @@ class AppNotificationListener : NotificationListenerService() {
      * doesn't cause a flicker.
      */
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        try {
+            handleRemoved(sbn)
+        } catch (e: Exception) {
+            AppLogger.log("Notif", "!! onNotificationRemoved failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    private fun handleRemoved(sbn: StatusBarNotification) {
         if (isNavigationNotification(sbn, settings)) {
             AppLogger.log("Notif", "Nav notification removed from ${sbn.packageName} - scheduling guidance clear")
             // TurnBeeper.reset() deliberately NOT called here: Maps routinely

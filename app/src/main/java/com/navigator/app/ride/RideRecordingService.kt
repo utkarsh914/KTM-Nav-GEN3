@@ -35,7 +35,14 @@ class RideRecordingService : Service() {
             }
             else -> {
                 createChannel()
-                startForegroundCompat()
+                try {
+                    startForegroundCompat()
+                } catch (e: Exception) {
+                    // Location permission revoked / FGS start not allowed: don't crash the app.
+                    AppLogger.log("Ride", "!! cannot start ride recording foreground service: ${e.javaClass.simpleName}")
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
                 if (recorder == null) {
                     recorder = RideRecorder(applicationContext).also {
                         it.start(

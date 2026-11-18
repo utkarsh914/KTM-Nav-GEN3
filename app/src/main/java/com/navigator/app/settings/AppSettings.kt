@@ -13,18 +13,7 @@ import androidx.security.crypto.MasterKey
  */
 class AppSettings(context: Context) {
 
-    private val prefs: SharedPreferences = run {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "opendash_settings",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+    private val prefs: SharedPreferences = encryptedPrefs(context)
 
     // Plain (unencrypted) prefs for non-secret pairing state. EncryptedSharedPreferences
     // is deprecated and prone to silent corruption/reset on some devices; the
@@ -399,6 +388,41 @@ class AppSettings(context: Context) {
     }
 
     companion object {
+        // Either the encrypted store, or (after a failure) the plain fallback. Once
+        // chosen it is kept for the whole process so settings never flip stores
+        // mid-session; a process restart retries the encrypted store.
+        @Volatile private var cachedEncrypted: SharedPreferences? = null
+
+        /**
+         * Process-wide encrypted store. Keystore / EncryptedSharedPreferences can throw
+         * (corrupt file, locked or reset keystore); that used to crash ride recording,
+         * the notification listener and the app scope. On failure fall back to a plain
+         * store for the rest of the process (retried on next launch).
+         */
+        private fun encryptedPrefs(context: Context): SharedPreferences {
+            cachedEncrypted?.let { return it }
+            synchronized(this) {
+                cachedEncrypted?.let { return it }
+                val app = context.applicationContext
+                return try {
+                    val masterKey = MasterKey.Builder(app)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+                    EncryptedSharedPreferences.create(
+                        app,
+                        "opendash_settings",
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    ).also { cachedEncrypted = it }
+                } catch (e: Exception) {
+                    com.navigator.app.logging.AppLogger.log("Settings", "!! encrypted prefs unavailable, using fallback store: ${e.javaClass.simpleName}")
+                    app.getSharedPreferences("opendash_settings_fallback", Context.MODE_PRIVATE)
+                        .also { cachedEncrypted = it }
+                }
+            }
+        }
+
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
 

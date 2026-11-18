@@ -109,10 +109,16 @@ class BccuConnectionService : LifecycleService() {
             val intent = Intent(context, BccuConnectionService::class.java)
                 .putExtra(EXTRA_DEVICE_ADDRESS, deviceAddress)
                 .putExtra(EXTRA_BIKE_PRESENT, bikePresent)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            // ForegroundServiceStartNotAllowedException when a battery-optimised app is
+            // started from the background (ACL broadcast); never crash the receiver.
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                AppLogger.log("BLE", "!! cannot start BccuConnectionService: ${e.javaClass.simpleName}: ${e.message}")
             }
         }
 
@@ -269,7 +275,15 @@ class BccuConnectionService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForegroundWithTypes("Connecting...")
+        try {
+            startForegroundWithTypes("Connecting...")
+        } catch (e: Exception) {
+            // e.g. Nearby-devices (BLUETOOTH_CONNECT) revoked, or FGS start not allowed.
+            AppLogger.log("BLE", "!! cannot start foreground service: ${e.javaClass.simpleName}: ${e.message}")
+            fgsStartFailed = true
+            stopSelf()
+            return
+        }
         runningInstance = this
         startReconnectWatchdog()
         registerAdapterStateReceiver()
@@ -520,6 +534,10 @@ class BccuConnectionService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        if (fgsStartFailed) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACTION_EXIT) {
             AppLogger.log("BLE", "Exit requested from the notification - shutting down")
             // Ask the (possibly backgrounded) activity to remove its task, drop
@@ -591,10 +609,20 @@ class BccuConnectionService : LifecycleService() {
             AppLogger.log("BLE", "Bluetooth adapter unavailable/off, deferring connect")
             return
         }
-        val device = adapter.getRemoteDevice(address)
-        _deviceName.value = AppSettings(this).bondedDeviceName ?: device.name
-        gatt = device.connectGatt(this, autoConnect, callback, BluetoothDevice.TRANSPORT_LE)
+        try {
+            val device = adapter.getRemoteDevice(address)
+            _deviceName.value = AppSettings(this).bondedDeviceName ?: device.name
+            gatt = device.connectGatt(this, autoConnect, callback, BluetoothDevice.TRANSPORT_LE)
+        } catch (e: Exception) {
+            // SecurityException (Nearby devices revoked) / IllegalArgumentException (bad address).
+            AppLogger.log("BLE", "!! connect failed: ${e.javaClass.simpleName}: ${e.message}")
+            gatt = null
+            _connectionState.value = ConnectionState.DISCONNECTED
+        }
     }
+
+    /** Set when onCreate could not enter the foreground; the service shuts itself down. */
+    private var fgsStartFailed = false
 
     override fun onDestroy() {
         AppLogger.log("BLE", "Service destroyed")
@@ -1120,7 +1148,7 @@ class BccuConnectionService : LifecycleService() {
         val key = activeSessionKey
         val iv = tempIv
         if (key == null || iv == null) {
-            AppLogger.log("Dash", "!! Cannot send NOTIFICATION \"$text\" - not authenticated yet (state=${_connectionState.value})")
+            AppLogger.log("Dash", "!! Cannot send NOTIFICATION ${AppLogger.sensitive(text)} - not authenticated yet (state=${_connectionState.value})")
             return
         }
         clearJob?.cancel()
@@ -1131,10 +1159,10 @@ class BccuConnectionService : LifecycleService() {
 
         val marquee = AppSettings(this).marqueeEnabled && text.length > NOTIFICATION_BANNER_CHARS
         if (marquee) {
-            AppLogger.log("Dash", "Sending NOTIFICATION (marquee) icon=${icon.name} text=\"$text\"")
+            AppLogger.log("Dash", "Sending NOTIFICATION (marquee) icon=${icon.name} text=${AppLogger.sensitive(text)}")
             marqueeJob = lifecycleScope.launch { runMarquee(text, icon) }
         } else {
-            AppLogger.log("Dash", "Sending NOTIFICATION icon=${icon.name} text=\"$text\"")
+            AppLogger.log("Dash", "Sending NOTIFICATION icon=${icon.name} text=${AppLogger.sensitive(text)}")
             writeNotificationFrame(text, icon, BccuProtocol.Visibility.FULL)
             clearJob = lifecycleScope.launch {
                 delay(NOTIFICATION_CLEAR_DELAY_MS)
@@ -1250,7 +1278,7 @@ class BccuConnectionService : LifecycleService() {
         // Bail (without scheduling the clear job) if we're not authenticated yet.
         if (!sendEncrypted(BccuProtocol.TURN_ICON,
                 BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.START, full), coalesce = true)) return
-        AppLogger.log("Dash", "Sending connect greeting: \"$text\"")
+        AppLogger.log("Dash", "Sending connect greeting: ${AppLogger.sensitive(text)}")
         sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(text, full), coalesce = true)
         sendEncrypted(BccuProtocol.TURN_DISTANCE,
             BccuProtocol.buildTurnDistancePayload("", BccuProtocol.Visibility.OFF), coalesce = true)
@@ -1288,19 +1316,19 @@ class BccuConnectionService : LifecycleService() {
         // pending "nav ended" clear that a transient notification-remove queued.
         guidanceClearJob?.cancel()
         if (distanceText != null) {
-            AppLogger.log("Dash", "Sending TURN_DISTANCE = \"$distanceText\"")
+            AppLogger.log("Dash", "Sending TURN_DISTANCE = ${AppLogger.sensitive(distanceText)}")
             sendEncrypted(BccuProtocol.TURN_DISTANCE, BccuProtocol.buildTurnDistancePayload(distanceText), coalesce = true)
         }
         if (roadText != null) {
-            AppLogger.log("Dash", "Sending TURN_ROAD = \"$roadText\"")
+            AppLogger.log("Dash", "Sending TURN_ROAD = ${AppLogger.sensitive(roadText)}")
             sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(roadText), coalesce = true)
         }
         if (etaText != null) {
-            AppLogger.log("Dash", "Sending ETA = \"$etaText\"")
+            AppLogger.log("Dash", "Sending ETA = ${AppLogger.sensitive(etaText)}")
             sendEncrypted(BccuProtocol.ETA, BccuProtocol.buildEtaPayload(etaText), coalesce = true)
         }
         if (remainingDistanceText != null) {
-            AppLogger.log("Dash", "Sending REMAINING_DISTANCE = \"$remainingDistanceText\"")
+            AppLogger.log("Dash", "Sending REMAINING_DISTANCE = ${AppLogger.sensitive(remainingDistanceText)}")
             sendEncrypted(BccuProtocol.REMAINING_DISTANCE, BccuProtocol.buildRemainingDistancePayload(remainingDistanceText), coalesce = true)
         }
     }

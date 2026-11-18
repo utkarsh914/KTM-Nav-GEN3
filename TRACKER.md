@@ -27,7 +27,7 @@ Target: **Android 16+ only (minSdk 36)**.
 |---|---|---|---|---|
 | S | Safety net & verification protocol | 5 | 6 | SF5 smoke pending |
 | 0 | minSdk 36, delete legacy paths | 3 | 7 | 0.1-0.3, 0.5 done; 0.2 BLE-service sites + 0.4 in bucket C; 0.6 on-device; 0.7 GATT doc with bucket C |
-| 1 | Critical bugs, crashes, log privacy | 0 | 14 | Not started |
+| 1 | Critical bugs, crashes, log privacy | 9 | 14 | S1-S6, PR1-PR3 done; C1-C4, N1 pending (batch 4) |
 | 2 | Navigation state, UI state, pairing | 0 | 23 | Not started |
 | 3 | BLE robustness | 0 | 11 | Not started |
 | 4 | Data integrity, parsing, network | 0 | 25 | Not started |
@@ -78,19 +78,19 @@ Target: **Android 16+ only (minSdk 36)**.
 ### Crashes
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | S1 | `AppSettings`: single instance, lazy + recoverable encrypted prefs (migration is ST9) | | |
-| [ ] | S2 | Background FGS start: try/catch + log/notify now; real fix is B11 | | 🔎 🏍 |
-| [ ] | S3 | Permission checks + try/catch on BLE service `startForeground`/`connect()`/ride service; `START_NOT_STICKY` only when permission missing; scope exception handler | | 🏍 |
-| [ ] | S4 | Settings screen: guard `bondedDevices`, null-safe `getSystemService` | | |
-| [ ] | S5 | `TurnBeeper.preview()` try/catch | | |
-| [ ] | S6 | `onNotificationPosted` try/catch | | |
+| [x] | S1 | `AppSettings`: single instance, lazy + recoverable encrypted prefs (migration is ST9) | | |
+| [x] | S2 | Background FGS start: try/catch + log/notify now; real fix is B11 | | 🔎 🏍 |
+| [x] | S3 | Permission checks + try/catch on BLE service `startForeground`/`connect()`/ride service; `START_NOT_STICKY` only when permission missing; scope exception handler | | 🏍 |
+| [x] | S4 | Settings screen: guard `bondedDevices`, null-safe `getSystemService` | | |
+| [x] | S5 | `TurnBeeper.preview()` try/catch | | |
+| [x] | S6 | `onNotificationPosted` try/catch | | |
 
 ### Privacy / logging
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | PR1 | Release logs length-only: notification text, road/ETA/distance, WhatsApp titles, destination labels; "Posted:" line after filtering/debug only; update `ENGINEERING_NOTES.md:99` | | |
-| [ ] | PR2 | Public `Download/OpenDash` mirror opt-in + rotation/size cap | | |
-| [ ] | PR3 | Crash handler writes synchronously before delegating | | |
+| [x] | PR1 | Release logs length-only: notification text, road/ETA/distance, WhatsApp titles, destination labels; "Posted:" line after filtering/debug only; update `ENGINEERING_NOTES.md:99` | | |
+| [x] | PR2 | Public `Download/OpenDash` mirror opt-in + rotation/size cap | | |
+| [x] | PR3 | Crash handler writes synchronously before delegating | | |
 
 ## Phase 2: Navigation, UI state, pairing
 

@@ -186,7 +186,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 },
             )
             .build()
-        AppLogger.log("Nav", "setDestinations(routeToken, $mode, ${waypoints.size} wp) -> (${waypoints.lastOrNull()?.title ?: "?"})")
+        AppLogger.log("Nav", "setDestinations(routeToken, $mode, ${waypoints.size} wp) -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
         nav.setDestinations(waypoints, options).setOnResultListener { status ->
             when {
                 status == Navigator.RouteStatus.OK -> {
@@ -237,7 +237,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 RoutingOptions.TravelMode.DRIVING
             },
         )
-        AppLogger.log("Nav", "setDestinations mode=$mode, ${waypoints.size} wp -> (${waypoints.lastOrNull()?.title ?: "?"})")
+        AppLogger.log("Nav", "setDestinations mode=$mode, ${waypoints.size} wp -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
         nav.setDestinations(waypoints, options).setOnResultListener { status ->
             when {
                 status == Navigator.RouteStatus.OK -> {

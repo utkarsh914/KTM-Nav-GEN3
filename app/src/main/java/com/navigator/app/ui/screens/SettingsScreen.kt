@@ -134,6 +134,7 @@ fun SettingsScreen(
     var overspeedLimit by remember { mutableStateOf(settings.overspeedLimitKmh) }
 
     var rideRecordingOn by remember { mutableStateOf(settings.rideRecordingEnabled) }
+    var publicLogMirror by remember { mutableStateOf(com.navigator.app.logging.AppLogger.publicMirrorEnabled) }
     var rideMinDist by remember { mutableStateOf(settings.rideMinDistanceMeters) }
     var rideMinDur by remember { mutableStateOf(settings.rideMinDurationSeconds) }
     var rideHistoryLimit by remember { mutableStateOf(settings.rideHistoryLimit) }
@@ -165,10 +166,15 @@ fun SettingsScreen(
     }
     val bondedAudioDevices by produceState(initialValue = emptyList<android.bluetooth.BluetoothDevice>()) {
         value = withContext(Dispatchers.IO) {
-            val adapter = context.getSystemService(BluetoothManager::class.java).adapter
-            adapter?.bondedDevices?.filter {
-                it.bluetoothClass?.hasService(android.bluetooth.BluetoothClass.Service.AUDIO) == true
-            } ?: emptyList()
+            if (!com.navigator.app.ui.OpenDashPermissions.isGranted(context, android.Manifest.permission.BLUETOOTH_CONNECT)) {
+                return@withContext emptyList()
+            }
+            runCatching {
+                val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
+                adapter?.bondedDevices?.filter {
+                    it.bluetoothClass?.hasService(android.bluetooth.BluetoothClass.Service.AUDIO) == true
+                } ?: emptyList()
+            }.getOrDefault(emptyList())
         }
     }
 
@@ -652,6 +658,12 @@ fun SettingsScreen(
                 GroupCard("Diagnostics", icon = com.navigator.app.ui.theme.OpenDashIcons.Clock) {
                     SettingsRow("View & share logs", showDivider = true, onClick = onOpenLogs) {
                         Text("›", color = Ktm.Dim, fontSize = 18.sp)
+                    }
+                    SettingsRow("Copy logs to Downloads", showDivider = true) {
+                        KtmToggle(publicLogMirror, {
+                            publicLogMirror = it
+                            com.navigator.app.logging.AppLogger.publicMirrorEnabled = it
+                        })
                     }
                     SettingsRow("Symbol testing", showDivider = true, onClick = onOpenSymbolTest) {
                         Text("›", color = Ktm.Dim, fontSize = 18.sp)
