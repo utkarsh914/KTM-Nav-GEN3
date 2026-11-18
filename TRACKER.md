@@ -245,7 +245,7 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | F1 | Live Updates navigation notification (check compileSdk 36.1 vs AGP 8.13.2 first; consolidate with SDK notification) | | 🔎 🏍 |
+| [x] | F1 | Live Updates navigation notification (check compileSdk 36.1 vs AGP 8.13.2 first; consolidate with SDK notification) | | 🔎 🏍 |
 | [x] | F2 | GPX/KML export & share; GPX import | | |
 | [x] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
 | [ ] | F4 | Richer ride data, elevation, charts | | |
@@ -282,7 +282,7 @@ Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 inclu
 | [x] | B2 | F2 + F9: GPX export/share, GPX import as ride, Trip-finished actions (save destination, reverse route, share GPX) | Gpx.kt (pure writer + hardened SAX importer: no DOCTYPE/entities/UTF-16, size/point caps, untimed points paced at 45 km/h, pauses <-> trkseg, thinning keeps pauses), GpxShare via FileProvider cache-path, History 'IMPORT GPX' (OpenDocument */*, saved=true), Replay share icon, TripFinished row: Save place / Ride back (start point as destination, stops reversed, straight to preview) / Share GPX. ~15 new tests. NOT done: ACTION_VIEW import from other apps, dedupe of repeated imports, imported-stats vs glitch-filter mismatch on wild files |
 | [x] | B3 | F5: Home/Work chip + launcher shortcuts | Chips under the search bar (only set slots) -> preview directly; dynamic shortcuts 'Ride Home/Work' synced from PlacesStore + app start; ignored with a toast while NAVIGATING (reviewer must-fix). Needs on-device check: long-press the launcher icon, chip/banner spacing |
 | [x] | B4 | F8: mirror home freshness + missing-notification / access-revoked hint | MirrorHints (pure, tested): NO_ACCESS / LISTENER_DISCONNECTED (tap = requestRebind) / STALE (>30 s) / BATTERY tip; 'Updated N s ago' line; NotificationRepository.lastUpdateMs + listenerConnected. Small batch: no separate reviewer pass. Cannot detect 'Maps notifications blocked' (no API for other apps) |
-| [ ] | B5 | F1: Live Updates navigation notification (promoted ongoing, progress style) | needs A1 |
+| [x] | B5 | F1: Live Updates navigation notification (promoted ongoing, progress style) | NavLiveUpdate (NotificationContentProviderBase via initForegroundServiceManagerProvider) + pure NavLiveContentBuilder: instruction / distance · remaining · ETA, status-bar chip (setShortCriticalText), whole-route ProgressStyle, setRequestPromotedOngoing guarded for pre-36.1; refresh only while guidance live and the SDK foreground notification is shown (no phantom card); fallback to the SDK default; Settings > Advanced > Live Updates toggle. Needs on-device check: chip only on Android 16 QPR2+ (system Settings > Notifications > Live updates must allow the app); lock-screen card; no notification left after End |
 | [ ] | B6 | F6 + N4: category chips, voice search, along-route search, Add as stop | |
 
 Smoke test 2 (user) after B6.

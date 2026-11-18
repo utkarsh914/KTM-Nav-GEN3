@@ -23,7 +23,7 @@ object GoogleNavSdkController {
 
     /** Notification id for the SDK's own turn-by-turn foreground notification
      *  (distinct from the BLE service = 1 and overspeed = 42). */
-    private const val NAV_NOTIFICATION_ID = 1010
+    private const val NAV_NOTIFICATION_ID = NavLiveUpdate.NOTIFICATION_ID
 
     @Volatile private var navNotificationInit = false
 
@@ -42,9 +42,20 @@ object GoogleNavSdkController {
                 putExtra(com.navigator.app.ui.MainActivity.EXTRA_OPEN_NAV, true)
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            NavigationApi.initForegroundServiceManagerMessageAndIntent(
-                app, NAV_NOTIFICATION_ID, "Navigating", resumeIntent,
-            )
+            var live: NavLiveUpdate? = null
+            try {
+                // Our own notification (instruction, distance, ETA, progress; Live Update on
+                // Android 16 QPR2+) instead of the SDK's generic one.
+                live = NavLiveUpdate(app, resumeIntent)
+                NavigationApi.initForegroundServiceManagerProvider(app, NAV_NOTIFICATION_ID, live)
+            } catch (e: Throwable) {
+                live?.close() // an abandoned provider must not keep refreshing the fallback notification
+                AppLogger.log("Nav", "!! live-update notification unavailable (${e.javaClass.simpleName}); using the SDK default")
+                NavigationApi.clearForegroundServiceManager()
+                NavigationApi.initForegroundServiceManagerMessageAndIntent(
+                    app, NAV_NOTIFICATION_ID, "Navigating", resumeIntent,
+                )
+            }
             navNotificationInit = true
         }.onFailure { AppLogger.log("Nav", "!! nav notification init failed: ${it.message}") }
     }

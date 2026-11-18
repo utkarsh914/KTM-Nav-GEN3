@@ -147,6 +147,7 @@ fun SettingsScreen(
 
     // Advanced settings.
     var fullSdkNavUi by remember { mutableStateOf(settings.fullSdkNavUi) }
+    var liveUpdates by remember { mutableStateOf(settings.liveUpdatesEnabled) }
     var speedBandBase by remember { mutableStateOf(settings.speedBandBaseKmh) }
     var speedBandStep by remember { mutableStateOf(settings.speedBandStepKmh) }
     var speedBandCount by remember { mutableStateOf(settings.speedBandCount) }
@@ -624,6 +625,16 @@ fun SettingsScreen(
             // ===== Advanced =====
             item {
                 GroupCard("Advanced", icon = com.navigator.app.ui.theme.OpenDashIcons.Compass) {
+                    // The guidance notification as an Android 16 Live Update (status-bar chip).
+                    SettingsRow("Live Updates notification", showDivider = true) {
+                        KtmToggle(liveUpdates, { liveUpdates = it; settings.liveUpdatesEnabled = it })
+                    }
+                    Text(
+                        "Shows the next turn in the status bar while navigating (Android 16 QPR2+; " +
+                            "also allowed per app in system Notification settings). Applies from the next notification update.",
+                        color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
+                    )
                     // Full Google-SDK nav rendering vs the app's custom overlays.
                     SettingsRow("Full Google nav UI", showDivider = true) {
                         KtmToggle(fullSdkNavUi, { fullSdkNavUi = it; settings.fullSdkNavUi = it })

@@ -276,6 +276,11 @@ class AppSettings(context: Context) {
         get() = navProvider != NAV_PROVIDER_NOTIFICATION
         set(value) { navProvider = if (value) NAV_PROVIDER_GOOGLE_NAV_SDK else NAV_PROVIDER_NOTIFICATION }
 
+    /** Show the guidance notification as an Android 16 Live Update (status-bar chip); on by default. */
+    var liveUpdatesEnabled: Boolean
+        get() = pairingPrefs.getBoolean(KEY_LIVE_UPDATES, true)
+        set(value) = pairingPrefs.edit().putBoolean(KEY_LIVE_UPDATES, value).apply()
+
     /**
      * When true, active navigation shows Google's own stock guidance chrome
      * (maneuver header, ETA card, speedometer) instead of the app's custom
@@ -430,6 +435,7 @@ class AppSettings(context: Context) {
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
 
         private const val KEY_FULL_SDK_NAV_UI = "full_sdk_nav_ui"
+        private const val KEY_LIVE_UPDATES = "live_updates_enabled"
 
         private const val KEY_SPEED_BAND_BASE = "speed_band_base_kmh"
         private const val KEY_SPEED_BAND_STEP = "speed_band_step_kmh"
