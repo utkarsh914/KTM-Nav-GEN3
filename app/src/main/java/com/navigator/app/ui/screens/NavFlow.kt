@@ -74,6 +74,13 @@ internal data class NavFlowState(
     fun finishTrip(): NavFlowState =
         copy(stage = NavStage.TRIP_FINISHED, query = "", stops = emptyList(), searchTarget = SearchTarget.DESTINATION)
 
+    /** "Ride back": plan the reverse trip from the finished one (origin becomes the destination, stops reversed). */
+    fun rideBack(origin: SavedPlace, tripStops: List<SavedPlace>): NavFlowState =
+        NavFlowState(
+            stage = NavStage.PREVIEW, selected = origin,
+            stops = tripStops.asReversed().take(MAX_STOPS), confirmFromSearch = false,
+        )
+
     fun back(tripLive: Boolean): BackOutcome = when (stage) {
         NavStage.PREVIEW -> BackOutcome(copy(stage = NavStage.CONFIRM))
         // Back goes where the rider came from: the search list if they picked from it,
@@ -222,6 +229,8 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
     var finishedDurationSec by mutableStateOf(0)
     var lastStartAtMs by mutableStateOf(0L)
     var lastStartedDest by mutableStateOf<NavDestination?>(null)
+    /** Where the current/last trip began (lat, lng), for "Ride back" when no track was recorded. */
+    var tripOrigin by mutableStateOf<Pair<Double, Double>?>(null)
     var arrivalLatched by mutableStateOf(false)
     var arrivalProgress by mutableStateOf(ArrivalPolicy.Progress.start(0L))
 
@@ -249,6 +258,7 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
         finishedDurationSec = 0
         lastStartAtMs = 0L
         lastStartedDest = null
+        tripOrigin = null
         arrivalLatched = false
         arrivalProgress = ArrivalPolicy.Progress.start(0L)
     }

@@ -97,6 +97,23 @@ class NavFlowTest {
         assertEquals("", s.query)
     }
 
+    @Test fun rideBackPlansTheReverseTripWithStopsReversed() {
+        val s = NavFlowState(stage = NavStage.TRIP_FINISHED, selected = place(9))
+            .rideBack(place(0), listOf(place(1), place(2), place(3)))
+        assertEquals(NavStage.PREVIEW, s.stage)
+        assertEquals(place(0), s.selected)
+        assertEquals(listOf(place(3), place(2), place(1)), s.stops)
+        assertFalse(s.confirmFromSearch)
+        assertEquals(SearchTarget.DESTINATION, s.searchTarget)
+        // Back from the reverse preview goes to CONFIRM like any other preview.
+        assertEquals(NavStage.CONFIRM, s.back(false).state.stage)
+    }
+
+    @Test fun rideBackNeverExceedsTheStopCap() {
+        val many = (1..MAX_STOPS + 2).map { place(it) }
+        assertEquals(MAX_STOPS, NavFlowState().rideBack(place(0), many).stops.size)
+    }
+
     // ---- Session rules (C2/C3/U1/U2) ---------------------------------------
 
     @Test fun autoResumeOnlyWhenTripLiveAndNotDeliberatelyAway() {

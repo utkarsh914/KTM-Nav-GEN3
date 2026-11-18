@@ -246,14 +246,14 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
 | [ ] | F1 | Live Updates navigation notification (check compileSdk 36.1 vs AGP 8.13.2 first; consolidate with SDK notification) | | 🔎 🏍 |
-| [ ] | F2 | GPX/KML export & share; GPX import | | |
+| [x] | F2 | GPX/KML export & share; GPX import | | |
 | [x] | F3 | Manual "Record ride"; notification pause/stop; auto-pause | | |
 | [ ] | F4 | Richer ride data, elevation, charts | | |
 | [ ] | F5 | "Ride home/work" chip + shortcut/widget | | |
 | [ ] | F6 | Quick categories + voice search | | |
 | [ ] | F7 | Weather chip on map | | |
 | [ ] | F8 | Mirror home freshness indicator + missing-notification hint | | |
-| [ ] | F9 | Trip-finished actions (save destination, reverse route, share GPX) | | |
+| [x] | F9 | Trip-finished actions (save destination, reverse route, share GPX) | | |
 | [ ] | F10 | Ride rename / notes / trim; SAF backup/restore | | |
 | [ ] | F11 | Per-leg ETA; drag-to-reorder stops | | |
 | [ ] | F12 | Non-Latin road-name transliteration / ref fallback | | |
@@ -279,7 +279,7 @@ Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 inclu
 | St | ID | Item | Notes |
 |---|---|---|---|
 | [x] | B1 | F3: manual Record ride (idle map), pause/resume/stop from notification + app | RideSession state flow, recorder pause/resume with gapBefore points (no distance/moving/duration across a pause, persisted in NDJSON so recovery matches), service Pause/Resume/Stop actions + chronometer notification, RecordControlsHost (chip/pill) bottom-left of browse map, trip observer skips its own recording when one is active. No auto-pause (decision). NOT done: breaking the replay polyline at pauses. Needs on-device check: chip fit on 360dp, pause/resume from notification |
-| [ ] | B2 | F2 + F9: GPX export/share, GPX import as ride, Trip-finished actions (save destination, reverse route, share GPX) | |
+| [x] | B2 | F2 + F9: GPX export/share, GPX import as ride, Trip-finished actions (save destination, reverse route, share GPX) | Gpx.kt (pure writer + hardened SAX importer: no DOCTYPE/entities/UTF-16, size/point caps, untimed points paced at 45 km/h, pauses <-> trkseg, thinning keeps pauses), GpxShare via FileProvider cache-path, History 'IMPORT GPX' (OpenDocument */*, saved=true), Replay share icon, TripFinished row: Save place / Ride back (start point as destination, stops reversed, straight to preview) / Share GPX. ~15 new tests. NOT done: ACTION_VIEW import from other apps, dedupe of repeated imports, imported-stats vs glitch-filter mismatch on wild files |
 | [ ] | B3 | F5: Home/Work chip + launcher shortcuts | |
 | [ ] | B4 | F8: mirror home freshness + missing-notification / access-revoked hint | |
 | [ ] | B5 | F1: Live Updates navigation notification (promoted ongoing, progress style) | needs A1 |

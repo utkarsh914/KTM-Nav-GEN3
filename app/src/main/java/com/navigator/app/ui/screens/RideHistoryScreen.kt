@@ -140,6 +140,19 @@ fun RideHistoryScreen(
     }
     androidx.compose.runtime.LaunchedEffect(Unit) { refresh() }
 
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        ioScope.launch {
+            val msg = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                importGpx(context, store, uri)
+            }
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+            refresh()
+        }
+    }
+
     fun toggle(id: String) {
         onSelectedIdsChange(if (id in selectedIds) selectedIds - id else selectedIds + id)
     }
@@ -184,6 +197,19 @@ fun RideHistoryScreen(
             onBack = onBack,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
         ) {
+            if (!selectionMode) {
+                Text(
+                    "IMPORT GPX", color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp, letterSpacing = 1.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Ktm.RadiusButton))
+                        .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                            runCatching { importLauncher.launch(arrayOf("*/*")) }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                )
+            }
             if (selectionMode) {
                 SelectionTopBarActions(
                     allSelected = sorted.isNotEmpty() && validSelected.size == sorted.size,
@@ -285,6 +311,25 @@ fun RideHistoryScreen(
     }
 
     RideDeleteDialog(confirmDelete, validSelected, store, ioScope, ::refresh, ::exitSelection) { confirmDelete = it }
+}
+
+/** Read a GPX document and store it as a ride; returns the message to show. Blocking: call on IO. */
+private fun importGpx(context: android.content.Context, store: RideStore, uri: android.net.Uri): String {
+    val track = try {
+        context.contentResolver.openInputStream(uri)?.use {
+            com.navigator.app.ride.Gpx.parse(it, System.currentTimeMillis())
+        }
+    } catch (e: Exception) {
+        null
+    } ?: return "Couldn't read a track from that file"
+    val label = track.name ?: context.contentResolver.query(
+        uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null,
+    )?.use { c -> if (c.moveToFirst()) c.getString(0)?.replace(Regex("\\.gpx$", RegexOption.IGNORE_CASE), "") else null }
+    val ride = store.importRide(label ?: "Imported ride", track.points)
+        ?: return "That track is too short to import"
+    return "Imported \u00b7 " + com.navigator.app.nav.ktm.DistanceFormatter.format(
+        ride.distanceMeters, com.navigator.app.nav.model.DistanceUnits.METRIC,
+    )
 }
 
 /** Toggle a ride's saved/pinned flag and show a brief confirmation toast. */

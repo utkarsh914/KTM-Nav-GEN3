@@ -145,6 +145,9 @@ private fun stageTransition(initial: NavStage, target: NavStage): ContentTransfo
 
 private const val START_DEBOUNCE_MS = 1_500L
 
+/** Label of the synthetic destination built by "Ride back". */
+private const val RIDE_BACK_LABEL = "Trip start"
+
 /** Route preview polyline colors (ARGB). */
 private val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
@@ -379,8 +382,11 @@ fun NavigationHomeScreen(
         // Record the recent as soon as the rider opens the preview for a place -
         // reaching this screen is a strong signal of intent, even if they don't
         // hit Start. addRecent de-dupes by coords, so re-adding at Start is safe.
-        store.addRecent(p)
-        recents = store.recents()
+        // ("Ride back" destinations are synthetic: they shouldn't litter the recents.)
+        if (p.label != RIDE_BACK_LABEL) {
+            store.addRecent(p)
+            recents = store.recents()
+        }
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false
         // Compute from a FRESH fix so route-token origins match the SDK's GPS at
         // Start (a stale origin makes the SDK snap to the nearest/fastest route).
@@ -513,8 +519,10 @@ fun NavigationHomeScreen(
         if (nowMs - lastStartAtMs < START_DEBOUNCE_MS) return
         lastStartAtMs = nowMs
         GoogleNavSdkProvider.clearStartFailure()
-        store.addRecent(p)
-        recents = store.recents()
+        if (p.label != RIDE_BACK_LABEL) {
+            store.addRecent(p)
+            recents = store.recents()
+        }
         val sel = previewRoutes.getOrNull(selectedRoute)
         // Carry the mode that produced the token so the SDK consumes it with the
         // same mode (else it rejects the token and silently picks its own route).
@@ -522,6 +530,7 @@ fun NavigationHomeScreen(
         val tripStops = stops.map { com.navigator.app.nav.model.Stop(it.lat, it.lng, it.label) }
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         lastStartedDest = dest
+        flow.tripOrigin = origin
         onStartNavigation(dest)
         arrivalLatched = false
         arrivalProgress = ArrivalPolicy.Progress.start(System.currentTimeMillis())
@@ -547,6 +556,15 @@ fun NavigationHomeScreen(
     fun moveAwayFromNav() {
         leftNavManually = true
         stage = NavStage.BROWSE
+    }
+
+    // "Ride back": plan the reverse of the finished trip (start point as destination, stops reversed).
+    fun rideBack() {
+        val o = finishedPoints?.firstOrNull()?.let { it.lat to it.lng } ?: flow.tripOrigin ?: return
+        val reversedStops = lastStartedDest?.stops.orEmpty()
+            .map { SavedPlace(it.lat, it.lng, it.label ?: "Stop") }
+        backToBrowse()
+        flow.update { it.rideBack(SavedPlace(o.first, o.second, RIDE_BACK_LABEL), reversedStops) }
     }
 
     fun resumeNav() {
@@ -1113,6 +1131,9 @@ fun NavigationHomeScreen(
                 ) {
                     CircleBackButton(onClick = ::backToBrowse)
                 }
+                var placeSaved by remember(selected) {
+                    mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false)
+                }
                 Box(Modifier.align(Alignment.BottomCenter)) {
                     TripFinishedCard(
                         destinationLabel = selected?.label,
@@ -1122,6 +1143,28 @@ fun NavigationHomeScreen(
                         fallbackDurationSec = finishedDurationSec,
                         onDone = ::backToBrowse,
                         onOpenReplay = { finishedRide?.let { onOpenReplay(it.id) } },
+                        placeSaved = placeSaved,
+                        onSavePlace = {
+                            selected?.let {
+                                scope.launch(Dispatchers.IO) {
+                                    store.saveFavorite(it, com.navigator.app.nav.destination.FavoriteSlot.OTHER)
+                                }
+                                placeSaved = true
+                                android.widget.Toast.makeText(context, "Place saved", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        canRideBack = finishedPoints?.firstOrNull() != null || flow.tripOrigin != null,
+                        onRideBack = ::rideBack,
+                        onShareGpx = finishedRide?.let { ride ->
+                            {
+                                scope.launch {
+                                    val intent = withContext(Dispatchers.IO) {
+                                        com.navigator.app.ride.GpxShare.buildIntent(context, ride, rideStore)
+                                    }
+                                    if (intent != null) runCatching { context.startActivity(intent) }
+                                }
+                            }
+                        },
                         modifier = Modifier.onGloballyPositioned {
                             finishCardHeightPx = it.size.height +
                                 with(density) { 28.dp.roundToPx() }
@@ -1299,6 +1342,11 @@ private fun TripFinishedCard(
     fallbackDurationSec: Int,
     onDone: () -> Unit,
     onOpenReplay: () -> Unit,
+    placeSaved: Boolean,
+    onSavePlace: () -> Unit,
+    canRideBack: Boolean,
+    onRideBack: () -> Unit,
+    onShareGpx: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1358,7 +1406,17 @@ private fun TripFinishedCard(
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        // Follow-ups: keep the place, go back the way you came, hand the track to another app.
+        if (resolved) {
+            Spacer(Modifier.height(10.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                FollowUpAction(if (placeSaved) "Saved \u2713" else "Save place", enabled = !placeSaved, onClick = onSavePlace)
+                FollowUpAction("Ride back", enabled = canRideBack, onClick = onRideBack)
+                if (onShareGpx != null) FollowUpAction("Share GPX", onClick = onShareGpx)
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
         if (ride != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 KtmOutlineButton(text = "Open in Replay", modifier = Modifier.weight(1f), onClick = onOpenReplay)
@@ -1369,6 +1427,22 @@ private fun TripFinishedCard(
             KtmPrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth(), onClick = onDone)
         }
     }
+}
+
+@Composable
+private fun FollowUpAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    Text(
+        text.uppercase(),
+        color = if (enabled) Ktm.Orange else Ktm.Dim,
+        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(Ktm.RadiusButton))
+            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .wrapContentHeight(Alignment.CenterVertically)
+            .padding(horizontal = 6.dp),
+    )
 }
 
 /** One labelled stat in the trip-finished / summary card. */

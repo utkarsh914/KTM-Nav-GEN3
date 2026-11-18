@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -503,6 +504,17 @@ fun RideReplayScreen(
                                 android.widget.Toast.LENGTH_SHORT,
                             ).show()
                         },
+                        onShare = {
+                            scope.launch {
+                                val intent = withContext(Dispatchers.IO) {
+                                    com.navigator.app.ride.GpxShare.buildIntent(context, r, store)
+                                }
+                                if (intent != null) runCatching { context.startActivity(intent) }
+                                else android.widget.Toast.makeText(
+                                    context, "No track to share", android.widget.Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
                         onSeek = { fraction -> seekToFraction(fraction) },
                         onScrubStart = { fraction -> playing = false; seekToFraction(fraction) },
                         modifier = Modifier.fillMaxWidth()
@@ -787,6 +799,7 @@ private fun ReplayControls(
     onSetSimplify: (Double) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleSave: () -> Unit,
+    onShare: () -> Unit,
     onSeek: (Float) -> Unit,
     onScrubStart: (Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -810,6 +823,13 @@ private fun ReplayControls(
                 Text(dateText, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp)
             }
             // Save / pin toggle with a subtle pop animation.
+            Box(
+                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(Ktm.RadiusButton))
+                    .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onShare),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Share, "Share as GPX", tint = Ktm.Muted2, modifier = Modifier.size(22.dp))
+            }
             SaveStar(saved = saved, boxSize = 36.dp, iconSize = 24.dp, onToggle = onToggleSave)
         }
 

@@ -181,6 +181,59 @@ class RideStore(context: Context) {
         return w
     }
 
+    /**
+     * Store an imported track (GPX) as a ride. Written in one pass (no per-point flush: the file is
+     * complete before the index entry exists). Marked saved so the history limit never prunes it.
+     * Returns null when the track is too short to be a ride.
+     */
+    fun importRide(label: String?, points: List<RidePoint>): RecordedRide? {
+        if (points.size < 2) return null
+        var id = System.currentTimeMillis()
+        while (trackFile(id.toString()).exists()) id++
+        val rideId = id.toString()
+        val stats = RideMetrics.summarize(points)
+        val last = points.last()
+        ACTIVE_TRACKS.add(rideId) // keep orphan recovery away until the index entry exists
+        try {
+            java.io.BufferedWriter(java.io.OutputStreamWriter(FileOutputStream(trackFile(rideId)), Charsets.UTF_8)).use { w ->
+                RideJson.metaLine(label, last.lat, last.lng)?.let { w.write(it); w.write("\n") }
+                points.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
+            }
+        } catch (e: Exception) {
+            runCatching { trackFile(rideId).delete() }
+            ACTIVE_TRACKS.remove(rideId)
+            AppLogger.log("Ride", "!! GPX import write failed: ${e.javaClass.simpleName}")
+            return null
+        }
+        val ride = RecordedRide(
+            id = rideId,
+            startMs = stats.startMs,
+            endMs = stats.endMs,
+            distanceMeters = stats.distanceMeters,
+            durationSeconds = stats.durationSeconds,
+            destinationLabel = label,
+            destLat = last.lat,
+            destLng = last.lng,
+            avgSpeedKmh = stats.avgSpeedKmh,
+            movingSeconds = stats.movingSeconds,
+            avgOverallSpeedKmh = stats.avgOverallSpeedKmh,
+            maxSpeedKmh = stats.maxSpeedKmh,
+            pointCount = stats.pointCount,
+            saved = true,
+        )
+        try {
+            finalizeRide(ride)
+        } catch (e: Exception) {
+            runCatching { trackFile(rideId).delete() }
+            AppLogger.log("Ride", "!! GPX import index write failed: ${e.javaClass.simpleName}")
+            return null
+        } finally {
+            ACTIVE_TRACKS.remove(rideId)
+        }
+        AppLogger.log("Ride", "Imported GPX ride $rideId: ${stats.distanceMeters}m / ${stats.durationSeconds}s")
+        return ride
+    }
+
     /** Append one point as an NDJSON line and flush (crash-safe). */
     fun appendPoint(w: Writer, p: RidePoint) {
         w.write(RideJson.pointLine(p))
