@@ -120,4 +120,23 @@ class RideTrackReduceTest {
         val runs = listOf((0 until 10).map { RidePoint(0.0, it * 0.0001, 1000L * it, 10f) })
         assertEquals(runs, capTotalVertices(runs, 1500))
     }
+
+    @Test fun aPauseBreaksTheLineInsteadOfBridgingTheGap() {
+        fun seg(startMs: Long, lng0: Double, gap: Boolean) = (0 until 12).map {
+            RidePoint(0.0, lng0 + it * 0.0002, startMs + 1_000L * it, 50f, gapBefore = gap && it == 0)
+        }
+        val pts = seg(0, 0.0, false) + seg(600_000, 0.05, true)
+        val runs = buildBandRuns(pts, bands)
+        assertEquals(2, runs.size)
+        assertEquals(12, runs[0].points.size)
+        assertEquals(12, runs[1].points.size)
+        assertTrue(runs[1].points.first().gapBefore)
+    }
+
+    @Test fun stridingNeverDropsAPauseMarker() {
+        val pts = (0 until 100).map { RidePoint(0.0, it * 0.0001, 1_000L * it, 50f, gapBefore = it == 37) }
+        val s = strideToBudget(pts, 10)
+        assertTrue(s.any { it.gapBefore })
+        assertEquals(2, buildBandRuns(s, bands).size)
+    }
 }

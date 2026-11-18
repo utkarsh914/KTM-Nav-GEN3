@@ -32,8 +32,8 @@ Target: **Android 16+ only (minSdk 36)**.
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 25 | 25 | R1/NP1 done in A4; NET2 dropped, NP4 deferred |
 | 5 | Settings, build, docs hygiene | 10 | 11 | ST5 dropped; ST8, ST9 done in Phase 8 |
-| 6 | UX polish & accessibility | 10 | 14 | UX4 mostly done (A4); UX1/7/8/11 deferred |
-| 7 | New features | 7 | 12 | F1/F2/F3/F5/F6/F8/F9 done (Phase 9); F4/F7/F10/F11/F12 not started |
+| 6 | UX polish & accessibility | 12 | 14 | UX1 partial, UX8 done (C5); UX7/UX11 deferred |
+| 7 | New features | 11 | 12 | F1-F6, F8-F12 done (Phases 9/10); F7 weather skipped by decision |
 | T | Tests to extend/add | 7 | 8 | T1 partial (RideStore needs Android); T5 done (NavFlow) |
 | H | Hardware verification | 0 | 5 | Not started |
 
@@ -238,14 +238,14 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [-] | UX1 | "Resume navigation" pill in every stage DEFERRED: needs per-stage layout work to avoid overlapping bottom cards (verify on device) |
+| [~] | UX1 | "Resume navigation" pill in every stage DEFERRED: needs per-stage layout work to avoid overlapping bottom cards (verify on device) |
 | [x] | UX2 | Banners: location off/denied, Bluetooth off, Nearby devices denied | | |
 | [x] | UX3 | Search: clear button, IME action, shared-link feedback | | |
 | [~] | UX4 | Touch targets ≥ 48 dp; glove mode 64 dp; large END-confirm buttons | | 🏍 Done: search back/clear, KtmToggle, Home/Work remove (48dp). NOT done: preview/stop-row icons, glove-mode 64dp, END-confirm buttons. Toggle rows are now ~12dp taller |
 | [x] | UX5 | Contrast fixes (`Ktm.Dim`, small stat text) | | |
 | [x] | UX6 | Semantics: `Role.Switch`, selected states, connection state, turn-icon descriptions Switch role on KtmToggle, RadioButton selection on RouteChip; connection-pill/turn-icon descriptions NOT done |
 | [-] | UX7 | Units setting (+ yards) and system 12/24h DEFERRED: feature (units setting) - spans formatters, UI, rides, overspeed |
-| [-] | UX8 | Real sunrise/sunset day/night DEFERRED: feature (sunrise/sunset) |
+| [x] | UX8 | Real sunrise/sunset day/night DEFERRED: feature (sunrise/sunset) |
 | [x] | UX9 | Speedometer over-limit colour + limit display | | |
 | [x] | UX10 | Onboarding BackHandler; CONFIRM Back → BROWSE CONFIRM Back goes to the map unless reached from search; Onboarding BackHandler already consumed in MainActivity |
 | [-] | UX11 | Pairing: real RSSI bars; "Connected to <bike> · Disconnect" DEFERRED: pairing RSSI bars / disconnect affordance |
@@ -309,7 +309,7 @@ Decisions: F7 weather skipped; backup = rides + places + prefs (never the bike p
 | [x] | C2 | F10: ride rename/notes/trim; backup + restore (SAF, merge-only) | Edit dialog (name, notes) + trim dialog (range slider; destructive, atomic fsynced rewrite validated under the lock); Settings > Backup: zip (rides, tracks, places, prefs) via SAF. Restore is merge-only for rides/places; prefs go through a strict allowlist (exact types, clamped ranges) because a wrong-typed value would crash the getters; pairing/onboarding/call-audio never exported; restored ride stats recomputed from the track. Needs on-device check: trim + restore round trip on the phone. NOT done: RideStore instrumented tests (needs Android), selective restore |
 | [x] | C3 | F11: per-leg ETA in the preview, drag-to-reorder stops | LegLine under each waypoint (time · distance · arrive HH:mm, cumulative) only for the stops the routes were computed for; drag handle replaces the up/down arrows (TalkBack custom actions Move up/down), whole slot floats while dragged, stop list scrolls past 260dp. Needs on-device check: drag feel and card height with 4 stops. Distances are metric (UX7 units setting still deferred) |
 | [x] | C4 | F12: Latin transliteration / road ref for the dash | DEVICE-UNVERIFIED (dash font can't be checked without the bike; BACKLOG says 'likely Latin-only'). DashText: ICU Any-Latin;Latin-ASCII for TURN_ROAD, TURN_INFO and banner text only (never unit labels: 'मी' must not become 'mi'); dash-safe text untouched; falls back to a road ref (NH 48) then blank; a failing transliterator sends the original. Settings > Navigation > 'Latin text on dash' (default on) turns it off. Single self-contained commit: `git revert` it if the dash shows native scripts fine. No separate reviewer pass |
-| [ ] | C5 | Polish: replay line breaks at pauses, GPX import dedupe, Resume pill on more stages (UX1), real sunrise/sunset (UX8) | |
+| [x] | C5 | Polish: replay line breaks at pauses, GPX import dedupe, Resume pill on more stages (UX1), real sunrise/sunset (UX8) | Replay/trip-finished track breaks at pauses (segments reduced separately; striding keeps pause markers); GPX import says 'Already imported' (same start time + ~same distance); Resume pill also on CONFIRM/PREVIEW while a trip runs (SEARCH/NAVIGATING already covered by their own flows); day/night from the real sun (NOAA equation, last known location, fallback to 06-18) - drives the Day/Night nav theme and map. No separate reviewer pass. UX1 only partial: no pill on the full-screen search panel |
 
 Smoke test 3 (user) after C5.
 

@@ -1061,6 +1061,13 @@ fun NavigationHomeScreen(
             )
 
             NavStage.CONFIRM -> {
+                // A trip is still running while the rider plans another: one tap back to it.
+                if (navState.sessionState.isActiveNav() && leftNavManually) {
+                    ResumeNavPill(
+                        onClick = ::resumeNav,
+                        modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                    )
+                }
                 val sel = selected
                 var savedNow by remember(sel) {
                     mutableStateOf(sel?.let { store.isSaved(it.lat, it.lng) } ?: false)
@@ -1099,6 +1106,13 @@ fun NavigationHomeScreen(
             }
 
             NavStage.PREVIEW -> {
+                // A trip is still running while the rider plans another: one tap back to it.
+                if (navState.sessionState.isActiveNav() && leftNavManually) {
+                    ResumeNavPill(
+                        onClick = ::resumeNav,
+                        modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                    )
+                }
                 Box(Modifier.align(Alignment.BottomCenter)) {
                     PreviewCard(
                         place = selected,

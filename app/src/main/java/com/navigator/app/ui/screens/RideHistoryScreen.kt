@@ -322,6 +322,7 @@ private fun importGpx(context: android.content.Context, store: RideStore, uri: a
     } catch (e: Exception) {
         null
     } ?: return "Couldn't read a track from that file"
+    if (store.findDuplicate(track.points) != null) return "Already imported"
     val label = track.name ?: context.contentResolver.query(
         uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null,
     )?.use { c -> if (c.moveToFirst()) c.getString(0)?.replace(Regex("\\.gpx$", RegexOption.IGNORE_CASE), "") else null }

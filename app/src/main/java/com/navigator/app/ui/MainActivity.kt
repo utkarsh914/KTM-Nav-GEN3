@@ -320,13 +320,27 @@ private fun OpenDashApp(
         com.navigator.app.ui.theme.ThemeMode.DARK -> true
         com.navigator.app.ui.theme.ThemeMode.SYSTEM -> systemDark
     }
-    // Re-evaluate day/night roughly once a minute so the map home flips at
-    // 06:00 / 18:00 while the app stays open.
+    // Re-evaluate day/night roughly once a minute while the app stays open: from the real sun
+    // position at the last known location (sunrise/sunset), falling back to the fixed
+    // 06:00-18:00 rule when there is no fix / location permission.
     val nightNow by androidx.compose.runtime.produceState(
         initialValue = com.navigator.app.ui.theme.isNightTime(),
     ) {
         while (true) {
-            value = com.navigator.app.ui.theme.isNightTime()
+            val here = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val lm = appContext.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                    listOf(
+                        android.location.LocationManager.GPS_PROVIDER,
+                        android.location.LocationManager.NETWORK_PROVIDER,
+                        android.location.LocationManager.PASSIVE_PROVIDER,
+                    ).mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
+                        .maxByOrNull { it.time }
+                }.getOrNull()
+            }
+            value = if (here != null) {
+                com.navigator.app.ui.theme.SunTimes.isNight(System.currentTimeMillis(), here.latitude, here.longitude)
+            } else com.navigator.app.ui.theme.isNightTime()
             delay(60_000)
         }
     }

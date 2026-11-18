@@ -134,6 +134,25 @@ internal fun buildBandRuns(
     pts: List<RidePoint>,
     bands: RideMetrics.SpeedBands,
 ): List<BandRun> {
+    if (pts.none { it.gapBefore }) return buildSegmentRuns(pts, bands)
+    // A user pause: the line must not be drawn across the unrecorded gap. Each segment is
+    // reduced on its own (the merge steps assume runs that share boundary points).
+    val out = ArrayList<BandRun>()
+    var start = 0
+    for (i in 1..pts.lastIndex) {
+        if (pts[i].gapBefore) {
+            out += buildSegmentRuns(pts.subList(start, i), bands)
+            start = i
+        }
+    }
+    out += buildSegmentRuns(pts.subList(start, pts.size), bands)
+    return out
+}
+
+private fun buildSegmentRuns(
+    pts: List<RidePoint>,
+    bands: RideMetrics.SpeedBands,
+): List<BandRun> {
     if (pts.isEmpty()) return emptyList()
 
     // Hysteresis band assignment: keep the current band unless the raw band is
@@ -299,8 +318,10 @@ internal fun strideToBudget(pts: List<RidePoint>, budget: Int): List<RidePoint> 
     if (pts.size <= budget || budget < 2) return pts
     val step = (pts.size + budget - 1) / budget // ceil
     val out = ArrayList<RidePoint>(budget + 1)
-    var i = 0
-    while (i < pts.size) { out.add(pts[i]); i += step }
+    // Pause markers are kept even when striding skips them, so a thinned track still breaks there.
+    for (j in pts.indices) {
+        if (j % step == 0 || pts[j].gapBefore) out.add(pts[j])
+    }
     if (out.last() !== pts.last()) out.add(pts.last())
     return out
 }

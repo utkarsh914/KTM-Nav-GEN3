@@ -181,6 +181,16 @@ class RideStore(context: Context) {
         return w
     }
 
+    /** An existing ride that looks like [points] (same start time, near-identical distance): an earlier import of the same file. */
+    fun findDuplicate(points: List<RidePoint>): RecordedRide? {
+        if (points.size < 2) return null
+        val st = RideMetrics.summarize(points)
+        return list().firstOrNull { r ->
+            kotlin.math.abs(r.startMs - st.startMs) <= 2_000L &&
+                kotlin.math.abs(r.distanceMeters - st.distanceMeters) <= maxOf(25, st.distanceMeters / 100)
+        }
+    }
+
     /**
      * Add rides from a restored backup: only ids not already here, and only those whose track was
      * extracted. Existing rides are never touched. Returns how many were added.
