@@ -32,6 +32,8 @@ object BackupArchive {
         val prefsJson: String?,
         /** Extracted track files by ride id (in the temp dir passed to [read]). */
         val tracks: Map<String, File>,
+        /** Ids that have a track entry (also filled when tracks were not extracted). */
+        val trackIds: Set<String> = tracks.keys,
     )
 
     fun write(
@@ -69,8 +71,9 @@ object BackupArchive {
     }
 
     /** Parse a backup, extracting tracks into [tempDir]. Null when it isn't a valid backup of this format. */
-    fun read(input: InputStream, tempDir: File): Contents? {
-        tempDir.mkdirs()
+    fun read(input: InputStream, tempDir: File, withTracks: Boolean = true): Contents? {
+        if (withTracks) tempDir.mkdirs()
+        val seenTrackIds = HashSet<String>()
         var manifestOk = false
         var rides: List<RecordedRide> = emptyList()
         var places: String? = null
@@ -87,6 +90,12 @@ object BackupArchive {
                     val name = e.name
                     val trackId = TRACK_NAME.matchEntire(name)?.groupValues?.get(1)
                     when {
+                        trackId != null && !withTracks -> {
+                            // Only counting: read through (capped), keep nothing.
+                            val n = copyCapped(zip, java.io.OutputStream.nullOutputStream(), MAX_TRACK_BYTES, MAX_TOTAL_BYTES - total) ?: return null
+                            total += n
+                            seenTrackIds += trackId
+                        }
                         trackId != null -> {
                             val f = File(tempDir, "$trackId.jsonl")
                             val n = copyCapped(zip, f.outputStream(), MAX_TRACK_BYTES, MAX_TOTAL_BYTES - total) ?: run { f.delete(); return null }
@@ -113,7 +122,7 @@ object BackupArchive {
             return null
         }
         if (!manifestOk) return null
-        return Contents(rides, places, prefs, tracks)
+        return Contents(rides, places, prefs, tracks, if (withTracks) tracks.keys.toSet() else seenTrackIds)
     }
 
     private fun parseRides(body: String): List<RecordedRide> {

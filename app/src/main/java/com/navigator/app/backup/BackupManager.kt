@@ -35,19 +35,43 @@ class BackupManager(context: Context) {
         Summary(0, false)
     }
 
-    fun restore(input: InputStream): Restored {
+    /** What a backup file holds, for the "what to restore" dialog. */
+    class Preview(val ridesInFile: Int, val newRides: Int, val places: Int, val settings: Int)
+
+    /** Look inside a backup without restoring anything (tracks are read through, not kept). Null if not a backup. */
+    fun inspect(input: InputStream): Preview? = try {
+        val c = BackupArchive.read(input, File(app.cacheDir, "unused"), withTracks = false)
+        if (c == null) null else {
+            val usable = c.rides.filter { it.id in c.trackIds }
+            val have = rides.list().map { it.id }.toHashSet()
+            var placeCount = 0
+            c.placesJson?.let { json ->
+                runCatching {
+                    val o = JSONObject(json)
+                    placeCount = com.navigator.app.nav.destination.PlacesJson.parseFavorites(o.optString("favorites")).items.size +
+                        com.navigator.app.nav.destination.PlacesJson.parsePlaces(o.optString("recents")).items.size
+                }
+            }
+            Preview(usable.size, usable.count { it.id !in have }, placeCount, PrefsBackup.decode(c.prefsJson).size)
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Restore only the chosen parts. Everything stays merge-only except settings, which the file replaces. */
+    fun restore(input: InputStream, withRides: Boolean = true, withPlaces: Boolean = true, withSettings: Boolean = true): Restored {
         val tmp = File(app.cacheDir, "restore-${System.currentTimeMillis()}")
         return try {
-            val c = BackupArchive.read(input, tmp) ?: return Restored(0, 0, 0, false)
-            val ridesAdded = rides.importBackup(c.rides, c.tracks)
+            val c = BackupArchive.read(input, tmp, withTracks = withRides) ?: return Restored(0, 0, 0, false)
+            val ridesAdded = if (withRides) rides.importBackup(c.rides, c.tracks) else 0
             var placesAdded = 0
-            c.placesJson?.let { json ->
+            c.placesJson?.takeIf { withPlaces }?.let { json ->
                 runCatching {
                     val o = JSONObject(json)
                     placesAdded = places.mergeFromBackup(o.optString("recents"), o.optString("favorites"))
                 }
             }
-            val entries = PrefsBackup.decode(c.prefsJson)
+            val entries = if (withSettings) PrefsBackup.decode(c.prefsJson) else emptyMap()
             if (entries.isNotEmpty()) {
                 val e = prefs.edit()
                 PrefsBackup.applyTo(e, entries)

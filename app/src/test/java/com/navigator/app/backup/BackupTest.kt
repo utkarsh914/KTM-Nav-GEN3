@@ -155,4 +155,16 @@ class BackupTest {
         assertEquals(listOf(sp(1), sp(2), sp(3)), m)
         assertNotNull(m)
     }
+
+    @Test fun peekCountsTracksWithoutExtractingThem() {
+        val src = tmp.newFolder("peeksrc")
+        java.io.File(src, "111.jsonl").writeText("{\"lat\":1}\n")
+        val out = ByteArrayOutputStream()
+        BackupArchive.write(out, listOf(ride("111"), ride("222")), { id -> java.io.File(src, "$id.jsonl") }, "{}", "{}", 1L)
+        val dir = java.io.File(tmp.root, "peekdir")
+        val c = BackupArchive.read(ByteArrayInputStream(out.toByteArray()), dir, withTracks = false)!!
+        assertEquals(setOf("111"), c.trackIds)
+        assertTrue(c.tracks.isEmpty())
+        assertFalse(dir.exists()) // nothing was written
+    }
 }

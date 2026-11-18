@@ -42,6 +42,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -171,36 +172,42 @@ fun SettingsScreen(
     val restoreLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri -> restoreUri = uri }
-    restoreUri?.let { uri ->
-        AlertDialog(
-            onDismissRequest = { restoreUri = null },
-            containerColor = Ktm.Surface, titleContentColor = Ktm.White, textContentColor = Ktm.TextSecondary,
-            title = { Text("Restore from backup?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "Rides and places from the file are added (nothing is deleted). Settings in the file " +
-                        "replace your current ones. Restart the app afterwards to apply them everywhere.",
-                    fontFamily = Barlow,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    restoreUri = null
-                    backupScope.launch {
-                        val msg = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
-                            val r = runCatching {
-                                context.contentResolver.openInputStream(uri)?.use { com.navigator.app.backup.BackupManager(context).restore(it) }
-                            }.getOrNull()
-                            if (r?.ok == true) "Restored ${r.ridesAdded} rides, ${r.placesAdded} places, ${r.settingsApplied} settings. Restart the app to apply settings."
-                            else "Couldn't restore: not a KTM Navigator backup (or too large)"
-                        }
-                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+    var restorePreview by remember { mutableStateOf<com.navigator.app.backup.BackupManager.Preview?>(null) }
+    LaunchedEffect(restoreUri) {
+        val uri = restoreUri ?: return@LaunchedEffect
+        val p = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { com.navigator.app.backup.BackupManager(context).inspect(it) }
+            }.getOrNull()
+        }
+        if (p == null) {
+            restoreUri = null
+            android.widget.Toast.makeText(context, "Couldn't read that file: not a KTM Navigator backup (or too large)", android.widget.Toast.LENGTH_LONG).show()
+        } else restorePreview = p
+    }
+    val previewToShow = restorePreview
+    val uriToRestore = restoreUri
+    if (previewToShow != null && uriToRestore != null) {
+        RestoreDialog(
+            preview = previewToShow,
+            onDismiss = { restoreUri = null; restorePreview = null },
+            onRestore = { withRides, withPlaces, withSettings ->
+                restoreUri = null; restorePreview = null
+                backupScope.launch {
+                    val msg = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                        val r = runCatching {
+                            context.contentResolver.openInputStream(uriToRestore)?.use {
+                                com.navigator.app.backup.BackupManager(context).restore(it, withRides, withPlaces, withSettings)
+                            }
+                        }.getOrNull()
+                        if (r?.ok == true) buildList {
+                            if (withRides) add("${r.ridesAdded} rides")
+                            if (withPlaces) add("${r.placesAdded} places")
+                            if (withSettings) add("${r.settingsApplied} settings")
+                        }.joinToString(", ", "Restored ", if (withSettings) ". Restart the app to apply settings." else ".")
+                        else "Couldn't restore that file"
                     }
-                }, modifier = Modifier.heightIn(min = 56.dp)) { Text("RESTORE", color = Ktm.Orange) }
-            },
-            dismissButton = {
-                TextButton(onClick = { restoreUri = null }, modifier = Modifier.heightIn(min = 56.dp)) {
-                    Text("CANCEL", color = Ktm.TextPrimary)
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
                 }
             },
         )
