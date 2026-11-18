@@ -148,6 +148,8 @@ fun RideReplayScreen(
     var ride by remember(rideId) { mutableStateOf<com.navigator.app.ride.RecordedRide?>(null) }
 
     var points by remember(rideId) { mutableStateOf<List<RidePoint>?>(null) }
+    // Resampled once per loaded track (not per recomposition / playback tick).
+    val chart = remember(points) { points?.let { com.navigator.app.ride.RideChart.build(it) } }
     LaunchedEffect(rideId) {
         // Index parse + track read are disk work: off the main thread. `ride` is set before
         // `points` so the "no data" branch (points loaded, ride missing) can't flash.
@@ -504,6 +506,10 @@ fun RideReplayScreen(
                                 android.widget.Toast.LENGTH_SHORT,
                             ).show()
                         },
+                        chart = chart,
+                        elevationText = if (r.elevGainM >= 0 && r.elevLossM >= 0) {
+                            "\u2191 ${r.elevGainM} m   \u2193 ${r.elevLossM} m"
+                        } else null,
                         onShare = {
                             scope.launch {
                                 val intent = withContext(Dispatchers.IO) {
@@ -800,6 +806,8 @@ private fun ReplayControls(
     onToggleFollow: () -> Unit,
     onToggleSave: () -> Unit,
     onShare: () -> Unit,
+    chart: com.navigator.app.ride.ChartSeries?,
+    elevationText: String?,
     onSeek: (Float) -> Unit,
     onScrubStart: (Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -845,6 +853,19 @@ private fun ReplayControls(
             StatColumn("$avgSpeed kmph".tightSpaces(), avgLabel, modifier = Modifier.weight(1f))
             StatDivider()
             StatColumn("$maxSpeed kmph".tightSpaces(), "MAX", modifier = Modifier.weight(1f))
+        }
+
+        // The chart is skipped on short screens (landscape): the card must not swallow the map.
+        val roomForChart = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp >= 480
+        if (chart != null && roomForChart) {
+            Spacer(Modifier.size(8.dp))
+            RideChartView(chart, progress)
+            if (elevationText != null) {
+                Text(
+                    elevationText, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 11.sp,
+                    modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                )
+            }
         }
 
         Spacer(Modifier.size(10.dp))

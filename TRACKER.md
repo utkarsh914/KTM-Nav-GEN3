@@ -305,7 +305,7 @@ Decisions: F7 weather skipped; backup = rides + places + prefs (never the bike p
 
 | St | ID | Item | Notes |
 |---|---|---|---|
-| [ ] | C1 | F4: altitude per fix, elevation gain/loss, speed+elevation chart in Replay, GPX ele in/out | |
+| [x] | C1 | F4: altitude per fix, elevation gain/loss, speed+elevation chart in Replay, GPX ele in/out | Altitude per fix ('a' in the track), ElevationTracker (median-3 + 4 m hysteresis, pause re-anchor), elev gain/loss on rides (unknown for old rides), cached-path RideChartView + up/down text above the seek bar (hidden below 480dp height), <ele> in GPX. Old rides have no altitude so no chart elevation. Needs on-device check: chart/card height on the replay screen |
 | [ ] | C2 | F10: ride rename/notes/trim; backup + restore (SAF, merge-only) | |
 | [ ] | C3 | F11: per-leg ETA in the preview, drag-to-reorder stops | |
 | [ ] | C4 | F12: Latin transliteration / road ref for the dash | check dash font first |

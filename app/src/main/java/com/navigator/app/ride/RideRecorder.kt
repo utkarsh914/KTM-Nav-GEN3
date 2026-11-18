@@ -109,6 +109,7 @@ class RideRecorder(private val context: Context) {
             timeMs = if (location.time > 0L) location.time else System.currentTimeMillis(),
             speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
             gapBefore = gapNext,
+            altM = if (location.hasAltitude()) location.altitude.toFloat() else null,
         )
         if (!acc.add(point)) return // rejected as a glitch (time went backwards / impossible jump)
         gapNext = false
@@ -182,6 +183,8 @@ class RideRecorder(private val context: Context) {
                     avgSpeedKmh = stats.avgSpeedKmh,
                     movingSeconds = stats.movingSeconds,
                     avgOverallSpeedKmh = stats.avgOverallSpeedKmh,
+                    elevGainM = stats.elevGainM,
+                    elevLossM = stats.elevLossM,
                     maxSpeedKmh = stats.maxSpeedKmh,
                     pointCount = stats.pointCount,
                 )

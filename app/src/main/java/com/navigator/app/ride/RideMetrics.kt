@@ -18,6 +18,9 @@ data class RideStats(
     val movingSeconds: Int = 0,
     /** distance / total duration (stops included); [avgSpeedKmh] is distance / moving time. */
     val avgOverallSpeedKmh: Float = 0f,
+    /** Climb / descent in metres, [ELEV_UNKNOWN] when the track carries no altitude. */
+    val elevGainM: Int = ELEV_UNKNOWN,
+    val elevLossM: Int = ELEV_UNKNOWN,
 )
 
 /**
@@ -71,6 +74,7 @@ object RideMetrics {
         private val recentSpeeds = ArrayDeque<Float>()
         private var rejectStreak = 0
         private var pausedMs = 0L
+        private val elevation = ElevationTracker()
 
         /** Feed one fix; returns false when it was rejected as a glitch (and must not be recorded). */
         fun add(p: RidePoint): Boolean {
@@ -108,6 +112,7 @@ object RideMetrics {
                 pausedMs = 0L
                 started = true
             }
+            elevation.add(p.altM, p.gapBefore)
             lastMs = p.timeMs
             prevLat = p.lat
             prevLng = p.lng
@@ -140,6 +145,8 @@ object RideMetrics {
                 endMs = lastMs,
                 movingSeconds = movingSec,
                 avgOverallSpeedKmh = overall,
+                elevGainM = elevation.gainM(),
+                elevLossM = elevation.lossM(),
             )
         }
     }

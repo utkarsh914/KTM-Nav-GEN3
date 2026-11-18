@@ -31,6 +31,7 @@ object RideJson {
             .put("t", p.timeMs)
         p.speedKmh?.let { o.put("s", it.toDouble()) }
         if (p.gapBefore) o.put("g", 1)
+        p.altM?.let { o.put("a", Math.round(it * 10f) / 10.0) }
         return o.toString()
     }
 
@@ -47,6 +48,7 @@ object RideJson {
                 timeMs = o.getLong("t"),
                 speedKmh = if (o.has("s")) o.getDouble("s").toFloat() else null,
                 gapBefore = o.optInt("g", 0) == 1,
+                altM = if (o.has("a")) o.getDouble("a").toFloat().takeIf { it.isFinite() } else null,
             )
         }.getOrNull()
     }
@@ -74,6 +76,8 @@ object RideJson {
         put("maxSpeedKmh", r.maxSpeedKmh.toDouble())
         put("pointCount", r.pointCount)
         put("saved", r.saved)
+        put("elevGainM", r.elevGainM)
+        put("elevLossM", r.elevLossM)
     }
 
     fun rideFromJson(o: JSONObject): RecordedRide = RecordedRide(
@@ -91,5 +95,7 @@ object RideJson {
         maxSpeedKmh = o.optDouble("maxSpeedKmh", 0.0).toFloat(),
         pointCount = o.optInt("pointCount", 0),
         saved = o.optBoolean("saved", false),
+        elevGainM = o.optInt("elevGainM", ELEV_UNKNOWN),
+        elevLossM = o.optInt("elevLossM", ELEV_UNKNOWN),
     )
 }

@@ -35,6 +35,10 @@ data class RecordedRide(
     val maxSpeedKmh: Float = 0f,
     val pointCount: Int = 0,
     val saved: Boolean = false,
+    /** Total climb / descent in metres; [ELEV_UNKNOWN] for rides recorded without altitude. */
+    val elevGainM: Int = ELEV_UNKNOWN,
+    val elevLossM: Int = ELEV_UNKNOWN,
 )
 
 const val MOVING_UNKNOWN = -1
+const val ELEV_UNKNOWN = -1

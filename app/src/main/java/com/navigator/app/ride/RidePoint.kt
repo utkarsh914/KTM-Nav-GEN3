@@ -7,6 +7,7 @@ package com.navigator.app.ride
  * @param lng longitude in degrees
  * @param timeMs fix wall-clock time (epoch millis)
  * @param speedKmh GPS ground speed in km/h, or null when the fix carried no speed
+ * @param altM GPS altitude in metres, or null when the fix carried none (older rides never do)
  * @param gapBefore true for the first fix after a user pause: the hop from the previous fix is
  *   not riding (no distance, no moving time) and the paused span is excluded from the duration
  */
@@ -16,4 +17,5 @@ data class RidePoint(
     val timeMs: Long,
     val speedKmh: Float? = null,
     val gapBefore: Boolean = false,
+    val altM: Float? = null,
 )

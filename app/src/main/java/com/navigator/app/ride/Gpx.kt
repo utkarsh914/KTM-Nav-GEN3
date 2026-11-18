@@ -40,6 +40,7 @@ object Gpx {
                 open = true
             }
             sb.append("      <trkpt lat=\"").append(num(p.lat, 7)).append("\" lon=\"").append(num(p.lng, 7)).append("\">")
+            p.altM?.let { sb.append("<ele>").append(num(it.toDouble(), 1)).append("</ele>") }
             sb.append("<time>").append(Instant.ofEpochMilli(p.timeMs)).append("</time>")
             p.speedKmh?.let { sb.append("<extensions><speed>").append(num((it / 3.6f).toDouble(), 3)).append("</speed></extensions>") }
             sb.append("</trkpt>\n")
@@ -133,7 +134,7 @@ object Gpx {
             ?: runCatching { java.time.LocalDateTime.parse(t).toInstant(java.time.ZoneOffset.UTC).toEpochMilli() }.getOrNull()
     }
 
-    private class Raw(val lat: Double, val lng: Double, var timeMs: Long?, var speedMs: Float?, val newSegment: Boolean)
+    private class Raw(val lat: Double, val lng: Double, var timeMs: Long?, var speedMs: Float?, val newSegment: Boolean, var altM: Float? = null)
 
     private class Handler : DefaultHandler() {
         val raw = ArrayList<Raw>()
@@ -160,7 +161,7 @@ object Gpx {
                         lat in -90.0..90.0 && lon in -180.0..180.0
                     ) Raw(lat, lon, null, null, pendingSegment).also { pendingSegment = false } else null
                 }
-                "time", "speed", "name" -> { text = StringBuilder(); capture = true }
+                "time", "speed", "name", "ele" -> { text = StringBuilder(); capture = true }
             }
         }
 
@@ -171,6 +172,10 @@ object Gpx {
         override fun endElement(uri: String?, local: String?, q: String) {
             when (q.substringAfter(':')) {
                 "time" -> { capture = false; cur?.let { if (it.timeMs == null) it.timeMs = parseTime(text.toString()) } }
+                "ele" -> {
+                    capture = false
+                    cur?.altM = text.toString().trim().toFloatOrNull()?.takeIf { it.isFinite() }
+                }
                 "speed" -> {
                     capture = false
                     cur?.speedMs = text.toString().trim().toFloatOrNull()?.takeIf { it.isFinite() && it >= 0f }
@@ -215,6 +220,7 @@ object Gpx {
                     lat = r.lat, lng = r.lng, timeMs = t,
                     speedKmh = r.speedMs?.let { it * 3.6f },
                     gapBefore = r.newSegment && i > 0,
+                    altM = r.altM,
                 )
             }
         }
