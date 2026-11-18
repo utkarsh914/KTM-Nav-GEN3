@@ -258,6 +258,33 @@ Final lint: 6 errors (all pre-existing MissingPermission; baseline was 7), unit 
 | [ ] | F11 | Per-leg ETA; drag-to-reorder stops | | |
 | [ ] | F12 | Non-Latin road-name transliteration / ref fallback | | |
 
+## Phase 8: Foundation (rev. 3, after smoke test 1 of batches 1-11)
+
+Order: A1 -> A2 -> A3 -> A4 -> A5, then **smoke test 1 (user)**, then Phase 9.
+
+| St | ID | Item | Notes |
+|---|---|---|---|
+| [ ] | A1 | Dependency bumps within AGP 8.13.2 / Gradle 8.13 limits (ST8); compileSdk 36.1 (needed by F1) | |
+| [ ] | A2 | Nav stage state -> ViewModel + SavedStateHandle (pure reducer, unit-tested = T5) and `configChanges` for rotation/size/density/uiMode (U7) | |
+| [ ] | A3 | Android 16 checks (0.6): insets on every screen, predictive back, landscape / large screen | code review only; visual check by user |
+| [ ] | A4 | UX4 remainder (48dp: preview/stop icons, END-confirm), R1 ride list off main + live, NP1 mmap model | |
+| [ ] | A5 | ST9: replace security-crypto with Keystore AES-GCM store + plain prefs; read-legacy fallback + verify; own commit | revert alone if pairing breaks |
+
+## Phase 9: Features (rev. 3)
+
+Decisions: no auto-pause (F3); GPX import = import as a ride only (F2); F6 includes "along route" + N4 "Add as stop"; F1 = own Live Update notification via NavigationApi.initForegroundServiceManagerProvider (in-app engine only).
+
+| St | ID | Item | Notes |
+|---|---|---|---|
+| [ ] | B1 | F3: manual Record ride (idle map), pause/resume/stop from notification + app | |
+| [ ] | B2 | F2 + F9: GPX export/share, GPX import as ride, Trip-finished actions (save destination, reverse route, share GPX) | |
+| [ ] | B3 | F5: Home/Work chip + launcher shortcuts | |
+| [ ] | B4 | F8: mirror home freshness + missing-notification / access-revoked hint | |
+| [ ] | B5 | F1: Live Updates navigation notification (promoted ongoing, progress style) | needs A1 |
+| [ ] | B6 | F6 + N4: category chips, voice search, along-route search, Add as stop | |
+
+Smoke test 2 (user) after B6.
+
 ## Tests to extend/add
 
 Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTest`, `RoutesClientTest`, `TurnIconHeuristicTest`, `NavSubtextParserTest`.

@@ -315,3 +315,16 @@ Existing and to be **extended** (not created): `SerialGattQueueTest`, `RideMetri
 - [ ] **H3** Ignition-cycle reconnect with CDM presence (incl. classic-linked dash); Nearby-devices revoked; app update mid-day; battery-optimised vs not.
 - [ ] **H4** Mirror mode with Maps traffic / location-sharing notifications present (C4); keyless build mirrors (C1).
 - [ ] **H5** 1-2 h ride: stats vs odometer, screen-off, process kill + recovery.
+
+---
+
+## Rev. 3 addendum: Phase 8 (foundation) and Phase 9 (features)
+
+Added after smoke test of batches 1-11. Detailed status in TRACKER.md (Phase 8 / Phase 9).
+
+- **A1** Dependency bumps within the AGP 8.13.2 / Gradle 8.13 / Kotlin 2.3.0 toolchain; compileSdk 36.1.
+- **A2** Move the nav stage machine (stage, selected place, stops, confirm origin) into a ViewModel with SavedStateHandle; pure reducer unit-tested (T5). Add `configChanges` (orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation) so rotation does not recreate the activity/map; ViewModel covers process death.
+- **A3** Android 16 review: edge-to-edge, predictive back, large screens.
+- **A4** UX4 remainder, R1 (ride list off main thread), NP1 (mmap model).
+- **A5** ST9: Keystore AES-GCM secret store replacing security-crypto; legacy file stays as read fallback; verify-after-write; diagnostics line.
+- **B1** F3 manual recording (no auto-pause). **B2** F2/F9 GPX export + import-as-ride + trip-finished actions. **B3** F5 home/work chip + shortcuts. **B4** F8 freshness/hint. **B5** F1 Live Updates (own notification through the Nav SDK's NotificationContentProvider hook; in-app engine only). **B6** F6 categories + voice + along-route + N4 Add as stop.
