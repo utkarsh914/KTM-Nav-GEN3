@@ -32,6 +32,14 @@ import com.navigator.app.ui.theme.Ktm
 fun LogsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lines by AppLogger.lines.collectAsState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Follow new lines while the reader is at (or near) the bottom; leave them alone once
+    // they've scrolled up to read something.
+    androidx.compose.runtime.LaunchedEffect(lines.size, lines.lastOrNull()) {
+        if (lines.isEmpty()) return@LaunchedEffect
+        val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        if (last >= listState.layoutInfo.totalItemsCount - 3) listState.scrollToItem(lines.lastIndex)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().background(Ktm.Screen).systemBarsPadding(),
@@ -61,6 +69,7 @@ fun LogsScreen(onBack: () -> Unit) {
             )
         }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {

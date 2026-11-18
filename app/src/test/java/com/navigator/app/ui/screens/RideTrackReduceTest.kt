@@ -104,4 +104,20 @@ class RideTrackReduceTest {
         assertTrue("polylines should be modest, was ${runs.size}", runs.size < 300)
         assertTrue("vertices should be modest, was $vertices", vertices < 1000)
     }
+
+    @Test fun capTotalVerticesEnforcesTheBudgetAndKeepsRunEnds() {
+        fun run(n: Int, off: Int) = (0 until n).map { RidePoint(0.0, off + it * 0.0001, 1000L * (off + it), 10f) }
+        val runs = listOf(run(1000, 0), run(1000, 5000), run(500, 9000))
+        val capped = capTotalVertices(runs, 1500)
+        assertTrue("total=${capped.sumOf { it.size }}", capped.sumOf { it.size } <= 1500 + runs.size)
+        runs.forEachIndexed { i, r ->
+            assertEquals(r.first(), capped[i].first())
+            assertEquals(r.last(), capped[i].last())
+        }
+    }
+
+    @Test fun capTotalVerticesLeavesSmallTracksAlone() {
+        val runs = listOf((0 until 10).map { RidePoint(0.0, it * 0.0001, 1000L * it, 10f) })
+        assertEquals(runs, capTotalVertices(runs, 1500))
+    }
 }

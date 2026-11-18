@@ -64,6 +64,7 @@ internal fun SearchPanel(
     onPickSaved: (SavedPlace) -> Unit,
 ) {
     val focus = remember { FocusRequester() }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
     Column(
@@ -71,15 +72,32 @@ internal fun SearchPanel(
             .systemBarsPadding().padding(horizontal = 16.dp).padding(top = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary,
-                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
-            )
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary, modifier = Modifier.size(28.dp))
+            }
             Spacer(Modifier.size(8.dp))
             OutlinedTextField(
                 value = query,
                 onValueChange = onQuery,
                 singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search,
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = { focusManager.clearFocus() }, // results already follow typing; just dismiss the keyboard
+                ),
+                trailingIcon = if (query.isNotEmpty()) {
+                    {
+                        Box(
+                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                                .clickable { onQuery("") },
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(OpenDashIcons.Close, "Clear search", tint = Ktm.Muted2, modifier = Modifier.size(20.dp)) }
+                    }
+                } else null,
                 modifier = Modifier.weight(1f).focusRequester(focus),
                 placeholder = { Text("Enter Destination", color = Ktm.Dim) },
                 colors = TextFieldDefaults.colors(

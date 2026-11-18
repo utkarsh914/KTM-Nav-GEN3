@@ -32,7 +32,7 @@ Target: **Android 16+ only (minSdk 36)**.
 | 3 | BLE robustness | 8 | 11 | Bucket C commit; B3/B4/B8 reduced; B11 deferred |
 | 4 | Data integrity, parsing, network | 24 | 25 | R1/NP1 partial, NET2 dropped, NP4 deferred |
 | 5 | Settings, build, docs hygiene | 8 | 11 | ST5 dropped; ST8, ST9 deferred |
-| 6 | UX polish & accessibility | 0 | 14 | Not started |
+| 6 | UX polish & accessibility | 9 | 14 | UX4 partial; UX1/7/8/11 deferred |
 | 7 | New features | 0 | 12 | Not started |
 | T | Tests to extend/add | 6 | 8 | T1 partial; T5 pending (stage state machine not extracted) |
 | H | Hardware verification | 0 | 5 | Not started |
@@ -208,20 +208,20 @@ Target: **Android 16+ only (minSdk 36)**.
 
 | Done | ID | Item | Commit | Notes |
 |---|---|---|---|---|
-| [ ] | UX1 | "Resume navigation" pill in every stage | | |
-| [ ] | UX2 | Banners: location off/denied, Bluetooth off, Nearby devices denied | | |
-| [ ] | UX3 | Search: clear button, IME action, shared-link feedback | | |
-| [ ] | UX4 | Touch targets ≥ 48 dp; glove mode 64 dp; large END-confirm buttons | | 🏍 |
-| [ ] | UX5 | Contrast fixes (`Ktm.Dim`, small stat text) | | |
-| [ ] | UX6 | Semantics: `Role.Switch`, selected states, connection state, turn-icon descriptions | | |
-| [ ] | UX7 | Units setting (+ yards) and system 12/24h | | |
-| [ ] | UX8 | Real sunrise/sunset day/night | | |
-| [ ] | UX9 | Speedometer over-limit colour + limit display | | |
-| [ ] | UX10 | Onboarding BackHandler; CONFIRM Back → BROWSE | | |
-| [ ] | UX11 | Pairing: real RSSI bars; "Connected to <bike> · Disconnect" | | |
-| [ ] | UX12 | Logs screen: auto-scroll, filter, stable keys | | |
-| [ ] | UX13 | Replay: tap-to-seek proximity threshold | | |
-| [ ] | UX14 | Replay: enforce 1500-vertex cap | | |
+| [-] | UX1 | "Resume navigation" pill in every stage DEFERRED: needs per-stage layout work to avoid overlapping bottom cards (verify on device) |
+| [x] | UX2 | Banners: location off/denied, Bluetooth off, Nearby devices denied | | |
+| [x] | UX3 | Search: clear button, IME action, shared-link feedback | | |
+| [~] | UX4 | Touch targets ≥ 48 dp; glove mode 64 dp; large END-confirm buttons | | 🏍 Done: search back/clear, KtmToggle, Home/Work remove (48dp). NOT done: preview/stop-row icons, glove-mode 64dp, END-confirm buttons. Toggle rows are now ~12dp taller |
+| [x] | UX5 | Contrast fixes (`Ktm.Dim`, small stat text) | | |
+| [x] | UX6 | Semantics: `Role.Switch`, selected states, connection state, turn-icon descriptions Switch role on KtmToggle, RadioButton selection on RouteChip; connection-pill/turn-icon descriptions NOT done |
+| [-] | UX7 | Units setting (+ yards) and system 12/24h DEFERRED: feature (units setting) - spans formatters, UI, rides, overspeed |
+| [-] | UX8 | Real sunrise/sunset day/night DEFERRED: feature (sunrise/sunset) |
+| [x] | UX9 | Speedometer over-limit colour + limit display | | |
+| [x] | UX10 | Onboarding BackHandler; CONFIRM Back → BROWSE CONFIRM Back goes to the map unless reached from search; Onboarding BackHandler already consumed in MainActivity |
+| [-] | UX11 | Pairing: real RSSI bars; "Connected to <bike> · Disconnect" DEFERRED: pairing RSSI bars / disconnect affordance |
+| [x] | UX12 | Logs screen: auto-scroll, filter, stable keys Auto-scroll only; level/tag filter NOT done (log lines can't be keyed) |
+| [x] | UX13 | Replay: tap-to-seek proximity threshold | | |
+| [x] | UX14 | Replay: enforce 1500-vertex cap | | |
 
 ## Phase 7: New features
 

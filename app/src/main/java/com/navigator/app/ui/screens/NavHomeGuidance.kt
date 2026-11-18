@@ -247,7 +247,8 @@ internal fun rememberNavSpeedKmh(active: Boolean): Float? {
 
 /** Small speedometer pill: current speed in km/h. */
 @Composable
-internal fun Speedometer(kmh: Float, modifier: Modifier = Modifier) {
+internal fun Speedometer(kmh: Float, modifier: Modifier = Modifier, limitKmh: Int? = null) {
+    val over = limitKmh != null && kmh > limitKmh
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(Ktm.RadiusCard))
@@ -258,12 +259,15 @@ internal fun Speedometer(kmh: Float, modifier: Modifier = Modifier) {
     ) {
         Text(
             kmh.toInt().coerceAtLeast(0).toString(),
-            color = Ktm.TextPrimary, fontFamily = BarlowCondensed,
+            color = if (over) Ktm.Danger else Ktm.TextPrimary, fontFamily = BarlowCondensed,
             fontWeight = FontWeight.Bold, fontSize = 28.sp,
         )
         Text(
-            "km/h", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
+            "km/h", color = if (over) Ktm.Danger else Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
         )
+        if (limitKmh != null) {
+            Text("LIMIT $limitKmh", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 10.sp)
+        }
     }
 }
 

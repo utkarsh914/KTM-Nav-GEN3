@@ -94,10 +94,10 @@ internal fun drawRideTrack(
     // 1+2. Split into band runs with hysteresis, then merge micro-runs.
     val runs = buildBandRuns(source, bands)
 
-    // 3. Draw each run as one simplified polyline.
-    for (run in runs) {
-        addRideRun(map, simplifyRun(run.points, simplifyEpsilonM), run.band, bands.bandCount)
-    }
+    // 3. Draw each run as one simplified polyline, with the documented total-vertex cap
+    //    enforced AFTER simplification (it used to be applied only before it).
+    val simplified = capTotalVertices(runs.map { simplifyRun(it.points, simplifyEpsilonM) }, MAX_TRACK_VERTICES)
+    runs.forEachIndexed { i, run -> addRideRun(map, simplified[i], run.band, bands.bandCount) }
 
     if (withEndpoints) {
         map.addMarker(
@@ -272,6 +272,25 @@ private fun perpDistanceM(p: RidePoint, a: RidePoint, b: RidePoint): Double {
     val cx = ax + tc * dx
     val cy = ay + tc * dy
     return kotlin.math.hypot(px - cx, py - cy)
+}
+
+/**
+ * Enforce a total vertex budget across all polylines: when the sum exceeds [max], every run
+ * is strided by the same factor (keeping each run's first and last point so runs still join).
+ */
+internal fun capTotalVertices(runs: List<List<RidePoint>>, max: Int): List<List<RidePoint>> {
+    val total = runs.sumOf { it.size }
+    if (total <= max || max < 2) return runs
+    val step = (total + max - 1) / max // ceil
+    return runs.map { run ->
+        if (run.size <= 2) run else {
+            val out = ArrayList<RidePoint>(run.size / step + 2)
+            var i = 0
+            while (i < run.size) { out.add(run[i]); i += step }
+            if (out.last() !== run.last()) out.add(run.last())
+            out
+        }
+    }
 }
 
 /** Uniformly stride [pts] down to at most [budget] points (endpoints kept). A

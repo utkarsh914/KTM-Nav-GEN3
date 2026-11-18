@@ -11,6 +11,8 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -111,13 +113,24 @@ fun KtmToggle(
 ) {
     val haptics = rememberHaptics()
     val knobOffset by animateDpAsState(if (checked) 21.dp else 3.dp, label = "knob")
+    // Outer box = 48dp touch target + switch semantics (TalkBack says "On/Off, switch");
+    // the visible 42x24 pill is centred inside it.
     Box(
         modifier = modifier
+            .minimumInteractiveComponentSize()
+            .toggleable(
+                value = checked,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                onValueChange = { haptics.toggle(it); onCheckedChange(it) },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+    Box(
+        modifier = Modifier
             .width(42.dp)
             .height(24.dp)
             .clip(CircleShape)
-            .background(if (checked) Ktm.Orange else Ktm.SurfaceDisabled)
-            .clickable { haptics.toggle(!checked); onCheckedChange(!checked) },
+            .background(if (checked) Ktm.Orange else Ktm.SurfaceDisabled),
     ) {
         Box(
             modifier = Modifier
@@ -127,6 +140,7 @@ fun KtmToggle(
                 .clip(CircleShape)
                 .background(if (checked) Ktm.OnAccent else Ktm.Muted),
         )
+    }
     }
 }
 

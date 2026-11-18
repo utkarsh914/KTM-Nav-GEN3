@@ -15,6 +15,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -253,6 +254,7 @@ fun NavigationHomeScreen(
     // Live GPS speed (km/h) for the guidance speedometer; null when no recent fix.
     // Sourced independently of the BLE service so it works during standalone nav.
     val navSpeedKmh = rememberNavSpeedKmh(active = stage == NavStage.NAVIGATING)
+    val locationReady = rememberLocationReady()
 
     // Compass-driven "you are here" marker for the non-navigating map stages
     // (browse / place confirm / route preview). During active navigation the SDK's
@@ -296,6 +298,8 @@ fun NavigationHomeScreen(
     var stops by remember { mutableStateOf<List<SavedPlace>>(emptyList()) }
     // Where a search pick should go: the destination (normal) or an added stop.
     var searchTarget by remember { mutableStateOf(SearchTarget.DESTINATION) }
+    // True when the CONFIRM card was reached from the search list (Back returns there).
+    var confirmFromSearch by remember { mutableStateOf(true) }
     var resolvingLink by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
     // The rider stepped away from the active-navigation view (Back / minimise)
@@ -515,11 +519,12 @@ fun NavigationHomeScreen(
         } else {
             selected = p
             stops = emptyList() // stops belong to the previous destination
+            confirmFromSearch = true
             stage = NavStage.CONFIRM
         }
     }
 
-    fun choose(p: SavedPlace) { selected = p; stops = emptyList(); stage = NavStage.CONFIRM }
+    fun choose(p: SavedPlace) { selected = p; stops = emptyList(); confirmFromSearch = false; stage = NavStage.CONFIRM }
 
     fun backToBrowse() {
         detailsJob?.cancel()
@@ -721,7 +726,13 @@ fun NavigationHomeScreen(
         val dest = com.navigator.app.nav.destination.MapsUrlResolver.resolve(link, auth)
         resolvingLink = false
         onSharedLinkConsumed()
-        if (dest != null) choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
+        if (dest != null) {
+            choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
+        } else {
+            android.widget.Toast.makeText(
+                context, "Couldn't open that Maps link", android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     // A saved place tapped in Saved Places -> drop its pin and open the confirm
@@ -770,7 +781,10 @@ fun NavigationHomeScreen(
     BackHandler {
         when (stage) {
             NavStage.PREVIEW -> stage = NavStage.CONFIRM
-            NavStage.CONFIRM -> { stage = NavStage.SEARCH; selected = null }
+            NavStage.CONFIRM ->
+                // Back goes where the rider came from: the search list if they picked from it,
+                // the map if they dropped a pin / opened a link / tapped a saved place.
+                if (confirmFromSearch) { stage = NavStage.SEARCH; selected = null } else backToBrowse()
             // Back while navigating steps away to the map WITHOUT ending the trip.
             NavStage.NAVIGATING -> moveAwayFromNav()
             NavStage.TRIP_FINISHED -> backToBrowse()
@@ -829,6 +843,17 @@ fun NavigationHomeScreen(
                         .padding(end = 16.dp, top = 10.dp),
                 ) {
                     IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
+                }
+                // Position can't be shown/used: say why instead of a silently static map.
+                if (!locationReady) {
+                    Box(
+                        modifier = Modifier.align(Alignment.TopCenter).systemBarsPadding()
+                            .padding(top = 74.dp, start = 16.dp, end = 16.dp),
+                    ) {
+                        OfflineBanner(
+                            text = if (!hasLocationPermission(context)) "Location permission is off" else "Location is off",
+                        )
+                    }
                 }
                 // Bottom-right control stack (the app-wide standard location):
                 // compass (only when rotated) above the recenter button.
@@ -1064,6 +1089,7 @@ fun NavigationHomeScreen(
                     navSpeedKmh?.let { kmh ->
                         Speedometer(
                             kmh = kmh,
+                            limitKmh = if (appSettings.overspeedEnabled) appSettings.overspeedLimitKmh else null,
                             modifier = Modifier.align(Alignment.CenterStart).systemBarsPadding()
                                 .padding(start = 16.dp),
                         )
@@ -1604,7 +1630,7 @@ private fun RouteChip(
             .clip(RoundedCornerShape(Ktm.RadiusButton))
             .background(if (selected) Ktm.Orange else Ktm.Screen)
             .border(1.dp, if (selected) Ktm.Orange else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(
@@ -2032,4 +2058,25 @@ private fun lastLocation(context: Context): Pair<Double, Double>? {
     } catch (e: SecurityException) {
         null
     }
+}
+
+/** Location permission granted AND the system location switch on; re-checked whenever the screen resumes. */
+@Composable
+private fun rememberLocationReady(): Boolean {
+    val context = LocalContext.current
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    fun check(): Boolean {
+        if (!hasLocationPermission(context)) return false
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return true
+        return runCatching { lm.isLocationEnabled }.getOrDefault(true)
+    }
+    var ready by remember { mutableStateOf(check()) }
+    DisposableEffect(owner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) ready = check()
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+    return ready
 }

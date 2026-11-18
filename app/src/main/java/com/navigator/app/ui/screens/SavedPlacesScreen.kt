@@ -348,10 +348,10 @@ private fun SlotRow(
                 )
                 if (onRemove != null) {
                     Spacer(Modifier.size(10.dp))
-                    Icon(
-                        OpenDashIcons.Close, "Remove", tint = Ktm.Dim,
-                        modifier = Modifier.size(20.dp).clip(RoundedCornerShape(6.dp)).clickable(onClick = onRemove),
-                    )
+                    Box(
+                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onRemove),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(OpenDashIcons.Close, "Remove", tint = Ktm.Dim, modifier = Modifier.size(20.dp)) }
                 }
             } else {
                 Text("Set", color = Ktm.Orange, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)

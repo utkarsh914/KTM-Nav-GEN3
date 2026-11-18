@@ -370,6 +370,15 @@ private fun OpenDashApp(
             route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
         ) {
             goTo(homeRoute())
+        } else if (sharedLink != null && !googleNavOffered &&
+            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+        ) {
+            // Mirror-only mode has no map to drop the shared place on: say so rather than ignore it.
+            android.widget.Toast.makeText(
+                appContext, "Shared links need in-app maps (Settings > Navigation engine)",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            MainActivity.sharedNavLink.value = null
         }
     }
     // Notification tapped while navigating -> jump to the map home, which resumes

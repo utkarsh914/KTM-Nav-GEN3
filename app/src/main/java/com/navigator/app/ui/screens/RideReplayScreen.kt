@@ -228,6 +228,8 @@ fun RideReplayScreen(
             val d = RideMetrics.haversineMeters(tapped.latitude, tapped.longitude, pts[i].lat, pts[i].lng)
             if (d < bestDist) { bestDist = d; best = i }
         }
+        // A tap far from the track is just a map tap, not a seek.
+        if (bestDist > SEEK_TAP_MAX_M) return
         playing = false
         currentIndex = best
         place(best)
@@ -964,4 +966,5 @@ private fun RoundControl(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
-
+/** Max distance (m) between a map tap and the track for the tap to seek playback. */
+private const val SEEK_TAP_MAX_M = 100.0

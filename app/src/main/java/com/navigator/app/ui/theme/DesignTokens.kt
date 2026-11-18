@@ -162,7 +162,7 @@ val DarkNeutrals = NeutralPalette(
     textSecondary = Color(0xFFC9CDD3),
     muted = Color(0xFF9AA0A8),
     muted2 = Color(0xFF8A8F98),
-    dim = Color(0xFF6C727B),
+    dim = Color(0xFF858B94),
     green = Color(0xFF34D07F),
     danger = Color(0xFFFF4438),
 )
@@ -186,7 +186,7 @@ val LightNeutrals = NeutralPalette(
     textSecondary = Color(0xFF4A4E56),
     muted = Color(0xFF6D7178),
     muted2 = Color(0xFF7C8088),
-    dim = Color(0xFF9A9EA6),
+    dim = Color(0xFF767A82),
     green = Color(0xFF1B9A56),
     danger = Color(0xFFE5362B),
 )
