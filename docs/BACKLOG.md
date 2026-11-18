@@ -21,10 +21,10 @@ of the shipped work.
   functional regression today, but it's a parallel source of truth to eventually retire.
 - **Units setting** — the Nav SDK provider now follows the device region (miles for
   US/GB/LR/MM); an explicit user setting (imperial/metric) is still to do.
-- **Hardware checks pending** (from the nav/dash fix series): confirm merge codes 14/15
-  direction in Symbol Test (swap `KtmManeuverMapping.enterHighwayIcon` + `dash_highway_*`
-  previews if mirrored); ride right/straight/left roundabouts on both engines; two in-app
-  trips back-to-back; confirm the 15 s guidance refresh doesn't flicker.
+- **Hardware checks pending** (from the nav/dash fix series): ride right/straight/left
+  roundabouts on both engines; two in-app trips back-to-back; confirm the 15 s guidance
+  refresh doesn't flicker; confirm from the per-step log on a real `MERGE_LEFT`/`MERGE_RIGHT`
+  that "merge left" → code 14 is the right way round (glyphs 14/15 themselves are verified).
 - **NAVIGATION_STATE guidanceOn is never sent OFF** — the dash may stay in guidance mode
   (GPS icon lit) while idle. Needs a dash test before changing.
 - **Non-Latin road names** (e.g. Kannada) are sent as UTF-8; the dash font is likely

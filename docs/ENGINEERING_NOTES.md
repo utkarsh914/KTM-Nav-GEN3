@@ -71,8 +71,35 @@ from the surface road onto the ramp; joining the highway is the later `MERGE_*` 
 
 **Fix:** on-ramps → LIGHT/QUITE/HEAVY by severity (matching the text and model paths), sharp
 off-ramps → HEAVY, `MERGE_UNSPECIFIED` → driving-side lane. The merge code is picked only in
-`enterHighwayIcon()`. A dash photo suggests code 14 draws as "ramp on the right, arrow bending
-left" — i.e. possibly mirrored vs. our mapping; unverified, see BACKLOG.
+`enterHighwayIcon()`.
+
+### Follow-up: merge codes 14/15 verified, merge direction was mirrored
+
+A second report ("Turn left onto the ramp to NE 7" → enter-highway glyph on both phone and dash)
+turned out to be a pre-fix build (0.6.0+0920-2209), but its dash photo settled the open question:
+
+- **Code 14** (`ENTER_HIGHWAY_RIGHT_LANE`) = ramp on the **right**, arrow bending **left**.
+- **Code 15** (`ENTER_HIGHWAY_LEFT_LANE`) = ramp on the **left**, arrow bending **right** (the
+  normal left-hand-traffic on-ramp).
+
+What the photos verify is how codes 14/15 *render*. That Google's `MERGE_LEFT` ("current road
+joins another on the left") means the rider moves left off a ramp on the right — hence code
+**14**, not 15 — is our reading of the SDK doc and is **not yet confirmed on a ride**: the
+per-step log (below) should be checked the first time a real `MERGE_LEFT`/`MERGE_RIGHT` appears. `enterHighwayIcon` had one boolean in two opposite
+senses: "ramp on the left" for unqualified merges (correct) and "move left" for `MERGE_LEFT` /
+"merge left" (mirrored). It now takes `rampOnLeft` only: `MERGE_LEFT` → 14, `MERGE_RIGHT` → 15,
+unqualified → driving side (LHT → 15). The phone previews (`dash_highway_left/right`) were redrawn
+to look like the dash glyphs.
+
+Safeguards added: `KtmManeuverMapping.resolveIcon` (shared by the encoder and the phone header)
+shows the turn arrow when the SDK reports `MERGE_*` but its own instruction explicitly says
+"turn/sharp/slight left/right" (the turn phrase must hold the first left/right word; English
+only, since the SDK text follows the device language — other languages just don't override);
+`GoogleNavSdkProvider` logs the raw SDK maneuver, the chosen icon and any text-derived turn once
+per step. Road/instruction text is logged only in debug builds (lengths otherwise) because the log
+file is shareable. Also: model outputs 14/15 are treated as generic "merge" (Maps draws left/right
+merges identically), "Merge onto Left Bank Expy" no longer reads the road name as the side, and the
+"Then" hint uses the step's driving side.
 
 ---
 

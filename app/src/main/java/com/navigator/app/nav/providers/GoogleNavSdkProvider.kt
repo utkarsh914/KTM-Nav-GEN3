@@ -9,6 +9,7 @@ import com.google.android.libraries.navigation.RoutingOptions
 import com.google.android.libraries.navigation.Waypoint
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.RoutingNavigationProvider
+import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.DrivingSide
 import com.navigator.app.nav.model.NavDestination
@@ -55,6 +56,9 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
      *  turn (dimmed) on the phone instead of blanking the custom guidance header. */
     @Volatile private var lastEnroute: NormalizedNavigationState? = null
 
+    /** Last logged step (raw maneuver + instruction), so each step is logged once. */
+    @Volatile private var lastLoggedStep: String? = null
+
     /** The destination of the trip currently being guided, for observers that
      *  need to label it (e.g. ride recording). Set on [startNavigation], cleared
      *  on stop/arrival. Exposed as a flow so ride recording can start the moment
@@ -75,6 +79,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         AppLogger.log("Nav", "Nav SDK arrival (final)")
         guidanceActive = false
         lastEnroute = null
+        lastLoggedStep = null
         _currentDestination.value = null
         _state.value = NormalizedNavigationState(
             sessionState = NavSessionState.ARRIVED,
@@ -261,6 +266,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         // state back to ENROUTE and resume navigation.
         guidanceActive = false
         lastEnroute = null
+        lastLoggedStep = null
         _currentDestination.value = null
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
@@ -328,6 +334,27 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         val lanes = runCatching {
             step?.lanes?.map { GoogleNavLaneMap.toLaneInfo(it) }.orEmpty()
         }.getOrDefault(emptyList())
+
+        // Raw SDK maneuver per step, so a dash/phone icon mismatch can be traced
+        // to what Google actually sent. The log file is shareable, so road names
+        // and instruction text (location history) are only logged in debug builds,
+        // as lengths otherwise - same policy as the notification path.
+        val stepKey = "${step?.maneuver}|$fullInstruction|$road"
+        if (stepKey != lastLoggedStep) {
+            lastLoggedStep = stepKey
+            val chosen = KtmManeuverMapping.resolveIcon(mapped.maneuver, mapped.rotation, side, fullInstruction)
+            val textOverride = fullInstruction?.let { KtmManeuverMapping.explicitTurnFromInstruction(it) }
+            val text = if (com.navigator.app.BuildConfig.DEBUG) {
+                "road=\"$road\", instruction=\"$fullInstruction\""
+            } else {
+                "road=<${road?.length ?: 0} chars>, instruction=<${fullInstruction?.length ?: 0} chars>"
+            }
+            AppLogger.log(
+                "Nav",
+                "Step: sdkManeuver=${step?.maneuver} -> ${mapped.maneuver}, side=$side, " +
+                    "icon=${chosen.name}, textTurn=${textOverride?.name}, $text",
+            )
+        }
 
         val enroute = NormalizedNavigationState(
             sessionState = NavSessionState.ENROUTE,

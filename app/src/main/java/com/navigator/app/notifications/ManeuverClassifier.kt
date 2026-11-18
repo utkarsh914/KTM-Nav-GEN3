@@ -138,25 +138,25 @@ object ManeuverClassifier {
         return result
     }
 
-    private fun labelToIcon(label: String, drivingSide: DrivingSide): BccuProtocol.TurnIcon? {
+    internal fun labelToIcon(label: String, drivingSide: DrivingSide): BccuProtocol.TurnIcon? {
         val n = label.toIntOrNull()
         if (n != null) {
-            // Merge classes (trained from Maps' merge_left -> 15, merge_right -> 14)
-            // go through the shared helper so the merge direction is decided in
-            // exactly one place (KtmManeuverMapping.enterHighwayIcon).
-            return when (n) {
-                BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE.binary ->
-                    KtmManeuverMapping.enterHighwayIcon(mergeLeft = true)
-                BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE.binary ->
-                    KtmManeuverMapping.enterHighwayIcon(mergeLeft = false)
-                else -> if (legacyLabels) LegacyModelRemap.correct(n) else BccuProtocol.TurnIcon.fromBinary(n)
+            // Maps draws merge left/right with the same bitmap, so a model's 14/15
+            // output carries no real direction: treat it as the generic "merge".
+            if (n == BccuProtocol.TurnIcon.ENTER_HIGHWAY_LEFT_LANE.binary ||
+                n == BccuProtocol.TurnIcon.ENTER_HIGHWAY_RIGHT_LANE.binary
+            ) {
+                return KtmManeuverMapping.enterHighwayIcon(
+                    rampOnLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide),
+                )
             }
+            return if (legacyLabels) LegacyModelRemap.correct(n) else BccuProtocol.TurnIcon.fromBinary(n)
         }
-        // "merge" has no left/right in the label - pick the lane from driving side
-        // (left-hand traffic merges on the left), consistent with the text path.
+        // "merge" has no left/right in the label - the ramp is on the driving
+        // side (left-hand traffic joins from the left), consistent with the text path.
         if (label == "merge") {
             return KtmManeuverMapping.enterHighwayIcon(
-                mergeLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide),
+                rampOnLeft = KtmManeuverMapping.rampOnLeftFor(drivingSide),
             )
         }
         return NAMED[label]

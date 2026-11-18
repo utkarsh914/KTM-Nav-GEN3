@@ -42,10 +42,9 @@ object TurnIconArt {
         TurnIcon.KEEP_RIGHT, TurnIcon.HIGHWAY_KEEP_RIGHT -> R.drawable.dash_keep_right
         TurnIcon.KEEP_LEFT, TurnIcon.HIGHWAY_KEEP_LEFT -> R.drawable.dash_keep_left
 
-        // Enter-highway is directional too (was one shared non-directional glyph):
-        // KTM's official motorway-shield (dash_highway) is symmetric, so each
-        // variant adds a small left/right chevron to it - a left merge and a
-        // right merge now read differently, like leave-highway already does.
+        // Enter-highway previews are hand-drawn to resemble what the dash draws
+        // (verified from photos): 14 = ramp on the right bending left, 15 = ramp
+        // on the left bending right.
         TurnIcon.ENTER_HIGHWAY_RIGHT_LANE -> R.drawable.dash_highway_right
         TurnIcon.ENTER_HIGHWAY_LEFT_LANE -> R.drawable.dash_highway_left
         TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE -> R.drawable.dash_exit_right

@@ -125,10 +125,11 @@ class KtmNavigationEncoder(
                 // maneuver. Never emit UNKNOWN as an arrow.
                 val icon: TurnIcon? = state.resolvedIcon
                     ?: if (state.maneuver != NormalizedManeuver.UNKNOWN) {
-                        KtmManeuverMapping.toTurnIcon(
+                        KtmManeuverMapping.resolveIcon(
                             maneuver = state.maneuver,
                             rotation = state.roundaboutRotation,
                             drivingSide = state.drivingSide,
+                            instruction = state.fullInstruction,
                         )
                     } else {
                         null

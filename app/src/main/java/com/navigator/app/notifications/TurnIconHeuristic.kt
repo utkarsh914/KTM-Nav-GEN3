@@ -210,11 +210,14 @@ object TurnIconHeuristic {
         if (has("keep", "stay") && (left || right)) {
             return if (left) BccuProtocol.TurnIcon.KEEP_LEFT else BccuProtocol.TurnIcon.KEEP_RIGHT
         }
-        // Merge onto a highway. An explicit left/right wins; otherwise default to
-        // the rider's driving side (left-hand traffic merges on the left).
+        // Merge onto a highway. "Merge left" moves left, i.e. off a ramp on the
+        // RIGHT; with no side, the ramp is on the rider's driving side.
+        // Only a side directly after "merge" counts; a left/right inside a road
+        // name ("Merge onto Left Bank Expy") must not flip the glyph.
         if (has("merge")) {
-            val onLeft = if (left || right) left else rampLeft
-            return KtmManeuverMapping.enterHighwayIcon(mergeLeft = onLeft)
+            val mergeSide = MERGE_SIDE_RE.find(t)?.groupValues?.get(1)
+            val rampOnLeft = if (mergeSide != null) mergeSide == "right" else rampLeft
+            return KtmManeuverMapping.enterHighwayIcon(rampOnLeft = rampOnLeft)
         }
         // Take a motorway exit / off-ramp. Same rule: explicit side wins, else the
         // driving-side lane. BUT an explicit turn onto an on-ramp ("Turn right
@@ -245,6 +248,7 @@ object TurnIconHeuristic {
     }
 
     private val SIDE_RE = Regex("""\b(left|right)\b""")
+    private val MERGE_SIDE_RE = Regex("""\bmerge\s+(left|right)\b""")
     private val TURN_SIDE_RE = Regex("""\bturn\s+(left|right)\b""")
     private val UTURN_RE = Regex("""\bu-?\s?turn\b|\bmake a u\b""")
 

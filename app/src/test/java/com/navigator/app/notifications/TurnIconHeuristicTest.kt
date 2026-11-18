@@ -18,13 +18,29 @@ class TurnIconHeuristicTest {
     // --- Explicit side always wins, regardless of driving side ---
 
     @Test fun explicitSideWinsForMerge() {
-        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, parse("Merge left onto NH-48", DrivingSide.RIGHT))
-        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, parse("Merge right onto I-5", DrivingSide.LEFT))
+        // "Merge left" moves left off a ramp on the RIGHT -> code 14 (dash: ramp
+        // on the right bending left); "merge right" is the mirror -> code 15.
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, parse("Merge left onto NH-48", DrivingSide.RIGHT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, parse("Merge right onto I-5", DrivingSide.LEFT))
     }
 
     @Test fun explicitSideWinsForExit() {
         assertEquals(TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE, parse("Take exit right", DrivingSide.LEFT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, parse("Exit left", DrivingSide.RIGHT))
+    }
+
+    @Test fun roadNameSideDoesNotFlipMerge() {
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, parse("Merge onto Left Bank Expy", DrivingSide.LEFT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, parse("Merge onto Right Bank Expy", DrivingSide.RIGHT))
+    }
+
+    // --- Model output for merge classes ---
+
+    @Test fun modelMergeCodesFollowDrivingSide() {
+        for (code in listOf("14", "15", "merge")) {
+            assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, ManeuverClassifier.labelToIcon(code, DrivingSide.LEFT))
+            assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, ManeuverClassifier.labelToIcon(code, DrivingSide.RIGHT))
+        }
     }
 
     // --- Unqualified merge follows driving side ---

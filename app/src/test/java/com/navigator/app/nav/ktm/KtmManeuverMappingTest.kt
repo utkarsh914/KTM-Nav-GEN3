@@ -33,8 +33,10 @@ class KtmManeuverMappingTest {
         assertEquals(TurnIcon.KEEP_RIGHT, map(FORK_RIGHT))
         assertEquals(TurnIcon.KEEP_LEFT, map(ON_RAMP_KEEP_LEFT))
         assertEquals(TurnIcon.KEEP_RIGHT, map(OFF_RAMP_KEEP_RIGHT))
-        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_LEFT))
-        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(MERGE_RIGHT))
+        // MERGE_LEFT = "joins another on the left": ramp on the RIGHT, arrow
+        // bending left = dash code 14 (hardware-verified); MERGE_RIGHT mirrors it.
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(MERGE_LEFT))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_RIGHT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, map(OFF_RAMP_LEFT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_LEFT_LANE, map(OFF_RAMP_SLIGHT_LEFT))
         assertEquals(TurnIcon.LEAVE_HIGHWAY_RIGHT_LANE, map(OFF_RAMP_RIGHT))
@@ -63,6 +65,41 @@ class KtmManeuverMappingTest {
         assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_UNSPECIFIED, drivingSide = DrivingSide.LEFT))
         assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, map(MERGE_UNSPECIFIED, drivingSide = DrivingSide.RIGHT))
         assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, map(MERGE_UNSPECIFIED)) // unknown -> LHT default
+    }
+
+    @Test fun mergeWithExplicitTurnInstructionShowsTheTurn() {
+        // "Turn left onto the ramp to NE 7" showed the enter-highway glyph, whose
+        // arrow bends RIGHT on the dash. An explicit turn in the SDK's own
+        // instruction wins over a MERGE_* maneuver.
+        fun resolve(m: NormalizedManeuver, text: String?) =
+            KtmManeuverMapping.resolveIcon(m, drivingSide = DrivingSide.LEFT, instruction = text)
+        assertEquals(TurnIcon.QUITE_LEFT, resolve(MERGE_UNSPECIFIED, "Turn left onto the ramp to NE 7"))
+        assertEquals(TurnIcon.QUITE_LEFT, resolve(MERGE_LEFT, "Turn left onto the ramp to NE 7"))
+        assertEquals(TurnIcon.HEAVY_RIGHT, resolve(MERGE_RIGHT, "Sharp right onto the ramp to NH 48"))
+        assertEquals(TurnIcon.LIGHT_LEFT, resolve(MERGE_UNSPECIFIED, "Slight left onto the ramp"))
+        // A plain merge instruction keeps the enter-highway glyph.
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, resolve(MERGE_UNSPECIFIED, "Merge onto NE 7"))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_RIGHT_LANE, resolve(MERGE_LEFT, "Merge left onto NE 7"))
+        assertEquals(TurnIcon.ENTER_HIGHWAY_LEFT_LANE, resolve(MERGE_UNSPECIFIED, null))
+        // Non-merge maneuvers are never overridden by text.
+        assertEquals(TurnIcon.QUITE_LEFT, resolve(ON_RAMP_LEFT, "Turn right onto Left Bank Rd"))
+        assertEquals(TurnIcon.KEEP_LEFT, resolve(KEEP_LEFT, "Turn right"))
+    }
+
+    @Test fun explicitTurnParsing() {
+        val p = KtmManeuverMapping::explicitTurnFromInstruction
+        assertEquals(TurnIcon.HEAVY_LEFT, p("Sharp left onto the ramp"))
+        assertEquals(TurnIcon.LIGHT_RIGHT, p("Bear right onto the ramp"))
+        assertEquals(TurnIcon.LIGHT_RIGHT, p("Soft right onto the ramp"))
+        assertEquals(TurnIcon.QUITE_RIGHT, p("TURN RIGHT ONTO THE RAMP TO NE 7"))
+        // First left/right word must belong to the turn phrase.
+        assertEquals(null, p("Keep right to merge onto NE 7, then turn left"))
+        assertEquals(TurnIcon.QUITE_LEFT, p("Turn left onto Right Bank Rd"))
+        // U-turns, lane keeps, non-English and empty text never override.
+        assertEquals(null, p("Make a U-turn left"))
+        assertEquals(null, p("Keep left to merge onto NE 7"))
+        assertEquals(null, p("Gire a la izquierda hacia la rampa"))
+        assertEquals(null, p("Merge onto NE 7"))
     }
 
     @Test fun uTurnsDestinationsFerries() {

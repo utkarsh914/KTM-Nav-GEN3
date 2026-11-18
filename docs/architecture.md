@@ -82,7 +82,7 @@ in-app SDK is never started. The user can also **pause** mirror-to-dash on the m
 | `nav/NavigationProvider.kt` | `NavigationProvider` + `RoutingNavigationProvider` interfaces. |
 | `nav/NavigationCoordinator.kt` | Collects the active provider's state, runs the encoder, applies `DashWrite`s via `DashOutput`; owns provider switching (clears the old source's guidance), auto-revert only on a *genuine* trip end, re-auth/resync re-send, the throttle's trailing flush, and a 15 s full-guidance refresh. |
 | `nav/ktm/KtmNavigationEncoder.kt` | **Reliability core** (stateful, pure): dedup, distance rounding, throttle, ETA deadband, state machine. |
-| `nav/ktm/KtmManeuverMapping.kt` | The single lossy reduction from `NormalizedManeuver` → 58-entry KTM `TurnIcon` (exhaustive `when`). Also the shared rules every path uses: `roundaboutIcon` (exit angle → section glyph), `ordinalExitAngle`, `enterHighwayIcon` (merge lane), driving-side helpers. |
+| `nav/ktm/KtmManeuverMapping.kt` | The single lossy reduction from `NormalizedManeuver` → 58-entry KTM `TurnIcon` (exhaustive `when`). Also the shared rules every path uses: `roundaboutIcon` (exit angle → section glyph), `ordinalExitAngle`, `enterHighwayIcon` (merge lane), `resolveIcon` (encoder + phone header), driving-side helpers. |
 | `nav/ktm/DistanceFormatter.kt`, `EtaFormatter.kt`, `DashWrite.kt` | Pure formatting + the sealed write set. |
 | `nav/providers/NotificationNavProvider.kt` | Notification-mirroring provider (session-end debounce). |
 | `nav/providers/GoogleNavSdkProvider.kt` | Nav SDK provider (owns `Navigator`, maps the feed, arrival→ARRIVED). |
@@ -124,8 +124,11 @@ nav ended, etc. `KtmNavigationEncoder` centralises reliability:
 - **Roundabouts** — sections are fixed exit-*angle* glyphs (see ENGINEERING_NOTES). The
   notification path prefers the Maps icon (calibration → classifier); otherwise an ordinal
   "Nth exit" is converted to an approximate angle for the driving side; no ordinal → no arrow.
-- **Merge direction (14/15)** is chosen in one place, `enterHighwayIcon()` — still to be
-  confirmed on hardware.
+- **Merge direction (14/15)** is chosen in one place, `enterHighwayIcon(rampOnLeft)`
+  (glyphs verified from dash photos: 14 = ramp on the right, 15 = ramp on the left; `MERGE_LEFT` → 14
+  is our reading of the SDK doc, still to be confirmed on a ride via the per-step log).
+  The encoder and phone header both go through `resolveIcon()`, which prefers an explicit
+  turn in the SDK instruction over a `MERGE_*` maneuver.
 - Notification text is parsed with **whole-word** matching; the first left/right word is the
   instruction's side; "turn X to stay on…" is a turn; unqualified U-turns follow driving side.
 

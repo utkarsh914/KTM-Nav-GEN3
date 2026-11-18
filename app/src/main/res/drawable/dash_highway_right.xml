@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Enter highway / merge, right lane. KTM's own official motorway-shield glyph
-  (path lifted byte-for-byte from dash_highway.xml, the decompiled KTMconnect
-  asset) with a small directional chevron added in the lower-right so a right
-  merge reads differently from a left one. The `_left` variant is this file
-  mirrored with scaleX="-1" (chevron points left, for left-hand traffic).
+  Enter highway, ENTER_HIGHWAY_RIGHT_LANE (code 14). Drawn to match what the dash
+  itself renders for code 14 (hardware-verified from a dash photo): the
+  carriageway on the left and a ramp on the RIGHT whose arrow bends LEFT into
+  it. Mirror of dash_highway_left (code 15).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp" android:height="48dp"
     android:viewportWidth="48" android:viewportHeight="48">
-    <group android:scaleX="1">
-        <!-- Official KTM highway shield, shifted up slightly to make room for the chevron. -->
-        <group android:translateY="-4">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M22 4l0 12 -7 0 3 -12 4 0zm-20 14l44 0 0 4 -4 0 0 4 -4 0 0 -4 -28 0 0 4 -4 0 0 -4 -4 0 0 -4zm28 -14l3 12 -7 0 0 -12 4 0zm-4 20l9 0 5 20 -14 0 0 -20zm-18 20l5 -20 9 0 0 20 -14 0z"/>
-        </group>
-        <!-- Directional chevron (points right = merge to the right lane). -->
+    <group android:scaleX="-1" android:translateX="48">
+        <!-- Carriageway: two lanes in perspective. -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M24 6L31 6 31 44 17 44Z"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M33 6L40 6 47 44 33 44Z"/>
+        <!-- Ramp arrow joining from the right. -->
         <path android:fillColor="#FFFFFFFF"
-            android:pathData="M34 40l6 4 -6 4 0 -2.5 -6 0 0 -3 6 0 0 -2.5z"/>
+            android:pathData="M4 44L4 29C4 24 6.5 20.8 10 18.6L14.1 15.3 12.5 13.4 22 11 17.5 19.6 15.9 17.7 12.2 20.8C9.5 22.6 8 25 8 29L8 44Z"/>
     </group>
 </vector>

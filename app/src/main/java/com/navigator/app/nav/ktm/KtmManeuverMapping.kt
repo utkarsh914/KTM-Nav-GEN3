@@ -74,12 +74,14 @@ object KtmManeuverMapping {
             NormalizedManeuver.ON_RAMP_KEEP_RIGHT,
             NormalizedManeuver.OFF_RAMP_KEEP_RIGHT -> TurnIcon.KEEP_RIGHT
 
-            // Joining the highway itself. An unqualified merge takes the
-            // driving-side lane (same rule as the notification path).
-            NormalizedManeuver.MERGE_LEFT -> enterHighwayIcon(mergeLeft = true)
-            NormalizedManeuver.MERGE_RIGHT -> enterHighwayIcon(mergeLeft = false)
+            // Joining the highway itself. Google's MERGE_LEFT is "current road
+            // joins another on the left": the rider moves LEFT off a ramp on the
+            // RIGHT (and vice versa). An unqualified merge's ramp is on the
+            // driving side (same rule as the notification path).
+            NormalizedManeuver.MERGE_LEFT -> enterHighwayIcon(rampOnLeft = false)
+            NormalizedManeuver.MERGE_RIGHT -> enterHighwayIcon(rampOnLeft = true)
             NormalizedManeuver.MERGE_UNSPECIFIED ->
-                enterHighwayIcon(mergeLeft = rampOnLeftFor(drivingSide))
+                enterHighwayIcon(rampOnLeft = rampOnLeftFor(drivingSide))
 
             NormalizedManeuver.OFF_RAMP_LEFT,
             NormalizedManeuver.OFF_RAMP_SLIGHT_LEFT -> TurnIcon.LEAVE_HIGHWAY_LEFT_LANE
@@ -166,17 +168,70 @@ object KtmManeuverMapping {
      * the SDK path, the notification-text parser and the TFLite classifier so a
      * direction fix only ever needs to happen here.
      *
-     * [mergeLeft] is the nav app's merge side (Google's MERGE_LEFT / "merge
-     * left").
+     * [rampOnLeft] is the side of the carriageway the joining ramp is on - NOT
+     * the direction the rider moves (a ramp on the left merges rightwards).
      *
-     * UNVERIFIED ON HARDWARE: a dash photo (2026-09) shows code 14
-     * (ENTER_HIGHWAY_RIGHT_LANE) drawn as a ramp on the RIGHT whose arrow bends
-     * LEFT into the carriageway - i.e. it visually reads as a "merge left". If a
-     * Symbol Test confirms 15 is its mirror, swap the two branches below (and the
-     * dash_highway_left/right preview drawables).
+     * Verified from dash photos: code 14 (ENTER_HIGHWAY_RIGHT_LANE) is drawn as
+     * a ramp on the RIGHT whose arrow bends LEFT into the carriageway; code 15
+     * (ENTER_HIGHWAY_LEFT_LANE) is its mirror - ramp on the LEFT, arrow bending
+     * RIGHT (the normal left-hand-traffic on-ramp).
+     *
+     * NOT yet confirmed on a ride: that Google's MERGE_LEFT ("joins another on
+     * the left") means the rider moves left, i.e. a ramp on the right. That is
+     * our reading of the SDK doc; the per-step log in GoogleNavSdkProvider lets
+     * a real MERGE_LEFT/RIGHT confirm it.
      */
-    fun enterHighwayIcon(mergeLeft: Boolean): TurnIcon =
-        if (mergeLeft) TurnIcon.ENTER_HIGHWAY_LEFT_LANE else TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+    fun enterHighwayIcon(rampOnLeft: Boolean): TurnIcon =
+        if (rampOnLeft) TurnIcon.ENTER_HIGHWAY_LEFT_LANE else TurnIcon.ENTER_HIGHWAY_RIGHT_LANE
+
+    /**
+     * The dash icon for a nav state, shared by the dash encoder and the phone
+     * guidance header so the two can never disagree.
+     *
+     * Safeguard: when the SDK reports a MERGE_* step but its own instruction
+     * explicitly says to turn ("Turn left onto the ramp to NE 7"), the turn wins -
+     * the enter-highway glyph's arrow can lean the opposite way to the turn.
+     */
+    fun resolveIcon(
+        maneuver: NormalizedManeuver,
+        rotation: RoundaboutRotation = RoundaboutRotation.UNKNOWN,
+        drivingSide: DrivingSide = DrivingSide.UNKNOWN,
+        instruction: String? = null,
+    ): TurnIcon {
+        val isMerge = maneuver == NormalizedManeuver.MERGE_LEFT ||
+            maneuver == NormalizedManeuver.MERGE_RIGHT ||
+            maneuver == NormalizedManeuver.MERGE_UNSPECIFIED
+        if (isMerge && !instruction.isNullOrBlank()) {
+            explicitTurnFromInstruction(instruction)?.let { return it }
+        }
+        return toTurnIcon(maneuver, rotation, drivingSide)
+    }
+
+    /**
+     * An explicit, graded turn named in an instruction ("turn left", "sharp
+     * right", "slight left"), or null. Whole words only, English only (the SDK
+     * text follows the device language; other languages simply don't override).
+     * The turn phrase must hold the FIRST left/right word in the text: a later
+     * one belongs to a road name or a following step ("Keep right to merge,
+     * then turn left" is not a left turn). "U-turn left" is not a plain turn.
+     */
+    fun explicitTurnFromInstruction(text: String): TurnIcon? {
+        val t = text.lowercase()
+        val firstSide = FIRST_SIDE_RE.find(t) ?: return null
+        val m = EXPLICIT_TURN_RE.find(t) ?: return null
+        val sideGroup = m.groups[2] ?: return null
+        if (sideGroup.range.first != firstSide.range.first) return null
+        val left = sideGroup.value == "left"
+        return when (m.groupValues[1]) {
+            "sharp", "sharply", "hard" -> if (left) TurnIcon.HEAVY_LEFT else TurnIcon.HEAVY_RIGHT
+            "slight", "slightly", "soft", "bear" -> if (left) TurnIcon.LIGHT_LEFT else TurnIcon.LIGHT_RIGHT
+            else -> if (left) TurnIcon.QUITE_LEFT else TurnIcon.QUITE_RIGHT
+        }
+    }
+
+    private val FIRST_SIDE_RE = Regex("""\b(left|right)\b""")
+    private val EXPLICIT_TURN_RE =
+        Regex("""(?<![-\w])(turn|sharp|sharply|hard|slight|slightly|soft|bear)\s+(?:turn\s+)?(left|right)\b""")
 
     /**
      * The one roundabout rule shared by every path (SDK, notification text,

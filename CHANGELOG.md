@@ -9,10 +9,19 @@
   classified correctly on-device). Merge icons, which Maps draws identically for left/right, are one
   class resolved by driving side; direction-less roundabout icons give no arrow.
 
-### Known / needs a dash check
-- Merge (enter-highway) direction codes 14/15 are not yet verified on hardware.
-
 ### Fixes
+- Merge (enter-highway) arrows now point the right way. Verified on the dash: code 14 is a ramp on
+  the right bending left, code 15 a ramp on the left bending right. "Merge left" / the SDK's
+  `MERGE_LEFT` was sent as the mirrored glyph; it now uses code 14 (and "merge right" code 15).
+  Unqualified merges still follow the driving side. The phone's merge icons now look like the dash's.
+- If the in-app engine reports a merge but its instruction says to turn ("Turn left onto the ramp
+  to NE 7"), the phone and dash show the turn arrow instead of the merge glyph.
+- In-app navigation logs each step's raw Google maneuver and the icon chosen, to make mismatches
+  traceable from the Logs screen (road/instruction text only in debug builds).
+- "Merge onto Left Bank Expy" no longer reads the road name as the merge side; the "Then" hint uses
+  your driving side; on-device model merge output follows the driving side.
+- If you picked a merge icon (14/15) on the Turn Calibration screen, re-check it: the previews now
+  match what the dash draws.
 - Highway on-ramps now show the real turn on the dash. "Sharp right onto the ramp to NH 48" was being
   sent as the enter-highway glyph, whose arrow leans *left*; on-ramps now map to the graded turn arrow
   (slight / normal / sharp), matching the notification-text and on-device-model paths. Sharp off-ramps

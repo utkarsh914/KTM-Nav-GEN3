@@ -55,6 +55,14 @@ class KtmNavigationEncoderTest {
         )
     }
 
+    @Test fun mergeWithTurnInstruction_emitsTheTurnIcon() {
+        val enc = encoder()
+        val state = enroute(0, maneuver = NormalizedManeuver.MERGE_UNSPECIFIED)
+            .copy(fullInstruction = "Turn left onto the ramp to NE 7")
+        val icons = enc.encode(state).filterIsInstance<DashWrite.TurnIcon>()
+        assertEquals(listOf(DashWrite.TurnIcon(TurnIcon.QUITE_LEFT)), icons)
+    }
+
     @Test fun duplicateUpdate_producesNoWrites() {
         val enc = encoder()
         enc.encode(enroute(0))

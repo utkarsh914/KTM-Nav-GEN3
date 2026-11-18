@@ -73,7 +73,9 @@ internal fun NavGuidanceHeader(
 ) {
     val rerouting = nav.sessionState == NavSessionState.REROUTING
     val contentAlpha = if (rerouting) 0.45f else 1f
-    val icon = KtmManeuverMapping.toTurnIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide)
+    val icon = KtmManeuverMapping.resolveIcon(
+        nav.maneuver, nav.roundaboutRotation, nav.drivingSide, nav.fullInstruction,
+    )
     val distance = nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, nav.units) }
     // Prefer the SDK's full instruction; fall back to the plain road name.
     val instruction = nav.fullInstruction?.takeIf { it.isNotBlank() } ?: nav.roadName
@@ -144,7 +146,10 @@ internal fun NavGuidanceHeader(
                     fontSize = 16.sp,
                 )
                 Spacer(Modifier.width(10.dp))
-                TurnIconRef(KtmManeuverMapping.toTurnIcon(next), size = 26.dp, color = Color.White)
+                TurnIconRef(
+                    KtmManeuverMapping.toTurnIcon(next, drivingSide = nav.drivingSide),
+                    size = 26.dp, color = Color.White,
+                )
             }
         }
     }

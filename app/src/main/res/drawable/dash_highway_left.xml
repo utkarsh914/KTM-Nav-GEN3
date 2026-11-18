@@ -1,20 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Enter highway / merge, left lane (left-hand traffic, e.g. India): the mirror of
-  dash_highway_right - KTM's official motorway-shield glyph with the directional
-  chevron pointing left. Uses scaleX="-1" (like dash_exit_left mirrors
-  dash_exit_right) so both variants share the one official shield path.
+  Enter highway, ENTER_HIGHWAY_LEFT_LANE (code 15). Drawn to match what the dash
+  itself renders for code 15 (hardware-verified from a dash photo): the
+  carriageway on the right and a ramp on the LEFT whose arrow bends RIGHT into
+  it - the normal left-hand-traffic on-ramp. dash_highway_right (code 14) is
+  this file mirrored.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp" android:height="48dp"
     android:viewportWidth="48" android:viewportHeight="48">
-    <group android:scaleX="-1" android:translateX="48">
-        <!-- Official KTM highway shield, shifted up slightly to make room for the chevron. -->
-        <group android:translateY="-4">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M22 4l0 12 -7 0 3 -12 4 0zm-20 14l44 0 0 4 -4 0 0 4 -4 0 0 -4 -28 0 0 4 -4 0 0 -4 -4 0 0 -4zm28 -14l3 12 -7 0 0 -12 4 0zm-4 20l9 0 5 20 -14 0 0 -20zm-18 20l5 -20 9 0 0 20 -14 0z"/>
-        </group>
-        <!-- Directional chevron (mirrored to point left = merge to the left lane). -->
-        <path android:fillColor="#FFFFFFFF"
-            android:pathData="M34 40l6 4 -6 4 0 -2.5 -6 0 0 -3 6 0 0 -2.5z"/>
-    </group>
+    <!-- Carriageway: two lanes in perspective. -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M24 6L31 6 31 44 17 44Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M33 6L40 6 47 44 33 44Z"/>
+    <!-- Ramp arrow joining from the left. -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M4 44L4 29C4 24 6.5 20.8 10 18.6L14.1 15.3 12.5 13.4 22 11 17.5 19.6 15.9 17.7 12.2 20.8C9.5 22.6 8 25 8 29L8 44Z"/>
 </vector>
