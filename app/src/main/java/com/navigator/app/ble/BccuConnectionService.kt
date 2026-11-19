@@ -730,6 +730,9 @@ class BccuConnectionService : LifecycleService() {
             val device = adapter.getRemoteDevice(address)
             _deviceName.value = AppSettings(this).bondedDeviceName ?: device.name
             synchronized(gattLock) {
+                // Deprecated in API 37, but its replacement (connectGatt(BluetoothGattConnectionSettings,
+                // Executor, callback)) is API 37-only and minSdk is 36. Revisit when minSdk reaches 37.
+                @Suppress("DEPRECATION")
                 gatt = device.connectGatt(
                     this, autoConnect, callback, BluetoothDevice.TRANSPORT_LE,
                     BluetoothDevice.PHY_LE_1M_MASK, bleHandler,
