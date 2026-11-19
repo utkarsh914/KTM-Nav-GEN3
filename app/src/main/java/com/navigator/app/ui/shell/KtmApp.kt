@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.core.net.toUri
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +62,9 @@ import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.screens.LogsScreen
 import com.navigator.app.ui.screens.MirrorHomeScreen
+import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
+import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
+import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.screens.NavigationHomeScreen
 import com.navigator.app.ui.screens.OnboardingScreen
 import com.navigator.app.ui.screens.PairingScreen
@@ -231,7 +235,27 @@ fun KtmApp(onQuit: () -> Unit) {
                                     openNavRequest = pending.openNav,
                                 )
                             } else {
-                                MirrorHomeScreen(onOpenConnect = { navController.navigate(Route.Pairing()) })
+                                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                                    MirrorHomeScreen(onOpenConnect = { navController.navigate(Route.Pairing()) })
+                                    // A Google Maps link shared in mirror mode: Google Maps does the navigating.
+                                    pending.sharedLink?.let { link ->
+                                        SharedLinkCard(
+                                            SharedLinkState.Mirror,
+                                            SharedLinkActions(
+                                                onRetry = {}, onSearchInstead = {},
+                                                onDismiss = intents::consumeSharedLink,
+                                                onOpenMaps = {
+                                                    intents.consumeSharedLink()
+                                                    openInGoogleMaps(context, link)
+                                                },
+                                                onSwitchToInApp = if (GoogleNavSdkController.isAvailable(context)) {
+                                                    { container.settings.update { googleNavEnabled = true } }
+                                                } else null,
+                                            ),
+                                            Modifier.align(Alignment.BottomCenter),
+                                        )
+                                    }
+                                }
                             }
                         }
                         composable<Route.Rides> {
@@ -293,7 +317,6 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                     }
                 }
-                ConnectGreetingHost(name = snap.userName?.trim().orEmpty())
                 if (com.navigator.app.BuildConfig.DEBUG) {
                     val overlayOn by com.navigator.app.nav.DashPreview.overlayEnabled.collectAsState()
                     if (overlayOn) com.navigator.app.ui.DashPreviewPanel()
@@ -314,7 +337,6 @@ fun KtmApp(onQuit: () -> Unit) {
 }
 
 private fun RejectReason.message(): Int = when (this) {
-    RejectReason.SHARED_LINK_NEEDS_IN_APP -> R.string.intent_shared_link_needs_in_app
     RejectReason.SHORTCUT_NEEDS_IN_APP -> R.string.intent_shortcut_needs_in_app
     RejectReason.MAP_NEEDS_IN_APP -> R.string.intent_map_needs_in_app
 }
@@ -365,59 +387,11 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(reduced
     else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { it / 12 } + fadeOut(tween(FADE_MS))
 }
 
-/** Brief "Hi <name>!" banner shown when the bike authenticates. */
-@Composable
-private fun ConnectGreetingHost(name: String) {
-    val connState by BccuConnectionService.connectionState.collectAsState()
-    var show by remember { mutableStateOf(false) }
-    var prev by remember { mutableStateOf(connState) }
-    LaunchedEffect(connState) {
-        val was = prev
-        prev = connState
-        if (connState == BccuConnectionService.ConnectionState.AUTHENTICATED &&
-            was != BccuConnectionService.ConnectionState.AUTHENTICATED
-        ) {
-            show = true
-            // finally: a state change cancels this effect mid-delay; never leave the banner stuck.
-            try { delay(4000) } finally { show = false }
-        }
-    }
-    androidx.compose.animation.AnimatedVisibility(
-        visible = show,
-        enter = fadeIn(tween(220, easing = FastOutSlowInEasing)),
-        exit = fadeOut(tween(220, easing = FastOutSlowInEasing)),
-    ) { ConnectGreeting(name) }
-}
-
-@Composable
-private fun ConnectGreeting(name: String) {
-    val text = if (name.isNotBlank()) "Hi $name!" else "Welcome!"
-    Box(
-        modifier = Modifier.fillMaxSize().edgePadding().padding(top = 108.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        androidx.compose.foundation.layout.Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                .then(Modifier.background(Ktm.Orange))
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-        ) {
-            androidx.compose.material3.Icon(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.dash_pedestrian),
-                contentDescription = null,
-                tint = Ktm.OnAccent,
-                modifier = Modifier.size(34.dp),
-            )
-            androidx.compose.material3.Text(
-                text,
-                color = Ktm.OnAccent,
-                fontFamily = com.navigator.app.ui.theme.BarlowCondensed,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                fontSize = 26.sp,
-                modifier = Modifier.padding(start = 12.dp),
-            )
-        }
-    }
+/** Hand a shared Google Maps link back to Google Maps, which starts the navigation the mirror then follows. */
+private fun openInGoogleMaps(context: android.content.Context, sharedText: String) {
+    // Maps shares "Place name\nhttps://..." : only the link is a URI.
+    val link = com.navigator.app.nav.destination.MapsUrlResolver.extractUrl(sharedText) ?: return
+    val view = android.content.Intent(android.content.Intent.ACTION_VIEW, link.toUri())
+    val maps = android.content.Intent(view).setPackage("com.google.android.apps.maps")
+    runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }
 }

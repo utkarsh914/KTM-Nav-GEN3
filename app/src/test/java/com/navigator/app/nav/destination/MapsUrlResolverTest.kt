@@ -98,4 +98,51 @@ class MapsUrlResolverTest {
         assertEquals("https://maps.app.goo.gl/abc123", MapsUrlResolver.trimUrl("https://maps.app.goo.gl/abc123)."))
         assertEquals("https://maps.app.goo.gl/abc123", MapsUrlResolver.trimUrl("https://maps.app.goo.gl/abc123,"))
     }
+
+    @Test fun extractUrlTakesTheLinkOutOfSharedText() {
+        assertEquals("https://maps.app.goo.gl/abc", MapsUrlResolver.extractUrl("Toit Brewpub\nhttps://maps.app.goo.gl/abc"))
+        assertEquals("https://maps.app.goo.gl/abc", MapsUrlResolver.extractUrl("  see https://maps.app.goo.gl/abc.  "))
+        assertEquals(null, MapsUrlResolver.extractUrl("no link here"))
+    }
+
+    // The links below are what maps.app.goo.gl redirected to in November 2026.
+    private val listedPlace = "https://www.google.com/maps?q=Stillgood,+Stillgood+coffee+truck,+100+Feet+Rd,+HAL+2nd+Stage,+" +
+        "Indiranagar,+Bengaluru,+Karnataka+560008&ftid=0x3bae133273a08e27:0x4b5c269406e8365e&entry=gps&shh=CAE"
+    private val droppedPin = "https://www.google.com/maps/place/13.030169,77.570922/data=!4m6!3m5!1s0!7e2!8m2!3d13.0301692!4d77.570922" +
+        "!17m2!4m1!1e3!18m1!1e1?utm_source=mstt_1&entry=gps"
+
+    @Test fun aListedPlaceLinkNowCarriesItsNameInTheQueryNotThePath() {
+        assertEquals(null, MapsUrlResolver.placeName(listedPlace))
+        assertEquals(
+            "Stillgood, Stillgood coffee truck, 100 Feet Rd, HAL 2nd Stage, Indiranagar, Bengaluru, Karnataka 560008",
+            MapsUrlResolver.queryText(listedPlace),
+        )
+        assertEquals("Stillgood", MapsUrlResolver.shortName(MapsUrlResolver.queryText(listedPlace)!!))
+        assertEquals(null, MapsUrlResolver.parseCoordinates(listedPlace))
+    }
+
+    @Test fun aDroppedPinKeepsItsCoordinatesAndIsNotTakenForAName() {
+        val loc = MapsUrlResolver.parseCoordinates(droppedPin)!!
+        assertEquals(13.0301692, loc.lat, 1e-7)
+        assertEquals(77.570922, loc.lng, 1e-7)
+        assertEquals(null, MapsUrlResolver.queryText(droppedPin))
+        assertEquals(null, MapsUrlResolver.queryText("https://www.google.com/maps?q=13.03,77.57"))
+        assertEquals(null, MapsUrlResolver.queryText("https://www.google.com/maps?q=13.03%2C77.57"))
+    }
+
+    @Test fun aPlaceIdLinkIsRecognisedAndNotSearchedAsText() {
+        val url = "https://www.google.com/maps/place?q=place_id:ChIJf2-y-BwVrjsR0G-Ts_6cAVs"
+        assertEquals("ChIJf2-y-BwVrjsR0G-Ts_6cAVs", MapsUrlResolver.placeId(url))
+        assertEquals(null, MapsUrlResolver.queryText(url))
+        assertEquals(null, MapsUrlResolver.placeId(listedPlace))
+    }
+
+    @Test fun anIntentRedirectFallsBackToItsWebPage() {
+        val loc = "intent://maps.app.goo.gl/Nygodx1ofAtPP8v3A#Intent;package=com.google.android.gms;" +
+            "action=com.google.firebase.dynamiclinks.VIEW_DYNAMIC_LINK;scheme=https;" +
+            "S.browser_fallback_url=https://www.google.com/maps/place/Vennila's%2Bready%2Bmade%2Bidly;end"
+        assertEquals("https://www.google.com/maps/place/Vennila's+ready+made+idly", MapsUrlResolver.intentFallback(loc))
+        assertEquals(null, MapsUrlResolver.intentFallback("https://www.google.com/maps"))
+        assertEquals(null, MapsUrlResolver.intentFallback("intent://x#Intent;scheme=https;end"))
+    }
 }

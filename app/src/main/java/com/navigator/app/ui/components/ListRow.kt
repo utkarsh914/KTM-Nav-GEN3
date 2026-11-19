@@ -1,7 +1,8 @@
 package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmIcons
@@ -42,22 +44,33 @@ fun listRowHeight(supportingLines: Int, hasThumbnail: Boolean = false): Dp = whe
  * The one list row: leading tonal icon (or any [leading] content), title, supporting text and a
  * trailing slot (value, switch, chevron). Tappable when [onClick] is set.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListRow(
     title: String,
     modifier: Modifier = Modifier,
     supporting: String? = null,
     supportingLines: Int = if (supporting == null) 0 else 1,
+    /** Replaces [title] when set: for a name with the matched text in bold (see [highlightedText]). */
+    annotatedTitle: androidx.compose.ui.text.AnnotatedString? = null,
     leadingIcon: ImageVector? = null,
     leading: (@Composable () -> Unit)? = null,
     hasThumbnail: Boolean = false,
     onClick: (() -> Unit)? = null,
+    /** A press-and-hold action (remove a recent place); also offered to screen readers as a custom action. */
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
     val clickable = if (onClick != null) {
-        Modifier.clickable(role = Role.Button) { haptics.tap(); onClick() }
+        Modifier.combinedClickable(
+            role = Role.Button,
+            onLongClickLabel = onLongClickLabel,
+            onLongClick = onLongClick?.let { long -> { haptics.tap(); long() } },
+            onClick = { haptics.tap(); onClick() },
+        )
     } else Modifier
     Row(
         modifier = modifier
@@ -73,7 +86,10 @@ fun ListRow(
             leadingIcon != null -> TonalIconBadge(leadingIcon)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                annotatedTitle ?: androidx.compose.ui.text.AnnotatedString(title),
+                style = MaterialTheme.typography.bodyLarge, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
             if (supporting != null) {
                 Text(
                     supporting, style = MaterialTheme.typography.bodySmall, color = c.fg2,
@@ -111,3 +127,14 @@ fun RowChevron() {
 fun ListDivider(modifier: Modifier = Modifier, inset: Dp = KtmLayout.dividerInset) {
     HorizontalDivider(modifier.padding(start = inset), color = KtmTheme.colors.line)
 }
+
+/** [text] with the characters in [match] in bold; the style lives here so feature code sets none. */
+fun highlightedText(text: String, match: IntRange?): androidx.compose.ui.text.AnnotatedString =
+    androidx.compose.ui.text.buildAnnotatedString {
+        if (match == null) { append(text); return@buildAnnotatedString }
+        append(text.substring(0, match.first))
+        withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) {
+            append(text.substring(match.first, match.last + 1))
+        }
+        append(text.substring(match.last + 1))
+    }

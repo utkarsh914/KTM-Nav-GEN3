@@ -80,6 +80,9 @@ object KtmLayout {
     /** The landscape side panel of the Navigate sheet (352 dp, the portrait sheet's content width). */
     val sidePanel = 352.dp
 
+    /** The pin of Pick on map; its tip is the picked point. */
+    val mapPin = 48.dp
+
     /** A docked activity strip row. */
     val activityStrip = 64.dp
     val sheetTitleRow = 48.dp

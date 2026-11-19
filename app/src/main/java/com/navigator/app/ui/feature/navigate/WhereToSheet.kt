@@ -35,7 +35,13 @@ import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.components.ActivityStrip
 import com.navigator.app.ui.components.ActivityStripState
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.RowValue
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.navigator.app.nav.destination.PlaceCategory
+import com.navigator.app.ui.feature.navigate.search.labelRes
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.components.IconButtonSize
@@ -68,6 +74,8 @@ class WhereToActions(
     val onTile: (TileAction) -> Unit,
     val onPlace: (SavedPlace) -> Unit,
     val onResumeTrip: () -> Unit,
+    val onCategory: (PlaceCategory) -> Unit,
+    val onRemoveRecent: (SavedPlace) -> Unit,
 )
 
 /**
@@ -109,6 +117,13 @@ fun WhereToSheetContent(
         TileGrid(state.tiles, actions.onTile)
         Spacer(Modifier.height(KtmSpacing.lg))
 
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            items(PlaceCategory.entries.toList(), key = { it.name }) { category ->
+                KtmFilterChip(stringResource(category.labelRes()), selected = false, onClick = { actions.onCategory(category) })
+            }
+        }
+        Spacer(Modifier.height(KtmSpacing.sm))
+
         if (saved.isEmpty() && state.recents.isEmpty()) {
             Text(
                 stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
@@ -117,11 +132,11 @@ fun WhereToSheetContent(
         } else {
             if (saved.isNotEmpty()) {
                 SectionHeader(stringResource(R.string.navigate_saved_header))
-                saved.forEach { PlaceRow(it, KtmIcons.Bookmark, actions.onPlace) }
+                saved.forEach { PlaceRow(it, KtmIcons.Bookmark, state.origin, actions.onPlace) }
             }
             if (state.recents.isNotEmpty()) {
                 SectionHeader(stringResource(R.string.navigate_recent_header))
-                state.recents.forEach { PlaceRow(it, KtmIcons.History, actions.onPlace) }
+                state.recents.forEach { PlaceRow(it, KtmIcons.History, state.origin, actions.onPlace, onRemove = { r -> actions.onRemoveRecent(r) }) }
             }
         }
         Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(KtmSpacing.lg))
@@ -129,7 +144,7 @@ fun WhereToSheetContent(
 }
 
 @Composable
-private fun ActivityCardModel.titleText(): String = when {
+internal fun ActivityCardModel.titleText(): String = when {
     distance != null && road != null -> stringResource(R.string.navigate_activity_title_both, distance, road)
     distance != null -> distance
     road != null -> road
@@ -137,7 +152,7 @@ private fun ActivityCardModel.titleText(): String = when {
 }
 
 @Composable
-private fun ActivityCardModel.detailText(): String =
+internal fun ActivityCardModel.detailText(): String =
     if (eta != null) stringResource(R.string.navigate_activity_to_eta, destination, eta)
     else stringResource(R.string.navigate_activity_to, destination)
 
@@ -215,11 +230,20 @@ private fun tileIcon(kind: TileKind) = when (kind) {
 }
 
 @Composable
-private fun PlaceRow(place: SavedPlace, icon: androidx.compose.ui.graphics.vector.ImageVector, onPlace: (SavedPlace) -> Unit) {
+private fun PlaceRow(
+    place: SavedPlace,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    origin: Pair<Double, Double>?,
+    onPlace: (SavedPlace) -> Unit,
+    onRemove: ((SavedPlace) -> Unit)? = null,
+) {
     ListRow(
         title = place.label,
         supporting = place.address,
         leadingIcon = icon,
         onClick = { onPlace(place) },
+        onLongClick = onRemove?.let { remove -> { remove(place) } },
+        onLongClickLabel = onRemove?.let { stringResource(R.string.search_remove_recent) },
+        trailing = { StraightLine.label(origin, place)?.let { RowValue(it) } },
     )
 }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
+import java.util.UUID
 
 /**
  * Best-effort resolution of a Google Maps link (or shared text containing one)
@@ -23,6 +24,14 @@ import java.net.URLDecoder
  * The coordinate parsing is pure and unit-tested; only redirect-following needs
  * the network.
  */
+/** Why a shared link could not be turned into a place. */
+enum class LinkFailure { NOT_A_MAPS_LINK, NO_CONNECTION, UNREADABLE, PLACE_NOT_FOUND }
+
+sealed interface LinkResolution {
+    data class Found(val destination: NavDestination) : LinkResolution
+    data class Failed(val reason: LinkFailure) : LinkResolution
+}
+
 object MapsUrlResolver {
 
     private val LAT = "(-?\\d{1,2}\\.\\d+)"
@@ -60,31 +69,80 @@ object MapsUrlResolver {
      * (No HTML/camera-centre scraping - it can be kilometres off.)
      * [auth] is the Android client identity needed for the Text Search REST call.
      */
-    suspend fun resolve(text: String, auth: AndroidClientAuth? = null): NavDestination? = withContext(Dispatchers.IO) {
+    suspend fun resolve(text: String, auth: AndroidClientAuth? = null): NavDestination? =
+        (resolveDetailed(text, auth) as? LinkResolution.Found)?.destination
+
+    /** Like [resolve], but says why a link could not be read, so the rider (and the log) can tell. */
+    suspend fun resolveDetailed(text: String, auth: AndroidClientAuth? = null): LinkResolution = withContext(Dispatchers.IO) {
         val trimmed = text.trim()
-        parseCoordinates(trimmed)?.let { return@withContext it.toDest(labelFrom(trimmed)) }
+        parseCoordinates(trimmed)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(trimmed))) }
 
-        val url = URL_REGEX.find(trimmed)?.value?.let(::trimUrl) ?: return@withContext null
-        parseCoordinates(url)?.let { return@withContext it.toDest(labelFrom(url)) }
+        val url = URL_REGEX.find(trimmed)?.value?.let(::trimUrl)
+            ?: return@withContext LinkResolution.Failed(LinkFailure.NOT_A_MAPS_LINK)
+        parseCoordinates(url)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(url))) }
 
-        if (!isAllowedHost(url) || (!isShortLink(url) && !isGoogleMapsUrl(url))) return@withContext null
+        if (!isAllowedHost(url) || (!isShortLink(url) && !isGoogleMapsUrl(url))) {
+            AppLogger.log("MapsUrl", "not a Google Maps link (host ${hostOf(url)})")
+            return@withContext LinkResolution.Failed(LinkFailure.NOT_A_MAPS_LINK)
+        }
 
-        val resolvedUrl = runCatching { fetchResolvedUrl(url) }.getOrElse {
-            AppLogger.log("MapsUrl", "resolve error: ${it.message}")
+        val resolvedUrl = try {
+            fetchResolvedUrl(url)
+        } catch (e: java.io.IOException) {
+            // Timeout, no route, or a name that does not resolve (some networks block Google's short-link host).
+            AppLogger.log("MapsUrl", "could not reach ${hostOf(url)}: ${e.javaClass.simpleName} ${e.message}")
+            return@withContext LinkResolution.Failed(LinkFailure.NO_CONNECTION)
+        } catch (e: Exception) {
+            AppLogger.log("MapsUrl", "resolve error: ${e.javaClass.simpleName} ${e.message}")
             null
-        } ?: return@withContext null
+        } ?: return@withContext LinkResolution.Failed(LinkFailure.UNREADABLE)
+        AppLogger.log("MapsUrl", "resolved to ${hostOf(resolvedUrl)} (${resolvedUrl.length} chars)")
 
         // Dropped-pin links carry coords in the resolved URL.
-        parseCoordinates(resolvedUrl)?.let { return@withContext it.toDest(labelFrom(resolvedUrl)) }
+        parseCoordinates(resolvedUrl)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(resolvedUrl))) }
 
         // Place links: turn the rich name/address into exact coords via Text Search.
         // (No fragile HTML/camera-centre scraping - it can be kilometres off.)
-        placeName(resolvedUrl)?.let { name ->
-            val loc = runCatching { PlacesClient.textSearch(name, auth) }.getOrNull()
-            if (loc != null) return@withContext loc.toDest(name)
+        // Google now sends listed places to `maps.google.com?q=<name, address>&ftid=...`, older links to
+        // `/maps/place/<name>/...`, and some to `?q=place_id:<id>`: all three are handled.
+        placeId(resolvedUrl)?.let { id ->
+            val loc = runCatching { PlacesClient.details(id, UUID.randomUUID().toString(), auth) }.getOrNull()
+            if (loc != null) return@withContext LinkResolution.Found(loc.toDest(labelFrom(resolvedUrl)))
         }
-        null
+        (placeName(resolvedUrl) ?: queryText(resolvedUrl))?.let { name ->
+            val loc = runCatching { PlacesClient.textSearch(name, auth) }.getOrNull()
+            if (loc != null) return@withContext LinkResolution.Found(loc.toDest(shortName(name)))
+            AppLogger.log("MapsUrl", "place search found nothing for the link's name")
+            return@withContext LinkResolution.Failed(LinkFailure.PLACE_NOT_FOUND)
+        }
+        AppLogger.log("MapsUrl", "no place found in the resolved link (${resolvedUrl.take(60)}…)")
+        LinkResolution.Failed(LinkFailure.UNREADABLE)
     }
+
+    /** `intent://...;S.browser_fallback_url=<web url>;end` -> the web URL, or null when [location] is not one. */
+    fun intentFallback(location: String): String? {
+        if (!location.startsWith("intent:", ignoreCase = true)) return null
+        val raw = Regex("S\\.browser_fallback_url=([^;]+)").find(location)?.groupValues?.get(1) ?: return null
+        return runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw).takeIf { it.startsWith("http") }
+    }
+
+    /** The `q=` text of a Maps link when it is a name or address (not coordinates, not a place id), else null. */
+    fun queryText(url: String): String? {
+        val raw = Regex("[?&]q=([^&#]+)").find(url)?.groupValues?.get(1) ?: return null
+        val text = runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrNull()?.trim().orEmpty()
+        if (text.isEmpty() || text.startsWith("place_id:") || parseCoordinates("?q=$raw") != null) return null
+        return text
+    }
+
+    /** The Places id of a `q=place_id:<id>` link, or null. */
+    fun placeId(url: String): String? =
+        Regex("[?&]q=place_id:([A-Za-z0-9_-]+)").find(url)?.groupValues?.get(1)
+
+    /** "Stillgood, Stillgood coffee truck, 100 Feet Rd..." -> "Stillgood": the name, without the address. */
+    fun shortName(queryText: String): String = queryText.substringBefore(',').trim().ifBlank { queryText }
+
+    /** The first link in shared text ("Place name\nhttps://maps.app.goo.gl/x" becomes the URL), or null. */
+    fun extractUrl(text: String): String? = URL_REGEX.find(text.trim())?.value?.let(::trimUrl)
 
     /** Follow up to 6 redirects; return the final URL. */
     private fun fetchResolvedUrl(start: String): String? {
@@ -108,10 +166,14 @@ object MapsUrlResolver {
                 val code = conn.responseCode
                 if (code in 300..399) {
                     val loc = conn.getHeaderField("Location") ?: return null
-                    current = if (loc.startsWith("http")) loc else URL(URL(current), loc).toString()
+                    // Some links bounce to an `intent://` URI for the Maps app; its fallback is the web page.
+                    current = intentFallback(loc)
+                        ?: if (loc.startsWith("http")) loc
+                        else runCatching { URL(URL(current), loc).toString() }.getOrNull() ?: return null
                 } else if (code in 200..299 || parseCoordinates(current) != null) {
                     return current // (a bot-blocked final page still names the place in its URL)
                 } else {
+                    AppLogger.log("MapsUrl", "HTTP $code from ${hostOf(current)} and no coordinates in the link")
                     return null // 4xx/5xx with nothing to read from the URL
                 }
             } finally {

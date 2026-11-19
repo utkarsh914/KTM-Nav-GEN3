@@ -142,6 +142,32 @@ class NavigateViewModelTest {
         assertEquals(BikeStatus.NotPaired, vm.state.value.bikeStatus)
     }
 
+    @Test fun connectingWhileTheScreenIsHereGreetsForFourSeconds() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:00"
+        settings.legacy.userName = "Arjun"
+        settings.refresh()
+        val vm = vm()
+        assertNull("not connected yet", vm.state.value.greeting)
+        link.value = ConnectionState.CONNECTING
+        link.value = ConnectionState.AUTHENTICATED
+        assertEquals(GreetingUi("Arjun"), vm.state.value.greeting)
+        testScheduler.advanceTimeBy(NavigateViewModel.GREETING_MS - 1)
+        assertNotNull(vm.state.value.greeting)
+        testScheduler.advanceTimeBy(2)
+        assertNull(vm.state.value.greeting)
+    }
+
+    @Test fun beingConnectedAlreadyOrStayingConnectedDoesNotGreet() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:00"
+        settings.refresh()
+        link.value = ConnectionState.AUTHENTICATED
+        val vm = vm()
+        assertNull(vm.state.value.greeting)
+        settings.legacy.userName = "Sam"
+        settings.refresh()
+        assertNull(vm.state.value.greeting)
+    }
+
     @Test fun theCardAppearsWhenATripIsMinimisedAndGoesWhenResumed() = runTest(UnconfinedTestDispatcher()) {
         val trip = TripController(backgroundScope, guidance, MutableStateFlow(true), clock = { 10_000L })
         val connection = ConnectionRepository(

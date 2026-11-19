@@ -28,7 +28,7 @@ sealed interface AppIntent {
 /** What the shell knows when it decides how to treat an [AppIntent]. */
 data class AppReadiness(val setupDone: Boolean, val inAppMaps: Boolean)
 
-enum class RejectReason { SHARED_LINK_NEEDS_IN_APP, SHORTCUT_NEEDS_IN_APP, MAP_NEEDS_IN_APP }
+enum class RejectReason { SHORTCUT_NEEDS_IN_APP, MAP_NEEDS_IN_APP }
 
 sealed interface IntentOutcome {
     /** Switch to the Navigate tab; the screen consumes the pending item. */
@@ -86,11 +86,8 @@ class AppIntents {
 
         /** The routing table: what to do with [intent] given [readiness]. */
         fun decide(intent: AppIntent, readiness: AppReadiness): IntentOutcome = when (intent) {
-            is AppIntent.SharedLink -> when {
-                !readiness.setupDone -> IntentOutcome.Defer
-                readiness.inAppMaps -> IntentOutcome.Navigate
-                else -> IntentOutcome.Reject(RejectReason.SHARED_LINK_NEEDS_IN_APP)
-            }
+            // Both engines show the Navigate tab: in-app resolves the link there, mirror mode offers Google Maps.
+            is AppIntent.SharedLink -> if (readiness.setupDone) IntentOutcome.Navigate else IntentOutcome.Defer
             is AppIntent.QuickRoute -> when {
                 !readiness.setupDone -> IntentOutcome.Drop
                 readiness.inAppMaps -> IntentOutcome.Navigate

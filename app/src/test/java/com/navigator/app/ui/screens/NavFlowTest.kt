@@ -149,10 +149,7 @@ class NavFlowTest {
         assertEquals(NavFlowState(), s.restored())
     }
 
-    @Test fun searchWhileSteppedAwayStillOwnsTheTrip() {
-        assertTrue(NavFlowRules.owningTrip(NavStage.SEARCH, leftNavManually = true))
-        assertFalse(NavFlowRules.owningTrip(NavStage.SEARCH, leftNavManually = false))
-        assertFalse(NavFlowRules.owningTrip(NavStage.CONFIRM, leftNavManually = true))
+    @Test fun aLiveTripIsNotAutoResumedOutFromUnderTheSearch() {
         // ...and a live trip must not be auto-resumed out from under the search.
         assertFalse(NavFlowRules.shouldAutoResume(true, NavStage.SEARCH, leftNavManually = true))
     }
@@ -166,13 +163,6 @@ class NavFlowTest {
         assertFalse(NavFlowRules.shouldAutoResume(true, NavStage.TRIP_FINISHED, false))
         assertFalse(NavFlowRules.shouldAutoResume(true, NavStage.NAVIGATING, false))
         assertFalse(NavFlowRules.shouldAutoResume(false, NavStage.BROWSE, false))
-    }
-
-    @Test fun owningTripWhileNavigatingOrSteppedAway() {
-        assertTrue(NavFlowRules.owningTrip(NavStage.NAVIGATING, false))
-        assertTrue(NavFlowRules.owningTrip(NavStage.BROWSE, true))
-        assertFalse(NavFlowRules.owningTrip(NavStage.BROWSE, false))
-        assertFalse(NavFlowRules.owningTrip(NavStage.PREVIEW, true))
     }
 
     // ---- Arrival ------------------------------------------------------------

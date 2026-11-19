@@ -32,7 +32,6 @@
     <string name="tab_places">Places</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_needs_attention">Needs attention</string>
-    <string name="intent_shared_link_needs_in_app">Shared links need in-app maps (Settings &gt; Navigation engine)</string>
     <string name="intent_shortcut_needs_in_app">Ride shortcuts need in-app maps (Settings &gt; Navigation engine)</string>
     <string name="intent_map_needs_in_app">Map view needs in-app navigation</string>
     <string name="settings_quit">Quit KTM Navigator</string>
@@ -54,7 +53,11 @@
 
     <!-- Navigate: Where to? sheet (HM1-HM3) -->
     <string name="navigate_field_hint">Where to?</string>
+    <string name="navigate_slot_unset">Set your %1$s place first</string>
+    <string name="navigate_slot_unset_action">Open Places</string>
     <string name="navigate_voice_prompt">Say a place</string>
+    <string name="navigate_greeting">Hi %1$s!</string>
+    <string name="navigate_greeting_anonymous">Welcome!</string>
     <string name="navigate_voice">Search by voice</string>
     <string name="navigate_tile_home">Home</string>
     <string name="navigate_tile_work">Work</string>
@@ -65,7 +68,6 @@
     <string name="navigate_tile_last_none">No trips yet</string>
     <string name="navigate_tile_pick">Pick on map</string>
     <string name="navigate_tile_pick_caption">Drop a pin</string>
-    <string name="navigate_pick_hint">Long-press the map to drop a pin</string>
     <string name="navigate_saved_header">Saved</string>
     <string name="navigate_recent_header">Recent</string>
     <string name="navigate_empty_hint">Search, or say where you\'re going.</string>
@@ -132,4 +134,50 @@
     <string name="dash_preview_offline_title">Dash not connected</string>
     <string name="dash_preview_offline_hint">Connect your bike to see what it shows.</string>
     <string name="dash_preview_banner_app">Message</string>
+
+    <!-- Search (SE1-SE5) -->
+    <string name="search_hint_stop">Search for a stop</string>
+    <string name="search_hint_home">Search for your home</string>
+    <string name="search_hint_work">Search for your work</string>
+    <string name="search_add_stop_header">Add a stop to your trip</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_offline">You\'re offline. Showing matching saved and recent places.</string>
+    <string name="search_no_matches">No matches</string>
+    <string name="search_failed">Couldn\'t search. Check your connection.</string>
+    <string name="search_nothing_nearby">Nothing found nearby</string>
+    <string name="search_near_you">Near you</string>
+    <string name="search_along_route">Along your route</string>
+    <string name="search_remove_recent">Remove from recent</string>
+    <string name="search_recent_removed">Removed from recent</string>
+    <string name="search_undo">Undo</string>
+    <string name="search_place_failed">Couldn\'t load that place</string>
+    <string name="search_slot_saved">Saved as %1$s</string>
+    <string name="search_category_fuel">Fuel</string>
+    <string name="search_category_food">Food</string>
+    <string name="search_category_coffee">Coffee</string>
+    <string name="search_category_parking">Parking</string>
+    <string name="search_category_atm">ATM</string>
+    <string name="search_category_hospital">Hospital</string>
+    <string name="search_category_pharmacy">Pharmacy</string>
+    <string name="search_category_ev">EV charging</string>
+
+    <!-- Pick on map (HM7) -->
+    <string name="pick_use">Use this point</string>
+    <string name="pick_hint">Move the map to place the pin</string>
+    <string name="pick_dropped_pin">Dropped pin</string>
+
+    <!-- Shared Google Maps link (HM9) -->
+    <string name="shared_link_default_label">Shared location</string>
+    <string name="navigate_link_during_trip">Your trip is running. End it to open that place.</string>
+    <string name="shared_link_loading">Opening shared place…</string>
+    <string name="shared_link_failed_title">Couldn\'t open that link</string>
+    <string name="shared_link_failed_message">Check your connection and try again, or search for the place.</string>
+    <string name="shared_link_failed_connection">Couldn\'t reach Google to read the link. Check your connection; some networks block Google\'s short links, so try mobile data.</string>
+    <string name="shared_link_failed_not_maps">That doesn\'t look like a Google Maps link. Search for the place instead.</string>
+    <string name="shared_link_failed_no_place">The link opened, but the place wasn\'t found. Search for it instead.</string>
+    <string name="shared_link_search_instead">Search instead</string>
+    <string name="shared_link_mirror_title">Navigate with Google Maps</string>
+    <string name="shared_link_mirror_message">In mirror mode Google Maps does the navigating and your dash follows. Switch to in-app maps to plan here.</string>
+    <string name="shared_link_open_maps">Open in Google Maps</string>
+    <string name="shared_link_switch">Switch to in-app maps</string>
 </resources>

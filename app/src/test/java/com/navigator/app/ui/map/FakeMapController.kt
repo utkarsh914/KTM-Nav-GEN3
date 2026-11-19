@@ -13,6 +13,9 @@ class FakeMapController : MapController {
     override val poiClicks = MutableSharedFlow<MapPoi>(extraBufferCapacity = 8)
     override val polylineClicks = MutableSharedFlow<Int>(extraBufferCapacity = 8)
     override val gesturePans = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
+    override val cameraIdle = MutableSharedFlow<MapPoint>(extraBufferCapacity = 8)
+    var center: MapPoint? = null
+    var idleListening = false
 
     /** Everything asked of the map, in order, as short strings (`place`, `preview`, `clear`, ...). */
     val calls = mutableListOf<String>()
@@ -26,6 +29,8 @@ class FakeMapController : MapController {
     var dark: Boolean? = null
     var chrome: Triple<Boolean, Boolean, Boolean>? = null
 
+    override fun cameraCenter() = center
+    override fun setCameraIdleListening(enabled: Boolean) { idleListening = enabled }
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) { padding = listOf(left, top, right, bottom) }
 
     override fun clearOverlays() {

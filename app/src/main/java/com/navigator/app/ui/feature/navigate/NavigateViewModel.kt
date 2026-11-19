@@ -13,7 +13,10 @@ import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.trip.TripController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -40,9 +43,33 @@ class NavigateViewModel(
     private val placesPart = combine(places.favorites, places.recents, origin) { f, r, o -> Triple(f, r, o) }
     private val tripPart = combine(trip.state, trip.navState) { t, nav -> ActivityCard.build(t, nav, clock()) }
 
+    private val greeting = MutableStateFlow<GreetingUi?>(null)
+    private var greetingJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            var previous: BikeStatus? = null
+            connection.status.collect { now ->
+                // Only a connection made while the screen is here; already being connected is not news.
+                if (previous != null && previous !is BikeStatus.Connected && now is BikeStatus.Connected) showGreeting()
+                previous = now
+            }
+        }
+    }
+
+    private fun showGreeting() {
+        greetingJob?.cancel()
+        greetingJob = viewModelScope.launch {
+            greeting.value = GreetingUi(settings.snapshot.value.userName?.trim().orEmpty())
+            delay(GREETING_MS)
+            greeting.value = null
+        }
+    }
+
     private fun build(
         status: BikeStatus, dash: DashSnapshot, favorites: List<FavoritePlace>, recents: List<SavedPlace>,
         position: Pair<Double, Double>?, activity: ActivityCardModel?, snap: SettingsSnapshot,
+        greeting: GreetingUi? = null,
     ) = NavigateUiState(
         tiles = WhereToTiles.build(favorites, recents) { StraightLine.label(position, it) },
         favorites = favorites,
@@ -54,12 +81,16 @@ class NavigateViewModel(
         messagesOn = snap.mirrorEnabled,
         activity = activity,
         userName = snap.userName?.trim().orEmpty(),
+        greeting = greeting,
+        origin = position,
     )
 
+    private val prefsPart = combine(settings.snapshot, greeting) { snap, hello -> snap to hello }
+
     val state: StateFlow<NavigateUiState> = combine(
-        bikePart, placesPart, tripPart, settings.snapshot,
-    ) { (status, dash), (favorites, recents, position), activity, snap ->
-        build(status, dash, favorites, recents, position, activity, snap)
+        bikePart, placesPart, tripPart, prefsPart,
+    ) { (status, dash), (favorites, recents, position), activity, (snap, hello) ->
+        build(status, dash, favorites, recents, position, activity, snap, hello)
     }.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
         // Right from the first frame: the real status and places, not a "Pair your bike" flash.
@@ -82,6 +113,9 @@ class NavigateViewModel(
     fun rePair() = connection.rePair()
 
     companion object {
+        /** How long the welcome stays (HM8). */
+        const val GREETING_MS = 4_000L
+
         fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =

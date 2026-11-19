@@ -45,6 +45,18 @@ interface MapController {
     /** The rider moved the camera by hand (drag, pinch, tilt), not the app. */
     val gesturePans: SharedFlow<Unit>
 
+    /** Where the camera stops after each move; only emits while [setCameraIdleListening] is on. */
+    val cameraIdle: SharedFlow<MapPoint>
+
+    /** The point under the middle of the map, or null before the map is ready. */
+    fun cameraCenter(): MapPoint?
+
+    /**
+     * Start or stop [cameraIdle]. Off by default: the listener replaces any other on the shared map,
+     * so only the screens that need it (Pick on map) switch it on, and off again when they leave.
+     */
+    fun setCameraIdleListening(enabled: Boolean)
+
     fun setPadding(left: Int, top: Int, right: Int, bottom: Int)
     fun clearOverlays()
 

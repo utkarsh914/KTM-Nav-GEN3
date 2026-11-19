@@ -175,6 +175,9 @@ object DashPreviewMapper {
     }
 }
 
+/** The in-app welcome that grows out of the bike pill when the dash connects. A blank [name] reads "Welcome!". */
+data class GreetingUi(val name: String)
+
 /** Everything the Navigate browse screen shows, from the repositories. */
 data class NavigateUiState(
     val tiles: List<WhereToTile> = emptyList(),
@@ -187,4 +190,7 @@ data class NavigateUiState(
     val messagesOn: Boolean = true,
     val activity: ActivityCardModel? = null,
     val userName: String = "",
+    val greeting: GreetingUi? = null,
+    /** Where the rider is, for the straight-line distances on the rows. */
+    val origin: Pair<Double, Double>? = null,
 )

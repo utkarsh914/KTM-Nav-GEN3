@@ -45,6 +45,11 @@ class PlacesStore(context: Context) {
         prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(updated)).apply()
     }
 
+    fun removeRecent(lat: Double, lng: Double) = synchronized(LOCK) {
+        val key = coordKey(lat, lng)
+        prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(recents().filterNot { coordKey(it.lat, it.lng) == key })).apply()
+    }
+
     // ---- Favorites --------------------------------------------------------
 
     fun favorites(): List<FavoritePlace> = readList(KEY_FAVORITES, PlacesJson::parseFavorites)

@@ -17,6 +17,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.navigator.app.ui.shell.ImmersiveEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -25,6 +28,15 @@ import com.navigator.app.R
 import com.navigator.app.app.appContainer
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.feature.navigate.pick.AndroidReverseGeocoder
+import com.navigator.app.ui.feature.navigate.pick.PickOnMapController
+import com.navigator.app.ui.feature.navigate.pick.PickOnMapScreen
+import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
+import com.navigator.app.ui.feature.navigate.search.SearchMode
+import com.navigator.app.nav.destination.PlaceCategory
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.screens.lastKnownLocation
@@ -48,8 +60,10 @@ fun NavigateRoute(
     mapBearing: Float,
     location: LocationState,
     padMap: Boolean,
-    onSearch: (query: String?) -> Unit,
+    onSearch: (query: String?, category: PlaceCategory?) -> Unit,
     onRide: (SavedPlace) -> Unit,
+    /** A point picked on the map: on to the place card. */
+    onChoose: (SavedPlace) -> Unit,
     onResumeTrip: () -> Unit,
     onOpenPairing: () -> Unit,
     onOpenPlaces: () -> Unit,
@@ -62,6 +76,9 @@ fun NavigateRoute(
     val state by vm.state.collectAsState()
     val feedback = LocalFeedback.current
     var showBike by remember { mutableStateOf(false) }
+    var overlay by rememberSaveable(stateSaver = BrowseOverlay.Saver) { mutableStateOf<BrowseOverlay>(BrowseOverlay.None) }
+    // Search and Pick on map take the whole screen: the tab bar steps aside.
+    ImmersiveEffect(overlay != BrowseOverlay.None)
     val hasVoice = remember { voiceAvailable(context) }
 
     // Fresh distances whenever the rider comes back to the screen.
@@ -73,7 +90,7 @@ fun NavigateRoute(
 
     val speech = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.takeIf { it.isNotBlank() }
-            ?.let { onSearch(it) }
+            ?.let { onSearch(it, null) }
     }
     val allow = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         // "Don't ask again": the system dialog can no longer appear, so take the rider to the app's settings.
@@ -89,11 +106,12 @@ fun NavigateRoute(
         }
     }
     val speechPrompt = stringResource(R.string.navigate_voice_prompt)
-    val pickHint = stringResource(R.string.navigate_pick_hint)
+    val removed = stringResource(R.string.search_recent_removed)
+    val undo = stringResource(R.string.search_undo)
 
     val actions = NavigateBrowseActions(
         sheet = WhereToActions(
-            onSearch = { onSearch(null) },
+            onSearch = { onSearch(null, null) },
             onVoice = {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -103,14 +121,18 @@ fun NavigateRoute(
             onTile = { action ->
                 when (action) {
                     is TileAction.Ride -> onRide(action.place)
-                    // Choosing a place for the slot arrives with the shared search (B7b); Places has it today.
-                    is TileAction.SetSlot -> onOpenPlaces()
-                    TileAction.Pick -> feedback.snackbar(pickHint)
+                    is TileAction.SetSlot -> overlay = BrowseOverlay.PickSlot(action.slot)
+                    TileAction.Pick -> overlay = BrowseOverlay.PickOnMap
                     TileAction.None -> Unit
                 }
             },
             onPlace = onRide,
             onResumeTrip = onResumeTrip,
+            onCategory = { onSearch(null, it) },
+            onRemoveRecent = { place ->
+                container.places.removeRecent(place)
+                feedback.snackbar(removed, undo) { container.places.addRecent(place) }
+            },
         ),
         onBike = { if (state.bike.opensPairing) onOpenPairing() else showBike = true },
         onFixLocation = {
@@ -127,10 +149,32 @@ fun NavigateRoute(
         onMapInsets = { left, bottom -> if (padMap) map.setPadding(left, 0, 0, bottom) },
     )
 
-    NavigateBrowse(
-        state = state, location = location, mapState = mapState, mapBearing = mapBearing,
-        voiceAvailable = hasVoice, actions = actions, recordControls = recordControls,
-    )
+    when (val o = overlay) {
+        BrowseOverlay.None -> NavigateBrowse(
+            state = state, location = location, mapState = mapState, mapBearing = mapBearing,
+            voiceAvailable = hasVoice, actions = actions, recordControls = recordControls,
+        )
+        BrowseOverlay.PickOnMap -> PickOnMapHost(
+            map = map, onBack = { overlay = BrowseOverlay.None },
+            onUse = { place -> overlay = BrowseOverlay.None; onChoose(place) },
+        )
+        is BrowseOverlay.PickSlot -> {
+            val saved = stringResource(
+                R.string.search_slot_saved,
+                stringResource(if (o.slot == FavoriteSlot.HOME) R.string.navigate_tile_home else R.string.navigate_tile_work),
+            )
+            PlaceSearchRoute(
+                mode = SearchMode.Pick(o.slot),
+                onPicked = { place ->
+                    container.places.saveFavorite(place, o.slot)
+                    feedback.snackbar(saved)
+                    overlay = BrowseOverlay.None
+                },
+                onBack = { overlay = BrowseOverlay.None },
+            )
+        }
+    }
+    BackHandler(enabled = overlay != BrowseOverlay.None) { overlay = BrowseOverlay.None }
 
     if (showBike) {
         val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
@@ -147,4 +191,40 @@ private tailrec fun Context.findHostActivity(): android.app.Activity? = when (th
     is android.app.Activity -> this
     is ContextWrapper -> baseContext.findHostActivity()
     else -> null
+}
+
+/** What covers the browse screen while the rider picks something. */
+private sealed interface BrowseOverlay {
+    data object None : BrowseOverlay
+    data object PickOnMap : BrowseOverlay
+    data class PickSlot(val slot: FavoriteSlot) : BrowseOverlay
+
+    companion object {
+        /** Survives rotation and process death: "none", "map", or the slot's name. */
+        val Saver = Saver<BrowseOverlay, String>(
+            save = { when (it) { None -> "none"; PickOnMap -> "map"; is PickSlot -> it.slot.name } },
+            restore = { s ->
+                when (s) {
+                    "none" -> None
+                    "map" -> PickOnMap
+                    else -> runCatching { PickSlot(FavoriteSlot.valueOf(s)) }.getOrDefault(None)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (SavedPlace) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val controller = remember(map) { PickOnMapController(scope, map, AndroidReverseGeocoder(context)) }
+    val fallback = stringResource(R.string.pick_dropped_pin)
+    val state by controller.state.collectAsState()
+    DisposableEffect(controller) {
+        map.setPadding(0, 0, 0, 0) // the whole map is the canvas: the pin is at its middle
+        controller.start()
+        onDispose { controller.stop() }
+    }
+    PickOnMapScreen(state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) })
 }

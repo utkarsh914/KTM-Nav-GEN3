@@ -4,6 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -47,7 +52,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -220,6 +228,17 @@ private fun Overlays(
 
         MapStateCard(mapState, actions, Modifier.align(Alignment.Center).padding(edge))
 
+        // HM8: grows out of the bike pill (top-left), settles lower in the open map, then shrinks back.
+        AnimatedVisibility(
+            visible = state.greeting != null,
+            enter = fadeIn() + scaleIn(transformOrigin = TransformOrigin(0f, 0f)) + slideInVertically { it / 2 },
+            exit = fadeOut() + scaleOut(transformOrigin = TransformOrigin(0f, 0f)) + slideOutVertically { it / 2 },
+            modifier = Modifier.align(Alignment.TopStart).padding(start = edge, top = edge + KtmLayout.targetRest * 2),
+        ) {
+            val hello = state.greeting
+            if (hello != null) ConnectGreeting(hello)
+        }
+
         // Riding the sheet's top edge: lifted by how much of the map it covers, gone once the sheet takes over.
         AnimatedVisibility(
             visible = controlsVisible, enter = fadeIn(), exit = fadeOut(),
@@ -301,5 +320,22 @@ private fun MapStateCard(mapState: MapState, actions: NavigateBrowseActions, mod
             modifier = modifier,
             action = { KtmButton(stringResource(R.string.navigate_map_unavailable_action), actions.onUseMirror, style = ButtonStyle.Tonal, size = ButtonSize.Small) },
         )
+    }
+}
+
+@Composable
+private fun ConnectGreeting(greeting: GreetingUi) {
+    val c = KtmTheme.colors
+    val text = if (greeting.name.isBlank()) stringResource(R.string.navigate_greeting_anonymous)
+    else stringResource(R.string.navigate_greeting, greeting.name)
+    androidx.compose.foundation.layout.Row(
+        Modifier.shadow(KtmElevation.onMap, KtmShapes.Pill).background(c.surf, KtmShapes.Pill)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .padding(horizontal = KtmSpacing.xl, vertical = KtmSpacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        androidx.compose.material3.Icon(KtmIcons.Bike, null, tint = KtmTheme.accent.text)
+        androidx.compose.material3.Text(text, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
     }
 }

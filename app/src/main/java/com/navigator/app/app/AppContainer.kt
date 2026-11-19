@@ -3,6 +3,13 @@ package com.navigator.app.app
 import android.content.Context
 import com.navigator.app.OpenDashApplication
 import com.navigator.app.ble.BikeScanner
+import com.navigator.app.R
+import com.navigator.app.nav.destination.LinkResolution
+import com.navigator.app.nav.destination.MapsUrlResolver
+import com.navigator.app.ui.feature.navigate.link.LinkOutcome
+import com.navigator.app.nav.destination.PlacesClient
+import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.feature.navigate.link.SharedLinkController
 import com.navigator.app.data.connection.ConnectionRepository
 import com.navigator.app.data.places.PlacesRepository
 import com.navigator.app.data.permissions.PermissionsRepository
@@ -31,6 +38,9 @@ interface AppContainer {
     val connection: ConnectionRepository
     val places: PlacesRepository
 
+    /** A shared Google Maps link being resolved; app-scoped so it survives leaving the Navigate tab. */
+    val sharedLink: SharedLinkController
+
     /** The pairing scan (used by the pairing screens). Start and stop it with the screen. */
     val bikeScanner: BikeScanner
 
@@ -46,6 +56,16 @@ class DefaultAppContainer(context: Context) : AppContainer {
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val intents = AppIntents()
     override val activityHolder = ActivityHolder()
+    override val sharedLink by lazy {
+        val auth = PlacesClient.androidAuth(appContext)
+        val fallback = appContext.getString(R.string.shared_link_default_label)
+        SharedLinkController(appScope) { link ->
+            when (val r = MapsUrlResolver.resolveDetailed(link, auth)) {
+                is LinkResolution.Found -> LinkOutcome.Found(SavedPlace(r.destination.lat, r.destination.lng, r.destination.label ?: fallback))
+                is LinkResolution.Failed -> LinkOutcome.Failed(r.reason)
+            }
+        }
+    }
     override val places by lazy { PlacesRepository(appContext) }
     override val connection by lazy { ConnectionRepository.create(appContext, appScope, settings) }
     override val bikeScanner by lazy { BikeScanner(appContext) { settings.legacy } }

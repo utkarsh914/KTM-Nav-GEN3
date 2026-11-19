@@ -63,6 +63,8 @@ class NavSdkMapController(
     override val poiClicks: SharedFlow<MapPoi> = _poiClicks.asSharedFlow()
     private val _polylineClicks = MutableSharedFlow<Int>(extraBufferCapacity = 4)
     override val polylineClicks: SharedFlow<Int> = _polylineClicks.asSharedFlow()
+    private val _cameraIdle = MutableSharedFlow<MapPoint>(extraBufferCapacity = 4)
+    override val cameraIdle: SharedFlow<MapPoint> = _cameraIdle.asSharedFlow()
     private val _gesturePans = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     override val gesturePans: SharedFlow<Unit> = _gesturePans.asSharedFlow()
 
@@ -77,6 +79,8 @@ class NavSdkMapController(
         _bearing.value = map.cameraPosition.bearing
         map.setOnCameraMoveListener { _bearing.value = map.cameraPosition.bearing }
         map.setOnMapLongClickListener { _longClicks.tryEmit(MapPoint(it.latitude, it.longitude)) }
+        // A screen that asked for camera-idle before the map arrived gets it now.
+        if (idleWanted) setCameraIdleListening(true)
         _ready.value = true
     }
 
@@ -96,6 +100,7 @@ class NavSdkMapController(
                 gm.setOnMapLongClickListener(null)
                 gm.setOnPolylineClickListener(null)
                 gm.setOnPoiClickListener(null)
+                gm.setOnCameraIdleListener(null)
             }
         }
         map = null
@@ -117,6 +122,17 @@ class NavSdkMapController(
     /** Start emitting [poiClicks]. Off by default for the same reason as [listenForGestures]: a POI listener changes tap behaviour. */
     fun listenForPois() {
         map?.setOnPoiClickListener { _poiClicks.tryEmit(MapPoi(MapPoint(it.latLng.latitude, it.latLng.longitude), it.name, it.placeId)) }
+    }
+
+    override fun cameraCenter(): MapPoint? = map?.cameraPosition?.target?.let { MapPoint(it.latitude, it.longitude) }
+
+    private var idleWanted = false
+
+    override fun setCameraIdleListening(enabled: Boolean) {
+        idleWanted = enabled
+        val gm = map ?: return
+        if (enabled) gm.setOnCameraIdleListener { cameraCenter()?.let { _cameraIdle.tryEmit(it) } }
+        else gm.setOnCameraIdleListener(null)
     }
 
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {

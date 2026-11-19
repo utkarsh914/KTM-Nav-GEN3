@@ -35,6 +35,16 @@ class PlacesRepository(context: Context, private val store: PlacesStore = Places
         _recents.value = store.recents()
     }
 
+    fun removeRecent(place: SavedPlace) {
+        store.removeRecent(place.lat, place.lng)
+        refresh()
+    }
+
+    fun addRecent(place: SavedPlace) {
+        store.addRecent(place)
+        refresh()
+    }
+
     fun saveFavorite(place: SavedPlace, slot: FavoriteSlot) {
         store.saveFavorite(place, slot)
         refresh()

@@ -25,7 +25,7 @@ private val sample = NavigateUiState(
     activity = ActivityCardModel("300 m", "100 Feet Rd", "Toit", "18:30"),
 )
 
-private val noActions = NavigateBrowseActions(WhereToActions({}, {}, {}, {}, {}), {}, {}, {}, {}, {}, {}, { _, _ -> })
+private val noActions = NavigateBrowseActions(WhereToActions({}, {}, {}, {}, {}, {}, {}), {}, {}, {}, {}, {}, {}, { _, _ -> })
 
 @Composable
 private fun Browse(dark: Boolean, state: NavigateUiState, location: LocationState, map: MapState) = KtmTheme(darkTheme = dark) {

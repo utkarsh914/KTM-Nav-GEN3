@@ -18,7 +18,7 @@ class AppIntentsTest {
         val link = AppIntent.SharedLink("https://maps.app.goo.gl/x")
         assertEquals(IntentOutcome.Navigate, AppIntents.decide(link, ready))
         assertEquals("kept until pairing is done", IntentOutcome.Defer, AppIntents.decide(link, firstRun))
-        assertEquals(IntentOutcome.Reject(RejectReason.SHARED_LINK_NEEDS_IN_APP), AppIntents.decide(link, mirrorOnly))
+        assertEquals("mirror mode shows the Navigate tab too: its card offers Google Maps", IntentOutcome.Navigate, AppIntents.decide(link, mirrorOnly))
     }
 
     @Test fun aShortcutIsDroppedDuringSetupBecauseItWouldBeStale() {

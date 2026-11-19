@@ -42,17 +42,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
 import com.navigator.app.ui.theme.edgePadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,7 +64,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -83,13 +77,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.navigation.NavigationView
-import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.R
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
-import com.navigator.app.nav.destination.PlaceSuggestion
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.nav.destination.RoutePreview
@@ -100,7 +91,6 @@ import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.net.ConnectivityMonitor
-import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
@@ -117,12 +107,19 @@ import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmOutlineButton
 import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.components.SquareMapControl
-import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.JetBrainsMono
 import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
+import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
+import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
+import com.navigator.app.ui.feature.navigate.link.SharedLinkController
+import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
+import com.navigator.app.ui.feature.navigate.search.SearchMode
+import com.navigator.app.nav.destination.MapsUrlResolver
+import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.ui.feature.navigate.MapState
 import com.navigator.app.ui.feature.navigate.NavigateRoute
 import com.navigator.app.ui.map.MapPoint
@@ -144,7 +141,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.math.abs
 
@@ -188,6 +184,8 @@ fun NavigationHomeScreen(
     openNavRequest: Boolean = false,
 ) {
     val context = LocalContext.current
+    val feedback = com.navigator.app.ui.shell.LocalFeedback.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -251,8 +249,6 @@ fun NavigationHomeScreen(
             flow.detach(configChange = activity?.isChangingConfigurations == true)
         }
     }
-    var recents by remember { mutableStateOf(store.recents()) }
-    var favorites by remember { mutableStateOf(store.favorites()) }
 
     // Live GPS speed (km/h) for the guidance speedometer; null when no recent fix.
     // Sourced independently of the BLE service so it works during standalone nav.
@@ -301,7 +297,6 @@ fun NavigationHomeScreen(
     var searchTarget by flow::searchTarget
     // True when the CONFIRM card was reached from the search list (Back returns there).
     var confirmFromSearch by flow::confirmFromSearch
-    var resolvingLink by remember { mutableStateOf(false) }
     // The trip itself (start, add stop, end, arrival detection) belongs to the app-scoped
     // TripController, so it survives leaving this screen.
     val trip = remember { context.appContainer.trip }
@@ -348,50 +343,8 @@ fun NavigationHomeScreen(
     // Refreshed whenever search opens and after a fresh fix in the preview, so distances,
     // autocomplete bias and preview bounds don't use a stale launch-time position.
     var origin by remember { mutableStateOf(lastKnownLocation(context)) }
-    var sessionToken by remember { mutableStateOf(UUID.randomUUID().toString()) }
-    var query by flow::query
-    var results by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
-    var searchFailed by remember { mutableStateOf(false) }
-    var resolving by remember { mutableStateOf(false) }
-    // In-flight place-details lookup; cancelled when the rider backs out so it can't
-    // jump to CONFIRM later.
-    var detailsJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-    LaunchedEffect(query) {
-        val q = query.trim()
-        if (q.length < 3) { results = emptyList(); searchFailed = false; loading = false; return@LaunchedEffect }
-        loading = true
-        delay(300)
-        val res = PlacesClient.autocompleteResult(
-            input = q, sessionToken = sessionToken, auth = auth,
-            originLat = origin?.first, originLng = origin?.second,
-        )
-        results = res.items
-        searchFailed = res.failed
-        loading = false
-    }
-
-    // ---- Category search (chips in the search panel) --------------------------
-    var categoryUi by remember { mutableStateOf(CategoryUiState()) }
-    LaunchedEffect(categoryUi.active, stage) {
-        val c = categoryUi.active
-        if (c == null || stage != NavStage.SEARCH) return@LaunchedEffect
-        // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
-        val route: List<Pair<Double, Double>>? = when (searchTarget) {
-            SearchTarget.TRIP_STOP -> trip.state.value.route?.let { r ->
-                // Only what is still ahead of the rider.
-                (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
-            }
-            SearchTarget.STOP -> previewRoutes.getOrNull(selectedRoute)?.points?.map { it.latitude to it.longitude }
-            SearchTarget.DESTINATION -> null
-        }
-        categoryUi = categoryUi.copy(loading = true, failed = false, results = emptyList(), alongRoute = route != null)
-        val o = origin ?: lastKnownLocation(context)
-        val res = PlacesClient.searchCategory(c, auth, o, route)
-        categoryUi = categoryUi.copy(loading = false, failed = res.failed, results = res.items)
-    }
-
+    // The category chip the search opens with (from the browse sheet); null for a plain search.
+    var searchCategory by remember { mutableStateOf<PlaceCategory?>(null) }
     // Fetch the preview routes (incl. alternates, or a single multi-leg route when
     // there are stops) when entering PREVIEW or when the stops change.
     LaunchedEffect(stage, selected, stops) {
@@ -403,7 +356,6 @@ fun NavigationHomeScreen(
         // ("Ride back" destinations are synthetic: they shouldn't litter the recents.)
         if (p.label != RIDE_BACK_LABEL) {
             store.addRecent(p)
-            recents = store.recents()
         }
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false
         // Compute from a FRESH fix so route-token origins match the SDK's GPS at
@@ -474,22 +426,17 @@ fun NavigationHomeScreen(
         }
     }
 
-    fun openSearch() {
-        categoryUi = CategoryUiState()
+    // The search itself (typing, categories, voice, offline) is PlaceSearchRoute's; these only change the stage.
+    fun openSearch(initialQuery: String = "", category: PlaceCategory? = null) {
         origin = lastKnownLocation(context) ?: origin
-        sessionToken = UUID.randomUUID().toString()
-        results = emptyList()
-        recents = store.recents(); favorites = store.favorites()
-        flow.update { it.openSearch(SearchTarget.DESTINATION) }
+        searchCategory = category
+        flow.update { it.openSearch(SearchTarget.DESTINATION).copy(query = initialQuery) }
     }
 
     /** Open the search panel to add an intermediate stop (returns to PREVIEW). */
     fun openSearchForStop() {
-        categoryUi = CategoryUiState()
         origin = lastKnownLocation(context) ?: origin
-        sessionToken = UUID.randomUUID().toString()
-        results = emptyList()
-        recents = store.recents(); favorites = store.favorites()
+        searchCategory = null
         flow.update { it.openSearch(SearchTarget.STOP) }
     }
 
@@ -497,11 +444,8 @@ fun NavigationHomeScreen(
     fun openTripStopSearch() {
         // A refusal is announced by the TripController's event, not here.
         if (!trip.canSearchForStop()) return
-        categoryUi = CategoryUiState()
         origin = lastKnownLocation(context) ?: origin
-        sessionToken = UUID.randomUUID().toString()
-        results = emptyList()
-        recents = store.recents(); favorites = store.favorites()
+        searchCategory = null
         // Stepping into search must not be treated as the app taking over / ending the trip.
         trip.setMinimised(true)
         flow.update { it.openSearch(SearchTarget.TRIP_STOP) }
@@ -522,7 +466,6 @@ fun NavigationHomeScreen(
     fun choose(p: SavedPlace) = flow.update { it.choose(p) }
 
     fun backToBrowse() {
-        detailsJob?.cancel()
         flow.update { it.backToBrowse() }
         previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
         // Keep the "stepped away" flag while a trip is still running so arrival/auto-resume
@@ -543,7 +486,6 @@ fun NavigationHomeScreen(
         if (!trip.start(dest, origin, sel?.points?.map { it.latitude to it.longitude })) return
         if (p.label != RIDE_BACK_LABEL) {
             store.addRecent(p)
-            recents = store.recents()
         }
         stage = NavStage.NAVIGATING
     }
@@ -667,19 +609,21 @@ fun NavigationHomeScreen(
     LaunchedEffect(startFailure) {
         if (startFailure != null && stage == NavStage.BROWSE) resumeNav()
     }
-    // A Google Maps link shared into the app -> resolve it and jump to CONFIRM.
+    // A Google Maps link shared into the app: resolve it behind a card (the map stays usable), then CONFIRM.
+    // App-scoped: a link still resolving when the rider leaves the tab is not lost.
+    val linkController = remember { context.appContainer.sharedLink }
+    val linkState by linkController.state.collectAsState()
+    val linkFailure by linkController.failure.collectAsState()
     LaunchedEffect(sharedLink) {
         val link = sharedLink ?: return@LaunchedEffect
-        resolvingLink = true
-        val dest = com.navigator.app.nav.destination.MapsUrlResolver.resolve(link, auth)
-        resolvingLink = false
         onSharedLinkConsumed()
-        if (dest != null) {
-            choose(SavedPlace(dest.lat, dest.lng, dest.label ?: "Shared location"))
-        } else {
-            android.widget.Toast.makeText(
-                context, "Couldn't open that Maps link", android.widget.Toast.LENGTH_SHORT,
-            ).show()
+        linkController.open(link)
+    }
+    val linkDuringTrip = resources.getString(R.string.navigate_link_during_trip)
+    LaunchedEffect(linkController) {
+        linkController.resolved.collect {
+            // Never swap a running trip's guidance for a place card; the rider can end it first.
+            if (stage == NavStage.NAVIGATING) feedback.snackbar(linkDuringTrip) else choose(it)
         }
     }
 
@@ -710,17 +654,15 @@ fun NavigationHomeScreen(
         val want = if (slot == "WORK") com.navigator.app.nav.destination.FavoriteSlot.WORK
         else com.navigator.app.nav.destination.FavoriteSlot.HOME
         val place = store.favorites().firstOrNull { it.slot == want }?.place
-        if (place != null) rideTo(place) else android.widget.Toast.makeText(
-            context,
-            "Set your ${if (want == com.navigator.app.nav.destination.FavoriteSlot.WORK) "Work" else "Home"} place in Saved places",
-            android.widget.Toast.LENGTH_LONG,
-        ).show()
+        if (place != null) rideTo(place) else {
+            val which = if (want == com.navigator.app.nav.destination.FavoriteSlot.WORK) R.string.navigate_tile_work else R.string.navigate_tile_home
+            feedback.snackbar(
+                resources.getString(R.string.navigate_slot_unset, resources.getString(which)),
+                actionLabel = resources.getString(R.string.navigate_slot_unset_action),
+                onAction = onOpenPlaces,
+            )
+        }
     }
-    // Home / Work favorites for the browse chips; re-read whenever the map is (re)shown.
-    LaunchedEffect(stage) {
-        if (stage == NavStage.BROWSE) favorites = store.favorites()
-    }
-
     // Long-press anywhere (except while the SDK owns the map during guidance) drops a pin and
     // opens the confirm card, like Google Maps.
     LaunchedEffect(map) {
@@ -733,7 +675,6 @@ fun NavigationHomeScreen(
 
     // One back path for the system Back and the on-screen arrows (they must never disagree).
     fun performBack() {
-        if (stage == NavStage.SEARCH) detailsJob?.cancel()
         val outcome = flow.state.back(tripLive = navState.sessionState.isActiveNav())
         flow.update { outcome.state }
         when (outcome.effect) {
@@ -746,7 +687,8 @@ fun NavigationHomeScreen(
     }
     // At the map with nothing running there is nothing to step back to: Back is the system's (it leaves the app).
     BackHandler(enabled = stage != NavStage.BROWSE || navState.sessionState.isActiveNav()) { performBack() }
-    com.navigator.app.ui.shell.ImmersiveEffect(stage == NavStage.NAVIGATING)
+    // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
+    com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
     Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
         // --- Map surface -----------------------------------------------------
@@ -783,7 +725,8 @@ fun NavigationHomeScreen(
                 mapBearing = mapBearing,
                 location = LocationState.of(hasLocationPermission(context), locationReady),
                 padMap = stage == NavStage.BROWSE,
-                onSearch = { q -> openSearch(); if (q != null) query = q },
+                onSearch = { q, category -> openSearch(q.orEmpty(), category) },
+                onChoose = ::choose,
                 // (stage guard: the tiles stay tappable during the exit animation)
                 onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
                 onResumeTrip = ::resumeNav,
@@ -793,47 +736,32 @@ fun NavigationHomeScreen(
                 recordControls = { RecordControlsHost() },
             )
 
-            NavStage.SEARCH -> SearchPanel(
-                query = query,
-                onQuery = {
-                    query = it
-                    // Typing replaces a category browse.
-                    if (it.isNotEmpty() && categoryUi.active != null) categoryUi = CategoryUiState()
+            NavStage.SEARCH -> PlaceSearchRoute(
+                mode = when (searchTarget) {
+                    SearchTarget.DESTINATION -> SearchMode.Destination
+                    SearchTarget.STOP -> SearchMode.Stop
+                    SearchTarget.TRIP_STOP -> SearchMode.TripStop
                 },
-                target = searchTarget,
-                category = categoryUi,
-                onCategory = { c -> categoryUi = if (c == null) CategoryUiState() else CategoryUiState(active = c) },
-                onPickCategoryResult = { r -> applyPicked(SavedPlace(r.lat, r.lng, r.name, r.address)) },
-                loading = loading || resolving,
-                results = results,
-                searchFailed = searchFailed,
-                recents = recents,
-                favorites = favorites,
-                origin = origin,
+                initialQuery = flow.query,
+                initialCategory = searchCategory,
+                onQueryChanged = { flow.query = it },
+                onPicked = ::applyPicked,
                 onBack = ::performBack,
-                onPickSuggestion = { s ->
-                    if (!resolving) {
-                        resolving = true
-                        detailsJob = scope.launch {
-                            try {
-                                val loc = PlacesClient.details(s.placeId, sessionToken, auth)
-                                if (loc != null) {
-                                    applyPicked(SavedPlace(loc.lat, loc.lng, s.primary, s.secondary))
-                                } else {
-                                    android.widget.Toast.makeText(
-                                        context, "Couldn't load that place", android.widget.Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                            } finally {
-                                resolving = false
-                            }
+                routeAhead = {
+                    // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
+                    when (searchTarget) {
+                        SearchTarget.TRIP_STOP -> trip.state.value.route?.let { r ->
+                            // Only what is still ahead of the rider.
+                            (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
                         }
+                        SearchTarget.STOP -> previewRoutes.getOrNull(selectedRoute)?.points?.map { it.latitude to it.longitude }
+                        SearchTarget.DESTINATION -> null
                     }
                 },
-                onPickSaved = { applyPicked(it) },
-                onResumeTrip = if (navState.sessionState.isActiveNav() && leftNavManually &&
-                    searchTarget != SearchTarget.TRIP_STOP
-                ) ::resumeNav else null,
+                activity = if (navState.sessionState.isActiveNav() && leftNavManually && searchTarget != SearchTarget.TRIP_STOP) {
+                    ActivityCard.build(tripState, navState, System.currentTimeMillis())
+                } else null,
+                onResumeTrip = ::resumeNav,
             )
 
             NavStage.CONFIRM -> {
@@ -859,7 +787,6 @@ fun NavigationHomeScreen(
                                 if (savedNow) store.removeFavorite(it.lat, it.lng)
                                 else store.saveFavorite(it, FavoriteSlot.OTHER)
                                 savedNow = !savedNow
-                                favorites = store.favorites()
                             }
                         },
                     )
@@ -1154,19 +1081,16 @@ fun NavigationHomeScreen(
             )
         }
 
-        // Resolving a shared Google Maps link.
-        if (resolvingLink) {
-            Box(
-                Modifier.fillMaxSize().background(Ktm.Screen.copy(alpha = 0.6f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Ktm.Orange)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Opening shared location…", color = Ktm.White, fontFamily = BarlowCondensed, fontSize = 16.sp)
-                }
-            }
-        }
+        if (stage != NavStage.NAVIGATING) SharedLinkCard(
+            linkState,
+            SharedLinkActions(
+                onRetry = linkController::retry,
+                onSearchInstead = { linkController.dismiss(); openSearch() },
+                onDismiss = linkController::dismiss,
+            ),
+            Modifier.align(Alignment.BottomCenter),
+            failure = linkFailure,
+        )
     }
 }
 

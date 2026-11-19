@@ -134,11 +134,6 @@ internal data class NavFlowState(
 
 /** Pure session/stage decisions shared by the screen's effects. */
 internal object NavFlowRules {
-    /** We "own" a trip on this screen while showing guidance, or while stepped away on the map with it still running. */
-    fun owningTrip(stage: NavStage, leftNavManually: Boolean): Boolean =
-        stage == NavStage.NAVIGATING ||
-            (leftNavManually && (stage == NavStage.BROWSE || stage == NavStage.SEARCH))
-
     /**
      * Resume the NAVIGATING view whenever a trip is live but we're not showing it (activity
      * recreated, notification tapped) - but never from the completion screen (late ENROUTE
