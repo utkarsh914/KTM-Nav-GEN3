@@ -224,7 +224,7 @@ See `PlacesClient.androidAuth()`.
 
 ## 4. Google Navigation SDK — findings & limitations
 
-Confirmed against Nav SDK **7.9.0**. The load-bearing points:
+Confirmed against Nav SDK **7.9.0**; builds and the `Maneuver` completeness test pass on **8.1.0**. The load-bearing points:
 
 - **`NavInfo` turn-by-turn feed is a Preview/beta API** — "subject to change without
   guaranteeing backward compatibility". The SDK version is pinned; a reflection completeness
@@ -262,7 +262,7 @@ Confirmed against Nav SDK **7.9.0**. The load-bearing points:
 | Primary provider | Google Navigation SDK, abstraction ready for Routes API |
 | API key | `local.properties` → `BuildConfig`, applied at runtime via `NavigationApi.setApiKey()`; opt-in |
 | Packaging | Single APK, runtime-gated (SDK compiled in; active only with key + Play Services) |
-| SDK level | compileSdk/targetSdk 36; minSdk 36 (Android 16+ only); Kotlin 2.4 / AGP 9.5 / Gradle 9.9 |
+| SDK level | compileSdk 37.2, targetSdk 36; minSdk 36 (Android 16+ only); Kotlin 2.4 / AGP 9.5 / Gradle 9.9 |
 | Provider default | Nav SDK when key + Play Services present, user-toggleable in Settings |
 | APK size | Accepted (~29 MB debug). Levers: `abiFilters("arm64-v8a")`, `androidResources.localeFilters("en")`; **minify off** (protects TFLite + reflection-heavy BLE) |
 | Domain model | `NormalizedManeuver` mirrors the SDK set; single lossy collapse in `KtmManeuverMapping` |
@@ -275,7 +275,7 @@ Confirmed against Nav SDK **7.9.0**. The load-bearing points:
 
 ### 6.1 Toolchain
 Kotlin 2.4.21 (AGP built-in Kotlin), AGP 9.5.1, Gradle 9.9.1, Gradle daemon on JDK 25 (daemon toolchain,
-auto-downloaded), Java/Kotlin bytecode 17, compileSdk/targetSdk 36, core-library
+auto-downloaded), Java/Kotlin bytecode 17, compileSdk 37.2, targetSdk 36, core-library
 desugaring (required by the Nav SDK AAR). Open in an Android Studio release that supports AGP 9.5; the Gradle JDK comes from
 `gradle/gradle-daemon-jvm.properties`, not the IDE setting. There are
 a couple of version-ceiling gotchas when bumping any of these — see

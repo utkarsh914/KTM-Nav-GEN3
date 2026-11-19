@@ -53,6 +53,9 @@
 - Build toolchain: Gradle 9.9.1, Android Gradle Plugin 9.5.1 (built-in Kotlin), Kotlin 2.4.21. The
   Gradle daemon JDK (25) is pinned in the project and downloaded automatically, so Android Studio
   and the command line share one daemon.
+- Libraries: Navigation SDK 8.1.0, LiteRT 2.3.2, Compose BOM 2026.09.00, AndroidX (core-ktx 1.19.1,
+  appcompat 1.8.0, activity-compose 1.13.0, lifecycle 2.11.0), Material 1.14.0, Robolectric 4.18.1.
+  compileSdk 37.2 (targetSdk stays 36).
 
 ## v0.6.0
 

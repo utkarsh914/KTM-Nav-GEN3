@@ -147,6 +147,10 @@ confirmed via `javap`) — so `ManeuverClassifier` needed no code change. APK-le
 page-alignment of the uncompressed `.so` is handled by AGP defaults (since 8.13)
 (`useLegacyPackaging=false`, no `extractNativeLibs` override, 16 KB zipalign).
 
+**LiteRT 2.x (now 2.3.2):** the `Interpreter` API is unchanged, but the natives are now
+`libLiteRt.so` (holds the `org.tensorflow.lite` JNI symbols) + `liblitert_jni.so`, both `2**14`;
+`zipalign -c -P 16` passes on the debug APK.
+
 ---
 
 ## Nav SDK route-token fix: `CustomRoutesOptions` needs an explicit travel mode
@@ -202,7 +206,12 @@ track the selected route reliably once actually moving/riding along it.
   configuration (error in Gradle 11); `gitOutput()` in `app/build.gradle.kts` uses `providers.exec`.
 - **Library ceilings:** Compose BOM ≥ 2026.08.00 (Compose 1.12) and core-ktx 1.19 need compileSdk 37 +
   AGP ≥ 9.1. Re-check `checkDebugAarMetadata` before raising compileSdk-sensitive AndroidX libs.
-  compileSdk is 36.1 (QPR2: promoted-ongoing notification APIs); targetSdk stays 36.
+  compileSdk is 37.2 (also covers the 36.1 promoted-ongoing notification APIs); targetSdk stays 36
+  (raising it opts in to Android 17 runtime behavior, so do that as its own tested change).
+- **Nav SDK 8.x:** needs AGP ≥ 9.0.1 / Gradle ≥ 9.1. 8.1 deprecates `CustomRoutesOptions` and the
+  `ListenableResultFuture` `setDestinations` overloads (still used by `GoogleNavSdkProvider`; build
+  warnings only). The replacement is `Navigator.setDestinationsWithToken()` + the
+  `RouteDescriptionLoadCallback` overloads, which is a behaviour change that needs on-bike testing.
 
 ---
 
