@@ -18,6 +18,7 @@ interface AppContainer {
     val appScope: CoroutineScope
     val settings: SettingsRepository
     val permissions: PermissionsRepository
+    val intents: AppIntents
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -26,6 +27,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override val settings = SettingsRepository(AppSettings(appContext))
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
+    override val intents = AppIntents()
     override val permissions by lazy { PermissionsRepository(appContext, settings, appScope) }
 }
 

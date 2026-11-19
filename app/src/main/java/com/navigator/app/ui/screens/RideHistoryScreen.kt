@@ -104,7 +104,6 @@ internal val TightTextStyle = TextStyle(platformStyle = PlatformTextStyle(includ
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RideHistoryScreen(
-    onBack: () -> Unit,
     onOpen: (String) -> Unit,
     selectionMode: Boolean,
     selectedIds: Set<String>,
@@ -191,10 +190,16 @@ fun RideHistoryScreen(
         listState.animateScrollToItem(0)
     }
 
+    // In selection mode Back leaves the selection, not the tab.
+    androidx.activity.compose.BackHandler(enabled = selectionMode) {
+        onSelectionModeChange(false); onSelectedIdsChange(emptySet())
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(Ktm.Screen).edgePadding()) {
         ScreenTopBar(
             title = if (selectionMode) "${validSelected.size}/${sorted.size} selected" else "Ride recordings",
-            onBack = onBack,
+            onBack = { onSelectionModeChange(false); onSelectedIdsChange(emptySet()) },
+            showBack = selectionMode,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
         ) {
             if (!selectionMode) {

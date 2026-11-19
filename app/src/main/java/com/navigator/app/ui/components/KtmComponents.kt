@@ -352,16 +352,17 @@ fun ScreenTopBar(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showBack: Boolean = true,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircleBackButton(onClick = onBack)
+        if (showBack) CircleBackButton(onClick = onBack)
         Eyebrow(
             title, fontSize = 13, letterSpacing = 2.0,
-            modifier = Modifier.padding(start = 14.dp).weight(1f),
+            modifier = Modifier.padding(start = if (showBack) 14.dp else 0.dp).weight(1f),
         )
         trailing()
     }

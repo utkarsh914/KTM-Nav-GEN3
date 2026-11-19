@@ -3,77 +3,29 @@ package com.navigator.app.ui
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import com.navigator.app.ui.theme.edgePadding
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.navigator.app.app.AppIntent
+import com.navigator.app.app.AppIntents
+import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.nav.model.isActiveNav
-import com.navigator.app.nav.providers.GoogleNavSdkProvider
-import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
-import com.navigator.app.ui.screens.PairingScreen
-import com.navigator.app.ui.screens.SettingsScreen
-import com.navigator.app.ui.theme.KtmTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
+import com.navigator.app.ui.shell.KtmApp
+import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.theme.ThemeMode
+import com.navigator.app.ui.theme.accentFor
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES, RECORDINGS, RIDE_REPLAY }
-
+/**
+ * Window setup, the system permission and Bluetooth prompts, auto-connect and forwarding launch
+ * intents. Everything visible lives in [KtmApp].
+ */
 class MainActivity : ComponentActivity() {
-
-    companion object {
-        /**
-         * Text shared into the app (ACTION_SEND) that may contain a Google Maps
-         * link. Compose observes this to open the destination screen in Link
-         * mode; cleared once consumed. A flow (not an intent extra) because with
-         * launchMode=singleTask a second share arrives via onNewIntent on the LIVE
-         * activity - there is no recomposition-from-scratch to re-read an extra from.
-         */
-        val sharedNavLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-
-        /**
-         * Set true when the foreground-service notification is tapped while a trip
-         * is running: Compose observes it to jump to the navigation home (which
-         * then resumes the NAVIGATING view). Flow (not just an extra) for the same
-         * singleTask/onNewIntent reason as [sharedNavLink].
-         */
-        val openNavRequest = kotlinx.coroutines.flow.MutableStateFlow(false)
-
-        /** "HOME" / "WORK" requested by a launcher shortcut; consumed by the map home. */
-        val quickRouteRequest = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-
-        /** Notification deep-link extra: bring up the active navigation screen. */
-        const val EXTRA_OPEN_NAV = "com.navigator.app.extra.OPEN_NAV"
-    }
 
     private lateinit var settings: AppSettings
 
@@ -103,7 +55,7 @@ class MainActivity : ComponentActivity() {
         // status/nav bars). Without this the UI visibly "jumped" on launch.
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        settings = AppSettings(this)
+        settings = appContainer.settings.legacy
         // Apply the saved accent + light/dark appearance before the first
         // frame so the app opens in the right skin with no flash of the wrong one.
         // System appearance is read from the current config's night flag here;
@@ -140,20 +92,6 @@ class MainActivity : ComponentActivity() {
         // covers the "app never opened" cases (boot, bike back in range).
         settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
 
-        // While a navigation session is active (either engine), keep the screen
-        // awake and let the app show over the lock screen - like Google Maps.
-        // Cleared the moment guidance ends so we don't sit over the keyguard.
-        lifecycleScope.launch {
-            combine(
-                GoogleNavSdkProvider.state,
-                NotificationNavProvider.state,
-            ) { sdk, mirror ->
-                sdk.sessionState.isActiveNav() || mirror.sessionState.isActiveNav()
-            }.distinctUntilChanged().collect { navigating ->
-                applyNavWindowFlags(navigating)
-            }
-        }
-
         // Notification "Exit" pressed while this activity sits in the recents
         // stack: the service can't finish us, so it broadcasts and we do.
         finishReceiver = object : android.content.BroadcastReceiver() {
@@ -165,14 +103,10 @@ class MainActivity : ComponentActivity() {
             registerReceiver(it, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
         }
 
-        handleSendIntent(intent)
-        handleOpenNavIntent(intent)
         // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
-        if (savedInstanceState == null) handleQuickRouteIntent(intent)
+        forwardIntent(intent, freshLaunch = savedInstanceState == null)
 
-        setContent {
-            OpenDashApp(settings = settings, onExit = { exitApp() })
-        }
+        setContent { KtmApp(onQuit = { exitApp() }) }
 
         // DEBUG-only: `adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS`
         // renders Google Maps' own labeled maneuver icons to files/maneuver_dataset/
@@ -193,34 +127,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleSendIntent(intent)
-        handleOpenNavIntent(intent)
-        handleQuickRouteIntent(intent)
+        forwardIntent(intent, freshLaunch = true)
     }
 
-    /** Launcher shortcut "Ride home / work": ask Compose to open that route preview. */
-    private fun handleQuickRouteIntent(intent: Intent?) {
-        com.navigator.app.nav.destination.PlaceShortcuts.slotFrom(intent)?.let {
-            quickRouteRequest.value = it.name
-        }
-    }
-
-    /** Notification tap while navigating: ask Compose to show the nav screen. */
-    private fun handleOpenNavIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_OPEN_NAV, false) == true) {
-            openNavRequest.value = true
-        }
-    }
-
-    /** ACTION_SEND text/plain (e.g. "Share" from Google Maps): capture the text for the destination screen. */
-    private fun handleSendIntent(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND) return
-        if (intent.type != "text/plain") return
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
-        if (!text.isNullOrBlank()) {
-            AppLogger.log("MapsUrl", "Received shared text (${text.length} chars)")
-            sharedNavLink.value = text
-        }
+    /** Hand what the launch intent carries (a share, a shortcut, a notification tap) to the app. */
+    private fun forwardIntent(intent: Intent?, freshLaunch: Boolean) {
+        AppIntents.fromIntent(intent)
+            .filter { freshLaunch || it !is AppIntent.QuickRoute }
+            .forEach { appContainer.intents.post(it) }
     }
 
     private var maneuverExportReceiver: android.content.BroadcastReceiver? = null
@@ -245,7 +159,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Fully quit: stop the foreground service (removes its ongoing notification),
      * cancel any of our notifications, then remove the app task entirely. Invoked
-     * from the home screens' exit-confirm dialog and the notification "Exit".
+     * from Settings' Quit row and the notification "Exit".
      */
     private fun exitApp() {
         BccuConnectionService.stop(this)
@@ -277,433 +191,8 @@ class MainActivity : ComponentActivity() {
         AppForegroundState.isForeground = false
     }
 
-    /**
-     * Keep the screen on and show over the lock screen while navigating so the
-     * rider can glance at guidance without unlocking (mirrors Google Maps).
-     */
-    private fun applyNavWindowFlags(active: Boolean) {
-        if (active) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-        setShowWhenLocked(active)
-        setTurnScreenOn(active)
-    }
-
     private fun requestRuntimePermissions() {
         // Shared source of truth (BLUETOOTH_*, location, POST_NOTIFICATIONS).
         permissionLauncher.launch(OpenDashPermissions.runtimePermissions())
-    }
-}
-
-@Composable
-private fun OpenDashApp(
-    settings: AppSettings,
-    onExit: () -> Unit,
-) {
-    val appContext = androidx.compose.ui.platform.LocalContext.current
-
-    // Appearance: the chosen mode (persisted) resolved against the live system
-    // night setting, so LIGHT/DARK force and SYSTEM follows the phone. Re-applied
-    // whenever either changes, re-theming the whole app live.
-    var themeMode by remember { mutableStateOf(settings.themeMode) }
-    var navThemeMode by remember { mutableStateOf(settings.navThemeMode) }
-    var accentColorId by remember { mutableStateOf(settings.accentColorId) }
-    // App font: bundled brand fonts vs the phone's system font. Applied to the
-    // reactive AppFonts holder so a change re-fonts the whole app live.
-    var fontMode by remember { mutableStateOf(settings.fontMode) }
-    LaunchedEffect(fontMode) { com.navigator.app.ui.theme.AppFonts.apply(fontMode) }
-    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
-    val effectiveDark = when (themeMode) {
-        com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
-        com.navigator.app.ui.theme.ThemeMode.DARK -> true
-        com.navigator.app.ui.theme.ThemeMode.SYSTEM -> systemDark
-    }
-    // Re-evaluate day/night roughly once a minute while the app stays open: from the real sun
-    // position at the last known location (sunrise/sunset), falling back to the fixed
-    // 06:00-18:00 rule when there is no fix / location permission.
-    val nightNow by androidx.compose.runtime.produceState(
-        initialValue = com.navigator.app.ui.theme.isNightTime(),
-    ) {
-        while (true) {
-            val here = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching {
-                    // (explicit permission check: no fix without location permission -> fixed 06-18 rule)
-                    if (androidx.core.content.ContextCompat.checkSelfPermission(
-                            appContext, android.Manifest.permission.ACCESS_FINE_LOCATION,
-                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                    ) return@runCatching null
-                    val lm = appContext.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
-                    listOf(
-                        android.location.LocationManager.GPS_PROVIDER,
-                        android.location.LocationManager.NETWORK_PROVIDER,
-                        android.location.LocationManager.PASSIVE_PROVIDER,
-                    ).mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
-                        .maxByOrNull { it.time }
-                }.getOrNull()
-            }
-            value = if (here != null) {
-                com.navigator.app.ui.theme.SunTimes.isNight(System.currentTimeMillis(), here.latitude, here.longitude)
-            } else com.navigator.app.ui.theme.isNightTime()
-            delay(60_000)
-        }
-    }
-
-    // SDK engine -> map-first NAV_HOME; notification-mirror engine (or no SDK
-    // available) -> the mirror home. The two engines stay mutually exclusive.
-    fun homeRoute(): AppRoute =
-        if (com.navigator.app.nav.providers.GoogleNavSdkController.isActive(appContext, settings)) AppRoute.NAV_HOME else AppRoute.MIRROR_HOME
-    // rememberSaveable: after the process was killed in the background the rider lands back
-    // on the screen they were on (enums are Serializable, so no custom saver is needed).
-    var route by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf(
-            when {
-                !settings.onboardingComplete -> AppRoute.ONBOARDING
-                settings.bondedDeviceAddress == null -> AppRoute.PAIRING
-                else -> homeRoute()
-            }
-        )
-    }
-    // Direction-aware screen transitions: forward navigations (goTo) slide the new
-    // screen in from the right; back/up navigations (goBack) slide it in from the
-    // left. The flag is set synchronously with the route change so the transition
-    // spec reads the correct direction on the same recomposition.
-    var routeBack by remember { mutableStateOf(false) }
-    fun goTo(to: AppRoute) { routeBack = false; route = to }
-    fun goBack(to: AppRoute) { routeBack = true; route = to }
-    // Apply the effective light/dark, re-theming the whole app live. Day/Night
-    // applies ONLY while actively navigating on the map home (turn-by-turn
-    // guidance) — the browse map and every other screen follow the app's own theme.
-    val navSession by GoogleNavSdkProvider.state.collectAsState()
-    val activelyNavigating = route == AppRoute.NAV_HOME && navSession.sessionState.isActiveNav()
-    val navDark = if (navThemeMode == com.navigator.app.ui.theme.NavThemeMode.DAY_NIGHT) nightNow else effectiveDark
-    val themeDark = if (activelyNavigating) navDark else effectiveDark
-    LaunchedEffect(themeDark, accentColorId) {
-        com.navigator.app.ui.theme.Ktm.apply(
-            themeDark,
-            com.navigator.app.ui.theme.accentFor(accentColorId),
-        )
-    }
-
-    // Return targets for screens reachable from more than one parent.
-    var settingsReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(homeRoute()) }
-    // Non-null when Pairing is reached from the map home's Connect pill (so it
-    // gets a back affordance); null on the forced first-run pairing step.
-    var pairingReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<AppRoute?>(null) }
-
-    // In-app Google navigation is offered when a key + Play Services are present
-    // AND the user hasn't switched to mirror-only in Settings.
-    val googleNavOffered = com.navigator.app.nav.providers.GoogleNavSdkController.isActive(appContext, settings)
-
-    // A Google Maps link shared into the app -> open the map home, which resolves
-    // the link and drops into the confirm stage.
-    val sharedLink by MainActivity.sharedNavLink.collectAsState()
-    LaunchedEffect(sharedLink) {
-        if (sharedLink != null && googleNavOffered &&
-            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
-        ) {
-            goTo(homeRoute())
-        } else if (sharedLink != null && !googleNavOffered &&
-            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
-        ) {
-            // Mirror-only mode has no map to drop the shared place on: say so rather than ignore it.
-            android.widget.Toast.makeText(
-                appContext, "Shared links need in-app maps (Settings > Navigation engine)",
-                android.widget.Toast.LENGTH_LONG,
-            ).show()
-            MainActivity.sharedNavLink.value = null
-        }
-    }
-    // Launcher shortcut "Ride home / work" -> map home, which opens the route preview.
-    val quickRoute by MainActivity.quickRouteRequest.collectAsState()
-    LaunchedEffect(quickRoute) {
-        if (quickRoute == null) return@LaunchedEffect
-        if (route == AppRoute.ONBOARDING || route == AppRoute.PAIRING) {
-            MainActivity.quickRouteRequest.value = null // setup first; a stale request must not fire later
-        } else if (googleNavOffered) {
-            goTo(homeRoute())
-        } else {
-            android.widget.Toast.makeText(
-                appContext, "Ride shortcuts need in-app maps (Settings > Navigation engine)",
-                android.widget.Toast.LENGTH_LONG,
-            ).show()
-            MainActivity.quickRouteRequest.value = null
-        }
-    }
-    // Notification tapped while navigating -> jump to the map home, which resumes
-    // the NAVIGATING view from the live session state.
-    val openNav by MainActivity.openNavRequest.collectAsState()
-    LaunchedEffect(openNav) {
-        if (openNav &&
-            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
-        ) {
-            goTo(homeRoute())
-        }
-        if (openNav) MainActivity.openNavRequest.value = false
-    }
-
-    var logsReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(AppRoute.SETTINGS) }
-    // Settings scroll position, hoisted above the route switch so opening a
-    // sub-section (and coming back) restores the exact scroll offset instead of
-    // snapping to the top (SettingsScreen leaves composition on navigation).
-    val settingsListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    // Where RIDE_REPLAY returns to (history list by default; the map home when a
-    // finished trip is opened straight into replay).
-    var replayReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(AppRoute.RECORDINGS) }
-    // The ride selected in the history list, shown on the replay screen.
-    var selectedRideId by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
-    // A saved place the rider tapped in Saved Places -> dropped as a pin on the
-    // map home (consumed by NavigationHomeScreen on entry, like a shared link).
-    var pendingPlace by remember { mutableStateOf<com.navigator.app.nav.destination.SavedPlace?>(null) }
-    // Multi-select state hoisted here so it survives opening a ride and coming
-    // back (the history screen leaves composition on navigation).
-    var rideSelectionMode by remember { mutableStateOf(false) }
-    var rideSelectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    // Search query + sort field/direction for the history list, hoisted so they
-    // survive opening a ride and coming back (reset on app restart).
-    var rideQuery by remember { mutableStateOf("") }
-    var rideSortField by remember { mutableStateOf(com.navigator.app.ui.screens.RideSortField.DATE) }
-    var rideSortDesc by remember { mutableStateOf(true) }
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    // Touch back navigation: sub-pages return to their parent instead of
-    // minimizing the app.
-    androidx.activity.compose.BackHandler(
-        enabled = route != AppRoute.ONBOARDING &&
-            !(route == AppRoute.PAIRING && pairingReturnRoute == null)
-    ) {
-        when (route) {
-            AppRoute.SETTINGS -> goBack(settingsReturnRoute)
-            AppRoute.LOGS -> goBack(logsReturnRoute)
-            AppRoute.PLACES -> goBack(AppRoute.SETTINGS)
-            AppRoute.SYMBOL_TEST -> goBack(AppRoute.SETTINGS)
-            AppRoute.TURN_CALIBRATION -> goBack(AppRoute.SETTINGS)
-            AppRoute.RECORDINGS -> {
-                // While multi-select is active, back exits it instead of leaving.
-                if (rideSelectionMode) {
-                    rideSelectionMode = false
-                    rideSelectedIds = emptySet()
-                } else goBack(AppRoute.SETTINGS)
-            }
-            AppRoute.RIDE_REPLAY -> goBack(replayReturnRoute)
-            AppRoute.NAV_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
-            AppRoute.MIRROR_HOME -> (context as? ComponentActivity)?.moveTaskToBack(true)
-            AppRoute.PAIRING -> { goBack(pairingReturnRoute ?: homeRoute()); pairingReturnRoute = null }
-            AppRoute.ONBOARDING -> {}
-        }
-    }
-
-    // Connect greeting: when the bike authenticates, show a brief "Hi <name>!"
-    // banner with the walking-person icon over whatever screen is up.
-    val connState by BccuConnectionService.connectionState.collectAsState()
-    var showGreeting by remember { mutableStateOf(false) }
-    var prevConn by remember { mutableStateOf(connState) }
-    LaunchedEffect(connState) {
-        val was = prevConn
-        prevConn = connState
-        if (connState == BccuConnectionService.ConnectionState.AUTHENTICATED &&
-            was != BccuConnectionService.ConnectionState.AUTHENTICATED
-        ) {
-            showGreeting = true
-            // finally: a state change cancels this effect mid-delay; never leave the banner stuck.
-            try { delay(4000) } finally { showGreeting = false }
-        }
-    }
-
-    // Retained map surface: created lazily on first map use and kept alive across
-    // route changes so returning to the map home re-attaches an already-loaded map
-    // (no reload flash) instead of rebuilding the NavigationView each time.
-    val retainedNav = com.navigator.app.ui.screens.rememberRetainedNavigationView()
-
-    KtmTheme(darkTheme = themeDark, accent = remember(accentColorId) { com.navigator.app.ui.theme.accentFor(accentColorId) }) {
-      androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-        // Direction-aware cross-screen transition: a gentle fade with a small (~6%)
-        // horizontal drift. Forward navigations slide the new screen in from the
-        // right; back/up navigations reverse it (new screen from the left). Keeps
-        // screen changes from being a hard cut, and reads as push/pop.
-        AnimatedContent(
-            targetState = route,
-            transitionSpec = { com.navigator.app.ui.theme.Motion.routeTransition(routeBack) },
-            label = "route",
-        ) { r ->
-        when (r) {
-            AppRoute.ONBOARDING -> com.navigator.app.ui.screens.OnboardingScreen(
-                settings = settings,
-                onComplete = { goTo(AppRoute.PAIRING) }
-            )
-            AppRoute.PAIRING -> PairingScreen(
-                settings = settings,
-                onPaired = {
-                    // After a re-pair from Settings, land on the home screen (Settings was only
-                    // the back target while pairing).
-                    goTo(pairingReturnRoute?.takeIf { it != AppRoute.SETTINGS } ?: homeRoute())
-                    pairingReturnRoute = null
-                },
-                onOpenLogs = { logsReturnRoute = AppRoute.PAIRING; goTo(AppRoute.LOGS) },
-                onBack = pairingReturnRoute?.let { back -> { goBack(back); pairingReturnRoute = null } },
-            )
-            AppRoute.NAV_HOME -> com.navigator.app.ui.screens.NavigationHomeScreen(
-                retainedNav = retainedNav,
-                onOpenConnect = { pairingReturnRoute = AppRoute.NAV_HOME; goTo(AppRoute.PAIRING) },
-                onOpenSettings = { settingsReturnRoute = AppRoute.NAV_HOME; goTo(AppRoute.SETTINGS) },
-                onStartNavigation = { dest ->
-                    (appContext as? android.app.Activity)?.let {
-                        com.navigator.app.nav.providers.GoogleNavSdkController.startNavigation(it, dest)
-                    }
-                },
-                onExit = onExit,
-                onOpenReplay = { id ->
-                    selectedRideId = id
-                    replayReturnRoute = AppRoute.NAV_HOME
-                    goTo(AppRoute.RIDE_REPLAY)
-                },
-                sharedLink = sharedLink,
-                onSharedLinkConsumed = { MainActivity.sharedNavLink.value = null },
-                pendingPlace = pendingPlace,
-                onPendingPlaceConsumed = { pendingPlace = null },
-                quickRoute = quickRoute,
-                onQuickRouteConsumed = { MainActivity.quickRouteRequest.value = null },
-            )
-            AppRoute.MIRROR_HOME -> com.navigator.app.ui.screens.MirrorHomeScreen(
-                onOpenSettings = { settingsReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.SETTINGS) },
-                onOpenConnect = { pairingReturnRoute = AppRoute.MIRROR_HOME; goTo(AppRoute.PAIRING) },
-                onExit = onExit,
-            )
-            AppRoute.SETTINGS -> SettingsScreen(
-                settings = settings,
-                onBack = { goBack(settingsReturnRoute) },
-                onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.LOGS) },
-                onOpenSymbolTest = { goTo(AppRoute.SYMBOL_TEST) },
-                onOpenTurnCalibration = { goTo(AppRoute.TURN_CALIBRATION) },
-                onOpenPlaces = { goTo(AppRoute.PLACES) },
-                onOpenRecordings = { goTo(AppRoute.RECORDINGS) },
-                themeMode = themeMode,
-                onThemeModeChanged = { mode -> themeMode = mode; settings.themeMode = mode },
-                fontMode = fontMode,
-                onFontModeChanged = { mode -> fontMode = mode; settings.fontMode = mode },
-                navThemeMode = navThemeMode,
-                onNavThemeModeChanged = { mode -> navThemeMode = mode; settings.navThemeMode = mode },
-                accentColorId = accentColorId,
-                onAccentColorChanged = { id -> accentColorId = id; settings.accentColorId = id },
-                listState = settingsListState,
-                onEngineChanged = { googleNav ->
-                    // Switching to the mirror engine ends any in-app SDK trip so
-                    // the two engines never drive the dash at once. Return to the
-                    // newly-selected engine's home when leaving Settings.
-                    if (!googleNav) com.navigator.app.nav.providers.GoogleNavSdkController.stop()
-                    settingsReturnRoute = homeRoute()
-                },
-                onRepair = {
-                    // Forget the pairing flag too, not just the address - otherwise
-                    // re-pairing the same bike still replies GENERATE_KEYS and the
-                    // handshake stalls if the dash has lost its keys. Clearing it
-                    // makes the next handshake do a fresh HELLO (dash prompts).
-                    settings.bondedDeviceAddress?.let { settings.clearPairedBefore(it) }
-                    settings.bondedDeviceAddress = null
-                    settings.bondedDeviceName = null
-                    BccuConnectionService.stop(context)
-                    pairingReturnRoute = AppRoute.SETTINGS
-                    goTo(AppRoute.PAIRING)
-                }
-            )
-            AppRoute.LOGS -> com.navigator.app.ui.screens.LogsScreen(
-                onBack = { goBack(logsReturnRoute) }
-            )
-            AppRoute.PLACES -> com.navigator.app.ui.screens.SavedPlacesScreen(
-                onBack = { goBack(AppRoute.SETTINGS) },
-                onOpenOnMap = { place ->
-                    // Only the SDK map home can show a pin; in mirror mode there's
-                    // no map surface, so fall back with a hint.
-                    if (googleNavOffered) {
-                        pendingPlace = place
-                        goTo(AppRoute.NAV_HOME)
-                    } else {
-                        android.widget.Toast.makeText(
-                            context, "Map view needs in-app navigation",
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                },
-            )
-            AppRoute.SYMBOL_TEST -> com.navigator.app.ui.screens.SymbolTestScreen(
-                onBack = { goBack(AppRoute.SETTINGS) }
-            )
-            AppRoute.TURN_CALIBRATION -> com.navigator.app.ui.screens.TurnCalibrationScreen(
-                onBack = { goBack(AppRoute.SETTINGS) }
-            )
-            AppRoute.RECORDINGS -> com.navigator.app.ui.screens.RideHistoryScreen(
-                onBack = {
-                    if (rideSelectionMode) {
-                        rideSelectionMode = false
-                        rideSelectedIds = emptySet()
-                    } else goBack(AppRoute.SETTINGS)
-                },
-                onOpen = { id -> selectedRideId = id; replayReturnRoute = AppRoute.RECORDINGS; goTo(AppRoute.RIDE_REPLAY) },
-                selectionMode = rideSelectionMode,
-                selectedIds = rideSelectedIds,
-                onSelectionModeChange = { rideSelectionMode = it },
-                onSelectedIdsChange = { rideSelectedIds = it },
-                query = rideQuery,
-                onQueryChange = { rideQuery = it },
-                sortField = rideSortField,
-                onSortFieldChange = { rideSortField = it },
-                sortDesc = rideSortDesc,
-                onSortDescChange = { rideSortDesc = it },
-            )
-            AppRoute.RIDE_REPLAY -> com.navigator.app.ui.screens.RideReplayScreen(
-                retainedNav = retainedNav,
-                rideId = selectedRideId,
-                onBack = { goBack(replayReturnRoute) },
-            )
-        }
-        }
-        // Soft fade for the connect greeting overlay instead of a hard pop.
-        AnimatedVisibility(
-            visible = showGreeting,
-            enter = fadeIn(tween(220, easing = FastOutSlowInEasing)),
-            exit = fadeOut(tween(220, easing = FastOutSlowInEasing)),
-        ) {
-            ConnectGreeting(name = settings.userName?.trim().orEmpty())
-        }
-        if (com.navigator.app.BuildConfig.DEBUG) {
-            val overlayOn by com.navigator.app.nav.DashPreview.overlayEnabled.collectAsState()
-            if (overlayOn) DashPreviewPanel()
-        }
-      }
-    }
-}
-
-/** Brief "Hi <name>!" banner with the walking-person icon, shown on connect. */
-@Composable
-private fun ConnectGreeting(name: String) {
-    val text = if (name.isNotBlank()) "Hi $name!" else "Welcome!"
-    androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize().edgePadding().padding(top = 108.dp),
-        contentAlignment = androidx.compose.ui.Alignment.TopCenter,
-    ) {
-        androidx.compose.foundation.layout.Row(
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            modifier = androidx.compose.ui.Modifier
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                .background(com.navigator.app.ui.theme.Ktm.Orange)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-        ) {
-            androidx.compose.material3.Icon(
-                painter = androidx.compose.ui.res.painterResource(com.navigator.app.R.drawable.dash_pedestrian),
-                contentDescription = null,
-                tint = com.navigator.app.ui.theme.Ktm.OnAccent,
-                modifier = androidx.compose.ui.Modifier.size(34.dp),
-            )
-            androidx.compose.material3.Text(
-                text,
-                color = com.navigator.app.ui.theme.Ktm.OnAccent,
-                fontFamily = com.navigator.app.ui.theme.BarlowCondensed,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                fontSize = 26.sp,
-                modifier = androidx.compose.ui.Modifier.padding(start = 12.dp),
-            )
-        }
     }
 }

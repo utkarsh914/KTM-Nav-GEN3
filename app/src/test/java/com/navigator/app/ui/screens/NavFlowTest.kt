@@ -71,9 +71,9 @@ class NavFlowTest {
         assertEquals(SearchTarget.DESTINATION, out.state.searchTarget)
     }
 
-    @Test fun backOnMapResumesALiveTripElseAsksToExit() {
+    @Test fun backOnMapResumesALiveTripElseLeavesToTheSystem() {
         assertEquals(BackEffect.RESUME_NAV, NavFlowState().back(tripLive = true).effect)
-        assertEquals(BackEffect.CONFIRM_EXIT, NavFlowState().back(tripLive = false).effect)
+        assertEquals(BackEffect.LEAVE, NavFlowState().back(tripLive = false).effect)
     }
 
     @Test fun backWhileNavigatingStepsAwayAndFinishedGoesToMap() {

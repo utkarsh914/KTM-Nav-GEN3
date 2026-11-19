@@ -3,6 +3,11 @@ package com.navigator.app.ui.components
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +29,8 @@ import com.navigator.app.ui.theme.KtmTheme
 
 /**
  * 64 dp on every tab and page, even with no actions, so the large title below always lands in the
- * same place. Actions are 48 dp icon buttons, never labelled buttons. [title] may be empty on a
+ * same place. It insets itself for the status bar
+ * and cutout, so a page needs no extra padding. Actions are 48 dp icon buttons, never labelled buttons. [title] may be empty on a
  * tab root that shows a [LargeTitle] instead.
  */
 @Composable
@@ -35,7 +41,8 @@ fun KtmTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier.fillMaxWidth().height(KtmLayout.topBar).padding(start = if (onBack != null) KtmSpacing.xs else KtmSpacing.edge, end = KtmSpacing.xs),
+        modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .fillMaxWidth().height(KtmLayout.topBar).padding(start = if (onBack != null) KtmSpacing.xs else KtmSpacing.edge, end = KtmSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
     ) {

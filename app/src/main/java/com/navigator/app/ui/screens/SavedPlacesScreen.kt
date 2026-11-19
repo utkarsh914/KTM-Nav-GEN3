@@ -82,7 +82,6 @@ import java.util.UUID
  */
 @Composable
 fun SavedPlacesScreen(
-    onBack: () -> Unit,
     onOpenOnMap: (SavedPlace) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -145,7 +144,8 @@ fun SavedPlacesScreen(
     ) {
         ScreenTopBar(
             title = if (selectionMode) "${validSelected.size}/${saved.size} selected" else "Saved places",
-            onBack = { if (selectionMode) exitSelection() else onBack() },
+            onBack = { exitSelection() },
+            showBack = selectionMode,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 6.dp),
         ) {
             if (selectionMode) {

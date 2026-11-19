@@ -39,7 +39,7 @@ object GoogleNavSdkController {
         runCatching {
             val app = activity.application
             val resumeIntent = Intent(app, com.navigator.app.ui.MainActivity::class.java).apply {
-                putExtra(com.navigator.app.ui.MainActivity.EXTRA_OPEN_NAV, true)
+                putExtra(com.navigator.app.app.AppIntents.EXTRA_OPEN_NAV, true)
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             var live: NavLiveUpdate? = null

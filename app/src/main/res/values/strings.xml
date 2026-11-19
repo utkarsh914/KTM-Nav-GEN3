@@ -25,4 +25,30 @@
     <string name="activity_strip_resume">Resume</string>
     <string name="activity_strip_pause_recording">Pause recording</string>
     <string name="activity_strip_stop_recording">Stop recording</string>
+
+    <!-- App shell -->
+    <string name="tab_navigate">Navigate</string>
+    <string name="tab_rides">Rides</string>
+    <string name="tab_places">Places</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_needs_attention">Needs attention</string>
+    <string name="intent_shared_link_needs_in_app">Shared links need in-app maps (Settings &gt; Navigation engine)</string>
+    <string name="intent_shortcut_needs_in_app">Ride shortcuts need in-app maps (Settings &gt; Navigation engine)</string>
+    <string name="intent_map_needs_in_app">Map view needs in-app navigation</string>
+    <string name="settings_quit">Quit KTM Navigator</string>
+    <string name="quit_title">Quit KTM Navigator?</string>
+    <string name="quit_message">Stops sending to your dash and closes the app. Guidance and recording stop too.</string>
+    <string name="quit_confirm">Quit</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="recording_strip_title">Recording · %1$s</string>
+    <string name="recording_strip_paused_title">Recording paused</string>
+    <string name="recording_strip_detail">%1$s</string>
+    <string name="recording_strip_paused_detail">%1$s · %2$s</string>
+    <string name="stop_recording_title">Stop recording?</string>
+    <string name="stop_recording_message">The ride is saved to your history, unless it is shorter than the keep limits in Settings.</string>
+    <string name="stop_recording_confirm">Stop recording</string>
+    <string name="stop_recording_keep">Keep recording</string>
+    <string name="ride_saved">Ride saved · %1$s · %2$s</string>
+    <string name="ride_saved_view">View</string>
+    <string name="ride_too_short">Ride too short to keep</string>
 </resources>

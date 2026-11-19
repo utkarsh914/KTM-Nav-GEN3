@@ -178,9 +178,7 @@ private val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
 fun NavigationHomeScreen(
     retainedNav: RetainedNavigationView,
     onOpenConnect: () -> Unit,
-    onOpenSettings: () -> Unit,
     onStartNavigation: (NavDestination) -> Unit,
-    onExit: () -> Unit = {},
     onOpenReplay: (String) -> Unit = {},
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
@@ -188,6 +186,8 @@ fun NavigationHomeScreen(
     onPendingPlaceConsumed: () -> Unit = {},
     quickRoute: String? = null,
     onQuickRouteConsumed: () -> Unit = {},
+    /** The foreground notification was tapped: resume the live guidance view if a trip is running. */
+    openNavRequest: Boolean = false,
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -306,7 +306,6 @@ fun NavigationHomeScreen(
     // True when the CONFIRM card was reached from the search list (Back returns there).
     var confirmFromSearch by flow::confirmFromSearch
     var resolvingLink by remember { mutableStateOf(false) }
-    var showExitConfirm by remember { mutableStateOf(false) }
     // The rider stepped away from the active-navigation view (Back / minimise)
     // without ending the trip; suppresses auto-resume so they stay on the map,
     // and drives the "Resume navigation" pill. Reset when a new trip starts or
@@ -755,9 +754,8 @@ fun NavigationHomeScreen(
     }
 
     // Notification tap while stepped-away resumes the live guidance view.
-    val openNavReq by com.navigator.app.ui.MainActivity.openNavRequest.collectAsState()
-    LaunchedEffect(openNavReq) {
-        if (openNavReq && navState.sessionState.isActiveNav()) resumeNav()
+    LaunchedEffect(openNavRequest) {
+        if (openNavRequest && navState.sessionState.isActiveNav()) resumeNav()
     }
 
     // Resolve the just-finished ride once its recording is finalised (Saved with
@@ -950,10 +948,12 @@ fun NavigationHomeScreen(
             BackEffect.BACK_TO_BROWSE -> backToBrowse()
             BackEffect.MOVE_AWAY_FROM_NAV -> moveAwayFromNav()
             BackEffect.RESUME_NAV -> resumeNav()
-            BackEffect.CONFIRM_EXIT -> showExitConfirm = true
+            BackEffect.LEAVE -> {}
         }
     }
-    BackHandler { performBack() }
+    // At the map with nothing running there is nothing to step back to: Back is the system's (it leaves the app).
+    BackHandler(enabled = stage != NavStage.BROWSE || navState.sessionState.isActiveNav()) { performBack() }
+    com.navigator.app.ui.shell.ImmersiveEffect(stage == NavStage.NAVIGATING)
 
     Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
         // --- Map surface -----------------------------------------------------
@@ -984,19 +984,12 @@ fun NavigationHomeScreen(
           Box(Modifier.fillMaxSize()) {
             when (s) {
             NavStage.BROWSE -> {
-                // Search bar (leaves room on the right for the Settings button).
+                // Search bar.
                 Box(
                     modifier = Modifier.fillMaxWidth().edgePadding()
-                        .padding(start = 16.dp, end = 74.dp, top = 10.dp),
+                        .padding(horizontal = 16.dp).padding(top = 10.dp),
                 ) {
                     SearchBar(modifier = Modifier.fillMaxWidth(), onClick = ::openSearch)
-                }
-                // Top-right: Settings.
-                Box(
-                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
-                        .padding(end = 16.dp, top = 10.dp),
-                ) {
-                    IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
                 }
                 // Home / Work one-tap routes under the search bar (only the ones that are set).
                 val homePlace = favorites.firstOrNull { it.slot == com.navigator.app.nav.destination.FavoriteSlot.HOME }?.place
@@ -1405,13 +1398,6 @@ fun NavigationHomeScreen(
             }
             }
           }
-        }
-
-        if (showExitConfirm) {
-            ExitConfirmDialog(
-                onConfirm = { showExitConfirm = false; onExit() },
-                onDismiss = { showExitConfirm = false },
-            )
         }
 
         confirmReplaceFor?.let { p ->
@@ -2028,21 +2014,6 @@ private fun TrafficLine(delaySeconds: Int, onAccent: Boolean) {
 }
 
 // ============================ Active navigation ========================
-
-/** Confirm before fully closing the app (Back at the map home). */
-@Composable
-private fun ExitConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Ktm.Surface,
-        titleContentColor = Ktm.White,
-        textContentColor = Ktm.TextSecondary,
-        title = { Text("Close KTM Navigator?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-        text = { Text("This stops navigation to the dash and exits the app.", fontFamily = Barlow) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("CLOSE", color = Ktm.Danger) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Ktm.TextPrimary) } },
-    )
-}
 
 /** 48dp (minimum) tap area around a small icon, centred; the icon keeps its visual size. */
 @Composable

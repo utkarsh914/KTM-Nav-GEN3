@@ -3,7 +3,6 @@ package com.navigator.app.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,10 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -47,7 +44,6 @@ import com.navigator.app.notifications.NotificationRepository
 import com.navigator.app.ui.OpenDashPermissions
 import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
-import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
@@ -65,9 +61,7 @@ import com.navigator.app.ui.theme.OpenDashIcons
  */
 @Composable
 fun MirrorHomeScreen(
-    onOpenSettings: () -> Unit,
     onOpenConnect: () -> Unit,
-    onExit: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val guidance by NotificationRepository.navGuidance.collectAsState()
@@ -112,10 +106,6 @@ fun MirrorHomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
-    // Back at the mirror home confirms full close, matching the map home.
-    var showExitConfirm by remember { mutableStateOf(false) }
-    BackHandler { showExitConfirm = true }
-
     Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
         Column(
             modifier = Modifier
@@ -129,8 +119,6 @@ fun MirrorHomeScreen(
             // mirror-status label sits just below.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 ConnectPill(onClick = onOpenConnect)
-                Spacer(Modifier.weight(1f))
-                IconPill(OpenDashIcons.Settings, "Settings", onClick = onOpenSettings)
             }
             Spacer(Modifier.height(16.dp))
             Eyebrow(
@@ -220,25 +208,6 @@ fun MirrorHomeScreen(
                     ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com"))
                 runCatching { context.startActivity(intent) }
             }
-        }
-
-        if (showExitConfirm) {
-            AlertDialog(
-                onDismissRequest = { showExitConfirm = false },
-                containerColor = Ktm.Surface,
-                titleContentColor = Ktm.White,
-                textContentColor = Ktm.TextSecondary,
-                title = { Text("Close KTM Navigator?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-                text = { Text("This stops navigation to the dash and exits the app.", fontFamily = Barlow) },
-                confirmButton = {
-                    TextButton(onClick = { showExitConfirm = false; onExit() }) {
-                        Text("CLOSE", color = Ktm.Danger)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showExitConfirm = false }) { Text("CANCEL", color = Ktm.TextPrimary) }
-                },
-            )
         }
     }
 }

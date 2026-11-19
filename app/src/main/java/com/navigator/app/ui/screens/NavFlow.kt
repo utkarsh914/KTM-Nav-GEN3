@@ -32,7 +32,8 @@ internal enum class BackEffect {
     BACK_TO_BROWSE,
     MOVE_AWAY_FROM_NAV,
     RESUME_NAV,
-    CONFIRM_EXIT,
+    /** Nothing left to step back to: the system handles Back. */
+    LEAVE,
 }
 
 internal data class BackOutcome(val state: NavFlowState, val effect: BackEffect = BackEffect.NONE)
@@ -112,9 +113,9 @@ internal data class NavFlowState(
                 BackOutcome(copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.NAVIGATING), BackEffect.RESUME_NAV)
             SearchTarget.DESTINATION -> BackOutcome(this, BackEffect.BACK_TO_BROWSE)
         }
-        // At the map: a trip still running in the background is resumed, otherwise confirm exit.
+        // At the map: a trip still running in the background is resumed, otherwise Back is the system's.
         NavStage.BROWSE ->
-            BackOutcome(this, if (tripLive) BackEffect.RESUME_NAV else BackEffect.CONFIRM_EXIT)
+            BackOutcome(this, if (tripLive) BackEffect.RESUME_NAV else BackEffect.LEAVE)
     }
 
     /**

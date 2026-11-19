@@ -99,7 +99,7 @@ private enum class SettingsDialog {
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
-    onBack: () -> Unit,
+    onQuit: () -> Unit,
     onOpenLogs: () -> Unit,
     onOpenSymbolTest: () -> Unit,
     onOpenTurnCalibration: () -> Unit,
@@ -293,8 +293,6 @@ fun SettingsScreen(
                 .padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            com.navigator.app.ui.components.CircleBackButton(onClick = onBack)
-            androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 com.navigator.app.ui.components.Eyebrow("Settings", fontSize = 12, letterSpacing = 3.0)
                 Text(
@@ -837,6 +835,15 @@ fun SettingsScreen(
                     ) { Text("›", color = Ktm.Dim, fontSize = 18.sp) }
                     SettingsRow("Build", showDivider = false) {
                         MonoValue(com.navigator.app.BuildConfig.VERSION_NAME)
+                    }
+                }
+            }
+
+            // ===== Quit (the only way to stop everything; Back just leaves the screen) =====
+            item {
+                GroupCard(androidx.compose.ui.res.stringResource(com.navigator.app.R.string.settings_quit), icon = com.navigator.app.ui.theme.OpenDashIcons.Close) {
+                    SettingsRow(androidx.compose.ui.res.stringResource(com.navigator.app.R.string.settings_quit), showDivider = false, onClick = onQuit) {
+                        Text("\u203a", color = Ktm.Dim, fontSize = 18.sp)
                     }
                 }
             }

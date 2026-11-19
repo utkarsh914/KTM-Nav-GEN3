@@ -790,7 +790,7 @@ class BccuConnectionService : LifecycleService() {
         // the live activity/state instead of relaunching a fresh instance.
         val openIntent = Intent(this, com.navigator.app.ui.MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(com.navigator.app.ui.MainActivity.EXTRA_OPEN_NAV, true)
+            putExtra(com.navigator.app.app.AppIntents.EXTRA_OPEN_NAV, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT

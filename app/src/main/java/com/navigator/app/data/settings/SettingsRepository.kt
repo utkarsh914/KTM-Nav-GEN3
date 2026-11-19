@@ -14,6 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class SettingsRepository(private val settings: AppSettings) {
 
+    /**
+     * The raw store, for screens not yet moved to [snapshot] and [update]. Writes through it still
+     * reach [snapshot]. Goes away as the screens are rebuilt (B15-B17).
+     */
+    val legacy: AppSettings get() = settings
+
     private val _snapshot = MutableStateFlow(SettingsSnapshot.read(settings))
     val snapshot: StateFlow<SettingsSnapshot> = _snapshot.asStateFlow()
 
