@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.ktm.EtaFormatter
@@ -198,51 +200,20 @@ private fun laneShapeIcon(shape: LaneShape): TurnIcon = when (shape) {
 }
 
 /**
- * Live GPS speed (km/h) while [active], from a self-contained GPS listener. Works
- * independently of the BLE overspeed service (which only runs when connected), so
- * the guidance speedometer is available during standalone navigation too. Returns
- * null until the first fix with a speed arrives.
+ * Live GPS speed (km/h) while [active] and the screen is started, from the app's one
+ * [com.navigator.app.location.SpeedSource]. Null until the first fix with a speed arrives.
  */
 @Composable
-internal fun rememberNavSpeedKmh(active: Boolean): Float? {
-    val context = LocalContext.current
+internal fun rememberSpeedKmh(active: Boolean): Float? {
+    val source = LocalContext.current.appContainer.speed
     val started = rememberLifecycleStarted()
-    val active = active && started
-    var speed by remember { mutableStateOf<Float?>(null) }
-    DisposableEffect(active) {
-        if (!active || !hasLocationPermission(context)) {
-            speed = null
-            return@DisposableEffect onDispose { }
-        }
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        // Without fixes (tunnel, GPS off) the last speed would freeze on screen: drop it.
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        val staleClear = Runnable { speed = null }
-        // Full LocationListener impl (not a SAM lambda): pre-API-30 the extra
-        // callbacks are abstract, so a lambda would AbstractMethodError at runtime.
-        val listener = object : android.location.LocationListener {
-            override fun onLocationChanged(loc: Location) {
-                if (loc.hasSpeed()) {
-                    speed = loc.speed * 3.6f
-                    handler.removeCallbacks(staleClear)
-                    handler.postDelayed(staleClear, 5_000L)
-                }
-            }
-            @Deprecated("Deprecated in API 29 but still abstract on older devices")
-            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
-            override fun onProviderEnabled(provider: String) {}
-            override fun onProviderDisabled(provider: String) { speed = null }
-        }
-        runCatching {
-            lm?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
-        }
-        onDispose {
-            handler.removeCallbacks(staleClear)
-            runCatching { lm?.removeUpdates(listener) }
-            speed = null
-        }
+    val on = active && started
+    DisposableEffect(on) {
+        if (on) source.acquire()
+        onDispose { if (on) source.release() }
     }
-    return speed
+    val speed by source.speedKmh.collectAsState()
+    return if (on) speed else null
 }
 
 /** Small speedometer pill: current speed in km/h. */

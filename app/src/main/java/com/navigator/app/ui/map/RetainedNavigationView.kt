@@ -1,0 +1,116 @@
+package com.navigator.app.ui.map
+
+import android.content.ComponentCallbacks2
+import android.content.Context
+import android.content.res.Configuration
+import android.os.Bundle
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.android.libraries.navigation.NavigationView
+
+/**
+ * App-scoped holder that keeps ONE [NavigationView] alive across route changes.
+ *
+ * The map surface is expensive to spin up (blank frame + tile fetch), so tearing
+ * it down every time the user opens Settings and rebuilding it on return caused a
+ * sub-second reload flash. Instead this holder is remembered *above* the route
+ * switch: the view is created lazily on first map use and only destroyed when the
+ * host activity goes away. Returning to the map home just re-attaches the same,
+ * already-loaded view (see [rememberRetainedNavigationView]).
+ */
+class RetainedNavigationView(
+    private val context: Context,
+    private val lifecycle: Lifecycle,
+) {
+    var view: NavigationView? = null
+        private set
+
+    /** True once the one-time camera framing has run, so re-entry doesn't snap
+     *  the camera back to the starting location. */
+    var mapInitialized: Boolean = false
+
+    /** Which screen last configured the shared map's listeners/overlays. A screen
+     *  being disposed only cleans the map if it is still the owner - with animated
+     *  route transitions the NEW screen sets up before the OLD one is disposed. */
+    @Volatile var mapOwner: Any? = null
+
+    /** Create the view on first use, bringing it up to the current lifecycle
+     *  state; subsequent calls return the same retained instance. */
+    fun getOrCreate(): NavigationView {
+        view?.let { return it }
+        val v = NavigationView(context)
+        v.onCreate(Bundle())
+        val state = lifecycle.currentState
+        if (state.isAtLeast(Lifecycle.State.STARTED)) v.onStart()
+        if (state.isAtLeast(Lifecycle.State.RESUMED)) v.onResume()
+        view = v
+        return v
+    }
+
+    fun onLifecycleEvent(event: Lifecycle.Event) {
+        val v = view ?: return
+        when (event) {
+            Lifecycle.Event.ON_START -> v.onStart()
+            Lifecycle.Event.ON_RESUME -> v.onResume()
+            Lifecycle.Event.ON_PAUSE -> v.onPause()
+            // The activity saves its state after onStop; the view gets the same call. The map is retained
+            // in memory (never restored from this bundle), but the SDK expects the call.
+            Lifecycle.Event.ON_STOP -> { v.onStop(); v.onSaveInstanceState(Bundle()) }
+            else -> {}
+        }
+    }
+
+    fun onConfigurationChanged(config: Configuration) {
+        view?.onConfigurationChanged(config)
+    }
+
+    fun onTrimMemory(level: Int) {
+        view?.onTrimMemory(level)
+    }
+
+    fun destroy() {
+        val v = view ?: return
+        runCatching { v.onPause() }
+        runCatching { v.onStop() }
+        runCatching { v.onDestroy() }
+        view = null
+        mapInitialized = false
+    }
+}
+
+/**
+ * Remembers a single [RetainedNavigationView] scoped to the caller. Place this at
+ * app scope (above the route switch) so the map survives navigation. The view is
+ * only instantiated on first [RetainedNavigationView.getOrCreate], so screens that
+ * never show the map (e.g. onboarding, the notification-mirror home) pay nothing.
+ */
+@Composable
+fun rememberRetainedNavigationView(): RetainedNavigationView {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val holder = remember(context) { RetainedNavigationView(context, lifecycleOwner.lifecycle) }
+    DisposableEffect(lifecycleOwner, holder) {
+        val observer = LifecycleEventObserver { _, event -> holder.onLifecycleEvent(event) }
+        // The activity handles configuration changes itself (no recreation), so the view is told here.
+        val callbacks = object : ComponentCallbacks2 {
+            override fun onConfigurationChanged(newConfig: Configuration) = holder.onConfigurationChanged(newConfig)
+            override fun onTrimMemory(level: Int) = holder.onTrimMemory(level)
+            @Deprecated("Deprecated in API 34", ReplaceWith("onTrimMemory"))
+            override fun onLowMemory() = Unit
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        context.registerComponentCallbacks(callbacks)
+        onDispose {
+            context.unregisterComponentCallbacks(callbacks)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            holder.destroy()
+        }
+    }
+    return holder
+}
+

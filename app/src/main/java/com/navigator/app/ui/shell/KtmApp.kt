@@ -1,6 +1,5 @@
 package com.navigator.app.ui.shell
 
-import android.app.Activity
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -71,7 +70,7 @@ import com.navigator.app.ui.screens.SavedPlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
 import com.navigator.app.ui.screens.TurnCalibrationScreen
-import com.navigator.app.ui.screens.rememberRetainedNavigationView
+import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.KtmTheme
@@ -221,9 +220,6 @@ fun KtmApp(onQuit: () -> Unit) {
                                 NavigationHomeScreen(
                                     retainedNav = retainedNav,
                                     onOpenConnect = { navController.navigate(Route.Pairing()) },
-                                    onStartNavigation = { dest ->
-                                        (context as? Activity)?.let { GoogleNavSdkController.startNavigation(it, dest) }
-                                    },
                                     onOpenReplay = { id -> navController.navigate(Route.RideReplay(id)) },
                                     sharedLink = pending.sharedLink,
                                     onSharedLinkConsumed = intents::consumeSharedLink,
@@ -276,7 +272,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                 onEngineChanged = { googleNav ->
                                     // Switching to the mirror engine ends any in-app SDK trip so the two
                                     // engines never drive the dash at once.
-                                    if (!googleNav) GoogleNavSdkController.stop()
+                                    if (!googleNav) container.trip.cancel()
                                 },
                                 onRepair = {
                                     // Forget the pairing flag too, not just the address, or re-pairing the

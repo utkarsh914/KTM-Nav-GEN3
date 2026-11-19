@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         settings = appContainer.settings.legacy
+        appContainer.activityHolder.current = this
         // Apply the saved accent + light/dark appearance before the first
         // frame so the app opens in the right skin with no flash of the wrong one.
         // System appearance is read from the current config's night flag here;
@@ -141,6 +142,7 @@ class MainActivity : ComponentActivity() {
     private var finishReceiver: android.content.BroadcastReceiver? = null
 
     override fun onDestroy() {
+        if (appContainer.activityHolder.current === this) appContainer.activityHolder.current = null
         maneuverExportReceiver?.let { runCatching { unregisterReceiver(it) } }
         finishReceiver?.let { runCatching { unregisterReceiver(it) } }
         super.onDestroy()

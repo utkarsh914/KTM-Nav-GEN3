@@ -239,7 +239,7 @@ internal fun rememberDeviceLatLng(active: Boolean = true): LatLng? {
 // ---- Marker bitmap + manager ----------------------------------------------
 
 /** Direction-indicator style for the user-location marker. */
-internal enum class LocationMarkerStyle {
+enum class LocationMarkerStyle {
     /** A solid, detached arrowhead ahead of the dot (Google-Maps-like). */
     CHEVRON,
 
@@ -265,7 +265,7 @@ internal enum class LocationMarkerStyle {
  * cached handle is gone or the target map changed, so the dot reliably reappears
  * after any screen that clears the shared map (route preview, trip-finished…).
  */
-internal class UserLocationMarker(
+class UserLocationMarker(
     private val context: Context,
     private val style: LocationMarkerStyle = LocationMarkerStyle.CHEVRON,
 ) {

@@ -1,0 +1,74 @@
+package com.navigator.app.ui.map
+
+import com.navigator.app.ride.RideMetrics
+import com.navigator.app.ride.RidePoint
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/** A point on the map. Our own type, so screens and tests don't depend on the Maps SDK. */
+data class MapPoint(val lat: Double, val lng: Double)
+
+data class MapStop(val point: MapPoint, val title: String)
+
+data class MapPoi(val point: MapPoint, val name: String, val placeId: String)
+
+/** What the planning map shows: the destination, numbered stops and the route alternatives. */
+data class TripPreviewScene(
+    val destination: MapPoint,
+    val destinationTitle: String?,
+    val stops: List<MapStop>,
+    val routes: List<List<MapPoint>>,
+    val selectedRoute: Int,
+    /** Extra points the camera must keep in view (where the trip starts, the stops). */
+    val frameAlso: List<MapPoint>,
+)
+
+enum class FollowMode { TILTED, NORTH_UP, HEADING_UP }
+
+/**
+ * Everything a screen does to the map, and the few things it hears back. The Navigation SDK's map
+ * is behind this, so screens and view models don't touch `GoogleMap`, and tests use a fake.
+ */
+interface MapController {
+    /** True while a map is attached and drawable. */
+    val ready: StateFlow<Boolean>
+
+    /** Camera bearing in degrees (the compass shows when it is not north-up). */
+    val bearing: StateFlow<Float>
+
+    val longClicks: SharedFlow<MapPoint>
+    val poiClicks: SharedFlow<MapPoi>
+
+    /** Index of the route polyline that was tapped. */
+    val polylineClicks: SharedFlow<Int>
+
+    /** The rider moved the camera by hand (drag, pinch, tilt), not the app. */
+    val gesturePans: SharedFlow<Unit>
+
+    fun setPadding(left: Int, top: Int, right: Int, bottom: Int)
+    fun clearOverlays()
+
+    /** A pin on the picked place, with the camera zoomed to it. */
+    fun showPlace(place: MapPoint, title: String?)
+    fun showTripPreview(scene: TripPreviewScene)
+
+    /** The speed-coloured track of a ride, framed in the visible map. */
+    fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands)
+
+    /** The compass-driven "you are here" marker used while not guiding. */
+    fun showUserMarker(at: MapPoint, headingDegrees: Float?)
+    fun hideUserMarker()
+
+    fun recenter(at: MapPoint)
+    fun resetNorth()
+    fun followMyLocation(mode: FollowMode)
+    fun showRouteOverview()
+
+    /**
+     * The SDK's own guidance chrome. [guidance] turns the engine and puck on; [stockChrome] shows
+     * Google's header, ETA card, speedometer and incident cards (retired with the full-SDK UI);
+     * [recenterButton] is Google's re-center button (the design replaces it with our own).
+     */
+    fun setGuidanceChrome(guidance: Boolean, stockChrome: Boolean, recenterButton: Boolean = true)
+    fun setNightMode(dark: Boolean)
+}

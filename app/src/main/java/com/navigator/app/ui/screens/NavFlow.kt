@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NavDestination
@@ -18,12 +19,6 @@ internal enum class SearchTarget {
     /** Adding a stop to the trip that is being navigated right now (search opened from guidance). */
     TRIP_STOP,
 }
-
-/** Maximum intermediate stops (Google Maps allows up to a handful; we cap at 4). */
-internal const val MAX_STOPS = 4
-
-/** After adding a stop mid-trip, the next add waits this long so the SDK reports the new route's target. */
-internal const val STOP_ADD_SETTLE_MS = 8_000L
 
 /** What the screen must do besides applying the new [NavFlowState] after a Back press. */
 internal enum class BackEffect {
@@ -153,35 +148,6 @@ internal object NavFlowRules {
         sessionActive && stage != NavStage.NAVIGATING && stage != NavStage.TRIP_FINISHED && !leftNavManually
 }
 
-/** Arrival detection constants + pure decisions (proximity finish and the stall fallback). */
-internal object ArrivalPolicy {
-    /** Auto-finish within this many metres of the destination (generous: GPS scatter, off-road pins). */
-    const val RADIUS_M = 40
-
-    /** Idle fallback applies inside this outer radius when progress has stalled. */
-    const val OUTER_RADIUS_M = 150
-
-    /** How long the remaining distance must stall before the idle fallback finishes the trip. */
-    const val STALL_MS = 45_000L
-
-    /** Minimum drop in remaining distance (m) that counts as progress and resets the stall timer. */
-    const val PROGRESS_EPS_M = 15.0
-
-    data class Progress(val bestRemainingM: Double, val lastProgressMs: Long) {
-        companion object {
-            fun start(nowMs: Long) = Progress(Double.MAX_VALUE, nowMs)
-        }
-    }
-
-    fun track(p: Progress, remainingM: Int, nowMs: Long): Progress =
-        if (remainingM < p.bestRemainingM - PROGRESS_EPS_M) Progress(remainingM.toDouble(), nowMs) else p
-
-    fun reached(remainingM: Int): Boolean = remainingM <= RADIUS_M
-
-    fun stalledNearDestination(p: Progress, remainingM: Int, nowMs: Long): Boolean =
-        remainingM <= OUTER_RADIUS_M && nowMs - p.lastProgressMs >= STALL_MS
-}
-
 /** (De)serialisation of [NavFlowState] for SavedStateHandle; tolerant of corrupt input. */
 internal object NavFlowCodec {
     fun encode(s: NavFlowState): String = JSONObject().apply {
@@ -211,10 +177,8 @@ internal object NavFlowCodec {
 }
 
 /**
- * Holds the map home's flow state across activity recreation (in memory) and process death
- * (the planning part, through [SavedStateHandle]). Runtime-only trip bookkeeping lives here
- * too so a recreated activity doesn't lose "which trip is this" (start time, retry target,
- * arrival latch).
+ * Holds the map home's planning state across activity recreation (in memory) and process death
+ * (through [SavedStateHandle]). The running trip is not here: see TripController.
  */
 internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewModel() {
 
@@ -245,26 +209,6 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
         get() = state.query
         set(v) = update { it.copy(query = v) }
 
-    // Runtime-only (a restored process has no live trip, so none of this is persisted).
-    var leftNavManually by mutableStateOf(false)
-    var tripStartMs by mutableStateOf(0L)
-    var finishedDurationSec by mutableStateOf(0)
-    var lastStartAtMs by mutableStateOf(0L)
-    var lastStartedDest by mutableStateOf<NavDestination?>(null)
-    /** Where the current/last trip began (lat, lng), for "Ride back" when no track was recorded. */
-    var tripOrigin by mutableStateOf<Pair<Double, Double>?>(null)
-    /** The route being navigated (lat, lng), for "search along route"; null after a reroute-less restore. */
-    var tripRoute by mutableStateOf<List<Pair<Double, Double>>?>(null)
-    /** The trip as it was before a mid-trip "add stop" re-plan, so a failed re-plan can be undone. */
-    var tripBeforeStop by mutableStateOf<NavDestination?>(null)
-    /** Every stop of the trip in visiting order, passed ones included (for "Ride back"). */
-    var tripAllStops by mutableStateOf<List<com.navigator.app.nav.model.Stop>>(emptyList())
-    var tripAllStopsBefore by mutableStateOf<List<com.navigator.app.nav.model.Stop>?>(null)
-    /** When the last mid-trip "add stop" was applied: a second one waits until the route has settled. */
-    var lastStopAddMs by mutableStateOf(0L)
-    var arrivalLatched by mutableStateOf(false)
-    var arrivalProgress by mutableStateOf(ArrivalPolicy.Progress.start(0L))
-
     private var attached = 0
 
     /** A screen instance entered composition. Pair with [detach]. */
@@ -281,22 +225,9 @@ internal class NavFlowViewModel(private val handle: SavedStateHandle) : ViewMode
         if (attached == 0 && !configChange) resetForScreenExit()
     }
 
-    /** Back to a fresh state, including the trip bookkeeping (a new composition never inherited any). */
+    /** Back to a fresh planning state (the trip itself lives in the TripController). */
     fun resetForScreenExit() {
         update { NavFlowState() }
-        leftNavManually = false
-        tripStartMs = 0L
-        finishedDurationSec = 0
-        lastStartAtMs = 0L
-        lastStartedDest = null
-        tripOrigin = null
-        tripRoute = null
-        tripBeforeStop = null
-        tripAllStops = emptyList()
-        tripAllStopsBefore = null
-        lastStopAddMs = 0L
-        arrivalLatched = false
-        arrivalProgress = ArrivalPolicy.Progress.start(0L)
     }
 
     private companion object {

@@ -9,6 +9,7 @@ import com.navigator.app.app.DefaultAppContainer
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.ride.AutoRecordController
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
@@ -36,7 +37,8 @@ class OpenDashApplication : Application() {
         com.navigator.app.ble.DashText.transliterate = com.navigator.app.ble.DashText.icuTransliterator()
         com.navigator.app.ble.DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)
         recoverOrphanRides()
-        observeNavForRecording()
+        container.trip // start watching for arrival even before any screen is shown
+        startAutoRecording()
         appScope.launch(Dispatchers.IO) {
             runCatching { com.navigator.app.nav.destination.PlacesStore(this@OpenDashApplication).syncShortcuts() }
         }
@@ -62,58 +64,21 @@ class OpenDashApplication : Application() {
         }
     }
 
-    /**
-     * Drive ride recording off the navigation *intent*, not the guidance state:
-     * start as soon as a trip is requested (destination set) and stop when it's
-     * cleared (arrival / stop / cancel). Keying off [GoogleNavSdkProvider.currentDestination]
-     * rather than ENROUTE means the GPS track still records even when the initial
-     * route can't be computed offline (guidance never reaches ENROUTE, but the
-     * recorder is pure device GPS and works regardless). Runs for the process life.
-     */
-    private fun observeNavForRecording() {
-        appScope.launch {
-            var recording = false
-            var recordingTripId = -1L
-            // Keyed on the trip id, not the destination value: A -> B replacements and
-            // same-destination restarts are separate rides.
-            GoogleNavSdkProvider.activeTrip.collect { trip ->
-                if (recording && (trip == null || trip.rideKey != recordingTripId)) {
-                    // A rider-started recording that took over meanwhile is theirs to stop.
-                    if (!com.navigator.app.ride.RideSession.state.value.manual) {
-                        RideRecordingService.stop(this@OpenDashApplication)
-                    }
-                    recording = false
-                    // Let the service finalise the old ride before the next one starts.
-                    if (trip != null) {
-                        delay(RIDE_RESTART_GAP_MS)
-                        // The old ride has been finalised: drop its result so the new
-                        // trip's finish screen can't pick it up.
-                        com.navigator.app.ride.RideEvents.clear()
-                    }
-                }
-                if (trip != null && !recording) {
-                    val settings = AppSettings(this@OpenDashApplication)
-                    // A rider-started recording already covers this trip: don't start a second one.
-                    val alreadyRecording = com.navigator.app.ride.RideSession.state.value.active
-                    if (!alreadyRecording && settings.rideRecordingEnabled && hasLocationPermission()) {
-                        recording = RideRecordingService.start(
-                            this@OpenDashApplication,
-                            destLabel = trip.dest.label,
-                            destLat = trip.dest.lat,
-                            destLng = trip.dest.lng,
-                        )
-                        if (recording) recordingTripId = trip.rideKey
-                    }
-                }
-            }
-        }
-    }
-
-    private companion object {
-        const val RIDE_RESTART_GAP_MS = 600L
-    }
-
     private fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+
+    private fun startAutoRecording() {
+        AutoRecordController(
+            scope = appScope,
+            trips = GoogleNavSdkProvider.activeTrip,
+            session = { com.navigator.app.ride.RideSession.state.value },
+            recordingEnabled = { AppSettings(this).rideRecordingEnabled },
+            locationGranted = ::hasLocationPermission,
+            startRecording = { trip ->
+                RideRecordingService.start(this, trip.dest.label, trip.dest.lat, trip.dest.lng)
+            },
+            stopRecording = { RideRecordingService.stop(this) },
+        ).start()
+    }
 }

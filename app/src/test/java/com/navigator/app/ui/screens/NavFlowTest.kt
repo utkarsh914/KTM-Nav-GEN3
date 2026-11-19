@@ -5,6 +5,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import com.navigator.app.trip.ArrivalPolicy
+import com.navigator.app.trip.MAX_STOPS
+import com.navigator.app.trip.STOP_ADD_SETTLE_MS
 import org.junit.Test
 
 class NavFlowTest {
@@ -174,27 +177,11 @@ class NavFlowTest {
 
     // ---- Arrival ------------------------------------------------------------
 
-    @Test fun arrivalProximity() {
-        assertTrue(ArrivalPolicy.reached(40))
-        assertFalse(ArrivalPolicy.reached(41))
-    }
-
-    @Test fun progressOnlyResetsOnMeaningfulDrop() {
-        var p = ArrivalPolicy.Progress.start(0)
-        p = ArrivalPolicy.track(p, 1000, 1_000)
-        assertEquals(1_000L, p.lastProgressMs)
-        p = ArrivalPolicy.track(p, 990, 2_000) // < 15 m drop: not progress
-        assertEquals(1_000L, p.lastProgressMs)
-        p = ArrivalPolicy.track(p, 900, 3_000)
-        assertEquals(3_000L, p.lastProgressMs)
-        assertEquals(900.0, p.bestRemainingM, 0.0)
-    }
-
-    @Test fun stallFallbackNeedsOuterRadiusAndLongStall() {
-        val p = ArrivalPolicy.Progress(bestRemainingM = 100.0, lastProgressMs = 0)
-        assertFalse(ArrivalPolicy.stalledNearDestination(p, 100, ArrivalPolicy.STALL_MS - 1))
-        assertTrue(ArrivalPolicy.stalledNearDestination(p, 100, ArrivalPolicy.STALL_MS))
-        assertFalse(ArrivalPolicy.stalledNearDestination(p, 151, ArrivalPolicy.STALL_MS * 2))
+    @Test fun arrivalDwellIsTwoMinutesWithinTwentyMetres() {
+        assertEquals(1_000L, ArrivalPolicy.nearSince(null, 20, 1_000))
+        assertEquals(null, ArrivalPolicy.nearSince(null, 21, 1_000))
+        assertFalse(ArrivalPolicy.dwellReached(1_000, 1_000 + ArrivalPolicy.DWELL_MS - 1))
+        assertTrue(ArrivalPolicy.dwellReached(1_000, 1_000 + ArrivalPolicy.DWELL_MS))
     }
 
     // ---- Persistence --------------------------------------------------------
@@ -237,18 +224,13 @@ class NavFlowTest {
 
     private fun vm() = NavFlowViewModel(androidx.lifecycle.SavedStateHandle())
 
-    @Test fun lastScreenLeavingResetsPlanningAndTripBookkeeping() {
+    // The trip bookkeeping moved to TripController (see TripControllerTest: it survives leaving the screen).
+    @Test fun lastScreenLeavingResetsPlanning() {
         val vm = vm()
         vm.attach()
         vm.update { it.choose(place(1)) }
-        vm.arrivalLatched = true
-        vm.tripStartMs = 5L
-        vm.leftNavManually = true
         vm.detach(configChange = false)
         assertEquals(NavFlowState(), vm.state)
-        assertFalse(vm.arrivalLatched)
-        assertEquals(0L, vm.tripStartMs)
-        assertFalse(vm.leftNavManually)
     }
 
     @Test fun configurationChangeKeepsState() {
