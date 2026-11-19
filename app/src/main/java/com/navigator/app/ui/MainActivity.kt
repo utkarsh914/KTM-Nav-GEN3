@@ -164,8 +164,7 @@ class MainActivity : ComponentActivity() {
      * from Settings' Quit row and the notification "Exit".
      */
     private fun exitApp() {
-        BccuConnectionService.stop(this)
-        (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).cancelAll()
+        appContainer.connection.quit()
         finishAndRemoveTask()
     }
 

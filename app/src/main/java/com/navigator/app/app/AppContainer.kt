@@ -2,6 +2,8 @@ package com.navigator.app.app
 
 import android.content.Context
 import com.navigator.app.OpenDashApplication
+import com.navigator.app.ble.BikeScanner
+import com.navigator.app.data.connection.ConnectionRepository
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.location.SpeedSource
@@ -25,6 +27,10 @@ interface AppContainer {
     val intents: AppIntents
     val trip: TripController
     val speed: SpeedSource
+    val connection: ConnectionRepository
+
+    /** The pairing scan (used by the pairing screens). Start and stop it with the screen. */
+    val bikeScanner: BikeScanner
 
     /** The visible activity, for the few SDK calls that need one. Held weakly. */
     val activityHolder: ActivityHolder
@@ -38,6 +44,8 @@ class DefaultAppContainer(context: Context) : AppContainer {
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val intents = AppIntents()
     override val activityHolder = ActivityHolder()
+    override val connection by lazy { ConnectionRepository.create(appContext, appScope, settings) }
+    override val bikeScanner by lazy { BikeScanner(appContext) { settings.legacy } }
     override val speed by lazy { SpeedSource(appContext) }
     override val trip by lazy {
         TripController(

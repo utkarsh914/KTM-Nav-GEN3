@@ -275,14 +275,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     if (!googleNav) container.trip.cancel()
                                 },
                                 onRepair = {
-                                    // Forget the pairing flag too, not just the address, or re-pairing the
-                                    // same bike still replies GENERATE_KEYS and the handshake stalls if the
-                                    // dash lost its keys. Clearing it makes the next handshake a fresh HELLO.
-                                    legacy.bondedDeviceAddress?.let { legacy.clearPairedBefore(it) }
-                                    legacy.bondedDeviceAddress = null
-                                    legacy.bondedDeviceName = null
-                                    BccuConnectionService.stop(context)
-                                    settings.refresh()
+                                    container.connection.rePair()
                                     navController.navigate(Route.Pairing(toHome = true))
                                 },
                             )

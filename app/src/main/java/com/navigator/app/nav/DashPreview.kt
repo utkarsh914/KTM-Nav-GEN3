@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * Debug-only mirror of what the navigation pipeline asks the dash to show, so
- * guidance can be verified on a phone with no bike connected. Fed by
- * [DashPreviewTee]; only wired up in debug builds.
+ * Read-only mirror of what the app asks the dash to show (guidance and banners), so the status
+ * screen can show it and guidance can be verified with no bike connected. Fed by [DashPreviewTee]
+ * and [banner]; recording is always on (cheap), the debug chip is [overlayEnabled].
  */
 object DashPreview {
     data class State(
@@ -20,6 +20,8 @@ object DashPreview {
         val eta: String? = null,
         val remaining: String? = null,
         val offlineBanner: Boolean = false,
+        /** The last message shown on the dash banner (notification, greeting, speed readout, test). */
+        val lastBanner: String? = null,
         val lastEvent: String = "none",
         val updates: Int = 0,
         val updatedAtMs: Long = 0L,
@@ -33,6 +35,11 @@ object DashPreview {
     val overlayEnabled: StateFlow<Boolean> = _overlayEnabled
 
     fun setOverlayEnabled(enabled: Boolean) { _overlayEnabled.value = enabled }
+
+    /** A message went to the dash banner. */
+    fun banner(text: String) {
+        runCatching { _state.update { it.copy(lastBanner = text) } }
+    }
 
     internal fun reset() { _state.value = State() }
 

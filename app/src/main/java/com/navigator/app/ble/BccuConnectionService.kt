@@ -119,6 +119,18 @@ class BccuConnectionService : LifecycleService() {
         private val _deviceName = MutableStateFlow<String?>(null)
         val deviceName: StateFlow<String?> = _deviceName
 
+        /** True while a reconnect/pairing scan is running. */
+        private val _scanning = MutableStateFlow(false)
+        val scanning: StateFlow<Boolean> = _scanning
+
+        /** Failed attempts since the last success (handshake stalls plus connects to an absent bike); 0 when fine. */
+        private val _attempt = MutableStateFlow(0)
+        val attempt: StateFlow<Int> = _attempt
+
+        /** Short reason for the last failed attempt, for the status screen; cleared on authentication. */
+        private val _lastError = MutableStateFlow<String?>(null)
+        val lastError: StateFlow<String?> = _lastError
+
         fun start(context: Context, deviceAddress: String, bikePresent: Boolean = false) {
             val intent = Intent(context, BccuConnectionService::class.java)
                 .putExtra(EXTRA_DEVICE_ADDRESS, deviceAddress)
@@ -202,6 +214,7 @@ class BccuConnectionService : LifecycleService() {
     private var reconnectWatchdogJob: Job? = null
     private var handshakeTimeoutJob: Job? = null
     private var handshakeRecoveries: Int = 0
+        set(value) { field = value; publishAttempt() }
     /** Pending scan-found -> connect delay (dash boot grace); active means "we will connect shortly". */
     private var settleJob: Job? = null
     private var scanCallback: android.bluetooth.le.ScanCallback? = null
@@ -210,6 +223,7 @@ class BccuConnectionService : LifecycleService() {
     /** True once the current GATT client has actually reached STATE_CONNECTED (vs. a pending connect request). */
     @Volatile private var linkUp = false
     @Volatile private var scanning: Boolean = false
+        set(value) { field = value; _scanning.value = value }
     @Volatile private var scanTargetAddress: String? = null
 
     /** All GATT callbacks run on this thread (serialised, off main and off binder threads). */
@@ -225,6 +239,9 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var rescanIsHandshakeCooldown = false
     /** Consecutive failed connects to an absent bike; drives [ABSENT_BACKOFF_MS]. */
     @Volatile private var absentFailures = 0
+        set(value) { field = value; publishAttempt() }
+
+    private fun publishAttempt() { _attempt.value = maxOf(handshakeRecoveries, absentFailures) }
 
     // Serialises all GATT reads/writes (Android allows one outstanding op at a
     // time); coalescing keys drop stale display writes on a degraded link. See
@@ -280,7 +297,7 @@ class BccuConnectionService : LifecycleService() {
         navCoordinator = com.navigator.app.nav.NavigationCoordinator(
             scope = lifecycleScope,
             fallbackProvider = com.navigator.app.nav.providers.NotificationNavProvider,
-            output = if (BuildConfig.DEBUG) com.navigator.app.nav.DashPreviewTee(output) else output,
+            output = com.navigator.app.nav.DashPreviewTee(output), // read-only mirror of what the dash is told; the status screen shows it
         ).also {
             it.start()
             // Service (re)started mid-trip (bike connected after in-app nav began,
@@ -765,6 +782,11 @@ class BccuConnectionService : LifecycleService() {
         gatt = null
         bleThread?.quitSafely(); bleThread = null; bleHandler = null
         _connectionState.value = ConnectionState.DISCONNECTED
+        _scanning.value = false
+        _attempt.value = 0
+        _lastError.value = null
+        _repairHint.value = false
+        com.navigator.app.nav.DashPreview.reset() // nothing on the dash any more, and no banner text kept
         if (runningInstance === this) runningInstance = null
         super.onDestroy()
     }
@@ -886,6 +908,7 @@ class BccuConnectionService : LifecycleService() {
                         else -> {
                             // Connect attempt failed outright (bike off / out of range): back off.
                             absentFailures++
+                            _lastError.value = "Bike not found"
                             val wait = absentBackoffMs(absentFailures)
                             AppLogger.log("BLE", "Connect failed - bike absent? rescanning in ${wait / 1000}s (failure $absentFailures)")
                             scheduleRescan(wait, handshakeCooldown = false)
@@ -1143,6 +1166,7 @@ class BccuConnectionService : LifecycleService() {
                     handshakeRecoveries = 0
                     absentFailures = 0
                     _repairHint.value = false
+                    _lastError.value = null
                     lastAuthMsgMs = android.os.SystemClock.elapsedRealtime()
                     livenessLogged = false
                     stopBleScan()
@@ -1210,6 +1234,7 @@ class BccuConnectionService : LifecycleService() {
             // were suspected of re-triggering its "add device" prompt (R21
             // field report) - giving it time to finish waking beats hammering.
             val cooldown = handshakeCooldownMs(handshakeRecoveries)
+            _lastError.value = "Handshake did not complete"
             AppLogger.log("Auth", "Handshake didn't complete in ${budget}ms - dropping the link, retrying in ${cooldown / 1000}s (attempt $handshakeRecoveries; pairing kept)")
             // (Stale-GATT guard: the late DISCONNECTED callback no longer clears the queue
             // for us, so teardownLink does it.) This job is the handshake timer: don't cancel it.
@@ -1277,6 +1302,7 @@ class BccuConnectionService : LifecycleService() {
             AppLogger.log("Dash", "!! Cannot send NOTIFICATION ${AppLogger.sensitive(text)} - not authenticated yet (state=${_connectionState.value})")
             return
         }
+        com.navigator.app.nav.DashPreview.banner(text)
         clearJob?.cancel()
         marqueeJob?.cancel()
         lastNotificationIcon = icon
@@ -1335,6 +1361,7 @@ class BccuConnectionService : LifecycleService() {
         if (bannerOwnedByMessage && (marqueeJob?.isActive == true || clearJob?.isActive == true)) {
             return // a message is on the banner - let it finish its scroll/clear
         }
+        com.navigator.app.nav.DashPreview.banner(text)
         bannerOwnedByMessage = false
         marqueeJob?.cancel()
         clearJob?.cancel()
@@ -1404,6 +1431,7 @@ class BccuConnectionService : LifecycleService() {
         // Bail (without scheduling the clear job) if we're not authenticated yet.
         if (!sendEncrypted(BccuProtocol.TURN_ICON,
                 BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.START, full), coalesce = true)) return
+        com.navigator.app.nav.DashPreview.banner(text)
         AppLogger.log("Dash", "Sending connect greeting: ${AppLogger.sensitive(text)}")
         sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(text, full), coalesce = true)
         sendEncrypted(BccuProtocol.TURN_DISTANCE,
