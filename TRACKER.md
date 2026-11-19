@@ -36,13 +36,13 @@ Target: **Android 16+ only (minSdk 36)**.
 | 7 | New features | 11 | 12 | F1-F6, F8-F12 done (Phases 9/10); F7 weather skipped by decision |
 | T | Tests to extend/add | 8 | 8 | Done (RideStore via Robolectric) |
 | H | Hardware verification | 0 | 5 | Not started (needs bike) |
-| 11 | Remaining no-bike items | 4 | 4 | D1-D4 done; smoke test 4 pending |
+| 11 | Remaining no-bike items | 4 | 4 | D1-D4 done; smoke test 4 passed |
 
 ---
 
 ## Done / Skipped / Pending
 
-_Updated after Phase 11. Smoke tests 1-3 passed; Phase 11 awaits smoke test 4._
+_Updated after Phase 11. Smoke tests 1-4 passed._
 
 ### 1. Done
 - **Phases S, 0, 1, 2, 4, 5**: safety net, minSdk 36 cleanup, crash/privacy fixes, navigation/UI state, data integrity, settings/build/docs.
@@ -75,9 +75,9 @@ _Updated after Phase 11. Smoke tests 1-3 passed; Phase 11 awaits smoke test 4._
 | H1-H5 | Hardware verification: back-to-back trips, roundabouts/MERGE code 14, ignition-cycle reconnect, mirror mode, 1-2 h ride |
 | - | On-device behaviour of bucket C, C3, C4 and N1 (shipped at >=50% confidence, unverified) |
 
-**Needs the user (no bike)**
-| Item |
-|---|
+**Needs the user (no bike):** nothing.
+
+---|
 | Smoke test 4: search while a trip runs and use the resume pill; add a stop mid-trip to a trip that already has 1-2 stops (also after passing one); selective restore with a mix of boxes |
 
 ---
