@@ -387,7 +387,7 @@ Existing (extend): `SerialGattQueueTest`, `RideMetricsTest`, `MapsUrlResolverTes
 
 | ID | Description | Found in | Status |
 |---|---|---|---|
-| | | | |
+| T1 | **minSdk + targetSdk 37 (Android 17).** minSdk 37 also forces targetSdk 37 (min > target only warns, but is meaningless). Main risk of targeting 37: background audio hardening. `SpeedMonitor`'s speed-alert beeps (`ToneGenerator`, `STREAM_ALARM`) run in `BccuConnectionService`, which can be started from the background (`BOOT_COMPLETED`, Bluetooth-on auto-connect). A background-started foreground service has no while-in-use capability, so the beeps would be **silently muted**. Planned fix: add `USE_EXACT_ALARM` (exemption for alarm-stream audio; fine for sideloading, Play-restricted). Then: switch to `connectGatt(BluetoothGattConnectionSettings, Executor, callback)` (drop the `@Suppress` in `BccuConnectionService`) and remove the `SDK_INT_FULL >= BAKLAVA_1` check in `NavLiveUpdate`. Other Android 17 target-37 changes checked: none apply (no MessageQueue reflection / static-final writes / dynamic native loading / RFCOMM / local network / widgets / contacts). Drops Android 16 installs (public beta users). **Test (🏍):** reboot phone, let it auto-connect to the dash without opening the app, exceed the speed limit, confirm beeps; `adb shell dumpsys audio \| grep AudioHardening` must show nothing for `com.navigator.ktm` | Toolchain upgrade (2026-11-19) | DEFERRED: needs bike |
 
 ## Decisions log
 
