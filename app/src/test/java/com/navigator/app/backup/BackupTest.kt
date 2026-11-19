@@ -167,4 +167,13 @@ class BackupTest {
         assertTrue(c.tracks.isEmpty())
         assertFalse(dir.exists()) // nothing was written
     }
+
+    @Test fun retiredBrandKeyIsNeitherBackedUpNorRestored() {
+        val all = mapOf("brand" to "husqvarna", "theme_mode" to "dark")
+        assertEquals(mapOf<String, Any>("theme_mode" to "dark"), PrefsBackup.decode(PrefsBackup.encode(all)))
+        assertEquals(
+            mapOf<String, Any>("theme_mode" to "dark"),
+            PrefsBackup.decode("""{"brand":{"t":"s","v":"husqvarna"},"theme_mode":{"t":"s","v":"dark"}}"""),
+        )
+    }
 }

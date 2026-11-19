@@ -40,13 +40,13 @@ import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.screens.SettingsScreen
-import com.navigator.app.ui.theme.OpenDashTheme
+import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private enum class AppRoute { BRAND, ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES, RECORDINGS, RIDE_REPLAY }
+private enum class AppRoute { ONBOARDING, PAIRING, NAV_HOME, MIRROR_HOME, SETTINGS, LOGS, SYMBOL_TEST, TURN_CALIBRATION, PLACES, RECORDINGS, RIDE_REPLAY }
 
 class MainActivity : ComponentActivity() {
 
@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         settings = AppSettings(this)
-        // Apply the saved brand accent + light/dark appearance before the first
+        // Apply the saved accent + light/dark appearance before the first
         // frame so the app opens in the right skin with no flash of the wrong one.
         // System appearance is read from the current config's night flag here;
         // OpenDashApp keeps it in sync afterwards via isSystemInDarkTheme().
@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 com.navigator.app.ui.theme.ThemeMode.SYSTEM -> nightNow
             }
             com.navigator.app.ui.theme.Ktm.apply(
-                settings.brand, dark,
+                dark,
                 com.navigator.app.ui.theme.accentFor(settings.accentColorId),
             )
         }
@@ -359,7 +359,6 @@ private fun OpenDashApp(
     var route by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf(
             when {
-                !settings.brandChosen -> AppRoute.BRAND      // first run: pick the bike brand first
                 !settings.onboardingComplete -> AppRoute.ONBOARDING
                 settings.bondedDeviceAddress == null -> AppRoute.PAIRING
                 else -> homeRoute()
@@ -382,14 +381,11 @@ private fun OpenDashApp(
     val themeDark = if (activelyNavigating) navDark else effectiveDark
     LaunchedEffect(themeDark, accentColorId) {
         com.navigator.app.ui.theme.Ktm.apply(
-            settings.brand, themeDark,
+            themeDark,
             com.navigator.app.ui.theme.accentFor(accentColorId),
         )
     }
 
-    // Where "Change bike / brand" returns to: Settings when reached from there,
-    // null (forward-only to pairing) on first run.
-    var brandReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<AppRoute?>(null) }
     // Return targets for screens reachable from more than one parent.
     var settingsReturnRoute by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(homeRoute()) }
     // Non-null when Pairing is reached from the map home's Connect pill (so it
@@ -405,11 +401,11 @@ private fun OpenDashApp(
     val sharedLink by MainActivity.sharedNavLink.collectAsState()
     LaunchedEffect(sharedLink) {
         if (sharedLink != null && googleNavOffered &&
-            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
         ) {
             goTo(homeRoute())
         } else if (sharedLink != null && !googleNavOffered &&
-            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
         ) {
             // Mirror-only mode has no map to drop the shared place on: say so rather than ignore it.
             android.widget.Toast.makeText(
@@ -423,7 +419,7 @@ private fun OpenDashApp(
     val quickRoute by MainActivity.quickRouteRequest.collectAsState()
     LaunchedEffect(quickRoute) {
         if (quickRoute == null) return@LaunchedEffect
-        if (route == AppRoute.ONBOARDING || route == AppRoute.BRAND || route == AppRoute.PAIRING) {
+        if (route == AppRoute.ONBOARDING || route == AppRoute.PAIRING) {
             MainActivity.quickRouteRequest.value = null // setup first; a stale request must not fire later
         } else if (googleNavOffered) {
             goTo(homeRoute())
@@ -440,7 +436,7 @@ private fun OpenDashApp(
     val openNav by MainActivity.openNavRequest.collectAsState()
     LaunchedEffect(openNav) {
         if (openNav &&
-            route != AppRoute.ONBOARDING && route != AppRoute.BRAND && route != AppRoute.PAIRING
+            route != AppRoute.ONBOARDING && route != AppRoute.PAIRING
         ) {
             goTo(homeRoute())
         }
@@ -475,15 +471,9 @@ private fun OpenDashApp(
     // minimizing the app.
     androidx.activity.compose.BackHandler(
         enabled = route != AppRoute.ONBOARDING &&
-            !(route == AppRoute.PAIRING && pairingReturnRoute == null) &&
-            !(route == AppRoute.BRAND && brandReturnRoute == null)
+            !(route == AppRoute.PAIRING && pairingReturnRoute == null)
     ) {
         when (route) {
-            AppRoute.BRAND -> {
-                com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-                goBack(brandReturnRoute ?: homeRoute())
-                brandReturnRoute = null
-            }
             AppRoute.SETTINGS -> goBack(settingsReturnRoute)
             AppRoute.LOGS -> goBack(logsReturnRoute)
             AppRoute.PLACES -> goBack(AppRoute.SETTINGS)
@@ -526,7 +516,7 @@ private fun OpenDashApp(
     // (no reload flash) instead of rebuilding the NavigationView each time.
     val retainedNav = com.navigator.app.ui.screens.rememberRetainedNavigationView()
 
-    OpenDashTheme(highContrast = false) {
+    KtmTheme(darkTheme = themeDark, accent = remember(accentColorId) { com.navigator.app.ui.theme.accentFor(accentColorId) }) {
       androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
         // Direction-aware cross-screen transition: a gentle fade with a small (~6%)
         // horizontal drift. Forward navigations slide the new screen in from the
@@ -538,23 +528,6 @@ private fun OpenDashApp(
             label = "route",
         ) { r ->
         when (r) {
-            AppRoute.BRAND -> com.navigator.app.ui.screens.BrandSelectScreen(
-                onPair = { brand ->
-                    settings.brand = brand
-                    com.navigator.app.ui.theme.Ktm.applyBrand(brand)
-                    // From Settings → just return; on first run → continue setup.
-                    goTo(brandReturnRoute ?: if (!settings.onboardingComplete) AppRoute.ONBOARDING
-                        else if (settings.bondedDeviceAddress == null) AppRoute.PAIRING
-                        else homeRoute())
-                    brandReturnRoute = null
-                },
-                onBack = brandReturnRoute?.let { back -> {
-                    // Cancelled: revert live preview to the persisted brand.
-                    com.navigator.app.ui.theme.Ktm.applyBrand(settings.brand)
-                    goBack(back)
-                    brandReturnRoute = null
-                } },
-            )
             AppRoute.ONBOARDING -> com.navigator.app.ui.screens.OnboardingScreen(
                 settings = settings,
                 onComplete = { goTo(AppRoute.PAIRING) }
@@ -603,7 +576,6 @@ private fun OpenDashApp(
                 onOpenLogs = { logsReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.LOGS) },
                 onOpenSymbolTest = { goTo(AppRoute.SYMBOL_TEST) },
                 onOpenTurnCalibration = { goTo(AppRoute.TURN_CALIBRATION) },
-                onChangeBrand = { brandReturnRoute = AppRoute.SETTINGS; goTo(AppRoute.BRAND) },
                 onOpenPlaces = { goTo(AppRoute.PLACES) },
                 onOpenRecordings = { goTo(AppRoute.RECORDINGS) },
                 themeMode = themeMode,

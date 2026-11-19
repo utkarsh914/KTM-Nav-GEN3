@@ -22,7 +22,7 @@ object PrefsBackup {
      */
     private val RULES: Map<String, Rule> = mapOf(
         "avg_speed_mode" to Rule(T.S), "dash_preview_overlay" to Rule(T.B), "user_name" to Rule(T.S, maxLen = 60),
-        "brand" to Rule(T.S), "theme_mode" to Rule(T.S), "font_mode" to Rule(T.S), "nav_theme_mode" to Rule(T.S),
+        "theme_mode" to Rule(T.S), "font_mode" to Rule(T.S), "nav_theme_mode" to Rule(T.S),
         "accent_color" to Rule(T.S, maxLen = 40), "notification_source_apps" to Rule(T.SS),
         "nav_app_override" to Rule(T.S, maxLen = 160),
         "mirror_enabled" to Rule(T.B), "marquee_enabled" to Rule(T.B), "turn_beep_enabled" to Rule(T.B),

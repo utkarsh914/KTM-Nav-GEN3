@@ -9,7 +9,7 @@ import androidx.compose.ui.platform.LocalView
 /**
  * App-wide haptic vocabulary — one place so every tap/toggle/confirm feels the
  * same. Built on the platform [View.performHapticFeedback] (stable across
- * Compose versions) with graceful fallbacks on older API levels.
+ * Compose versions).
  *
  * Usage:
  * ```
@@ -43,10 +43,14 @@ class Haptics(private val view: View) {
         HapticFeedbackConstants.CONFIRM,
     )
 
-    /** Destructive / rejecting action (delete, close, end navigation). */
-    fun warn() = perform(
-        HapticFeedbackConstants.REJECT,
-    )
+    /** Destructive or blocked action (delete, end trip, a tap that can't proceed). */
+    fun reject() = perform(HapticFeedbackConstants.REJECT)
+
+    /** Stepper value change and sheet detent snap. */
+    fun segmentTick() = perform(HapticFeedbackConstants.SEGMENT_TICK)
+
+    /** Fine ticks while dragging a seek bar or clock. */
+    fun clockTick() = perform(HapticFeedbackConstants.CLOCK_TICK)
 
     /** Long-press recognised (enter multi-select, drop a pin). */
     fun longPress() = perform(HapticFeedbackConstants.LONG_PRESS)

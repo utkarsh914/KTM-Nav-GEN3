@@ -103,7 +103,6 @@ fun SettingsScreen(
     onOpenLogs: () -> Unit,
     onOpenSymbolTest: () -> Unit,
     onOpenTurnCalibration: () -> Unit,
-    onChangeBrand: () -> Unit = {},
     onOpenPlaces: () -> Unit = {},
     onOpenRecordings: () -> Unit = {},
     onEngineChanged: (Boolean) -> Unit = {},
@@ -378,7 +377,7 @@ fun SettingsScreen(
                                     .border(1.dp, Ktm.BorderSoft, CircleShape),
                             )
                             androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-                            val label = com.navigator.app.ui.theme.accentFor(accentColorId)?.displayName ?: "Match bike"
+                            val label = com.navigator.app.ui.theme.accentFor(accentColorId).displayName
                             MonoValue("$label ›")
                         }
                     }
@@ -399,9 +398,6 @@ fun SettingsScreen(
                     }
                     SettingsRow("Re-pair vehicle", showDivider = true, onClick = { showRepairConfirm = true }) {
                         OutlinedPill(if (repairHint) "RE-PAIR SUGGESTED" else "RE-PAIR")
-                    }
-                    SettingsRow("Change bike / brand", showDivider = true, onClick = onChangeBrand) {
-                        MonoValue("${com.navigator.app.ui.theme.themeFor(settings.brand).displayName} ›")
                     }
                     SettingsRow("Your name", showDivider = false, onClick = { dialog = SettingsDialog.NAME }) {
                         MonoValue(userName.ifBlank { "Set ›" })
@@ -1093,13 +1089,12 @@ fun SettingsScreen(
         )
         SettingsDialog.ACCENT -> AccentPickerDialog(
             selectedId = accentColorId,
-            brandAccent = com.navigator.app.ui.theme.identityFor(settings.brand).accent,
             onDismiss = { dialog = SettingsDialog.NONE },
             onSelect = { id -> onAccentColorChanged(id); dialog = SettingsDialog.NONE },
             onCustom = { dialog = SettingsDialog.ACCENT_CUSTOM },
         )
         SettingsDialog.ACCENT_CUSTOM -> CustomColorPickerDialog(
-            initial = com.navigator.app.ui.theme.accentFor(accentColorId)?.color ?: Ktm.Orange,
+            initial = com.navigator.app.ui.theme.accentFor(accentColorId).color,
             onCancel = { dialog = SettingsDialog.ACCENT },
             onConfirm = { hex -> onAccentColorChanged(hex); dialog = SettingsDialog.NONE },
         )
@@ -1107,14 +1102,10 @@ fun SettingsScreen(
     }
 }
 
-/**
- * Accent picker showing each option as a colour swatch. "Match bike" (null id)
- * follows the brand's own accent; every other row overrides it app-wide.
- */
+/** Accent picker showing each option as a colour swatch. The null id is the default KTM orange. */
 @Composable
 private fun AccentPickerDialog(
     selectedId: String?,
-    brandAccent: androidx.compose.ui.graphics.Color,
     onDismiss: () -> Unit,
     onSelect: (String?) -> Unit,
     onCustom: () -> Unit,
@@ -1122,7 +1113,7 @@ private fun AccentPickerDialog(
     // "Custom" = a stored id that isn't a known preset (a hex colour).
     val isCustom = selectedId != null &&
         com.navigator.app.ui.theme.AccentPalettes.none { it.id == selectedId }
-    val customColor = if (isCustom) com.navigator.app.ui.theme.accentFor(selectedId)?.color else null
+    val customColor = if (isCustom) com.navigator.app.ui.theme.accentFor(selectedId).color else null
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Ktm.Surface,
@@ -1131,12 +1122,12 @@ private fun AccentPickerDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 AccentSwatchRow(
-                    label = "Match bike",
-                    color = brandAccent,
-                    selected = selectedId == null,
+                    label = "KTM orange",
+                    color = com.navigator.app.ui.theme.KtmOrange.fill,
+                    selected = selectedId == null || selectedId == "orange",
                     onClick = { onSelect(null) },
                 )
-                com.navigator.app.ui.theme.AccentPalettes.forEach { option ->
+                com.navigator.app.ui.theme.AccentPalettes.filter { it.id != "orange" }.forEach { option ->
                     AccentSwatchRow(
                         label = option.displayName,
                         color = option.color,

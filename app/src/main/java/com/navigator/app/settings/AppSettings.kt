@@ -38,29 +38,26 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getString(KEY_BONDED_NAME, null)
         set(value) { pairingPrefs.edit().putString(KEY_BONDED_NAME, value).commit() }
 
+    /**
+     * One-time clean-up of the retired brand choice: a rider who had picked Husqvarna and never set
+     * an accent keeps blue, then the orphaned `brand` key is removed.
+     */
+    fun migrateRetiredBrand() {
+        if (!prefs.contains(KEY_RETIRED_BRAND)) return
+        val editor = prefs.edit()
+        if (prefs.getString(KEY_RETIRED_BRAND, null) == "husqvarna" && accentColorId == null) {
+            editor.putString(KEY_ACCENT_COLOR, "blue")
+        }
+        editor.remove(KEY_RETIRED_BRAND).apply()
+    }
+
     /** Whether the first-run onboarding (name + permissions) has been completed. */
     var onboardingComplete: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, value).apply()
 
     /**
-     * Selected motorcycle brand — drives the whole app's theme (KTM dark/orange,
-     * Husqvarna light/blue). Stored in the plain store
-     * that also wiped the bonded bike (see [bondedDeviceAddress]).
-     */
-    var brand: com.navigator.app.ui.theme.Brand
-        get() = com.navigator.app.ui.theme.Brand.fromId(pairingPrefs.getString(KEY_BRAND, null))
-        set(value) = pairingPrefs.edit().putString(KEY_BRAND, value.id).apply()
-
-    /** True once the rider has explicitly picked a brand (so first-run shows brand select). */
-    var brandChosen: Boolean
-        get() = pairingPrefs.contains(KEY_BRAND)
-        set(value) { if (!value) pairingPrefs.edit().remove(KEY_BRAND).apply() }
-
-    /**
-     * Light / dark / follow-system appearance. Independent of brand (which now
-     * only supplies the accent). Stored in the plain store
-     * reset, like [brand].
+     * Light / dark / follow-system appearance. Stored in the plain store.
      */
     var themeMode: com.navigator.app.ui.theme.ThemeMode
         get() = com.navigator.app.ui.theme.ThemeMode.fromId(pairingPrefs.getString(KEY_THEME_MODE, null))
@@ -83,10 +80,8 @@ class AppSettings(context: Context) {
         set(value) = pairingPrefs.edit().putString(KEY_NAV_THEME_MODE, value.id).apply()
 
     /**
-     * Chosen app accent, independent of the bike brand. Null (default) follows the
-     * brand's own accent (KTM orange / Husqvarna blue); a non-null id selects one
-     * of [com.navigator.app.ui.theme.AccentPalettes]. Plain store so it survives
-     * the old encrypted store, like [brand]/[themeMode].
+     * Chosen app accent. Null (default) is the KTM orange; a non-null id selects one
+     * of [com.navigator.app.ui.theme.AccentPalettes] or is a custom "#RRGGBB".
      */
     var accentColorId: String?
         get() = pairingPrefs.getString(KEY_ACCENT_COLOR, null)
@@ -406,7 +401,7 @@ class AppSettings(context: Context) {
 
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         private const val KEY_USER_NAME = "user_name"
-        private const val KEY_BRAND = "brand"
+        private const val KEY_RETIRED_BRAND = "brand"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_FONT_MODE = "font_mode"
         private const val KEY_NAV_THEME_MODE = "nav_theme_mode"

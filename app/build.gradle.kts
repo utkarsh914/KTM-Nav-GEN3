@@ -188,10 +188,13 @@ dependencies {
     // home of the composition local (moved out of androidx.compose.ui.platform).
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
 
-    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    // 2026.11.01 is the first BOM whose material3 (1.5.0) exposes MaterialExpressiveTheme and
+    // MotionScheme; 2026.09 pinned 1.4.0, where they are internal.
+    implementation(platform("androidx.compose:compose-bom:2026.11.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     // Bar in portrait / rail in landscape for the four-tab shell (version from the BOM).

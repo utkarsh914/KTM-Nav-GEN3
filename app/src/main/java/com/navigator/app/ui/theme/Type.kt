@@ -2,17 +2,14 @@
 
 package com.navigator.app.ui.theme
 
-import androidx.compose.material3.Typography
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import com.navigator.app.R
 
 /**
@@ -94,61 +91,3 @@ val BarlowCondensed: FontFamily
 
 val JetBrainsMono: FontFamily
     get() = if (AppFonts.mode == FontMode.SYSTEM) FontFamily.Default else BrandJetBrainsMono
-
-/**
- * The app Typography, resolved against the live [AppFonts.mode]. Built inside
- * [OpenDashTheme] on each composition so a font-mode switch rebuilds it.
- */
-fun appTypography(): Typography = Typography(
-    // Body defaults to Barlow so any un-styled Material text stays on-brand.
-    bodyLarge = Typography().bodyLarge.copy(fontFamily = Barlow),
-    bodyMedium = Typography().bodyMedium.copy(fontFamily = Barlow),
-    bodySmall = Typography().bodySmall.copy(fontFamily = Barlow),
-    labelLarge = Typography().labelLarge.copy(fontFamily = BarlowCondensed),
-)
-
-/**
- * Named text-style tokens — the app's recurring roles in one place so sizes,
- * families and weights stay consistent (colour is applied per call site via the
- * theme so these carry no colour). Prefer these over ad-hoc fontFamily/fontSize.
- *
- * These are property getters so the family follows the live [AppFonts.mode]
- * when read inside a @Composable.
- */
-object AppText {
-    /** Screen/section hero heading (card titles, place names). */
-    val CardTitle: TextStyle
-        get() = TextStyle(
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp,
-        )
-
-    /** Small uppercase, letter-spaced eyebrow / group label. */
-    val SectionLabel: TextStyle
-        get() = TextStyle(
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.0.sp,
-        )
-
-    /** Primary body copy. */
-    val Body: TextStyle
-        get() = TextStyle(fontFamily = Barlow, fontSize = 14.sp)
-
-    /** Secondary/hint body copy. */
-    val BodySmall: TextStyle
-        get() = TextStyle(fontFamily = Barlow, fontSize = 12.sp)
-
-    /** Uppercase stat label (DISTANCE, AVG …). */
-    val StatLabel: TextStyle
-        get() = TextStyle(
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.0.sp,
-        )
-
-    /** Monospace numeric/technical value. */
-    val StatValue: TextStyle
-        get() = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp)
-
-    /** Full-width action-button label. */
-    val ButtonLabel: TextStyle
-        get() = TextStyle(
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.5.sp,
-        )
-}

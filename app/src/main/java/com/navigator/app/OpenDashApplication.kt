@@ -26,6 +26,7 @@ class OpenDashApplication : Application() {
         super.onCreate()
         AppLogger.init(this)
         ConnectivityMonitor.init(this)
+        runCatching { AppSettings(this).migrateRetiredBrand() }
         // Apply the persisted app-font choice before any UI composes so a
         // system-font user doesn't see a first brand-font frame.
         runCatching {
