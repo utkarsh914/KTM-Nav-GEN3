@@ -187,6 +187,15 @@ stationary test position and re-picks fastest when the alternate diverges early 
 snapped point. Route tokens are the only documented lever and are used correctly; expected to
 track the selected route reliably once actually moving/riding along it.
 
+**Superseded in Nav SDK 8.1 (now in use):** `Navigator.setDestinationsWithToken(token, callback)`
+takes the destinations (stops included) and travel mode from the token itself, so the
+waypoint/mode mismatch above can't happen any more. The callback's
+`RouteDescription.getRouteTokenExecutionDetails()` reports whether the token was actually
+applied: `GoogleNavSdkProvider` logs it on every start (`Route (token) OK, token <status>`) and
+shows the "using the recommended route" toast when it's `TOKEN_IGNORED_*`.
+`TOKEN_APPLIED_WITH_LOCATION_MISMATCH` (device > 25 m from the preview origin) is only logged.
+That status is the way to confirm or rule out the stationary re-pick behaviour above.
+
 ---
 
 ## Toolchain version constraints (Gradle 9 / AGP 9 / Kotlin 2.4)
@@ -208,10 +217,9 @@ track the selected route reliably once actually moving/riding along it.
   AGP ≥ 9.1. Re-check `checkDebugAarMetadata` before raising compileSdk-sensitive AndroidX libs.
   compileSdk is 37.2 (also covers the 36.1 promoted-ongoing notification APIs); targetSdk stays 36
   (raising it opts in to Android 17 runtime behavior, so do that as its own tested change).
-- **Nav SDK 8.x:** needs AGP ≥ 9.0.1 / Gradle ≥ 9.1. 8.1 deprecates `CustomRoutesOptions` and the
-  `ListenableResultFuture` `setDestinations` overloads (still used by `GoogleNavSdkProvider`; build
-  warnings only). The replacement is `Navigator.setDestinationsWithToken()` + the
-  `RouteDescriptionLoadCallback` overloads, which is a behaviour change that needs on-bike testing.
+- **Nav SDK 8.x:** needs AGP ≥ 9.0.1 / Gradle ≥ 9.1. `GoogleNavSdkProvider` uses
+  `setDestinationsWithToken()` and the `RouteDescriptionLoadCallback` overloads; the 8.1-deprecated
+  `CustomRoutesOptions` / `ListenableResultFuture` APIs are no longer used.
 
 ---
 

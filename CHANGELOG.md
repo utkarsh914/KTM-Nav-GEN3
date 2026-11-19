@@ -56,6 +56,9 @@
 - Libraries: Navigation SDK 8.1.0, LiteRT 2.3.2, Compose BOM 2026.09.00, AndroidX (core-ktx 1.19.1,
   appcompat 1.8.0, activity-compose 1.13.0, lifecycle 2.11.0), Material 1.14.0, Robolectric 4.18.1.
   compileSdk 37.2 (targetSdk stays 36).
+- In-app navigation starts the previewed route with the Navigation SDK's token-only API, so the
+  route's stops and travel mode always come from the route you picked. If Google ignores the
+  picked route, you now get the "using the recommended route" notice instead of a silent swap.
 
 ## v0.6.0
 

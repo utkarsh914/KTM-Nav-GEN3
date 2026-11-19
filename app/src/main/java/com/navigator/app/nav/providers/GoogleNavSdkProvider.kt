@@ -3,8 +3,8 @@ package com.navigator.app.nav.providers
 import android.content.Context
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavInfo
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavState
-import com.google.android.libraries.navigation.CustomRoutesOptions
 import com.google.android.libraries.navigation.Navigator
+import com.google.android.libraries.navigation.RouteTokenExecutionDetails.TokenExecutionStatus
 import com.google.android.libraries.navigation.RoutingOptions
 import com.google.android.libraries.navigation.Waypoint
 import com.navigator.app.logging.AppLogger
@@ -243,17 +243,20 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /**
      * Guide the exact route the user picked in the preview, using the Routes API
-     * route token via [CustomRoutesOptions]. Returns false (and the caller falls
-     * back to default routing) if the token path can't be *attempted* at all.
+     * route token via [Navigator.setDestinationsWithToken] (Nav SDK 8.1+). Returns
+     * false (and the caller falls back to default routing) if the token path can't
+     * be *attempted* at all.
      *
-     * The token is consumed with the *same* [mode] that produced it in the
-     * preview: a mismatch (e.g. a DRIVE-derived token consumed as TWO_WHEELER)
-     * makes the SDK reject it and silently pick its own route — the exact cause
-     * of "preview shows one route, guidance runs another".
+     * The SDK takes the destinations (stops included) and the travel mode from the
+     * token itself, so they can no longer drift out of sync with the previewed route
+     * (the old CustomRoutesOptions path needed the same waypoints *and* travel mode
+     * that produced the token, or the SDK silently picked its own route). [waypoints]
+     * and [mode] are only used for the default-routing fallback.
      *
      * On a non-OK result we retry the token once (guards a transient reject)
      * before defaulting to the SDK's own route, and surface that substitution to
-     * the rider so it isn't a silent swap.
+     * the rider so it isn't a silent swap. An OK route whose token was ignored is
+     * surfaced the same way.
      */
     private fun guideWithToken(
         nav: Navigator,
@@ -263,18 +266,10 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         mode: TravelMode,
         retriesLeft: Int = 1,
     ): Boolean = runCatching {
-        val options = CustomRoutesOptions.builder()
-            .setRouteToken(token)
-            .setTravelMode(
-                if (mode == TravelMode.TWO_WHEELER) {
-                    CustomRoutesOptions.TravelMode.TWO_WHEELER
-                } else {
-                    CustomRoutesOptions.TravelMode.DRIVING
-                },
-            )
-            .build()
-        AppLogger.log("Nav", "setDestinations(routeToken, $mode, ${waypoints.size} wp) -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
-        nav.setDestinations(waypoints, options).setOnResultListener { status ->
+        AppLogger.log("Nav", "setDestinationsWithToken(preview $mode, ${waypoints.size} wp) -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
+        nav.setDestinationsWithToken(token) { description ->
+            val status = description.routeStatus
+            val tokenStatus = description.routeTokenExecutionDetails?.tokenExecutionStatus
             onMain {
                 if (!trips.isCurrent(trip)) {
                     AppLogger.log("Nav", "Route (token) result $status ignored - trip superseded/ended")
@@ -286,7 +281,15 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                     canRetry = true,
                 )) {
                     RouteResultAction.START -> {
-                        AppLogger.log("Nav", "Route (token) OK - starting guidance")
+                        AppLogger.log("Nav", "Route (token) OK, token $tokenStatus - starting guidance")
+                        // IGNORED: the SDK routed to the destinations its own way.
+                        // LOCATION_MISMATCH (rider >25 m from the preview origin) still
+                        // tracks the plan closely, so only log that one.
+                        if (tokenStatus == TokenExecutionStatus.TOKEN_IGNORED_OTHER ||
+                            tokenStatus == TokenExecutionStatus.TOKEN_IGNORED_MALFORMED
+                        ) {
+                            notifyRouteSubstituted()
+                        }
                         guidanceActive = true
                         nav.startGuidance()
                     }
@@ -338,7 +341,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             },
         )
         AppLogger.log("Nav", "setDestinations mode=$mode, ${waypoints.size} wp -> (${AppLogger.sensitive(waypoints.lastOrNull()?.title)})")
-        nav.setDestinations(waypoints, options).setOnResultListener { status ->
+        nav.setDestinations(waypoints, options) { description ->
+            val status = description.routeStatus
             onMain {
                 if (!trips.isCurrent(trip)) {
                     AppLogger.log("Nav", "Route result $status ignored - trip superseded/ended")

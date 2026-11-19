@@ -177,7 +177,7 @@ data class NormalizedNavigationState(
  *
  * [routeToken] (optional) is a Routes API route token identifying a *specific*
  * route the user picked in the preview; when present the Nav SDK is asked to
- * guide that exact route via `Navigator.setDestinations(waypoints, routeToken)`
+ * guide that exact route via `Navigator.setDestinationsWithToken(routeToken)`
  * (falls back to default routing if unavailable).
  */
 data class NavDestination(

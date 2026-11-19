@@ -191,8 +191,9 @@ can't re-trigger them:
    frames arrive (rider parked just shy of the point, or guidance stuck mid-reroute offline).
 
 **Start on the selected route.** The picked route's Routes API `routeToken` is passed via
-`NavDestination.routeToken` → `Navigator.setDestinations(waypoint, CustomRoutesOptions(token,
-TWO_WHEELER))`, with graceful fallback to default routing. Honored reliably in many cases;
+`NavDestination.routeToken` → `Navigator.setDestinationsWithToken(token)` (stops and travel
+mode come from the token), with graceful fallback to default routing; the token execution status
+is logged on every start. Honored reliably in many cases;
 the SDK may recompute to the fastest for some alternates when stationary (road-snapping) —
 best-effort; see [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md#nav-sdk-route-token-fix-customroutesoptions-needs-an-explicit-travel-mode)
 for the full investigation.
