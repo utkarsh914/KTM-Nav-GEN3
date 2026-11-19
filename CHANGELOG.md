@@ -49,6 +49,11 @@
 - Text is truncated on whole characters (no broken emoji or Kannada conjuncts), 9.95–9.99 km reads
   "10 km", in-app navigation uses miles in US/UK, and the ETA follows time-zone changes.
 
+### Under the hood
+- Build toolchain: Gradle 9.9.1, Android Gradle Plugin 9.5.1 (built-in Kotlin), Kotlin 2.4.21. The
+  Gradle daemon JDK (25) is pinned in the project and downloaded automatically, so Android Studio
+  and the command line share one daemon.
+
 ## v0.6.0
 
 ### Ride replay

@@ -11,18 +11,19 @@ val localProps = Properties().apply {
 }
 
 /** Output of a git command run in the repo root, or null when git/the repo is unavailable. */
+// providers.exec rather than ProcessBuilder: Gradle 9 deprecates starting raw processes at
+// configuration time (an error in Gradle 11).
 fun gitOutput(vararg args: String): String? = runCatching {
-    val p = ProcessBuilder(listOf("git") + args)
-        .directory(rootProject.projectDir)
-        .redirectErrorStream(true)
-        .start()
-    val out = p.inputStream.bufferedReader().readText().trim()
-    if (p.waitFor() == 0) out else null
+    val exec = providers.exec {
+        commandLine(listOf("git") + args)
+        workingDir = rootProject.projectDir
+        isIgnoreExitValue = true
+    }
+    if (exec.result.get().exitValue == 0) exec.standardOutput.asText.get().trim() else null
 }.getOrNull()
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -102,6 +103,8 @@ android {
     compileOptions {
         // Required by the Navigation SDK AAR.
         isCoreLibraryDesugaringEnabled = true
+        // Built-in Kotlin (AGP 9) takes its jvmTarget from targetCompatibility, so
+        // Kotlin and Java both emit Java 17 bytecode.
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -129,7 +132,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         // 16 KB page-size compliance: store the bundled .so uncompressed and
-        // page-aligned in the APK (AGP 8.13 aligns to 16 KB). This is the APK-side
+        // page-aligned in the APK (AGP aligns to 16 KB). This is the APK-side
         // half of the fix - the ELF LOAD segments are aligned by the libs
         // themselves (Nav SDK / LiteRT / graphics-path are all 16 KB). It also
         // keeps the large native libs (Nav SDK ~9 MB, LiteRT ~4 MB) out of the
@@ -137,14 +140,6 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
-    }
-}
-
-// Kotlin 2.x: jvmTarget moved out of android.kotlinOptions into the top-level
-// compilerOptions DSL. Matches the Java 17 bytecode target in compileOptions above.
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -177,7 +172,7 @@ dependencies {
     // compliance: TFLite 2.14.0's .so has 4 KB-aligned ELF LOAD segments (align 2**12),
     // which won't load on Android 15+ 16 KB-page devices; LiteRT's .so is 16 KB-aligned
     // (align 2**14). All other bundled natives (Nav SDK libgmm-jni, graphics-path) are
-    // already 16 KB-aligned, and AGP 8.13 page-aligns the uncompressed .so in the APK.
+    // already 16 KB-aligned, and AGP page-aligns the uncompressed .so in the APK.
     implementation("com.google.ai.edge.litert:litert:1.4.2")
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
