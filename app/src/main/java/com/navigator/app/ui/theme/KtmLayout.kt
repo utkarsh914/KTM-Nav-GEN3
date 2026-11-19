@@ -30,6 +30,9 @@ object KtmShapes {
     val Sheet = RoundedCornerShape(28.dp)
     val Pill = CircleShape
 
+    /** Bottom sheets round only their top corners. */
+    val SheetTop = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
     /** Material's slots mapped onto the same four values. */
     val material = Shapes(
         extraSmall = Badge, small = Control, medium = Card, large = Sheet, extraLarge = Sheet,

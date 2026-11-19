@@ -45,7 +45,7 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun TokenGallery() {
+internal fun TokenGallery() {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     Surface(color = MaterialTheme.colorScheme.background) {

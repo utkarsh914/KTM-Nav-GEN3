@@ -1,0 +1,100 @@
+package com.navigator.app.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.navigator.app.ui.theme.KtmElevation
+import com.navigator.app.ui.theme.KtmShapes
+import com.navigator.app.ui.theme.KtmSpacing
+import com.navigator.app.ui.theme.KtmTheme
+
+/** A dialog button. Name the verb ("Delete", "Keep riding"), never "OK". */
+@Immutable
+class DialogAction(val label: String, val onClick: () -> Unit, val style: ButtonStyle = ButtonStyle.Text)
+
+/**
+ * Standard confirm. At rest the buttons are 48 dp, side by side, and labelled with the verb. While
+ * riding ([riding]) they stack at 64 dp with the safe choice on top, so a gloved thumb doesn't land
+ * on the destructive one by default. Dismissing (back, outside tap) is the safe choice.
+ */
+@Composable
+fun KtmDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    confirm: DialogAction,
+    modifier: Modifier = Modifier,
+    message: String? = null,
+    dismiss: DialogAction? = null,
+    riding: Boolean = false,
+    content: (@Composable () -> Unit)? = null,
+) {
+    val c = KtmTheme.colors
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // Tapping outside the card (including its side margins) dismisses: the safe choice.
+        Box(
+            Modifier.fillMaxSize().safeDrawingPadding()
+                .clickable(indication = null, interactionSource = null, onClick = onDismiss)
+                .padding(KtmSpacing.xl),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier
+                    .widthIn(max = 312.dp)
+                    .shadow(KtmElevation.dialog, KtmShapes.Sheet)
+                    .background(c.surf, KtmShapes.Sheet)
+                    .clickable(indication = null, interactionSource = null) {}
+                    .verticalScroll(rememberScrollState())
+                    .padding(KtmSpacing.xl)
+                    .semantics { paneTitle = title },
+                verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+            ) {
+                Text(title, style = MaterialTheme.typography.headlineSmall, color = c.fg, modifier = Modifier.semantics { heading() })
+                if (message != null) Text(message, style = MaterialTheme.typography.bodyMedium, color = c.fg2)
+                content?.invoke()
+                if (riding) {
+                    Column(Modifier.padding(top = KtmSpacing.sm), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                        // Safe choice first.
+                        dismiss?.let { DialogButton(it, ButtonSize.Riding, ButtonStyle.Neutral, Modifier.fillMaxWidth()) }
+                        DialogButton(confirm, ButtonSize.Riding, confirm.style, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = KtmSpacing.sm),
+                        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm, Alignment.End),
+                    ) {
+                        dismiss?.let { DialogButton(it, ButtonSize.Small, it.style, Modifier) }
+                        DialogButton(confirm, ButtonSize.Small, confirm.style, Modifier)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DialogButton(action: DialogAction, size: ButtonSize, style: ButtonStyle, modifier: Modifier) {
+    KtmButton(action.label, action.onClick, modifier, style = style, size = size)
+}

@@ -195,6 +195,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // Compose rule for the Robolectric smoke test that composes the galleries (manifest hosts the test activity).
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     // Bar in portrait / rail in landscape for the four-tab shell (version from the BOM).
@@ -219,4 +221,5 @@ dependencies {
     testImplementation("org.json:json:20260814")
     // Android-framework unit tests on the JVM (RideStore needs a Context + files): no device.
     testImplementation("org.robolectric:robolectric:4.18.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 }

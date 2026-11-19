@@ -18,4 +18,11 @@
     <string name="permission_notification_access_why">Read Google Maps\' turns</string>
     <string name="permission_battery_title">Battery: unrestricted</string>
     <string name="permission_battery_why">Keep the bike connected</string>
+
+    <!-- Shared components -->
+    <string name="common_back">Back</string>
+    <string name="common_loading">Loading</string>
+    <string name="activity_strip_resume">Resume</string>
+    <string name="activity_strip_pause_recording">Pause recording</string>
+    <string name="activity_strip_stop_recording">Stop recording</string>
 </resources>
