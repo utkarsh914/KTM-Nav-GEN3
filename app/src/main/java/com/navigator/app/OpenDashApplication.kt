@@ -4,21 +4,23 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import com.navigator.app.app.AppContainer
+import com.navigator.app.app.DefaultAppContainer
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class OpenDashApplication : Application() {
 
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val container: AppContainer by lazy { DefaultAppContainer(this) }
+
+    private val appScope get() = container.appScope
 
     override fun onCreate() {
         super.onCreate()

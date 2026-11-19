@@ -24,6 +24,9 @@ class AppSettings(context: Context) {
 
     private val prefs: SharedPreferences get() = pairingPrefs
 
+    /** The backing store, exposed so [com.navigator.app.data.settings.SettingsRepository] can observe changes. */
+    internal val preferences: SharedPreferences get() = pairingPrefs
+
     // Bonded bike identity. A BLE MAC isn't a secret; a lost value throws the rider back to
     // the pairing screen ("always asking to re-pair", R21/R22 field reports), which is why this
     // never lived in an encrypted store that can silently reset.

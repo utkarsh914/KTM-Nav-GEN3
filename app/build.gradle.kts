@@ -25,6 +25,7 @@ fun gitOutput(vararg args: String): String? = runCatching {
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -193,6 +194,13 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    // Bar in portrait / rail in landscape for the four-tab shell (version from the BOM).
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
+    // Type-safe routes (@Serializable) for the app shell.
+    implementation("androidx.navigation:navigation-compose:2.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.13.0")
+    // HCT colour maths for accent tones (Google's own copy is @RestrictTo, so lint rejects it).
+    implementation("com.materialkolor:material-color-utilities:6.0.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 

@@ -5,4 +5,7 @@ plugins {
     // Kotlin 2.0+ moves the Compose compiler into its own plugin, versioned in
     // lockstep with Kotlin (replaces composeOptions.kotlinCompilerExtensionVersion).
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.21" apply false
+    // @Serializable type-safe navigation routes. Keep in lockstep with the Compose plugin above
+    // (both track the Kotlin version).
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21" apply false
 }

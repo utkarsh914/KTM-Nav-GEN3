@@ -1,3 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  String naming: <feature>_<element>_<meaning>, e.g. permission_location_why.
+  Sentence case, plain rider language, no developer terms. Notification text and channel names
+  live here too. Plurals go in plurals.xml. New or touched UI text always goes in this file.
+-->
 <resources>
+    <!-- Permissions: what each is for, in under five words (ON5, ST7) -->
+    <string name="permission_nearby_title">Nearby devices</string>
+    <string name="permission_nearby_why">Connect to your bike</string>
+    <string name="permission_location_title">Location</string>
+    <string name="permission_location_why">Navigate and record rides</string>
+    <string name="permission_location_always_title">Location all the time</string>
+    <string name="permission_location_always_why">Guide with screen off</string>
+    <string name="permission_notifications_title">Notifications</string>
+    <string name="permission_notifications_why">Trip and bike status</string>
+    <string name="permission_notification_access_title">Notification access</string>
+    <string name="permission_notification_access_why">Read Google Maps\' turns</string>
+    <string name="permission_battery_title">Battery: unrestricted</string>
+    <string name="permission_battery_why">Keep the bike connected</string>
 </resources>
