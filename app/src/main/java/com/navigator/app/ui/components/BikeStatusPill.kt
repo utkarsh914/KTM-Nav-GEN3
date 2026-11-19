@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmColors
 import com.navigator.app.ui.theme.KtmElevation
@@ -39,7 +41,13 @@ fun pillDotColor(tone: PillTone, c: KtmColors): Color = when (tone) {
 
 /** The 48 dp pill that shows the bike's state and opens the Bike sheet. */
 @Composable
-fun BikeStatusPill(label: String, tone: PillTone, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BikeStatusPill(
+    label: String,
+    tone: PillTone,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    stateDescription: String? = null,
+) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
     Row(
@@ -48,13 +56,14 @@ fun BikeStatusPill(label: String, tone: PillTone, onClick: () -> Unit, modifier:
             .height(KtmLayout.targetRest)
             .clip(KtmShapes.Pill)
             .background(c.surf)
+            .semantics { if (stateDescription != null) this.stateDescription = stateDescription }
             .clickable(role = Role.Button) { haptics.tap(); onClick() }
             .padding(start = 14.dp, end = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(20.dp))
-        Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1)
+        Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         androidx.compose.foundation.layout.Box(
             Modifier.size(8.dp).background(pillDotColor(tone, c), CircleShape),
         )

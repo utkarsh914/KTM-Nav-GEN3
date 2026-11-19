@@ -5,6 +5,9 @@
     <!-- Package visibility (Android 11+): needed to read a nav app's own maneuver
          icon resources (debug dataset export) and to launch nav apps. -->
     <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
         <package android:name="com.google.android.apps.maps" />
         <intent>
             <action android:name="android.intent.action.MAIN" />

@@ -221,6 +221,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     retainedNav = retainedNav,
                                     onOpenConnect = { navController.navigate(Route.Pairing()) },
                                     onOpenReplay = { id -> navController.navigate(Route.RideReplay(id)) },
+                                    onOpenPlaces = { navController.openTab(Tab.Places) },
                                     sharedLink = pending.sharedLink,
                                     onSharedLinkConsumed = intents::consumeSharedLink,
                                     pendingPlace = pending.place,

@@ -76,6 +76,12 @@ object KtmLayout {
 
     /** Sheet anatomy: handle zone is 12 · 4 · 12, the title row 48. */
     val sheetHandleZone = 28.dp
+
+    /** The landscape side panel of the Navigate sheet (352 dp, the portrait sheet's content width). */
+    val sidePanel = 352.dp
+
+    /** A docked activity strip row. */
+    val activityStrip = 64.dp
     val sheetTitleRow = 48.dp
 
     /** Panel width for a window [widthDp] wide. */

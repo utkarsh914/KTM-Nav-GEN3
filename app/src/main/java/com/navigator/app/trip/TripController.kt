@@ -3,6 +3,7 @@ package com.navigator.app.trip
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.Stop
 import com.navigator.app.nav.model.RemainingStops
 import com.navigator.app.nav.model.isActiveNav
@@ -70,6 +71,9 @@ class TripController(
 ) {
     private val _state = MutableStateFlow(TripState())
     val state: StateFlow<TripState> = _state.asStateFlow()
+
+    /** What guidance is doing now (for the activity card); the engine owns it. */
+    val navState: StateFlow<NormalizedNavigationState> get() = guidance.state
 
     private val _events = MutableSharedFlow<TripEvent>(extraBufferCapacity = 16)
     val events: SharedFlow<TripEvent> = _events.asSharedFlow()

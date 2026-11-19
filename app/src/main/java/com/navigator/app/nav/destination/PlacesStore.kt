@@ -30,7 +30,7 @@ data class FavoritePlace(
 class PlacesStore(context: Context) {
 
     private val appContext = context.applicationContext
-    private val prefs = appContext.getSharedPreferences("places_store", Context.MODE_PRIVATE)
+    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     // ---- Recents ----------------------------------------------------------
 
@@ -138,10 +138,11 @@ class PlacesStore(context: Context) {
 
     private fun coordKey(lat: Double, lng: Double): String = PlacesJson.coordKey(lat, lng)
 
-    private companion object {
-        const val KEY_RECENTS = "recents"
-        const val KEY_FAVORITES = "favorites"
-        const val MAX_RECENTS = 15
-        val LOCK = Any()
+    companion object {
+        const val PREFS_NAME = "places_store"
+        private const val KEY_RECENTS = "recents"
+        private const val KEY_FAVORITES = "favorites"
+        private const val MAX_RECENTS = 15
+        private val LOCK = Any()
     }
 }

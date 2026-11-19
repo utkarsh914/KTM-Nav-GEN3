@@ -112,7 +112,6 @@ import com.navigator.app.ride.RideStore
 import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.ConnectIconPill
-import com.navigator.app.ui.components.ConnectPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmOutlineButton
@@ -123,6 +122,9 @@ import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.JetBrainsMono
 import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.feature.navigate.LocationState
+import com.navigator.app.ui.feature.navigate.MapState
+import com.navigator.app.ui.feature.navigate.NavigateRoute
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
 import com.navigator.app.ui.map.MapSurface
@@ -174,6 +176,7 @@ private const val RIDE_BACK_LABEL = "Trip start"
 fun NavigationHomeScreen(
     retainedNav: RetainedNavigationView,
     onOpenConnect: () -> Unit,
+    onOpenPlaces: () -> Unit = {},
     onOpenReplay: (String) -> Unit = {},
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
@@ -228,7 +231,8 @@ fun NavigationHomeScreen(
         if (available && !navReady && !navError) {
             delay(8000)
             if (!navReady && !navError) {
-                AppLogger.log("Nav", "NavHome: map still not ready after 8s (getNavigator no callback) — tap to retry")
+                AppLogger.log("Nav", "NavHome: map still not ready after 8s (getNavigator gave no callback) - offering Try again")
+                navError = true // the Navigate screen turns this into the failure card with Try again; a late ready still wins
             }
         }
     }
@@ -464,9 +468,8 @@ fun NavigationHomeScreen(
                     map.showTrack(pts, speedBands)
                 }
             }
-            // Only reset padding when returning to the browse map (never during
-            // NAVIGATING, whose bottom padding is owned by MapSurface).
-            stage == NavStage.BROWSE -> map.setPadding(0, 0, 0, 0)
+            // Planning stages use the whole map (the browse sheet pads it itself; NAVIGATING is owned by MapSurface).
+            stage == NavStage.CONFIRM || stage == NavStage.PREVIEW || stage == NavStage.SEARCH -> map.setPadding(0, 0, 0, 0)
             else -> {}
         }
     }
@@ -755,13 +758,8 @@ fun NavigationHomeScreen(
                 fullSdkChrome = fullSdkNavUi,
                 dark = Ktm.current.isDark,
             )
-            available && !navError -> MapPlaceholder("Preparing map…\n\nTap to retry if this doesn't clear.") {
-                navReady = false; navError = false; prepareAttempt++
-            }
-            available && navError -> MapPlaceholder("Couldn't start the map.\nTap to retry.") {
-                navReady = false; navError = false; prepareAttempt++
-            }
-            else -> MapPlaceholder("Maps need a Google API key.\nSet NAV_SDK_API_KEY in local.properties.")
+            // Not ready: the Navigate screen says why and offers Try again; behind it is plain ground.
+            else -> Box(Modifier.fillMaxSize().background(Ktm.Screen))
         }
 
         // Animated stage chrome (overlays the persistent map above). The map layer
@@ -774,75 +772,26 @@ fun NavigationHomeScreen(
         ) { s ->
           Box(Modifier.fillMaxSize()) {
             when (s) {
-            NavStage.BROWSE -> {
-                // Search bar.
-                Box(
-                    modifier = Modifier.fillMaxWidth().edgePadding()
-                        .padding(horizontal = 16.dp).padding(top = 10.dp),
-                ) {
-                    SearchBar(modifier = Modifier.fillMaxWidth(), onClick = ::openSearch)
-                }
-                // Home / Work one-tap routes under the search bar (only the ones that are set).
-                val homePlace = favorites.firstOrNull { it.slot == com.navigator.app.nav.destination.FavoriteSlot.HOME }?.place
-                val workPlace = favorites.firstOrNull { it.slot == com.navigator.app.nav.destination.FavoriteSlot.WORK }?.place
-                val hasChips = homePlace != null || workPlace != null
-                if (hasChips) {
-                    Row(
-                        modifier = Modifier.align(Alignment.TopStart).edgePadding()
-                            .padding(start = 16.dp, top = 68.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        // (stage guard: the chips stay tappable during the exit animation)
-                        homePlace?.let { QuickPlaceChip("Home", OpenDashIcons.House) { if (stage == NavStage.BROWSE) rideTo(it) } }
-                        workPlace?.let { QuickPlaceChip("Work", OpenDashIcons.Briefcase) { if (stage == NavStage.BROWSE) rideTo(it) } }
-                    }
-                }
-                // Position can't be shown/used: say why instead of a silently static map.
-                if (!locationReady) {
-                    Box(
-                        modifier = Modifier.align(Alignment.TopCenter).edgePadding()
-                            .padding(top = if (hasChips) 130.dp else 74.dp, start = 16.dp, end = 16.dp),
-                    ) {
-                        OfflineBanner(
-                            text = if (!hasLocationPermission(context)) "Location permission is off" else "Location is off",
-                        )
-                    }
-                }
-                // Bottom-right control stack (the app-wide standard location):
-                // compass (only when rotated) above the recenter button.
-                Column(
-                    modifier = Modifier.align(Alignment.BottomEnd).edgePadding()
-                        .padding(end = 16.dp, bottom = 16.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    if (available && navReady && abs(mapBearing) > 0.5f) {
-                        SquareMapControl(
-                            OpenDashIcons.Compass, "Reset orientation to north",
-                            tint = Ktm.Danger, rotation = -mapBearing,
-                        ) { map.resetNorth() }
-                    }
-                    if (available && navReady) {
-                        SquareMapControl(OpenDashIcons.LocateFixed, "Recenter") { lastKnownLocation(context)?.let { map.recenter(MapPoint(it.first, it.second)) } }
-                    }
-                }
-                // Bottom-left: record control above the connect pill.
-                Column(
-                    modifier = Modifier.align(Alignment.BottomStart).edgePadding().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    RecordControlsHost()
-                    ConnectPill(onClick = onOpenConnect)
-                }
-                // A trip is still running in the background -> offer to jump back.
-                if (navState.sessionState.isActiveNav()) {
-                    ResumeNavPill(
-                        onClick = ::resumeNav,
-                        modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
-                            .padding(bottom = 140.dp), // clears the record chip + connect pill column
-                    )
-                }
-            }
+            NavStage.BROWSE -> NavigateRoute(
+                map = map,
+                mapState = when {
+                    !available -> MapState.Unavailable
+                    navReady -> MapState.Ready
+                    navError -> MapState.Failed
+                    else -> MapState.Preparing
+                },
+                mapBearing = mapBearing,
+                location = LocationState.of(hasLocationPermission(context), locationReady),
+                padMap = stage == NavStage.BROWSE,
+                onSearch = { q -> openSearch(); if (q != null) query = q },
+                // (stage guard: the tiles stay tappable during the exit animation)
+                onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
+                onResumeTrip = ::resumeNav,
+                onOpenPairing = onOpenConnect,
+                onOpenPlaces = onOpenPlaces,
+                onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
+                recordControls = { RecordControlsHost() },
+            )
 
             NavStage.SEARCH -> SearchPanel(
                 query = query,
@@ -1323,32 +1272,6 @@ private fun TripFinishedCard(
     }
 }
 
-/** "Home" / "Work" pill on the browse map: one tap to the route preview. */
-@Composable
-private fun QuickPlaceChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    Row(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(
-                onClickLabel = "Ride to $label",
-                role = androidx.compose.ui.semantics.Role.Button,
-            ) { haptics.tap(); onClick() }
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = Ktm.Orange, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(
-            label.uppercase(), color = Ktm.White, fontFamily = BarlowCondensed,
-            fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, maxLines = 1,
-        )
-    }
-}
-
 @Composable
 private fun FollowUpAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Text(
@@ -1391,21 +1314,6 @@ internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
         Text(
             "Resume navigation", color = Ktm.OnAccent, fontFamily = BarlowCondensed,
             fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp,
-        )
-    }
-}
-
-@Composable
-private fun MapPlaceholder(message: String, onRetry: (() -> Unit)? = null) {
-    val base = Modifier.fillMaxSize().background(Ktm.Screen)
-    Box(
-        modifier = if (onRetry != null) base.clickable(onClick = onRetry) else base,
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            message, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontSize = 18.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
         )
     }
 }
@@ -1889,24 +1797,6 @@ private fun SaveToggle(saved: Boolean, onClick: () -> Unit) {
 }
 
 // ============================ Shared UI ================================
-
-@Composable
-private fun SearchBar(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(
-        modifier = modifier
-            .height(Ktm.ControlHeight)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(OpenDashIcons.Search, null, tint = Ktm.Orange, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.size(10.dp))
-        Text("Enter Destination", color = Ktm.Dim, fontFamily = Barlow, fontSize = 16.sp)
-    }
-}
 
 // ============================ Helpers ==================================
 
