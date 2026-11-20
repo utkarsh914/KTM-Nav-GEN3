@@ -60,6 +60,8 @@ internal object TripPolicies {
         lastAddMs: Long,
         nowMs: Long,
         forSearch: Boolean,
+        /** Removing a stop is fine at the stop limit. */
+        removing: Boolean = false,
         ahead: () -> List<Stop>?,
     ): StopAddCheck {
         if (!hasTrip) return StopAddCheck.Rejected(StopAddProblem.NOT_NAVIGATING)
@@ -71,7 +73,7 @@ internal object TripPolicies {
         }
         if (nowMs - lastAddMs < STOP_ADD_SETTLE_MS) return StopAddCheck.Rejected(StopAddProblem.SETTLING)
         val remaining = ahead() ?: return StopAddCheck.Rejected(StopAddProblem.UNKNOWN_NEXT)
-        if (remaining.size >= MAX_STOPS) return StopAddCheck.Rejected(StopAddProblem.MAX_STOPS)
+        if (!removing && remaining.size >= MAX_STOPS) return StopAddCheck.Rejected(StopAddProblem.MAX_STOPS)
         return StopAddCheck.Ok(remaining)
     }
 
@@ -88,6 +90,18 @@ internal object TripPolicies {
             replan = before.copy(routeToken = null, stops = listOf(stop) + ahead, continuesRide = true),
             allStops = allStops.take((allStops.size - ahead.size).coerceAtLeast(0)) + stop + ahead,
         )
+    }
+
+    /**
+     * The trip without its next stop: re-plan from here through the stops still [ahead] after it. Null when no
+     * stop is ahead. The route token is for the old waypoints, so it is dropped.
+     */
+    fun planRemoveNext(dest: NavDestination, allStops: List<Stop>, ahead: List<Stop>): AddStopPlan? {
+        if (ahead.isEmpty()) return null
+        val rest = ahead.drop(1)
+        val before = dest.copy(stops = ahead)
+        val passed = allStops.take((allStops.size - ahead.size).coerceAtLeast(0))
+        return AddStopPlan(before, before.copy(routeToken = null, stops = rest, continuesRide = true), passed + rest)
     }
 
     /** "Ride back": start from where the ride began (its first point, else the trip's origin). */

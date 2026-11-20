@@ -253,6 +253,9 @@
     <string name="riding_chip_dash_lost">Dash disconnected</string>
     <string name="riding_chip_dash_back">Dash connected</string>
     <string name="riding_chip_stop_added">Stop added: %1$s</string>
+    <string name="riding_chip_stop_removed">Stop removed: %1$s</string>
+    <string name="riding_chip_stop_remove_failed">Couldn\'t remove the stop · trip continues</string>
+    <string name="trip_stop_unnamed">Stop</string>
     <string name="riding_chip_stop_failed">Couldn\'t add the stop · trip continues</string>
     <string name="riding_chip_not_navigating">Start navigating first</string>
     <string name="riding_chip_ended">That trip has already ended</string>
@@ -272,4 +275,28 @@
     <string name="end_confirm">End trip</string>
     <string name="end_keep">Keep riding</string>
     <string name="riding_calculating">Calculating route</string>
+    <!-- Couldn't start (NV6) -->
+    <string name="start_failed_title">Navigation didn\'t start</string>
+    <string name="start_failed_route">Couldn\'t get a route from here. Try again, or choose another place.</string>
+    <string name="start_failed_not_ready">Google navigation isn\'t ready yet. Check your connection and Play services.</string>
+    <string name="start_failed_unavailable">This phone can\'t run in-app navigation. Use mirror mode instead.</string>
+    <string name="start_failed_retry">Try again</string>
+    <string name="start_failed_back">Back to route</string>
+    <string name="start_failed_mirror">Switch to mirror mode</string>
+    <!-- Add a stop while riding (SE4) -->
+    <string name="trip_stop_title">Add a stop</string>
+    <plurals name="trip_stop_left">
+        <item quantity="one">%1$d of %2$d stop left</item>
+        <item quantity="other">%1$d of %2$d stops left</item>
+    </plurals>
+    <string name="trip_stop_full">Stop limit reached</string>
+    <string name="trip_stop_offline">Needs internet</string>
+    <string name="trip_stop_add">Add</string>
+    <string name="trip_stop_add_description">Add %1$s as a stop</string>
+    <string name="trip_stop_pick_category">Pick a category to see places along your route</string>
+    <string name="trip_stop_none">Nothing found along the route</string>
+    <string name="trip_stop_failed">Couldn\'t load places. Try again.</string>
+    <string name="trip_stop_search_name">Search by name</string>
+    <string name="trip_next_stop">Next stop</string>
+    <string name="trip_remove_next_stop">Remove next stop</string>
 </resources>

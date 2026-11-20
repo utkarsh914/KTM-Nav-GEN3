@@ -1,5 +1,7 @@
 package com.navigator.app.notifications
 
+import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -157,7 +159,12 @@ class AppNotificationListener : NotificationListenerService() {
             // faster pattern as the distance (the notification title) shrinks.
             // Ducked to a background hum while the bike is provably waiting
             // (GPS says stationary).
-            if (settings.turnBeepEnabled && !NotificationNavProvider.paused.value) {
+            // One source at a time: while the app's own guidance runs, its adapter drives the beeper.
+            if (settings.turnBeepEnabled && !NotificationNavProvider.paused.value &&
+                com.navigator.app.audio.BeepSourcePolicy.listenerMayBeep(
+                    GoogleNavSdkProvider.state.value.sessionState.isActiveNav(),
+                )
+            ) {
                 com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
                 com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
                 com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value

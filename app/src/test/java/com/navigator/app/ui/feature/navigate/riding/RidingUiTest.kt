@@ -127,12 +127,12 @@ class RidingUiTest {
 
     private fun sheetActions() = TripSheetActions(
         onAddStop = { log += "stop" }, onOverview = { log += "overview" }, onMinimise = { log += "min" },
-        onBeeps = { log += "beeps$it" }, onMessages = { log += "msg$it" }, onDash = { log += "dash" },
+        onBeeps = { log += "beeps$it" }, onMessages = { log += "msg$it" }, onDash = { log += "dash" }, onRemoveNextStop = { log += "removeNext" },
         onEnd = { log += "end" }, onDismiss = { log += "dismiss" },
     )
 
     @Test fun theTripSheetHasTheTilesTogglesDashAndEnd() {
-        riding { TripSheet(beeps = true, messages = false, dashStatus = "Connected", canAddStop = true, actions = sheetActions()) }
+        riding { TripSheet(beeps = true, messages = false, dashStatus = "Connected", canAddStop = true, nextStop = null, actions = sheetActions()) }
         rule.onNodeWithText("Add stop").performClick()
         rule.onNodeWithText("Overview").performClick()
         rule.onNodeWithText("Minimise").performClick()
@@ -144,7 +144,7 @@ class RidingUiTest {
     }
 
     @Test fun addStopIsDisabledWhenNoTripCanTakeOne() {
-        riding { TripSheet(beeps = true, messages = true, dashStatus = null, canAddStop = false, actions = sheetActions()) }
+        riding { TripSheet(beeps = true, messages = true, dashStatus = null, canAddStop = false, nextStop = null, actions = sheetActions()) }
         rule.onNodeWithText("Add stop").assertIsNotEnabled()
     }
 

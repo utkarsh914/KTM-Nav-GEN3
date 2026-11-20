@@ -74,6 +74,7 @@ object KtmLayout {
     /** Riding toggle tile (Beeps, Messages). */
     val ridingToggle = 56.dp
     val ridingGlyph = 60.dp
+    val rowStop = 76.dp
     val laneArrow = 28.dp
     val laneCellWidth = 40.dp
     val laneCellHeight = 44.dp

@@ -83,10 +83,12 @@ object TurnBeeper {
      * Updates the live distance the running metronome reads its gap from;
      * starts/stops/re-sides the metronome as the maneuver comes and goes.
      */
+    fun onGuidance(distanceText: String?, icon: BccuProtocol.TurnIcon?) = onGuidanceMeters(parseMeters(distanceText), icon)
+
+    /** The same, with the distance already in metres (the app's own guidance has it as a number). */
     @Synchronized
-    fun onGuidance(distanceText: String?, icon: BccuProtocol.TurnIcon?) {
+    fun onGuidanceMeters(meters: Int?, icon: BccuProtocol.TurnIcon?) {
         val side = sideOf(icon)
-        val meters = parseMeters(distanceText)
         if (side == null || meters == null || meters > MAX_DISTANCE_M) {
             stopPattern()
             return

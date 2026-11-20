@@ -59,6 +59,11 @@ sealed interface TripEvent {
 
     /** The route picked in the preview could not be used: guidance went on Google's own route. */
     data object RouteSubstituted : TripEvent
+
+    data class StopRemoved(val label: String) : TripEvent
+
+    /** The re-plan without the stop failed; the rider's earlier trip was restored. */
+    data object StopRemoveFailed : TripEvent
 }
 
 /**
@@ -88,6 +93,7 @@ class TripController(
     private var lastStopAddMs = 0L
     private var beforeStop: NavDestination? = null
     private var allStopsBefore: List<Stop>? = null
+    private var removing = false
 
     /** A trip we started that has not ended. */
     private val owning: Boolean get() = _state.value.let { it.dest != null && !it.arrivalLatched }
@@ -174,12 +180,41 @@ class TripController(
         val plan = TripPolicies.planAddStop(dest, trip.allStops, ahead, Stop(place.lat, place.lng, place.label))
         allStopsBefore = trip.allStops
         lastStopAddMs = clock()
+        removing = false
         beforeStop = plan.before // lets a failed re-plan fall back to the trip the rider had
         // The old polyline no longer matches the trip.
         _state.update { it.copy(dest = plan.replan, allStops = plan.allStops, route = null, arrivalLatched = false) }
         nearSince = null
         guidance.start(plan.replan)
         _events.tryEmit(TripEvent.StopAdded(place.label))
+        return true
+    }
+
+    /** The stops still to visit, in order; null when the trip is not running or the SDK can't tell which is next. */
+    fun stopsAhead(): List<Stop>? {
+        val trip = _state.value
+        val dest = trip.dest ?: return null
+        if (trip.arrivalLatched) return null
+        return remainingStops(dest)
+    }
+
+    /** Take the next stop out of the running trip and re-plan from here (with the same rollback as adding). */
+    fun removeNextStop(expected: Stop? = null): Boolean {
+        val trip = _state.value
+        val dest = trip.dest ?: return false
+        val ahead = (check(forSearch = false, removing = true) as? StopAddCheck.Ok)?.ahead ?: return false
+        // The rider saw one stop: if it was passed meanwhile, the next one is another stop and is left alone.
+        if (expected != null && ahead.firstOrNull() != expected) return false
+        val plan = TripPolicies.planRemoveNext(dest, trip.allStops, ahead) ?: return false
+        val removed = ahead.first()
+        allStopsBefore = trip.allStops
+        lastStopAddMs = clock()
+        beforeStop = plan.before
+        removing = true
+        _state.update { it.copy(dest = plan.replan, allStops = plan.allStops, route = null, arrivalLatched = false) }
+        nearSince = null
+        guidance.start(plan.replan)
+        _events.tryEmit(TripEvent.StopRemoved(removed.label ?: ""))
         return true
     }
 
@@ -221,7 +256,7 @@ class TripController(
     fun rideBackPlan(firstPoint: Pair<Double, Double>?): RideBackPlan? =
         TripPolicies.rideBack(firstPoint, _state.value.origin, _state.value.allStops)
 
-    private fun check(forSearch: Boolean): StopAddCheck {
+    private fun check(forSearch: Boolean, removing: Boolean = false): StopAddCheck {
         val trip = _state.value
         val nav = guidance.state.value
         val result = TripPolicies.checkAddStop(
@@ -232,6 +267,7 @@ class TripController(
             lastAddMs = lastStopAddMs,
             nowMs = clock(),
             forSearch = forSearch,
+            removing = removing,
             ahead = { remainingStops(trip.dest!!) },
         )
         if (result is StopAddCheck.Rejected) _events.tryEmit(TripEvent.StopAddRejected(result.problem))
@@ -257,7 +293,7 @@ class TripController(
         allStopsBefore = null
         nearSince = null
         guidance.start(restored)
-        _events.tryEmit(TripEvent.StopAddFailed)
+        _events.tryEmit(if (removing) TripEvent.StopRemoveFailed else TripEvent.StopAddFailed)
     }
 
     private companion object {

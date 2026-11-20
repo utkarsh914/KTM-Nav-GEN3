@@ -14,7 +14,9 @@ import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmDialog
+import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
@@ -29,6 +31,7 @@ class TripSheetActions(
     val onBeeps: (Boolean) -> Unit,
     val onMessages: (Boolean) -> Unit,
     val onDash: () -> Unit,
+    val onRemoveNextStop: () -> Unit,
     val onEnd: () -> Unit,
     val onDismiss: () -> Unit,
 )
@@ -46,6 +49,8 @@ fun TripSheet(
     messages: Boolean,
     dashStatus: String?,
     canAddStop: Boolean,
+    /** The next stop still to visit, or null when there is none (or the SDK can't tell). */
+    nextStop: String?,
     actions: TripSheetActions,
 ) {
     KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trip_sheet_title)) {
@@ -64,6 +69,17 @@ fun TripSheet(
             )
         }
         Spacer(Modifier.height(KtmSpacing.md))
+        if (nextStop != null) {
+            ListRow(
+                title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
+                trailing = {
+                    KtmIconButton(
+                        KtmIcons.Close, stringResource(R.string.trip_remove_next_stop), actions.onRemoveNextStop,
+                        size = IconButtonSize.Map,
+                    )
+                },
+            )
+        }
         KtmSwitchRow(stringResource(R.string.trip_beeps), beeps, actions.onBeeps, leadingIcon = KtmIcons.Sound)
         KtmSwitchRow(stringResource(R.string.trip_messages), messages, actions.onMessages, leadingIcon = KtmIcons.Message)
         ListRow(

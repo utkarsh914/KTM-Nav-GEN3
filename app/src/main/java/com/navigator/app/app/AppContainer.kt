@@ -2,6 +2,8 @@ package com.navigator.app.app
 
 import android.content.Context
 import com.navigator.app.OpenDashApplication
+import com.navigator.app.audio.TurnBeepAdapter
+import com.navigator.app.audio.TurnBeeperSink
 import com.navigator.app.ble.BikeScanner
 import com.navigator.app.R
 import com.navigator.app.nav.destination.LinkResolution
@@ -22,6 +24,7 @@ import com.navigator.app.trip.TripController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.map
 
 /**
  * Manual dependency injection: the app-scoped objects ViewModels, services and receivers share.
@@ -75,6 +78,20 @@ class DefaultAppContainer(context: Context) : AppContainer {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
             guidance = SdkGuidanceSource { activityHolder.current },
             isOnline = ConnectivityMonitor.isOnline,
+        ).also { startTurnBeeps(it) }
+    }
+
+    /** In-app guidance drives the turn beeps (D6), following the Beeps setting. */
+    private fun startTurnBeeps(trip: TripController) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        TurnBeepAdapter(
+            scope = scope,
+            nav = trip.navState,
+            minimised = trip.state.map { it.minimised },
+            enabled = settings.snapshot.map { it.turnBeepEnabled },
+            speedKmh = com.navigator.app.location.SpeedMonitor.speedKmh,
+            config = { settings.legacy.swapBeepChannels to settings.legacy.beepVolumePercent },
+            sink = TurnBeeperSink,
         )
     }
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.

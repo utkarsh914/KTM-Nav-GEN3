@@ -198,6 +198,69 @@ class TripControllerTest {
         assertTrue(events.contains(TripEvent.StopAdded("Fuel")))
     }
 
+    @Test fun removingTheNextStopReplansWithoutItAndCanBeUndoneByFailure() = runTest {
+        val e = Env(backgroundScope)
+        val events = mutableListOf<TripEvent>()
+        backgroundScope.launch { e.controller.events.toList(events) }
+        val a = Stop(12.5, 77.1, "A"); val b = Stop(12.6, 77.1, "B")
+        e.liveTripWithStops(listOf(a, b))
+        e.guidance.target = a.lat to a.lng // heading to the first stop
+        runCurrent()
+        assertEquals(listOf(a, b), e.controller.stopsAhead())
+        assertTrue(e.controller.removeNextStop())
+        runCurrent()
+        val replan = e.guidance.started.last()
+        assertEquals(listOf(b), replan.stops)
+        assertTrue(replan.continuesRide)
+        assertNull(replan.routeToken)
+        assertEquals(listOf(b), e.controller.state.value.allStops)
+        assertTrue(events.contains(TripEvent.StopRemoved("A")))
+        e.guidance.startFailure.value = StartFailure.ROUTE
+        runCurrent()
+        assertEquals("a failed re-plan restores the trip the rider had", listOf(a, b), e.guidance.started.last().stops)
+    }
+
+    @Test fun aStopThatWasPassedWhileTheRiderLookedIsNotRemovedInsteadOfIt() = runTest {
+        val e = Env(backgroundScope)
+        val a = Stop(12.5, 77.1, "A"); val b = Stop(12.6, 77.1, "B")
+        e.liveTripWithStops(listOf(a, b))
+        e.guidance.target = b.lat to b.lng // A is behind now: B is next
+        runCurrent()
+        val before = e.guidance.started.size
+        assertFalse("the rider saw A", e.controller.removeNextStop(expected = a))
+        assertEquals(before, e.guidance.started.size)
+        e.now += 100_000
+        assertTrue(e.controller.removeNextStop(expected = b))
+    }
+
+    @Test fun aFailedRemovalSaysSoNotThatAddingFailed() = runTest {
+        val e = Env(backgroundScope)
+        val events = mutableListOf<TripEvent>()
+        backgroundScope.launch { e.controller.events.toList(events) }
+        val a = Stop(12.5, 77.1, "A")
+        e.liveTripWithStops(listOf(a))
+        e.guidance.target = a.lat to a.lng
+        runCurrent()
+        assertTrue(e.controller.removeNextStop())
+        e.guidance.startFailure.value = StartFailure.ROUTE
+        runCurrent()
+        assertTrue(events.contains(TripEvent.StopRemoveFailed))
+        assertFalse(events.contains(TripEvent.StopAddFailed))
+    }
+
+    @Test fun removingAStopIsAllowedAtTheLimitButNeedsAStopAndATrip() = runTest {
+        val e = Env(backgroundScope)
+        assertFalse("no trip", e.controller.removeNextStop())
+        val four = (1..4).map { Stop(12.0 + it / 10.0, 77.0, "S$it") }
+        e.liveTripWithStops(four)
+        e.guidance.target = four[0].lat to four[0].lng
+        runCurrent()
+        assertTrue(e.controller.removeNextStop())
+        val e2 = Env(backgroundScope)
+        e2.liveTripWithStops(); runCurrent()
+        assertFalse("no stop ahead", e2.controller.removeNextStop())
+    }
+
     @Test fun aSecondStopImmediatelyAfterIsRefusedThenAllowed() = runTest {
         val e = Env(backgroundScope)
         val events = mutableListOf<TripEvent>()

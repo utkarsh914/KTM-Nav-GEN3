@@ -1,5 +1,11 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import com.navigator.app.ui.theme.KtmSpacing
+import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.edgePadding
 
 class RidingActions(
@@ -49,17 +56,32 @@ fun RidingScreen(
     val gap = with(density) { KtmSpacing.sm.roundToPx() }
     val size = remember { IntArray(2) }
     Box(modifier.fillMaxSize().edgePadding().padding(horizontal = KtmSpacing.ridingEdge, vertical = KtmSpacing.sm)) {
-        Column(Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
-            ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
-            RidingChipHost(chip)
+        // MO1: the card drops in from the top, then the bar rises from the bottom; no overshoot, each 200 ms after a short stagger (the card first), reduced motion off.
+        val reduced = KtmTheme.motion.reduced
+        val entered = remember { MutableTransitionState(false).apply { targetState = true } }
+        AnimatedVisibility(
+            visibleState = entered,
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+            enter = if (reduced) EnterTransition.None else fadeIn(tween(200, delayMillis = 100)) + slideInVertically(tween(200, delayMillis = 100)) { -it },
+        ) {
+            Column {
+                ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
+                RidingChipHost(chip)
+            }
         }
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) }) {
+        AnimatedVisibility(
+            visibleState = entered,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            enter = if (reduced) EnterTransition.None else fadeIn(tween(200, delayMillis = 150)) + slideInVertically(tween(200, delayMillis = 150)) { it },
+        ) {
+          Column(Modifier.fillMaxWidth().onSizeChanged { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) }) {
             RidingMapButton(
                 recenter = recenter, bearing = bearing, onTap = actions.onMapButton, onNorthUp = actions.onNorthUp,
                 modifier = Modifier.align(Alignment.End),
             )
             Spacer(Modifier.height(KtmSpacing.sm))
             TripBar(bar, actions.onOpenSheet)
+          }
         }
     }
 }

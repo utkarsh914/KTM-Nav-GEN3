@@ -9,7 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.background
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,7 +45,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -91,6 +89,9 @@ import com.navigator.app.ui.feature.navigate.riding.MapButtonState
 import com.navigator.app.ui.feature.navigate.riding.RidingActions
 import com.navigator.app.ui.feature.navigate.riding.RidingChips
 import com.navigator.app.ui.feature.navigate.riding.RidingScreen
+import com.navigator.app.ui.feature.navigate.riding.StartFailedActions
+import com.navigator.app.ui.feature.navigate.riding.StartFailedSheet
+import com.navigator.app.ui.feature.navigate.riding.TripStopSheetHost
 import com.navigator.app.ui.feature.navigate.riding.TripBarModel
 import com.navigator.app.ui.feature.navigate.riding.TripSheet
 import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
@@ -280,6 +281,7 @@ fun NavigationHomeScreen(
     var ridingInsets by remember { mutableStateOf(0 to 0) }
     var mapButton by remember { mutableStateOf(MapButtonState()) }
     var showTripSheet by remember { mutableStateOf(false) }
+    var showTripStops by remember { mutableStateOf(false) }
     var initialRemainingM by remember { mutableStateOf<Int?>(null) }
     val locationReady = rememberLocationReady()
 
@@ -639,6 +641,8 @@ fun NavigationHomeScreen(
                     StopAddProblem.MAX_STOPS -> say(R.string.riding_chip_max_stops, ChipTone.Warn)
                 }
                 TripEvent.StopAddFailed -> say(R.string.riding_chip_stop_failed, ChipTone.Warn)
+                is TripEvent.StopRemoved -> say(R.string.riding_chip_stop_removed, ChipTone.Ok, e.label.ifBlank { resources.getString(R.string.trip_stop_unnamed) })
+                TripEvent.StopRemoveFailed -> say(R.string.riding_chip_stop_remove_failed, ChipTone.Warn)
                 is TripEvent.Finished -> {}
                 TripEvent.RouteSubstituted -> say(R.string.route_using_google, ChipTone.Warn)
             }
@@ -783,6 +787,7 @@ fun NavigationHomeScreen(
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
         showTripSheet = false
+        showTripStops = false
         if (stage == NavStage.NAVIGATING) mapButton = MapButtonState()
     }
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
@@ -1051,25 +1056,33 @@ fun NavigationHomeScreen(
 
             NavStage.NAVIGATING -> RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
                 startFailure?.let { failure ->
-                    RouteFailureCard(
+                    StartFailedSheet(
                         failure = failure,
                         canRetry = tripState.dest != null,
-                        onRetry = {
-                            GoogleNavSdkProvider.clearStartFailure()
-                            retryStart()
-                        },
-                        onBackToPreview = {
-                            GoogleNavSdkProvider.clearStartFailure()
-                            trip.cancel()
-                            trip.resetStartDebounce()
-                            stage = NavStage.PREVIEW
-                        },
-                        onClose = {
-                            GoogleNavSdkProvider.clearStartFailure()
-                            trip.cancel()
-                            backToBrowse()
-                        },
-                        modifier = Modifier.align(Alignment.Center).edgePadding().padding(24.dp),
+                        actions = StartFailedActions(
+                            onRetry = {
+                                GoogleNavSdkProvider.clearStartFailure()
+                                retryStart()
+                            },
+                            onBack = {
+                                GoogleNavSdkProvider.clearStartFailure()
+                                trip.cancel()
+                                trip.resetStartDebounce()
+                                stage = NavStage.PREVIEW
+                            },
+                            onClose = {
+                                GoogleNavSdkProvider.clearStartFailure()
+                                trip.cancel()
+                                backToBrowse()
+                            },
+                            onMirror = {
+                                GoogleNavSdkProvider.clearStartFailure()
+                                trip.cancel()
+                                container.settings.update { googleNavEnabled = false }
+                                backToBrowse()
+                            },
+                        ),
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
                 val destinationName = tripState.dest?.label ?: selected?.label
@@ -1089,20 +1102,31 @@ fun NavigationHomeScreen(
                     ),
                     onInsets = { top, bottom -> ridingInsets = top to bottom },
                 )
+                if (showTripStops && startFailure == null) {
+                    TripStopSheetHost(
+                        trip = trip,
+                        onSearchByName = { showTripStops = false; openTripStopSearch() },
+                        onDismiss = { showTripStops = false },
+                    )
+                }
                 if (showTripSheet && startFailure == null) {
                     val dashText = BikeSheetMapper.status(bikeStatus)
+                    val nextStopTarget = remember { trip.stopsAhead()?.firstOrNull() }
+                    val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
                     TripSheet(
                         beeps = settingsSnap.turnBeepEnabled,
                         messages = settingsSnap.mirrorEnabled,
                         dashStatus = stringResource(dashText.title, dashText.arg ?: 0),
                         canAddStop = tripState.dest != null && navState.sessionState.isActiveNav(),
+                        nextStop = nextStop,
                         actions = TripSheetActions(
-                            onAddStop = { showTripSheet = false; openTripStopSearch() },
+                            onAddStop = { showTripSheet = false; showTripStops = true },
                             onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
                             onMinimise = { showTripSheet = false; moveAwayFromNav() },
                             onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
                             onMessages = { on -> container.settings.update { mirrorEnabled = on } },
                             onDash = { showTripSheet = false; onOpenConnect() },
+                            onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
                             onEnd = { showTripSheet = false; showEndConfirm = true },
                             onDismiss = { showTripSheet = false },
                         ),
@@ -1352,54 +1376,6 @@ internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 // ============================ Active navigation ========================
 
-
-/** Shown on the navigation screen when the requested trip could not be started. */
-@Composable
-private fun RouteFailureCard(
-    failure: com.navigator.app.nav.providers.StartFailure,
-    canRetry: Boolean,
-    onRetry: () -> Unit,
-    onBackToPreview: () -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            "Navigation didn't start", color = Ktm.White, fontFamily = BarlowCondensed,
-            fontWeight = FontWeight.Bold, fontSize = 20.sp,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(failure.message, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Spacer(Modifier.height(16.dp))
-        if (canRetry) {
-            Box(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(Ktm.RadiusButton)).background(Ktm.Orange)
-                    .clickable { haptics.confirm(); onRetry() }.padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) { Text("Retry", color = Ktm.OnAccent, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-            Spacer(Modifier.height(8.dp))
-        }
-        Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(Ktm.RadiusButton)).border(1.dp, Ktm.BorderSoft, RoundedCornerShape(Ktm.RadiusButton))
-                .clickable { haptics.tap(); onBackToPreview() }.padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) { Text("Back to route preview", color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Close", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
-            modifier = Modifier.clickable { haptics.tap(); onClose() }.padding(12.dp),
-        )
-    }
-}
 
 // ============================ Shared UI ================================
 
