@@ -588,4 +588,122 @@
     <string name="search_use_current">Use my current location</string>
     <string name="search_use_current_caption">Saves where you are right now</string>
     <string name="search_current_unavailable">Can\'t find your location yet. Check that location is on.</string>
+
+    <!-- Settings home (ST1, ST10) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_wordmark">KTM</string>
+    <string name="settings_no_bike">No bike paired</string>
+    <string name="settings_repair_title">Can\'t reach your bike</string>
+    <string name="settings_repair_message">The keys may have been lost. Re-pair to connect again.</string>
+    <string name="settings_repair_action">Re-pair</string>
+    <string name="settings_cat_bike">Bike &amp; dash</string>
+    <string name="settings_cat_navigation">Navigation</string>
+    <string name="settings_cat_sounds">Sounds &amp; alerts</string>
+    <string name="settings_cat_recording">Recording</string>
+    <string name="settings_cat_appearance">Appearance</string>
+    <string name="settings_cat_permissions">Permissions</string>
+    <string name="settings_cat_backup">Backup &amp; restore</string>
+    <string name="settings_cat_about">About &amp; diagnostics</string>
+    <string name="settings_sum_messages_on">Messages on</string>
+    <string name="settings_sum_messages_off">Messages off</string>
+    <string name="settings_sum_in_app">In-app maps</string>
+    <string name="settings_sum_mirror">Mirror mode</string>
+    <string name="settings_sum_vehicle_bike">Bike</string>
+    <string name="settings_sum_vehicle_car">Car</string>
+    <string name="settings_sum_beeps_on">Beeps on</string>
+    <string name="settings_sum_beeps_off">Beeps off</string>
+    <string name="settings_sum_alert_at">Alert at %1$d km/h</string>
+    <string name="settings_sum_alert_off">Speed alert off</string>
+    <string name="settings_sum_rec_auto">Records automatically</string>
+    <string name="settings_sum_rec_manual">Manual recording</string>
+    <string name="settings_sum_keeps">Keeps last %1$d</string>
+    <string name="settings_sum_theme_system">System theme</string>
+    <string name="settings_sum_theme_light">Light</string>
+    <string name="settings_sum_theme_dark">Dark</string>
+    <string name="settings_sum_permissions_ok">All set</string>
+    <plurals name="settings_sum_permissions_missing">
+        <item quantity="one">%1$d to fix</item>
+        <item quantity="other">%1$d to fix</item>
+    </plurals>
+    <string name="settings_sum_backup">Rides, places and settings</string>
+    <string name="settings_sum_about">Version %1$s</string>
+
+    <!-- Bike & dash (ST2) -->
+    <string name="bikedash_title">Bike &amp; dash</string>
+    <string name="bikedash_repair">Re-pair</string>
+    <string name="bikedash_section_dash">On the dash</string>
+    <string name="bikedash_show">Show on dash</string>
+    <string name="bikedash_show_hint">Phone notifications appear on the dash. Also in the trip sheet.</string>
+    <string name="bikedash_apps">Apps on your dash</string>
+    <plurals name="bikedash_apps_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="bikedash_apps_none">None chosen</string>
+    <string name="bikedash_marquee">Scroll long text</string>
+    <string name="bikedash_marquee_hint">Long road names and messages scroll across the dash.</string>
+    <string name="bikedash_latin">Latin letters only</string>
+    <string name="bikedash_latin_hint">The dash font may show Latin letters only, so other scripts are transliterated. Turn off if your dash shows them correctly.</string>
+    <string name="bikedash_access">Notification access</string>
+    <string name="bikedash_access_on">Allowed</string>
+    <string name="bikedash_access_off">Needed to show phone notifications. Tap to fix.</string>
+    <string name="bikedash_section_you">You</string>
+    <string name="bikedash_name">Your name</string>
+    <string name="bikedash_name_unset">Not set</string>
+    <string name="bikedash_section_test">Check your dash</string>
+    <string name="bikedash_test_message">Send test message</string>
+    <string name="bikedash_test_turn">Send test turn</string>
+    <string name="bikedash_test_offline">Connect your bike to send a test.</string>
+    <string name="bikedash_test_sent">Sent to the dash</string>
+
+    <!-- Sounds & alerts (ST4) -->
+    <string name="sounds_title">Sounds &amp; alerts</string>
+    <string name="sounds_section_beeps">Turn beeps</string>
+    <string name="sounds_beeps">Turn approach beeps</string>
+    <string name="sounds_beeps_hint">Left and right beeps before a turn.</string>
+    <string name="sounds_volume">Beep volume</string>
+    <string name="sounds_volume_low">Low</string>
+    <string name="sounds_volume_medium">Medium</string>
+    <string name="sounds_volume_high">High</string>
+    <string name="sounds_volume_max">Max</string>
+    <string name="sounds_swap">Swap left and right</string>
+    <string name="sounds_swap_hint">If your headset sides are reversed.</string>
+    <string name="sounds_hear_beeps">Hear turn beeps</string>
+    <string name="sounds_hear_alert">Hear speed alert</string>
+    <string name="sounds_section_speed">Speed alert</string>
+    <string name="sounds_alert">Speed alert</string>
+    <string name="sounds_alert_hint">A tone when you go over the limit you set.</string>
+    <string name="sounds_alert_at">Alert at</string>
+    <string name="sounds_unit_kmh">km/h</string>
+    <string name="sounds_range">%1$d to %2$d km/h</string>
+    <string name="sounds_section_calls">Calls</string>
+    <string name="sounds_call_audio">Call audio device</string>
+    <string name="sounds_call_audio_none">None</string>
+    <string name="sounds_call_audio_unavailable">Not available now</string>
+    <string name="sounds_dec_alert">Lower the alert speed</string>
+    <string name="sounds_inc_alert">Raise the alert speed</string>
+    <string name="sounds_edit_alert">Type the alert speed</string>
+
+    <!-- Edit value sheet (DL9) -->
+    <string name="edit_value_save">Save</string>
+    <string name="edit_value_cancel">Cancel</string>
+    <string name="edit_value_not_number">Enter a whole number</string>
+    <string name="edit_value_too_low">At least %1$d</string>
+    <string name="edit_value_too_high">At most %1$d</string>
+    <string name="edit_value_name_label">Name</string>
+
+    <!-- Pickers (ST11, DL8) -->
+    <string name="picker_search">Search</string>
+    <string name="picker_search_clear">Clear search</string>
+    <string name="picker_selected">Selected</string>
+    <string name="picker_suggested">Messaging and phone</string>
+    <string name="picker_all">All apps</string>
+    <string name="picker_none_found">Nothing matches</string>
+    <string name="picker_apps_title">Apps on your dash</string>
+    <string name="picker_apps_hint">Notifications from these apps show on the dash.</string>
+    <string name="picker_audio_title">Call audio device</string>
+    <string name="picker_audio_none">None</string>
+    <string name="picker_audio_unavailable">Chosen device (not available now)</string>
+    <string name="picker_audio_permission">Allow Nearby devices for this app in Android settings to see your paired headsets.</string>
+    <string name="picker_audio_empty">No paired audio devices. Pair a headset in Bluetooth settings first.</string>
 </resources>

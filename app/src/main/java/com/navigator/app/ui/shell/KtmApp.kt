@@ -67,6 +67,12 @@ import com.navigator.app.ui.feature.replay.ReplayScreen
 import com.navigator.app.ui.feature.replay.edit.EditRideScreen
 import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
 import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.settings.BikeDashScreen
+import com.navigator.app.ui.feature.settings.SettingsHomeScreen
+import com.navigator.app.ui.feature.settings.SettingsPage
+import com.navigator.app.ui.feature.settings.SoundsScreen
+import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
+import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
@@ -168,7 +174,6 @@ fun KtmApp(onQuit: () -> Unit) {
     }
 
     var showQuit by remember { mutableStateOf(false) }
-    val settingsListState = rememberLazyListState()
     val startRoute = remember {
         when {
             !snap.onboardingComplete -> Route.Onboarding
@@ -290,34 +295,60 @@ fun KtmApp(onQuit: () -> Unit) {
                             )
                         }
                         composable<Route.Settings> {
-                            SettingsScreen(
-                                settings = legacy,
+                            SettingsHomeScreen(
+                                onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
+                                onRePaired = { navController.push(Route.Pairing(toHome = true)) },
                                 onQuit = { showQuit = true },
-                                onOpenLogs = { navController.push(Route.Logs) },
-                                onOpenSymbolTest = { navController.push(Route.SymbolTest) },
-                                onOpenTurnCalibration = { navController.push(Route.TurnCalibration) },
-                                onOpenPlaces = { navController.openTab(Tab.Places) },
-                                onOpenRecordings = { navController.openTab(Tab.Rides) },
-                                themeMode = snap.themeMode,
-                                onThemeModeChanged = { mode -> settings.update { themeMode = mode } },
-                                fontMode = snap.fontMode,
-                                onFontModeChanged = { mode -> settings.update { fontMode = mode } },
-                                navThemeMode = snap.ridingScreens,
-                                onNavThemeModeChanged = { mode -> settings.update { navThemeMode = mode } },
-                                accentColorId = snap.accentColorId,
-                                onAccentColorChanged = { id -> settings.update { accentColorId = id } },
-                                listState = settingsListState,
-                                onEngineChanged = { googleNav ->
-                                    // Switching to the mirror engine ends any in-app SDK trip so the two
-                                    // engines never drive the dash at once.
-                                    if (!googleNav) container.trip.cancel()
-                                },
-                                onRepair = {
-                                    container.connection.rePair()
-                                    navController.push(Route.Pairing(toHome = true))
-                                },
                             )
                         }
+                        composable<Route.SettingsPage> { backStackEntry ->
+                            val back = { navController.popFrom(backStackEntry) }
+                            when (backStackEntry.toRoute<Route.SettingsPage>().page) {
+                                SettingsPage.BIKE_DASH -> BikeDashScreen(
+                                    onBack = back,
+                                    onOpenApps = { navController.push(Route.DashApps) },
+                                    // Until the Permissions page is rebuilt (B16c): straight to Android's notification-access screen, as the old row did.
+                                    onOpenPermissions = {
+                                        runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                                    },
+                                    onRePaired = { navController.push(Route.Pairing(toHome = true)) },
+                                )
+                                SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })
+                                // Pages not rebuilt yet open the previous Settings screen, which still has every setting.
+                                else -> {
+                                    val legacyList = rememberLazyListState()
+                                    SettingsScreen(
+                                        settings = legacy,
+                                        onQuit = { showQuit = true },
+                                        onOpenLogs = { navController.push(Route.Logs) },
+                                        onOpenSymbolTest = { navController.push(Route.SymbolTest) },
+                                        onOpenTurnCalibration = { navController.push(Route.TurnCalibration) },
+                                        onOpenPlaces = { navController.openTab(Tab.Places) },
+                                        onOpenRecordings = { navController.openTab(Tab.Rides) },
+                                        themeMode = snap.themeMode,
+                                        onThemeModeChanged = { mode -> settings.update { themeMode = mode } },
+                                        fontMode = snap.fontMode,
+                                        onFontModeChanged = { mode -> settings.update { fontMode = mode } },
+                                        navThemeMode = snap.ridingScreens,
+                                        onNavThemeModeChanged = { mode -> settings.update { navThemeMode = mode } },
+                                        accentColorId = snap.accentColorId,
+                                        onAccentColorChanged = { id -> settings.update { accentColorId = id } },
+                                        listState = legacyList,
+                                        onEngineChanged = { googleNav ->
+                                            // Switching to the mirror engine ends any in-app SDK trip so the two
+                                            // engines never drive the dash at once.
+                                            if (!googleNav) container.trip.cancel()
+                                        },
+                                        onRepair = {
+                                            container.connection.rePair()
+                                            navController.push(Route.Pairing(toHome = true))
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        composable<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.TurnCalibration> { e -> TurnCalibrationScreen(onBack = { navController.popFrom(e) }) }

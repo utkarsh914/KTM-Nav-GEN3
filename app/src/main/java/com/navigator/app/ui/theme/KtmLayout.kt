@@ -59,6 +59,9 @@ object KtmLayout {
     val row2 = 64.dp
     val row3 = 80.dp
     val rowThumb = 72.dp
+
+    /** An app's icon in a picker row. */
+    val appIcon = 40.dp
     /** The replay's seek bar: track thickness, thumb, the hatched stop between merged parts, and the chart. */
     val seekTrack = 6.dp
     val seekThumb = 24.dp

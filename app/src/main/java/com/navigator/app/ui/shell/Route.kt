@@ -25,6 +25,11 @@ sealed interface Route {
     @Serializable data object Places : Route
     @Serializable data object Settings : Route
 
+    /** One Settings category; the home is [Settings]. */
+    @Serializable data class SettingsPage(val page: com.navigator.app.ui.feature.settings.SettingsPage) : Route
+    @Serializable data object DashApps : Route
+    @Serializable data object CallAudio : Route
+
     @Serializable data object Logs : Route
     @Serializable data object SymbolTest : Route
     @Serializable data object TurnCalibration : Route

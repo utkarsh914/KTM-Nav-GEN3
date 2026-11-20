@@ -20,13 +20,12 @@ import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DashPreview
 import com.navigator.app.ui.components.DashPreviewState
-import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmButton
-import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.TonalIconBadge
+import com.navigator.app.ui.feature.settings.RePairDialog
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -122,12 +121,6 @@ fun BikeSheet(
     }
 
     if (confirmRePair) {
-        KtmDialog(
-            title = stringResource(R.string.bike_repair_title),
-            message = stringResource(R.string.bike_repair_message),
-            onDismiss = { confirmRePair = false },
-            confirm = DialogAction(stringResource(R.string.bike_sheet_repair), { confirmRePair = false; onRePair() }, ButtonStyle.Primary),
-            dismiss = DialogAction(stringResource(R.string.common_cancel), { confirmRePair = false }),
-        )
+        RePairDialog(onConfirm = { confirmRePair = false; onRePair() }, onDismiss = { confirmRePair = false })
     }
 }

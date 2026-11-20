@@ -64,6 +64,8 @@ fun ListRow(
     trailing: (@Composable RowScope.() -> Unit)? = null,
     /** A row that removes something: its title and icon are the danger colour. */
     destructive: Boolean = false,
+    /** Something here needs fixing: the icon and the supporting text turn amber. */
+    attention: Boolean = false,
 ) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
@@ -86,7 +88,7 @@ fun ListRow(
     ) {
         when {
             leading != null -> leading()
-            leadingIcon != null -> TonalIconBadge(leadingIcon, tint = if (destructive) c.bad else KtmTheme.accent.text)
+            leadingIcon != null -> TonalIconBadge(leadingIcon, tint = if (destructive) c.bad else if (attention) c.warn else KtmTheme.accent.text)
         }
         Column(Modifier.weight(1f)) {
             Text(
@@ -95,7 +97,7 @@ fun ListRow(
             )
             if (supporting != null) {
                 Text(
-                    supporting, style = MaterialTheme.typography.bodySmall, color = c.fg2,
+                    supporting, style = MaterialTheme.typography.bodySmall, color = if (attention) c.warn else c.fg2,
                     maxLines = supportingLines.coerceAtLeast(1), overflow = TextOverflow.Ellipsis,
                 )
             }
