@@ -70,7 +70,7 @@ class PlacesRepository(context: Context, private val store: PlacesStore = Places
     /** Undo an [assign]: the slot (or the spot) goes back to [previous], or to nothing; not if the slot was changed again since. */
     fun undoAssign(place: SavedPlace, slot: FavoriteSlot, previous: FavoritePlace?) {
         // A later change to the same Home or Work is the rider's newer wish: leave it be.
-        if (slot != FavoriteSlot.OTHER && _favorites.value.firstOrNull { it.slot == slot }?.place?.let { key(it) != key(place) } == true) return
+        if (slot != FavoriteSlot.OTHER && _favorites.value.firstOrNull { it.slot == slot }?.place?.let { key(it) != key(place) } != false) return
         if (slot == FavoriteSlot.OTHER) store.removeFavorite(place.lat, place.lng) else store.removeFavoriteSlot(slot)
         previous?.let { store.saveFavorite(it.place, it.slot) }
         refresh()

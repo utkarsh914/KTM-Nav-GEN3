@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.util.LruCache
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.createBitmap
 import com.navigator.app.ble.BccuProtocol.TurnIcon
@@ -23,8 +24,8 @@ object LargeIcons {
     private val ALERT_BG = Color.rgb(0xC6, 0x28, 0x28)
 
     // The same few glyphs and speeds come round on every notification update: draw each once.
-    private val turns = android.util.LruCache<TurnIcon, Bitmap>(CACHED_TURNS)
-    private val speeds = android.util.LruCache<Int, Bitmap>(CACHED_SPEEDS)
+    private val turns = LruCache<TurnIcon, Bitmap>(CACHED_TURNS)
+    private val speeds = LruCache<Int, Bitmap>(CACHED_SPEEDS)
 
     fun turn(context: Context, icon: TurnIcon): Bitmap? = turns.get(icon) ?: drawTurn(context, icon)?.also { turns.put(icon, it) }
 

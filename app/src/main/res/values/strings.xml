@@ -456,6 +456,7 @@
     <string name="merge_notes_joined">Notes are joined</string>
     <string name="merge_notes_joined_starred">Notes are joined · starred, because one of the rides is</string>
     <string name="merge_overlap_title">These rides overlap</string>
+    <string name="merge_unnamed_ride">%1$s · %2$s</string>
     <string name="merge_overlap_body">%1$s and %2$s were recorded at the same time, so they can\'t become one ride.</string>
     <string name="merge_active_body">A ride is still being recorded. Stop it, then merge.</string>
     <string name="merge_gone_title">A ride is no longer there</string>

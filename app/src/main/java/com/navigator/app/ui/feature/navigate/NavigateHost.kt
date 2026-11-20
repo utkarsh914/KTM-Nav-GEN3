@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.LocalTripShared
 import androidx.compose.runtime.CompositionLocalProvider
@@ -346,8 +348,8 @@ fun NavigateHost(
     // Planning-sheet state: a place picked on the preview map (long press, place label) waiting to be added,
     // and Pick on map for a stop.
     // Both survive a rotation (and the process being recreated), like the rest of the plan flow.
-    var stopCandidate by androidx.compose.runtime.saveable.rememberSaveable(stateSaver = SavedPlaceSaver) { mutableStateOf<SavedPlace?>(null) }
-    var pickingStop by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var stopCandidate by rememberSaveable(stateSaver = SavedPlaceSaver) { mutableStateOf<SavedPlace?>(null) }
+    var pickingStop by rememberSaveable { mutableStateOf(false) }
     // How much of the map the plan sheet covers (left, bottom in px), so the camera frames the route in the rest.
     var planInsets by remember { mutableStateOf(0 to 0) }
     // Bumped when the sheet settles at a new height so the camera frames the route again (not for the proposed-stop sheet).
@@ -1329,7 +1331,7 @@ private fun rememberLocationReady(): Boolean {
 private class ReplaceRequest(val place: SavedPlace, val cancelFirst: Boolean, val proceed: () -> Unit)
 
 /** A place waiting to be added as a stop, in a form a bundle can hold. */
-private val SavedPlaceSaver = androidx.compose.runtime.saveable.Saver<SavedPlace?, List<Any>>(
+private val SavedPlaceSaver = Saver<SavedPlace?, List<Any>>(
     save = { p -> p?.let { listOf(it.lat, it.lng, it.label, it.address.orEmpty()) } ?: emptyList() },
     restore = { l -> if (l.size < 4) null else SavedPlace(l[0] as Double, l[1] as Double, l[2] as String, (l[3] as String).ifEmpty { null }) },
 )

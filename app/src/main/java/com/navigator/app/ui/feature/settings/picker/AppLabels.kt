@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.settings.picker
 
 import android.content.Context
+import android.content.pm.PackageManager.NameNotFoundException
 
 /** An app's name from its package, or the package itself when it is not installed. */
 fun interface AppLabels {
@@ -12,18 +13,18 @@ class AndroidAppLabels(context: Context) : AppLabels {
 
     override fun label(packageName: String): String = try {
         pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
-    } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+    } catch (e: NameNotFoundException) {
         packageName
     }
 }
 
-/** Whether [packageName] is installed; false once it has been removed from the phone. */
+/** Whether [packageName] is installed; false once it has been removed. Sees what the manifest's MAIN `<queries>` shows: launchable apps. */
 class AndroidAppInstalled(context: Context) : (String) -> Boolean {
     private val pm = context.packageManager
 
     override fun invoke(packageName: String): Boolean = try {
         pm.getApplicationInfo(packageName, 0); true
-    } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+    } catch (e: NameNotFoundException) {
         false
     }
 }

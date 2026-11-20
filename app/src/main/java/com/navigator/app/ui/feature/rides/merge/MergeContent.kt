@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.rides.merge
 
-import com.navigator.app.ride.RecordedRide
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.snap
@@ -21,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
+import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.ButtonSize
@@ -126,9 +127,10 @@ private fun rideName(label: String?, source: String?): String =
 private fun rideName(ride: RecordedRide): String {
     val label = ride.destinationLabel?.takeIf { it.isNotBlank() }
     if (label != null) return label
-    val time = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
-        .format(java.time.Instant.ofEpochMilli(ride.startMs).atZone(java.time.ZoneId.systemDefault()))
-    return stringResource(RideSourceText.title(ride.source)) + " · " + time
+    val time = remember(ride.startMs) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(Instant.ofEpochMilli(ride.startMs).atZone(ZoneId.systemDefault()))
+    }
+    return stringResource(R.string.merge_unnamed_ride, stringResource(RideSourceText.title(ride.source)), time)
 }
 
 @Composable

@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.settings
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import com.navigator.app.backup.BackupManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -23,7 +24,7 @@ class AndroidBackupGateway(context: Context) : BackupGateway {
         val summary = runCatching { app.contentResolver.openOutputStream(uri)?.use { BackupManager(app).backup(it) } }.getOrNull()
             ?: BackupManager.Summary(0, false)
         // The picker already created the file: a failed backup must not leave an empty one behind.
-        if (!summary.ok) runCatching { android.provider.DocumentsContract.deleteDocument(app.contentResolver, uri) }
+        if (!summary.ok) runCatching { DocumentsContract.deleteDocument(app.contentResolver, uri) }
         summary
     }
 

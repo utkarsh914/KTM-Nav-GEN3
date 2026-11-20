@@ -150,6 +150,17 @@ class BackupAndAboutViewModelTest {
         assertFalse(vm.ui.value.busy)
     }
 
+    @Test fun aRestoreWithSettingsLeavesARestartReminderUntilTheAppRestarts() = runTest(UnconfinedTestDispatcher()) {
+        val vm = BackupViewModel(FakeGateway())
+        vm.restore(uri, rides = true, places = false, settings = false)
+        assertFalse(vm.ui.value.restartPending)
+        vm.restore(uri, rides = false, places = false, settings = true)
+        assertTrue(vm.ui.value.restartPending)
+        assertFalse(vm.ui.value.restoring)
+        vm.backUpTo(uri)
+        assertTrue(vm.ui.value.restartPending)
+    }
+
     @Test fun aChosenFileOpensTheSheetWithWhatItHolds() = runTest(UnconfinedTestDispatcher()) {
         val vm = BackupViewModel(FakeGateway())
         vm.openRestore(uri)

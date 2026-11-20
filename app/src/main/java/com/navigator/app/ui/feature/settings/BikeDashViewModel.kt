@@ -1,6 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
-import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,6 +13,7 @@ import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.ui.feature.navigate.BikePillMapper
+import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -77,7 +78,7 @@ class BikeDashViewModel(
     fun rePair() = connection.rePair()
 
     companion object {
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 BikeDashViewModel(container.settings, container.connection, container.permissions, AndroidAppInstalled(context.applicationContext)) as T
