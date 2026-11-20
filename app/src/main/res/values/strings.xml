@@ -126,6 +126,7 @@
     <string name="bike_sheet_messages">Messages on dash</string>
     <string name="bike_sheet_messages_hint">Notifications from your phone</string>
     <string name="bike_sheet_test">Send a test</string>
+    <string name="bike_sheet_test_on_trip">Available when you\'re not on a trip, so it can\'t replace your directions.</string>
     <string name="bike_sheet_repair">Re-pair</string>
     <string name="bike_repair_title">Re-pair your bike?</string>
     <string name="bike_repair_message">This forgets the bike and starts pairing again. The dash will ask you to confirm.</string>
@@ -177,6 +178,7 @@
     <string name="shared_link_failed_no_place">The link opened, but the place wasn\'t found. Search for it instead.</string>
     <string name="shared_link_search_instead">Search instead</string>
     <string name="shared_link_mirror_title">Navigate with Google Maps</string>
+    <string name="shared_link_mirror_unreadable">That share has no place Google Maps can open.</string>
     <string name="shared_link_mirror_message">In mirror mode Google Maps does the navigating and your dash follows. Switch to in-app maps to plan here.</string>
     <string name="shared_link_open_maps">Open in Google Maps</string>
     <string name="shared_link_switch">Switch to in-app maps</string>

@@ -61,12 +61,12 @@ class PlaceSearchViewModel(
     private val originProvider: () -> Pair<Double, Double>?,
     initialQuery: String = "",
     initialCategory: PlaceCategory? = null,
+    /** The route still ahead of the rider, for "along your route"; known from the start so an opening category uses it. */
+    var routeProvider: () -> List<Pair<Double, Double>>? = { null },
 ) : ViewModel() {
 
-    /** The route still ahead of the rider, for "along your route"; set by the host while a trip is live. */
-    var routeProvider: () -> List<Pair<Double, Double>>? = { null }
-
-    private val sessionToken = UUID.randomUUID().toString()
+    /** One per search session; renewed once a place has been looked up, which closes the session. */
+    private var sessionToken = UUID.randomUUID().toString()
 
     private data class Core(
         val query: String = "",
@@ -133,7 +133,8 @@ class PlaceSearchViewModel(
             core.update { it.copy(suggestions = emptyList(), loading = false, failed = false) }
             return
         }
-        core.update { it.copy(loading = true, origin = originProvider() ?: it.origin) }
+        // The previous answer stays listed while the new one loads, but a failure of the last one must not pin the offline banner.
+        core.update { it.copy(loading = true, failed = false, origin = originProvider() ?: it.origin) }
         searchJob = viewModelScope.launch {
             delay(SearchPolicy.DEBOUNCE_MS)
             val result = api.autocomplete(query.trim(), sessionToken, core.value.origin)
@@ -172,6 +173,7 @@ class PlaceSearchViewModel(
         core.update { it.copy(resolving = true) }
         detailsJob = viewModelScope.launch {
             val loc = api.details(suggestion.placeId, sessionToken)
+            sessionToken = UUID.randomUUID().toString()
             core.update { it.copy(resolving = false) }
             if (loc != null) _events.send(PlaceSearchEvent.Picked(SavedPlace(loc.lat, loc.lng, suggestion.primary, suggestion.secondary)))
             else _events.send(PlaceSearchEvent.LoadFailed)

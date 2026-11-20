@@ -46,12 +46,12 @@ fun Skeleton(modifier: Modifier = Modifier, shape: Shape = KtmShapes.Badge) {
     )
 }
 
-/** A list row of placeholders: a leading square, a title line and a shorter supporting line. */
+/** A list row of placeholders ([announce] false for all but the first of a list, so a screen reader says "Loading" once): a leading square, a title line and a shorter supporting line. */
 @Composable
-fun SkeletonRow(modifier: Modifier = Modifier) {
+fun SkeletonRow(modifier: Modifier = Modifier, announce: Boolean = true) {
     val loading = stringResource(R.string.common_loading)
     Row(
-        modifier.semantics { contentDescription = loading }.fillMaxWidth().heightIn(min = KtmLayout.row2).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+        modifier.then(if (announce) Modifier.semantics { contentDescription = loading } else Modifier.clearAndSetSemantics {}).fillMaxWidth().heightIn(min = KtmLayout.row2).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg),
     ) {

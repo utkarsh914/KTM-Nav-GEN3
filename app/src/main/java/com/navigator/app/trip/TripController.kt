@@ -183,7 +183,12 @@ class TripController(
     fun end() {
         val trip = _state.value
         val dest = trip.dest ?: return
-        if (trip.arrivalLatched) return // already ended (the latch outlives the summary)
+        if (trip.arrivalLatched) {
+            // Already ended or cancelled (the latch outlives the summary). A start that was still pending
+            // when it was cancelled may have brought guidance up since: End must still be able to stop it.
+            if (guidance.state.value.sessionState.isActiveNav()) guidance.stop()
+            return
+        }
         val finished = FinishedTrip(
             SavedPlace(dest.lat, dest.lng, dest.label ?: "Destination"),
             // Frozen now: computing it while drawing kept growing it.
@@ -200,6 +205,8 @@ class TripController(
      * route preview, or switched engine): guidance stops and the trip is no longer ours to end.
      */
     fun cancel() {
+        beforeStop = null // a failed re-plan must not bring a cancelled trip back
+        allStopsBefore = null
         guidance.stop()
         _state.update { if (it.dest == null) it else it.copy(arrivalLatched = true, minimised = false) }
     }
@@ -237,6 +244,7 @@ class TripController(
     /** A failed mid-trip re-plan must not strand the rider: go back to the trip they had. */
     private fun rollBackStop() {
         val before = beforeStop ?: return
+        if (!owning) { beforeStop = null; allStopsBefore = null; return }
         beforeStop = null
         lastStopAddMs = 0L
         guidance.clearStartFailure()

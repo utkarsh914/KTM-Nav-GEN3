@@ -75,11 +75,11 @@ object MapsUrlResolver {
     /** Like [resolve], but says why a link could not be read, so the rider (and the log) can tell. */
     suspend fun resolveDetailed(text: String, auth: AndroidClientAuth? = null): LinkResolution = withContext(Dispatchers.IO) {
         val trimmed = text.trim()
-        parseCoordinates(trimmed)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(trimmed))) }
+        parseCoordinates(trimmed)?.let { return@withContext LinkResolution.Found(it.toDest(placeName(trimmed))) }
 
         val url = URL_REGEX.find(trimmed)?.value?.let(::trimUrl)
             ?: return@withContext LinkResolution.Failed(LinkFailure.NOT_A_MAPS_LINK)
-        parseCoordinates(url)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(url))) }
+        parseCoordinates(url)?.let { return@withContext LinkResolution.Found(it.toDest(placeName(url))) }
 
         if (!isAllowedHost(url) || (!isShortLink(url) && !isGoogleMapsUrl(url))) {
             AppLogger.log("MapsUrl", "not a Google Maps link (host ${hostOf(url)})")
@@ -99,7 +99,7 @@ object MapsUrlResolver {
         AppLogger.log("MapsUrl", "resolved to ${hostOf(resolvedUrl)} (${resolvedUrl.length} chars)")
 
         // Dropped-pin links carry coords in the resolved URL.
-        parseCoordinates(resolvedUrl)?.let { return@withContext LinkResolution.Found(it.toDest(labelFrom(resolvedUrl))) }
+        parseCoordinates(resolvedUrl)?.let { return@withContext LinkResolution.Found(it.toDest(placeName(resolvedUrl))) }
 
         // Place links: turn the rich name/address into exact coords via Text Search.
         // (No fragile HTML/camera-centre scraping - it can be kilometres off.)
@@ -107,7 +107,7 @@ object MapsUrlResolver {
         // `/maps/place/<name>/...`, and some to `?q=place_id:<id>`: all three are handled.
         placeId(resolvedUrl)?.let { id ->
             val loc = runCatching { PlacesClient.details(id, UUID.randomUUID().toString(), auth) }.getOrNull()
-            if (loc != null) return@withContext LinkResolution.Found(loc.toDest(labelFrom(resolvedUrl)))
+            if (loc != null) return@withContext LinkResolution.Found(loc.toDest(placeName(resolvedUrl)))
         }
         (placeName(resolvedUrl) ?: queryText(resolvedUrl))?.let { name ->
             val loc = runCatching { PlacesClient.textSearch(name, auth) }.getOrNull()
@@ -228,5 +228,6 @@ object MapsUrlResolver {
     /** Human label from `/maps/place/<name>/`, or a generic fallback. */
     fun labelFrom(url: String): String = placeName(url) ?: "Shared location"
 
-    private fun PlaceLocation.toDest(label: String) = NavDestination(lat, lng, label)
+    // A null label lets the caller use its own (translated) fallback.
+    private fun PlaceLocation.toDest(label: String?) = NavDestination(lat, lng, label)
 }

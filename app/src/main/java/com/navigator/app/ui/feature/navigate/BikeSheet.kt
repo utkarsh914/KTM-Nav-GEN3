@@ -1,14 +1,17 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -26,6 +29,7 @@ import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
+import com.navigator.app.ui.theme.KtmTheme
 
 /** What the status block of the Bike sheet says. */
 data class BikeStatusText(val icon: ImageVector, @androidx.annotation.StringRes val title: Int, val arg: Int?, @androidx.annotation.StringRes val hint: Int?)
@@ -81,9 +85,17 @@ fun BikeSheet(
             if (status is BikeStatus.NeedsRepair) {
                 KtmButton(stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.fillMaxWidth())
             } else {
+                // The test turn would replace the live guidance on the dash.
+                val tripRunning = state.activity != null
+                if (tripRunning) {
+                    Text(
+                        stringResource(R.string.bike_sheet_test_on_trip), style = MaterialTheme.typography.bodyMedium,
+                        color = KtmTheme.colors.fg2, modifier = Modifier.padding(bottom = KtmSpacing.sm),
+                    )
+                }
                 KtmButton(
                     stringResource(R.string.bike_sheet_test), { onSendTest(testMessage) }, Modifier.fillMaxWidth(),
-                    style = ButtonStyle.Tonal, enabled = connected,
+                    style = ButtonStyle.Tonal, enabled = connected && !tripRunning,
                 )
             }
         },

@@ -51,6 +51,16 @@ object SearchPolicy {
         }
     }
 
+    /**
+     * The saved places the empty search lists. Destination search shows Home and Work as tiles on the
+     * browse screen, so only the other saved places; adding a stop has no tiles, so Home and Work come first.
+     */
+    fun browseFavorites(favorites: List<FavoritePlace>, mode: SearchMode): List<FavoritePlace> {
+        val withSlots = mode is SearchMode.Stop || mode is SearchMode.TripStop
+        return favorites.filter { it.slot == FavoriteSlot.OTHER || withSlots }
+            .sortedBy { if (it.slot == FavoriteSlot.HOME) 0 else if (it.slot == FavoriteSlot.WORK) 1 else 2 }
+    }
+
     /** Where [query] first occurs in [text] (any case), to draw it in bold; null when it does not. */
     fun matchRange(text: String, query: String): IntRange? {
         val q = query.trim()

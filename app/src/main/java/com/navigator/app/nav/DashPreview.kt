@@ -41,6 +41,11 @@ object DashPreview {
         runCatching { _state.update { it.copy(lastBanner = text) } }
     }
 
+    /** The banner was cleared on the dash. */
+    internal fun clearBanner() {
+        runCatching { _state.update { it.copy(lastBanner = null) } }
+    }
+
     internal fun reset() { _state.value = State() }
 
     /** Never throws: the preview must not be able to disturb real dash output. */

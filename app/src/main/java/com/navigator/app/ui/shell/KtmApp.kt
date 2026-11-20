@@ -1,5 +1,7 @@
 package com.navigator.app.ui.shell
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -9,32 +11,24 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.core.net.toUri
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -53,7 +47,6 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
-import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
@@ -80,8 +73,6 @@ import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.accentFor
-import com.navigator.app.ui.theme.edgePadding
-import kotlinx.coroutines.delay
 
 /**
  * Root of the UI: theme, navigation, the tab shell, feedback and the handling of outside requests.
@@ -131,17 +122,27 @@ fun KtmApp(onQuit: () -> Unit) {
     val inAppState = rememberUpdatedState(inAppMaps)
     // First-run screens are not a place to land on: a request waits until setup has finished and
     // the stack has been replaced by Navigate.
-    val inSetupScreen = entry?.destination?.let { d ->
-        d.hasRoute<Route.Onboarding>() || (d.hasRoute<Route.Pairing>() && entry?.toRoute<Route.Pairing>()?.forced == true)
-    } == true
-    val setupDone = snap.onboardingComplete && snap.isPaired && !inSetupScreen
+    // Not only the top entry: Logs opened from the first-run pairing sits over it.
+    val setupTracker = remember { SetupTracker() }
+    val inSetupScreen = setupTracker.inSetup(entry)
+    // Not "paired": after Re-pair the rider is back on the tabs without a bike and requests must still work.
+    val setupDone = snap.onboardingComplete && !inSetupScreen
     val pending by intents.pending.collectAsState()
     val reducedMotion = KtmMotionSpecs.isReducedMotion(context)
+    // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
+    // not again each time something else changes.
+    val taken = remember { mutableSetOf<AppIntent>() }
     LaunchedEffect(pending, setupDone, inAppMaps) {
         val readiness = AppReadiness(setupDone, inAppMaps)
+        taken.retainAll(
+            listOfNotNull(
+                pending.sharedLink?.let { AppIntent.SharedLink(it) }, pending.quickRoute?.let { AppIntent.QuickRoute(it) },
+                pending.place?.let { AppIntent.OpenPlace(it) }, AppIntent.OpenNav.takeIf { pending.openNav },
+            ).toSet(),
+        )
         fun handle(intent: AppIntent, consume: () -> Unit) {
             when (val outcome = AppIntents.decide(intent, readiness)) {
-                IntentOutcome.Navigate -> navController.openTab(Tab.Navigate)
+                IntentOutcome.Navigate -> if (taken.add(intent)) navController.openTab(Tab.Navigate)
                 IntentOutcome.Defer -> {}
                 IntentOutcome.Drop -> consume()
                 is IntentOutcome.Reject -> {
@@ -207,14 +208,16 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                         composable<Route.Pairing> { backStackEntry ->
                             val route = backStackEntry.toRoute<Route.Pairing>()
+                            val back = { navController.popFrom(backStackEntry) }
                             PairingScreen(
                                 settings = legacy,
                                 onPaired = {
                                     if (route.forced || route.toHome) navController.openRoot(Route.Navigate)
+                                    // Not a tap: it fires when the handshake completes, even while the app is paused.
                                     else navController.popBackStack()
                                 },
-                                onOpenLogs = { navController.navigate(Route.Logs) },
-                                onBack = if (route.forced) null else ({ navController.popBackStack() }),
+                                onOpenLogs = { navController.push(Route.Logs) },
+                                onBack = if (route.forced) null else back,
                             )
                         }
                         composable<Route.Navigate> {
@@ -223,8 +226,8 @@ fun KtmApp(onQuit: () -> Unit) {
                             if (inAppState.value) {
                                 NavigationHomeScreen(
                                     retainedNav = retainedNav,
-                                    onOpenConnect = { navController.navigate(Route.Pairing()) },
-                                    onOpenReplay = { id -> navController.navigate(Route.RideReplay(id)) },
+                                    onOpenConnect = { navController.push(Route.Pairing()) },
+                                    onOpenReplay = { id -> navController.push(Route.RideReplay(id)) },
                                     onOpenPlaces = { navController.openTab(Tab.Places) },
                                     sharedLink = pending.sharedLink,
                                     onSharedLinkConsumed = intents::consumeSharedLink,
@@ -236,7 +239,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                 )
                             } else {
                                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                                    MirrorHomeScreen(onOpenConnect = { navController.navigate(Route.Pairing()) })
+                                    MirrorHomeScreen(onOpenConnect = { navController.push(Route.Pairing()) })
                                     // A Google Maps link shared in mirror mode: Google Maps does the navigating.
                                     pending.sharedLink?.let { link ->
                                         SharedLinkCard(
@@ -246,7 +249,9 @@ fun KtmApp(onQuit: () -> Unit) {
                                                 onDismiss = intents::consumeSharedLink,
                                                 onOpenMaps = {
                                                     intents.consumeSharedLink()
-                                                    openInGoogleMaps(context, link)
+                                                    if (!openInGoogleMaps(context, link)) {
+                                                        feedback.snackbar(resources.getString(R.string.shared_link_mirror_unreadable))
+                                                    }
                                                 },
                                                 onSwitchToInApp = if (GoogleNavSdkController.isAvailable(context)) {
                                                     { container.settings.update { googleNavEnabled = true } }
@@ -260,7 +265,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                         composable<Route.Rides> {
                             RideHistoryScreen(
-                                onOpen = { id -> navController.navigate(Route.RideReplay(id)) },
+                                onOpen = { id -> navController.push(Route.RideReplay(id)) },
                                 selectionMode = rideList.selectionMode,
                                 selectedIds = rideList.selectedIds,
                                 onSelectionModeChange = { rideList.selectionMode = it },
@@ -280,9 +285,9 @@ fun KtmApp(onQuit: () -> Unit) {
                             SettingsScreen(
                                 settings = legacy,
                                 onQuit = { showQuit = true },
-                                onOpenLogs = { navController.navigate(Route.Logs) },
-                                onOpenSymbolTest = { navController.navigate(Route.SymbolTest) },
-                                onOpenTurnCalibration = { navController.navigate(Route.TurnCalibration) },
+                                onOpenLogs = { navController.push(Route.Logs) },
+                                onOpenSymbolTest = { navController.push(Route.SymbolTest) },
+                                onOpenTurnCalibration = { navController.push(Route.TurnCalibration) },
                                 onOpenPlaces = { navController.openTab(Tab.Places) },
                                 onOpenRecordings = { navController.openTab(Tab.Rides) },
                                 themeMode = snap.themeMode,
@@ -301,18 +306,18 @@ fun KtmApp(onQuit: () -> Unit) {
                                 },
                                 onRepair = {
                                     container.connection.rePair()
-                                    navController.navigate(Route.Pairing(toHome = true))
+                                    navController.push(Route.Pairing(toHome = true))
                                 },
                             )
                         }
-                        composable<Route.Logs> { LogsScreen(onBack = { navController.popBackStack() }) }
-                        composable<Route.SymbolTest> { SymbolTestScreen(onBack = { navController.popBackStack() }) }
-                        composable<Route.TurnCalibration> { TurnCalibrationScreen(onBack = { navController.popBackStack() }) }
+                        composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.TurnCalibration> { e -> TurnCalibrationScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.RideReplay> { backStackEntry ->
                             RideReplayScreen(
                                 retainedNav = retainedNav,
                                 rideId = backStackEntry.toRoute<Route.RideReplay>().rideId,
-                                onBack = { navController.popBackStack() },
+                                onBack = { navController.popFrom(backStackEntry) },
                             )
                         }
                     }
@@ -341,13 +346,54 @@ private fun RejectReason.message(): Int = when (this) {
     RejectReason.MAP_NEEDS_IN_APP -> R.string.intent_map_needs_in_app
 }
 
-/** A tab switch keeps each tab's back stack and state. */
+/**
+ * Whether the rider is in first-run setup (Onboarding, or the forced Pairing). A page pushed over a setup
+ * screen (Logs from Pairing) keeps the answer of the screen below it; any tab root or re-pairing ends it.
+ */
+class SetupTracker {
+    private var setup = false
+
+    fun inSetup(entry: NavBackStackEntry?): Boolean {
+        val d = entry?.destination ?: return setup
+        when {
+            d.hasRoute<Route.Onboarding>() -> setup = true
+            d.hasRoute<Route.Pairing>() -> setup = entry.toRoute<Route.Pairing>().forced
+            Tab.entries.any { d.hasRoute(it.route::class) } -> setup = false
+        }
+        return setup
+    }
+}
+
+/**
+ * A tab switch keeps each tab's back stack and state. A page pushed over a tab (Pairing, Logs, a replay)
+ * is closed first: otherwise the restore below would put that page straight back.
+ */
 fun NavHostController.openTab(tab: Tab) {
+    var guard = 0
+    while (guard++ < 8 && currentIsPushedPage() && previousBackStackEntry != null) popBackStack()
     navigate(tab.route) {
         popUpTo<Route.Navigate> { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
+}
+
+private fun NavHostController.currentIsPushedPage(): Boolean {
+    val d = currentDestination ?: return false
+    return Tab.entries.none { d.hasRoute(it.route::class) }
+}
+
+/** Open a page over the current one, once: a second tap while it animates in must not stack a copy. */
+fun NavHostController.push(route: Route) {
+    navigate(route) { launchSingleTop = true }
+}
+
+/**
+ * Close [entry]'s page. Only while it is the resumed page: a second tap during the exit animation would
+ * otherwise pop whatever lies underneath (down to the root, leaving a blank screen).
+ */
+fun NavHostController.popFrom(entry: NavBackStackEntry) {
+    if (entry.lifecycle.currentState == Lifecycle.State.RESUMED) popBackStack()
 }
 
 /** Replace everything with [route] (end of first-run pairing, or after re-pairing). */
@@ -387,11 +433,17 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(reduced
     else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { it / 12 } + fadeOut(tween(FADE_MS))
 }
 
-/** Hand a shared Google Maps link back to Google Maps, which starts the navigation the mirror then follows. */
-private fun openInGoogleMaps(context: android.content.Context, sharedText: String) {
-    // Maps shares "Place name\nhttps://..." : only the link is a URI.
-    val link = com.navigator.app.nav.destination.MapsUrlResolver.extractUrl(sharedText) ?: return
-    val view = android.content.Intent(android.content.Intent.ACTION_VIEW, link.toUri())
+/**
+ * Hand a shared Google Maps link back to Google Maps, which starts the navigation the mirror then follows.
+ * False when the share holds nothing Maps can open.
+ */
+private fun openInGoogleMaps(context: android.content.Context, sharedText: String): Boolean {
+    val resolver = com.navigator.app.nav.destination.MapsUrlResolver
+    // Maps shares "Place name\nhttps://..." : only the link is a URI. Coordinates alone go as a geo: URI.
+    val uri = resolver.extractUrl(sharedText)?.toUri()
+        ?: resolver.parseCoordinates(sharedText)?.let { "geo:${it.lat},${it.lng}".toUri() }
+        ?: return false
+    val view = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
     val maps = android.content.Intent(view).setPackage("com.google.android.apps.maps")
-    runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }
+    return runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }.isSuccess
 }

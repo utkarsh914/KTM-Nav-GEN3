@@ -61,6 +61,7 @@ fun PlaceSearchRoute(
     }
     DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
     val appContext = context.applicationContext
+    val currentRoute = rememberUpdatedState(routeAhead)
     val vm: PlaceSearchViewModel = viewModel(
         viewModelStoreOwner = owner,
         factory = object : ViewModelProvider.Factory {
@@ -72,12 +73,11 @@ fun PlaceSearchRoute(
                 originProvider = { lastKnownLocation(appContext) },
                 initialQuery = initialQuery,
                 initialCategory = initialCategory,
+                routeProvider = { currentRoute.value() },
             ) as T
         },
     )
     val state by vm.state.collectAsState()
-    val currentRoute = rememberUpdatedState(routeAhead)
-    vm.routeProvider = { currentRoute.value() }
     val picked = rememberUpdatedState(onPicked)
     val queryChanged = rememberUpdatedState(onQueryChanged)
 

@@ -43,7 +43,7 @@ these before hand-rolling values.
   enter/move, `Motion.Slow` (320) for hero transitions.
 - Easing: `Motion.StandardEasing`; springs: `Motion.pressSpring()` (press),
   `Motion.popSpring()` (select/save "pop").
-- Reuse the transition builders: `routeTransition(back)` (screen changes),
+- Reuse the transition builders: the shell's NavHost transitions (screen changes),
   `bottomSheetTransition(rising)` (full-screen panels), `driftTransition()`
   (card/overlay stage changes). Don't inline new `tween(...)` specs in screens.
 

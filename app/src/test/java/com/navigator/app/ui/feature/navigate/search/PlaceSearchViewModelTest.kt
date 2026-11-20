@@ -45,16 +45,19 @@ class PlaceSearchViewModelTest {
         var failed = false
         var details: PlaceLocation? = PlaceLocation(12.97, 77.64)
         var detailsGate: CompletableDeferred<Unit>? = null
+        val tokens = mutableListOf<String>()
         val categoryCalls = mutableListOf<Pair<PlaceCategory, List<Pair<Double, Double>>?>>()
         var categoryItems = listOf(CategoryResult("Indian Oil", "NH 48", 13.0, 77.5, 800))
         var categoryFailed = false
 
         override suspend fun autocomplete(input: String, sessionToken: String, origin: Pair<Double, Double>?): PlacesClient.AutocompleteResult {
             autocompleteCalls += input
+            tokens += sessionToken
             return PlacesClient.AutocompleteResult(if (failed) emptyList() else suggestions, failed)
         }
 
         override suspend fun details(placeId: String, sessionToken: String): PlaceLocation? {
+            tokens += sessionToken
             detailsGate?.await()
             return details
         }
@@ -172,6 +175,26 @@ class PlaceSearchViewModelTest {
         vm.setQuery("toit"); advanceTimeBy(400); runCurrent()
         vm.pickSuggestion(vm.state.value.suggestions.first()); runCurrent()
         assertEquals(listOf<PlaceSearchEvent>(PlaceSearchEvent.LoadFailed), events)
+    }
+
+    @Test fun aLookupClosesTheBillingSessionEvenWhenItFails() = runTest {
+        val vm = vm()
+        api.details = null
+        vm.setQuery("toit"); advanceTimeBy(400); runCurrent()
+        vm.pickSuggestion(vm.state.value.suggestions.first()); runCurrent()
+        vm.setQuery("toits"); advanceTimeBy(400); runCurrent()
+        assertEquals("search and details share the token", api.tokens[0], api.tokens[1])
+        assertTrue("the next search starts a new session", api.tokens[2] != api.tokens[1])
+    }
+
+    @Test fun aFailedSearchDoesNotPinTheOfflineBannerWhileTheNextLoads() = runTest {
+        val vm = vm()
+        api.failed = true
+        vm.setQuery("toit"); advanceTimeBy(400); runCurrent()
+        assertTrue(vm.state.value.offline)
+        api.failed = false
+        vm.setQuery("toits"); advanceTimeBy(100)
+        assertFalse(vm.state.value.offline)
     }
 
     @Test fun leavingCancelsALookupInFlight() = runTest {

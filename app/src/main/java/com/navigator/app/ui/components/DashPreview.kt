@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ble.BccuProtocol.TurnIcon
@@ -74,7 +75,7 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
                 if (state.eta != null && state.remaining != null) Footer(state.eta, state.remaining)
             }
             is DashPreviewState.NotConnected -> {
-                Text("—", style = MaterialTheme.typography.displaySmall, color = DashPalette.subtle)
+                Text("—", style = MaterialTheme.typography.displaySmall, color = DashPalette.subtle, modifier = Modifier.clearAndSetSemantics {})
                 Text(state.title, style = MaterialTheme.typography.headlineSmall, color = DashPalette.text)
                 Text(state.hint, style = MaterialTheme.typography.bodySmall, color = DashPalette.subtle)
             }

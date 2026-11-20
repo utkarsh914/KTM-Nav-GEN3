@@ -10,9 +10,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 
@@ -50,19 +48,6 @@ object Motion {
 
     /** Scale applied to tappable chrome while pressed (see rememberPressScale). */
     const val PressedScale = 0.97f
-
-    // ---- Cross-screen (route) transition ---------------------------------
-    /**
-     * Direction-aware route transition: a gentle fade with a small (~6%)
-     * horizontal drift. Forward slides in from the right; back reverses it.
-     */
-    fun routeTransition(back: Boolean): ContentTransform {
-        val dir = if (back) -1 else 1
-        return (fadeIn(tween(Medium, easing = StandardEasing)) +
-            slideInHorizontally(tween(Medium, easing = StandardEasing)) { w -> dir * w / 16 }) togetherWith
-            (fadeOut(tween(Fast, easing = StandardEasing)) +
-                slideOutHorizontally(tween(Medium, easing = StandardEasing)) { w -> -dir * w / 16 })
-    }
 
     /**
      * Vertical stage transition used by full-screen panels that slide up from /

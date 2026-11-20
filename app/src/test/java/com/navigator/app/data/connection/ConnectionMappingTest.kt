@@ -43,4 +43,13 @@ class ConnectionMappingTest {
         assertEquals(BikeStatus.Reconnecting("KTM3638", 2), status(ConnectionPhase.RECONNECTING, attempt = 2))
         assertEquals(BikeStatus.Disconnected("KTM3638"), status(ConnectionPhase.IDLE))
     }
+
+    @Test fun aParkedBikeStopsReadingAsReconnecting() {
+        assertEquals(1, ConnectionMapping.attempt(handshakeRecoveries = 0, absentFailures = 1))
+        assertEquals(2, ConnectionMapping.attempt(0, 2))
+        assertEquals("absent for a while: quiet scanning, not an attempt count", 0, ConnectionMapping.attempt(0, 3))
+        assertEquals(0, ConnectionMapping.attempt(0, 40))
+        assertEquals("a bike that answers badly keeps counting", 4, ConnectionMapping.attempt(4, 40))
+        assertEquals(ConnectionPhase.IDLE, phase(DISCONNECTED, attempt = ConnectionMapping.attempt(0, 40)))
+    }
 }

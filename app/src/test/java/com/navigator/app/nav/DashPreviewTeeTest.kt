@@ -48,4 +48,11 @@ class DashPreviewTeeTest {
         assertNull(DashPreview.state.value.icon)
         assertNull(DashPreview.state.value.distance)
     }
+
+    @Test fun aClearedBannerIsNoLongerShownAsOnTheDash() {
+        DashPreview.banner("WhatsApp: hi")
+        assertEquals("WhatsApp: hi", DashPreview.state.value.lastBanner)
+        DashPreview.clearBanner()
+        assertNull(DashPreview.state.value.lastBanner)
+    }
 }

@@ -115,10 +115,9 @@ import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
-import com.navigator.app.ui.feature.navigate.link.SharedLinkController
+import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
 import com.navigator.app.ui.feature.navigate.search.SearchMode
-import com.navigator.app.nav.destination.MapsUrlResolver
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.ui.feature.navigate.MapState
 import com.navigator.app.ui.feature.navigate.NavigateRoute
@@ -620,6 +619,14 @@ fun NavigationHomeScreen(
         linkController.open(link)
     }
     val linkDuringTrip = resources.getString(R.string.navigate_link_during_trip)
+    // A link that fails while a trip runs would otherwise leave a stale card for the next visit to Browse.
+    LaunchedEffect(linkState, stage) {
+        if (linkState == SharedLinkState.Failed && stage == NavStage.NAVIGATING) {
+            linkController.dismiss()
+            feedback.snackbar(linkDuringTrip)
+        }
+    }
+    BackHandler(enabled = linkState != SharedLinkState.Idle && stage != NavStage.NAVIGATING) { linkController.dismiss() }
     LaunchedEffect(linkController) {
         linkController.resolved.collect {
             // Never swap a running trip's guidance for a place card; the rider can end it first.

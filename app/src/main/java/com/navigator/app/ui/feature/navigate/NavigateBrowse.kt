@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -39,11 +41,10 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +56,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
@@ -152,10 +156,13 @@ fun NavigateBrowse(
                     .collect { offset -> if (offset != null) visiblePx = (containerPx - offset).toInt().coerceAtLeast(0) }
             }
             val pad = SheetPadding.mapBottomPx(visiblePx, containerPx)
+            // The latest actions: a tile tapped while the sheet settles changes the stage, and the old
+            // callback must not then put the sheet's padding on the next stage's map.
+            val currentActions by rememberUpdatedState(actions)
             LaunchedEffect(pad, mapReady) {
                 if (!mapReady) return@LaunchedEffect
                 delay(INSETS_SETTLE_MS)
-                actions.onMapInsets(0, pad)
+                currentActions.onMapInsets(0, pad)
             }
             val expanded = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
             BackHandler(enabled = expanded) { scope.launch { scaffoldState.bottomSheetState.partialExpand() } }
@@ -258,7 +265,7 @@ private fun Overlays(
                     )
                 }
                 if (mapState == MapState.Ready) {
-                    Dimmed(!locationOk) {
+                    Dimmed(!locationOk, stringResource(R.string.navigate_recenter)) {
                         MapControlButton(KtmIcons.Recenter, stringResource(R.string.navigate_recenter), onClick = actions.onRecenter)
                     }
                 }
@@ -272,15 +279,22 @@ private fun Overlays(
  * reason, instead of failing with a message when tapped.
  */
 @Composable
-private fun Dimmed(dimmed: Boolean, content: @Composable () -> Unit) {
+private fun Dimmed(dimmed: Boolean, label: String? = null, content: @Composable () -> Unit) {
     if (!dimmed) {
         content()
         return
     }
     val reason = stringResource(R.string.navigate_needs_location)
-    Box(Modifier.alpha(0.4f).semantics(mergeDescendants = true) { disabled(); stateDescription = reason }) {
+    // The control's own click action is cleared too: it would otherwise stay focusable and activatable by TalkBack.
+    val semantics = if (label != null) {
+        Modifier.clearAndSetSemantics { role = Role.Button; contentDescription = label; disabled(); stateDescription = reason }
+    } else {
+        // A group of legacy controls (until B11): announced as one disabled item.
+        Modifier.semantics(mergeDescendants = true) { disabled(); stateDescription = reason }
+    }
+    Box(Modifier.alpha(0.4f).then(semantics)) {
         content()
-        // Swallows the touch without adding a click action for screen readers.
+        // Swallows the touch.
         Box(Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { } })
     }
 }

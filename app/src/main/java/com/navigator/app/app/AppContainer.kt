@@ -53,7 +53,6 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override val settings = SettingsRepository(AppSettings(appContext))
-    // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val intents = AppIntents()
     override val activityHolder = ActivityHolder()
     override val sharedLink by lazy {
@@ -72,12 +71,13 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val speed by lazy { SpeedSource(appContext) }
     override val trip by lazy {
         TripController(
-            scope = // Not `.immediate`: the provider's own state writes must finish before the controller reacts to them.
-            CoroutineScope(SupervisorJob() + Dispatchers.Main),
+            // Not `.immediate`: the provider's own state writes must finish before the controller reacts to them.
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
             guidance = SdkGuidanceSource { activityHolder.current },
             isOnline = ConnectivityMonitor.isOnline,
         )
     }
+    // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val permissions by lazy { PermissionsRepository(appContext, settings, appScope) }
 }
 

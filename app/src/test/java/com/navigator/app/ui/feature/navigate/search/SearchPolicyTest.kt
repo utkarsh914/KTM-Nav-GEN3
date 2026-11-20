@@ -44,4 +44,14 @@ class SearchPolicyTest {
         assertNull(SearchPolicy.matchRange("Toit", "xyz"))
         assertNull(SearchPolicy.matchRange("Toit", " "))
     }
+
+    @Test fun homeAndWorkAreListedWhenAddingAStopButNotForADestination() {
+        val home = com.navigator.app.nav.destination.FavoritePlace(SavedPlace(1.0, 1.0, "Home"), com.navigator.app.nav.destination.FavoriteSlot.HOME)
+        val work = com.navigator.app.nav.destination.FavoritePlace(SavedPlace(2.0, 2.0, "Work"), com.navigator.app.nav.destination.FavoriteSlot.WORK)
+        val cafe = com.navigator.app.nav.destination.FavoritePlace(SavedPlace(3.0, 3.0, "Cafe"), com.navigator.app.nav.destination.FavoriteSlot.OTHER)
+        val all = listOf(cafe, work, home)
+        assertEquals(listOf("Cafe"), SearchPolicy.browseFavorites(all, SearchMode.Destination).map { it.place.label })
+        assertEquals(listOf("Home", "Work", "Cafe"), SearchPolicy.browseFavorites(all, SearchMode.Stop).map { it.place.label })
+        assertEquals(listOf("Home", "Work", "Cafe"), SearchPolicy.browseFavorites(all, SearchMode.TripStop).map { it.place.label })
+    }
 }

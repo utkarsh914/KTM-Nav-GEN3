@@ -275,6 +275,27 @@ class TripControllerTest {
         assertNull("close to the old destination, but it was cancelled", e.controller.state.value.finished)
     }
 
+    @Test fun endStillStopsGuidanceThatCameUpAfterTheTripWasCancelled() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null)
+        e.controller.cancel()
+        assertEquals(1, e.guidance.stops)
+        e.guidance.enroute(); runCurrent() // the pending start completed after the cancel
+        e.controller.end()
+        assertEquals("End must be able to stop it", 2, e.guidance.stops)
+        assertNull("but nothing is published for a cancelled trip", e.controller.state.value.finished)
+    }
+
+    @Test fun aFailedReplanAfterACancelDoesNotRestartTheTrip() = runTest {
+        val e = Env(backgroundScope)
+        e.liveTripWithStops(); runCurrent()
+        e.controller.addStop(SavedPlace(12.5, 77.1, "Fuel"))
+        val startsBefore = e.guidance.started.size
+        e.controller.cancel()
+        e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent()
+        assertEquals("no restart of a cancelled trip", startsBefore, e.guidance.started.size)
+    }
+
     @Test fun theDwellNeverEndsATripThatWasCancelledOrNeverStarted() = runTest {
         val e = Env(backgroundScope)
         e.guidance.enroute(5); runCurrent()

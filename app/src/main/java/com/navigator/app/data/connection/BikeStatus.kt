@@ -31,6 +31,17 @@ sealed interface BikeStatus {
 
 /** Pure mapping from the raw facts to [ConnectionDetail] and [BikeStatus]. */
 object ConnectionMapping {
+    /** After this many failed connects to an absent bike the bike is simply not there (parked, ignition off). */
+    const val ABSENT_AFTER_FAILURES = 3
+
+    /**
+     * The attempt count the rider sees. Handshake recoveries mean the bike is there but not answering, so
+     * they count from the first; failed connects to an absent bike count only for the first few, after
+     * which the service keeps scanning quietly and the status reads Not connected.
+     */
+    fun attempt(handshakeRecoveries: Int, absentFailures: Int): Int =
+        maxOf(handshakeRecoveries, if (absentFailures >= ABSENT_AFTER_FAILURES) 0 else absentFailures)
+
     fun detail(
         state: ConnectionState,
         bluetoothOn: Boolean,
@@ -47,7 +58,6 @@ object ConnectionMapping {
             // Between attempts the service reads DISCONNECTED (rescan delay, backoff, cooldown) but is retrying.
             attempt > 0 -> ConnectionPhase.RECONNECTING
             state == ConnectionState.CONNECTING -> when {
-                attempt > 0 -> ConnectionPhase.RECONNECTING
                 !paired -> ConnectionPhase.HANDSHAKE_FIRST_PAIR
                 else -> ConnectionPhase.CONNECTING
             }

@@ -186,6 +186,91 @@ class ShellTest {
         assertEquals(Tab.Settings, tab)
     }
 
+    @Test fun openingATabClosesAPageOverNavigateInsteadOfRestoringIt() {
+        rule.setContent { KtmTheme(darkTheme = true) { Host() } }
+        rule.runOnIdle { nav!!.push(Route.Logs) }
+        rule.waitForIdle()
+        assertEquals(null, tab)
+        rule.runOnIdle { nav!!.openTab(Tab.Navigate) }
+        rule.waitForIdle()
+        assertEquals("a notification tap must land on Navigate, not put Logs back", Tab.Navigate, tab)
+        rule.onAllNodesWithText("LOGS").assertCountEquals(0)
+    }
+
+    @Test fun openingAnotherTabFromAPushedPageKeepsTheOtherTabsState() {
+        rule.setContent { KtmTheme(darkTheme = true) { Host() } }
+        rule.runOnIdle { nav!!.openTab(Tab.Rides) }
+        rule.onNodeWithText("inc-rides").performClick()
+        rule.runOnIdle { nav!!.push(Route.Logs) }
+        rule.runOnIdle { nav!!.openTab(Tab.Settings) }
+        rule.waitForIdle()
+        assertEquals(Tab.Settings, tab)
+        rule.runOnIdle { nav!!.openTab(Tab.Rides) }
+        rule.waitForIdle()
+        rule.onNodeWithText("rides:1").assertIsDisplayed()
+    }
+
+    @Test fun aSecondTapOnAPushRowDoesNotStackACopyAndASecondBackDoesNotPopTheRoot() {
+        rule.setContent { KtmTheme(darkTheme = true) { Host() } }
+        rule.runOnIdle { nav!!.push(Route.Logs); nav!!.push(Route.Logs) }
+        rule.waitForIdle()
+        rule.runOnIdle {
+            val entry = nav!!.currentBackStackEntry!!
+            nav!!.popFrom(entry)
+            nav!!.popFrom(entry) // the page is leaving: this tap must not pop the root
+        }
+        rule.waitForIdle()
+        assertEquals(Tab.Navigate, tab)
+        assertEquals(Route.Navigate::class.simpleName, nav!!.currentDestination?.route?.substringAfterLast('.'))
+    }
+
+    @Test fun immersiveStaysOnUntilEveryScreenThatAskedHasLeft() {
+        val chrome = ShellChrome()
+        var a by mutableStateOf(true)
+        var b by mutableStateOf(true)
+        rule.setContent { ImmersiveHosts(chrome, a, b) }
+        rule.runOnIdle { assertTrue(chrome.immersive) }
+        a = false
+        rule.waitForIdle()
+        assertTrue("the second screen still needs it", chrome.immersive)
+        b = false
+        rule.waitForIdle()
+        assertFalse(chrome.immersive)
+    }
+
+    @Test fun aPageOverTheFirstRunPairingStillCountsAsSetup() {
+        var controller: NavHostController? = null
+        val tracker = SetupTracker()
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                val c = rememberNavController().also { controller = it }
+                NavHost(c, startDestination = Route.Pairing(forced = true)) {
+                    composable<Route.Pairing> { Text("PAIRING") }
+                    composable<Route.Logs> { Text("LOGS") }
+                    composable<Route.Navigate> { Text("NAV") }
+                }
+            }
+        }
+        rule.runOnIdle { assertTrue(tracker.inSetup(controller!!.currentBackStackEntry)) }
+        rule.runOnIdle { controller!!.push(Route.Logs) }
+        rule.waitForIdle()
+        rule.runOnIdle { assertTrue("Logs over forced pairing is still setup", tracker.inSetup(controller!!.currentBackStackEntry)) }
+        rule.runOnIdle { controller!!.openRoot(Route.Navigate) }
+        rule.waitForIdle()
+        rule.runOnIdle { assertFalse(tracker.inSetup(controller!!.currentBackStackEntry)) }
+        rule.runOnIdle { controller!!.push(Route.Logs) }
+        rule.waitForIdle()
+        rule.runOnIdle { assertFalse("Logs over the tabs is not setup", tracker.inSetup(controller!!.currentBackStackEntry)) }
+    }
+
+    @Composable
+    private fun ImmersiveHosts(chrome: ShellChrome, a: Boolean, b: Boolean) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalShellChrome provides chrome) {
+            ImmersiveEffect(a)
+            ImmersiveEffect(b)
+        }
+    }
+
     @Test fun theRailIsUsedForWideWindowsAndTheBarForPortrait() {
         assertEquals(NavigationSuiteType.ShortNavigationBarCompact, shellNavigationType(minWidthDp = 360))
         assertEquals(NavigationSuiteType.WideNavigationRailCollapsed, shellNavigationType(minWidthDp = 874))

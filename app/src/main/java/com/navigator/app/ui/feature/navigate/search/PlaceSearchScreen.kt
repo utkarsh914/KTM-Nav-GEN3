@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
 import com.navigator.app.nav.destination.CategoryResult
 import com.navigator.app.nav.destination.FavoriteSlot
@@ -156,7 +155,7 @@ fun PlaceSearchScreen(
 
 @Composable
 private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: PlaceSearchActions) {
-    val saved = state.favorites.filter { it.slot == FavoriteSlot.OTHER }.map { it.place }
+    val saved = SearchPolicy.browseFavorites(state.favorites, mode)
     if (saved.isEmpty() && state.recents.isEmpty()) {
         Text(
             stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
@@ -167,7 +166,14 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
     LazyColumn {
         if (saved.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.navigate_saved_header)) }
-            items(saved, key = { "s-${it.lat},${it.lng}" }) { PlaceRow(it, KtmIcons.Bookmark, state.origin, actions.onPlace) }
+            items(saved, key = { "s-${it.slot}-${it.place.lat},${it.place.lng}" }) {
+                val icon = when (it.slot) {
+                    FavoriteSlot.HOME -> KtmIcons.Home
+                    FavoriteSlot.WORK -> KtmIcons.Work
+                    FavoriteSlot.OTHER -> KtmIcons.Bookmark
+                }
+                PlaceRow(it.place, icon, state.origin, actions.onPlace)
+            }
         }
         if (state.recents.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.navigate_recent_header)) }
@@ -187,7 +193,7 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
             if (state.localResults.isEmpty()) NoMatches()
             else LazyColumn { items(state.localResults, key = { "l-${it.lat},${it.lng}" }) { PlaceRow(it, KtmIcons.Pin, state.origin, actions.onPlace) } }
         }
-        state.loading && state.suggestions.isEmpty() -> Column { repeat(4) { SkeletonRow() } }
+        state.loading && state.suggestions.isEmpty() -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
         state.suggestions.isEmpty() -> NoMatches()
         else -> LazyColumn(Modifier.alpha(if (state.resolving) 0.5f else 1f)) {
             items(state.suggestions, key = { it.placeId }) { s ->
@@ -200,7 +206,7 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
 @Composable
 private fun CategoryList(state: PlaceSearchState, actions: PlaceSearchActions) {
     when {
-        state.loading -> Column { repeat(4) { SkeletonRow() } }
+        state.loading -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
         state.categoryFailed -> InfoBanner(stringResource(R.string.search_failed), tone = BannerTone.Bad)
         state.categoryResults.isEmpty() -> Text(
             stringResource(R.string.search_nothing_nearby), style = MaterialTheme.typography.bodyMedium,

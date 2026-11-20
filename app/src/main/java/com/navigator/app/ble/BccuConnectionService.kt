@@ -241,7 +241,9 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var absentFailures = 0
         set(value) { field = value; publishAttempt() }
 
-    private fun publishAttempt() { _attempt.value = maxOf(handshakeRecoveries, absentFailures) }
+    private fun publishAttempt() {
+        _attempt.value = com.navigator.app.data.connection.ConnectionMapping.attempt(handshakeRecoveries, absentFailures)
+    }
 
     // Serialises all GATT reads/writes (Android allows one outstanding op at a
     // time); coalescing keys drop stale display writes on a degraded link. See
@@ -361,6 +363,7 @@ class BccuConnectionService : LifecycleService() {
         disconnectFirst: Boolean = true,
     ) {
         AppLogger.log("BLE", "teardownLink: $reason")
+        com.navigator.app.nav.DashPreview.reset() // the link is gone: nothing is on the dash any more
         val g = synchronized(gattLock) { gatt.also { gatt = null } }
         try {
             if (disconnectFirst) g?.disconnect()
@@ -1408,6 +1411,7 @@ class BccuConnectionService : LifecycleService() {
      * stuck on screen. Text is blanked too for good measure.
      */
     private fun clearNotificationDisplay() {
+        com.navigator.app.nav.DashPreview.clearBanner()
         bannerOwnedByMessage = false
         offlineBannerShown = false
         val payload = BccuProtocol.buildNotificationPayload(lastNotificationIcon, "", BccuProtocol.Visibility.OFF)
@@ -1431,7 +1435,6 @@ class BccuConnectionService : LifecycleService() {
         // Bail (without scheduling the clear job) if we're not authenticated yet.
         if (!sendEncrypted(BccuProtocol.TURN_ICON,
                 BccuProtocol.buildTurnIconPayload(BccuProtocol.TurnIcon.START, full), coalesce = true)) return
-        com.navigator.app.nav.DashPreview.banner(text)
         AppLogger.log("Dash", "Sending connect greeting: ${AppLogger.sensitive(text)}")
         sendEncrypted(BccuProtocol.TURN_ROAD, BccuProtocol.buildTurnRoadPayload(text, full), coalesce = true)
         sendEncrypted(BccuProtocol.TURN_DISTANCE,
