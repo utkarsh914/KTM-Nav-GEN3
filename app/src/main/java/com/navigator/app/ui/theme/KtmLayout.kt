@@ -59,6 +59,11 @@ object KtmLayout {
     val row2 = 64.dp
     val row3 = 80.dp
     val rowThumb = 72.dp
+    /** The route preview on a ride card. */
+    val rideThumb = 64.dp
+
+    /** Border of a flat card. */
+    val hairline = 1.dp
 
     /** Dividers inset to the text. */
     val dividerInset = 72.dp

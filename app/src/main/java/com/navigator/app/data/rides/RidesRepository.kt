@@ -1,14 +1,18 @@
 package com.navigator.app.data.rides
 
+import com.navigator.app.ride.Gpx
 import com.navigator.app.ride.MergeResult
 import com.navigator.app.ride.MergeToken
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideStore
+import com.navigator.app.ride.RideTrim
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.io.InputStream
 
 object RideSearch {
     /** Rides whose name or note contains every word of [query] (case-insensitive); all of them for a blank query. */
@@ -33,6 +37,19 @@ class RidesRepository(
 
     fun search(query: String): Flow<List<RecordedRide>> = rides.map { RideSearch.filter(it, query) }
 
+    /**
+     * Store a GPX document as a ride (saved, so the history limit never prunes it). [open] reads the document; [name]
+     * is the file's name, used when the track has none. Runs to completion even if the caller leaves.
+     */
+    suspend fun importGpx(open: () -> InputStream?, name: String?): ImportResult =
+        withContext(io + NonCancellable) {
+            val track = runCatching { open()?.use { Gpx.parse(it, System.currentTimeMillis()) } }.getOrNull()
+                ?: return@withContext ImportResult.Unreadable
+            if (store.findDuplicate(track.points) != null) return@withContext ImportResult.Duplicate
+            val label = RideTrim.cleanName(track.name ?: name?.replace(Regex("\\.gpx$", RegexOption.IGNORE_CASE), ""))
+            store.importRide(label, track.points)?.let { ImportResult.Imported(it) } ?: ImportResult.TooShort
+        }
+
     suspend fun softDelete(ids: Collection<String>): List<String> = withContext(io) {
         store.purgeDeleted(System.currentTimeMillis() - RideStore.UNDO_WINDOW_MS)
         store.softDelete(ids)
@@ -48,4 +65,11 @@ class RidesRepository(
     suspend fun merge(ids: Collection<String>): MergeResult = withContext(io) { store.mergeRides(ids) }
     suspend fun undoMerge(token: MergeToken): Boolean = withContext(io) { store.undoMerge(token) }
     suspend fun thumbnail(ride: RecordedRide): List<ThumbPoint> = withContext(io) { thumbnails.get(ride.id, ride.pointCount) }
+}
+
+sealed interface ImportResult {
+    data class Imported(val ride: RecordedRide) : ImportResult
+    data object Duplicate : ImportResult
+    data object Unreadable : ImportResult
+    data object TooShort : ImportResult
 }

@@ -80,3 +80,20 @@ fun RecordRidePill(modifier: Modifier = Modifier) {
         Text(stringResource(R.string.record_ride), style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1)
     }
 }
+
+/** The Rides tab's Record button: a 56 dp accent pill. The host hides it while a recording runs. */
+@Composable
+fun RecordFab(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val a = KtmTheme.accent
+    val haptics = rememberHaptics()
+    Row(
+        modifier.shadow(KtmElevation.sheet, KtmShapes.Pill).height(KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(a.fill)
+            .clickable(role = Role.Button) { haptics.tap(); onClick() }
+            .padding(horizontal = KtmSpacing.xl),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+    ) {
+        Icon(KtmIcons.Record, null, tint = a.onFill, modifier = Modifier.size(KtmSpacing.xl))
+        Text(label, style = KtmTheme.type.buttonCompact, color = a.onFill, maxLines = 1)
+    }
+}

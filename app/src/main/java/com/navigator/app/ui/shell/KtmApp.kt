@@ -59,7 +59,7 @@ import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.NavigateHost
 import com.navigator.app.ui.screens.OnboardingScreen
 import com.navigator.app.ui.screens.PairingScreen
-import com.navigator.app.ui.screens.RideHistoryScreen
+import com.navigator.app.ui.feature.rides.RidesScreen
 import com.navigator.app.ui.screens.RideReplayScreen
 import com.navigator.app.ui.screens.SavedPlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
@@ -155,7 +155,6 @@ fun KtmApp(onQuit: () -> Unit) {
     }
 
     var showQuit by remember { mutableStateOf(false) }
-    val rideList = remember { RideListUiState() }
     val settingsListState = rememberLazyListState()
     val startRoute = remember {
         when {
@@ -262,18 +261,9 @@ fun KtmApp(onQuit: () -> Unit) {
                             }
                         }
                         composable<Route.Rides> {
-                            RideHistoryScreen(
-                                onOpen = { id -> navController.push(Route.RideReplay(id)) },
-                                selectionMode = rideList.selectionMode,
-                                selectedIds = rideList.selectedIds,
-                                onSelectionModeChange = { rideList.selectionMode = it },
-                                onSelectedIdsChange = { rideList.selectedIds = it },
-                                query = rideList.query,
-                                onQueryChange = { rideList.query = it },
-                                sortField = rideList.sortField,
-                                onSortFieldChange = { rideList.sortField = it },
-                                sortDesc = rideList.sortDesc,
-                                onSortDescChange = { rideList.sortDesc = it },
+                            RidesScreen(
+                                onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
+                                onOpenSettings = { navController.openTab(Tab.Settings) },
                             )
                         }
                         composable<Route.Places> {

@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Ok: done. Warn: degraded. Bad: needs the rider. Info: neutral. */
 enum class ChipTone { Ok, Warn, Bad, Info }
@@ -36,16 +37,19 @@ class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHost
     private var chipJob: Job? = null
     private var chipSeq = 0L
 
-    /** A message with an optional action. With an action it stays longer (about 10 s), else about 4 s. */
-    fun snackbar(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+    /** A message with an optional action. With an action it stays 8 s, else about 4 s. [onDismiss] runs when it goes without the action being taken (timed out, swiped or replaced). */
+    fun snackbar(message: String, actionLabel: String? = null, onDismiss: (() -> Unit)? = null, onAction: (() -> Unit)? = null) {
         scope.launch {
             snackbarHost.currentSnackbarData?.dismiss()
-            val result = snackbarHost.showSnackbar(
-                message = message,
-                actionLabel = actionLabel,
-                duration = if (actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
-            )
-            if (result == SnackbarResult.ActionPerformed) onAction?.invoke()
+            // An offer with an action stays 8 s (Undo), a plain message about 4 s.
+            val result = if (actionLabel == null) {
+                snackbarHost.showSnackbar(message = message, duration = SnackbarDuration.Short)
+            } else {
+                withTimeoutOrNull(ACTION_MS) {
+                    snackbarHost.showSnackbar(message = message, actionLabel = actionLabel, duration = SnackbarDuration.Indefinite)
+                } ?: SnackbarResult.Dismissed
+            }
+            if (result == SnackbarResult.ActionPerformed) onAction?.invoke() else onDismiss?.invoke()
         }
     }
 
@@ -61,6 +65,7 @@ class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHost
 
     companion object {
         const val CHIP_MS = 4_000L
+        const val ACTION_MS = 8_000L
     }
 }
 

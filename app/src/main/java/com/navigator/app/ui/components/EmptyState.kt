@@ -25,7 +25,7 @@ class StateAction(val label: String, val onClick: () -> Unit)
 
 /**
  * What happened, what still works, and one action. Never a developer string. [secondary] is a text
- * button under the primary (Import GPX under Record a ride).
+ * button under the primary (Import GPX under Record a ride); [tertiary] is a second one (a link to a setting).
  */
 @Composable
 fun EmptyState(
@@ -35,6 +35,7 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     primary: StateAction? = null,
     secondary: StateAction? = null,
+    tertiary: StateAction? = null,
 ) {
     val c = KtmTheme.colors
     Column(
@@ -50,6 +51,9 @@ fun EmptyState(
         }
         if (secondary != null) {
             KtmButton(secondary.label, secondary.onClick, style = ButtonStyle.Text, size = ButtonSize.Small)
+        }
+        if (tertiary != null) {
+            KtmButton(tertiary.label, tertiary.onClick, style = ButtonStyle.Text, size = ButtonSize.Small)
         }
     }
 }

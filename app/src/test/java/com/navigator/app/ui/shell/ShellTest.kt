@@ -106,6 +106,25 @@ class ShellTest {
         rule.onAllNodesWithText("First").assertCountEquals(0)
     }
 
+    @Test fun anOfferThatIsReplacedReportsItsDismissalButATakenOneDoesNot() {
+        tab = Tab.Navigate
+        var dismissed = 0
+        var undone = 0
+        rule.setContent { Shell { Box {} } }
+        feedback.snackbar("Deleted", "Undo", onDismiss = { dismissed++ }, onAction = { undone++ })
+        rule.waitUntil(2_000) { rule.onAllNodes(hasText("Deleted")).fetchSemanticsNodes().isNotEmpty() }
+        feedback.snackbar("Something else")
+        rule.waitUntil(2_000) { rule.onAllNodes(hasText("Something else")).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(1, dismissed)
+        assertEquals(0, undone)
+        feedback.snackbar("Deleted again", "Undo", onDismiss = { dismissed++ }, onAction = { undone++ })
+        rule.waitUntil(2_000) { rule.onAllNodes(hasText("Deleted again")).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Undo").performClick()
+        rule.waitForIdle()
+        assertEquals(1, undone)
+        assertEquals("taking the action is not a dismissal", 1, dismissed)
+    }
+
     @Test fun theRidingChipIsReplacedByTheNewestMessage() {
         tab = Tab.Navigate
         rule.setContent { Shell { Box {} } }
