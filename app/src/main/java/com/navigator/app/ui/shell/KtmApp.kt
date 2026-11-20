@@ -1,5 +1,6 @@
 package com.navigator.app.ui.shell
 
+import androidx.compose.ui.unit.dp
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -157,6 +158,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val setupDone = snap.onboardingComplete && !inSetupScreen
     val pending by intents.pending.collectAsState()
     val reducedMotion = rememberReducedMotion()
+    val pushPx = with(androidx.compose.ui.platform.LocalDensity.current) { PUSH_OFFSET.roundToPx() }
     // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
     // not again each time something else changes.
     val taken = remember { mutableSetOf<AppIntent>() }
@@ -240,10 +242,10 @@ fun KtmApp(onQuit: () -> Unit) {
                             navController = navController,
                             startDestination = startRoute,
                             modifier = Modifier.fillMaxSize(),
-                            enterTransition = { enterFor(reducedMotion) },
-                            exitTransition = { exitFor(reducedMotion) },
-                            popEnterTransition = { popEnterFor(reducedMotion) },
-                            popExitTransition = { popExitFor(reducedMotion) },
+                            enterTransition = { enterFor(reducedMotion, pushPx) },
+                            exitTransition = { exitFor(reducedMotion, pushPx) },
+                            popEnterTransition = { popEnterFor(reducedMotion, pushPx) },
+                            popExitTransition = { popExitFor(reducedMotion, pushPx) },
                         ) {
                             composable<Route.Onboarding> {
                                 OnboardingScreen(
@@ -536,6 +538,13 @@ fun NavHostController.openRoot(route: Route) {
 
 private const val FADE_MS = 200
 private const val SLIDE_MS = 300
+
+/** MO10: the old tab fades out, then the new one fades and settles in. */
+private const val TAB_OUT_MS = 90
+private const val TAB_IN_MS = 210
+
+/** MO11: a pushed page enters and leaves 30 dp sideways. */
+private val PUSH_OFFSET = 30.dp
 private const val TAB_SCALE = 0.92f
 private const val BACK_SCALE = 0.9f
 
@@ -548,31 +557,33 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boole
     initialState.destination.tab() != null && targetState.destination.tab() != null
 
 // With "Remove animations" every move becomes a crossfade.
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(reduced: Boolean): EnterTransition = when {
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(reduced: Boolean, slidePx: Int): EnterTransition = when {
     reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
     isRideContainerMove() -> fadeIn(tween(FADE_MS))
-    tabSwitch() -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2)) + scaleIn(tween(FADE_MS, delayMillis = FADE_MS / 2), initialScale = TAB_SCALE)
-    else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { it / 12 } + fadeIn(tween(FADE_MS))
+    tabSwitch() -> fadeIn(tween(TAB_IN_MS, delayMillis = TAB_OUT_MS)) + scaleIn(tween(TAB_IN_MS, delayMillis = TAB_OUT_MS), initialScale = TAB_SCALE)
+    else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { slidePx } + fadeIn(tween(FADE_MS))
 }
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(reduced: Boolean): ExitTransition = when {
-    tabSwitch() || reduced -> fadeOut(tween(FADE_MS / 2))
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(reduced: Boolean, slidePx: Int): ExitTransition = when {
+    reduced -> fadeOut(tween(FADE_MS / 2))
+    tabSwitch() -> fadeOut(tween(TAB_OUT_MS))
     isRideContainerMove() -> fadeOut(tween(FADE_MS))
-    else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { -it / 12 } + fadeOut(tween(FADE_MS))
+    else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { -slidePx } + fadeOut(tween(FADE_MS))
 }
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(reduced: Boolean): EnterTransition = when {
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(reduced: Boolean, slidePx: Int): EnterTransition = when {
     reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
     isRideContainerMove() -> fadeIn(tween(FADE_MS))
-    tabSwitch() -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2)) + scaleIn(tween(FADE_MS, delayMillis = FADE_MS / 2), initialScale = TAB_SCALE)
-    else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { -it / 12 } + fadeIn(tween(FADE_MS))
+    tabSwitch() -> fadeIn(tween(TAB_IN_MS, delayMillis = TAB_OUT_MS)) + scaleIn(tween(TAB_IN_MS, delayMillis = TAB_OUT_MS), initialScale = TAB_SCALE)
+    else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { -slidePx } + fadeIn(tween(FADE_MS))
 }
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(reduced: Boolean): ExitTransition = when {
-    tabSwitch() || reduced -> fadeOut(tween(FADE_MS / 2))
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(reduced: Boolean, slidePx: Int): ExitTransition = when {
+    reduced -> fadeOut(tween(FADE_MS / 2))
+    tabSwitch() -> fadeOut(tween(TAB_OUT_MS))
     isRideContainerMove() -> fadeOut(tween(FADE_MS))
     // Also what a predictive back swipe previews: the page shrinks and follows the finger (MO11).
-    else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { it / 12 } + fadeOut(tween(FADE_MS)) + scaleOut(tween(SLIDE_MS, easing = FastOutSlowInEasing), targetScale = BACK_SCALE)
+    else -> slideOutHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { slidePx } + fadeOut(tween(FADE_MS)) + scaleOut(tween(SLIDE_MS, easing = FastOutSlowInEasing), targetScale = BACK_SCALE)
 }
 
 /**

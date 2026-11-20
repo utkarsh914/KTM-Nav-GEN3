@@ -108,8 +108,8 @@ private data class ManeuverKey(val icon: TurnIcon, val road: String?, val instru
 
 /** A short fade with a small drift; no overshoot, at most 250 ms; reduced motion keeps only the fade. */
 private fun maneuverTransition(motion: KtmMotionSpecs): ContentTransform =
-    (fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it / 12 }) togetherWith
-        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else it / 12 })
+    (fadeIn(if (motion.reduced) motion.effectsDefault() else motion.ridingQuick()) + slideInVertically(motion.ridingQuick()) { if (motion.reduced) 0 else -it / 12 }) togetherWith
+        (fadeOut(if (motion.reduced) motion.effectsFast() else motion.ridingQuick()) + slideOutVertically(motion.ridingQuick()) { if (motion.reduced) 0 else it / 12 })
 
 @Composable
 private fun StartingCard(m: ManeuverMetrics) {

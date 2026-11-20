@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -225,9 +226,20 @@ private fun Overlays(
             Modifier.align(Alignment.TopStart).padding(edge),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
+            // MO7: the pill pulses once as the greeting grows out of it.
+            val motion = KtmTheme.motion
+            val pulse = remember { androidx.compose.animation.core.Animatable(1f) }
+            val greeted = state.greeting != null
+            androidx.compose.runtime.LaunchedEffect(greeted) {
+                if (greeted && !motion.reduced) {
+                    pulse.animateTo(PILL_PULSE, motion.spatialFast())
+                    pulse.animateTo(1f, motion.spatialDefault())
+                }
+            }
             BikeStatusPill(
                 label = stringResource(state.bike.label, state.bike.labelArg.orEmpty()),
                 tone = state.bike.tone,
+                modifier = Modifier.graphicsLayer { scaleX = pulse.value; scaleY = pulse.value; transformOrigin = TransformOrigin(0f, 0.5f) },
                 onClick = actions.onBike,
                 stateDescription = stringResource(state.bike.state),
             )
@@ -237,10 +249,13 @@ private fun Overlays(
         MapStateCard(mapState, actions, Modifier.align(Alignment.Center).padding(edge))
 
         // HM8: grows out of the bike pill (top-left), settles lower in the open map, then shrinks back.
+        val motionSpecs = KtmTheme.motion
         AnimatedVisibility(
             visible = state.greeting != null,
-            enter = fadeIn() + scaleIn(transformOrigin = TransformOrigin(0f, 0f)) + slideInVertically { it / 2 },
-            exit = fadeOut() + scaleOut(transformOrigin = TransformOrigin(0f, 0f)) + slideOutVertically { it / 2 },
+            enter = fadeIn(motionSpecs.effectsDefault()) + scaleIn(motionSpecs.spatialDefault(), initialScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                slideInVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
+            exit = fadeOut(motionSpecs.effectsDefault()) + scaleOut(motionSpecs.spatialDefault(), targetScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
             modifier = Modifier.align(Alignment.TopStart).padding(start = edge, top = edge + KtmLayout.targetRest * 2),
         ) {
             val hello = state.greeting
@@ -354,3 +369,6 @@ private fun ConnectGreeting(greeting: GreetingUi) {
         androidx.compose.material3.Text(text, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
     }
 }
+
+private const val PILL_PULSE = 1.08f
+private const val GREETING_FROM = 0.4f

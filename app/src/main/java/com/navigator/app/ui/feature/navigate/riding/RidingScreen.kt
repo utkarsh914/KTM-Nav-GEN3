@@ -60,7 +60,7 @@ fun RidingScreen(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
-            enter = fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it },
+            enter = fadeIn(motion.ridingFade(CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
         ) {
             Column {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
@@ -70,7 +70,7 @@ fun RidingScreen(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            enter = fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial(delayMs = BAR_STAGGER_MS)) { if (motion.reduced) 0 else it },
+            enter = fadeIn(motion.ridingFade(BAR_DELAY_MS)) + slideInVertically(motion.ridingSpatial(BAR_DELAY_MS)) { if (motion.reduced) 0 else it },
         ) {
           Column(Modifier.fillMaxWidth().onSizeChanged { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) }) {
             RidingMapButton(
@@ -84,5 +84,6 @@ fun RidingScreen(
     }
 }
 
-/** The trip bar rises this long after the maneuver card drops in. */
-private const val BAR_STAGGER_MS = 50
+/** MO1: the card drops in after the sheet has gone, and the bar rises a beat after it. */
+private const val CARD_DELAY_MS = 100
+private const val BAR_DELAY_MS = 150

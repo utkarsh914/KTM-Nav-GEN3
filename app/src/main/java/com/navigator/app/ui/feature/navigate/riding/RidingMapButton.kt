@@ -1,5 +1,16 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -52,14 +63,35 @@ fun RidingMapButton(
             ) { Icon(KtmIcons.NavigationUp, null, tint = r.onSurface, modifier = Modifier.rotate(-bearing)) }
         }
         val label = stringResource(if (recenter) R.string.riding_recenter else R.string.riding_overview)
+        val motion = KtmTheme.motion
+        // MO4: one button, two jobs: the colour turns accent and the icon rotates into Recenter.
+        val container by animateColorAsState(if (recenter) a.fill else r.surface, motion.ridingColor(), label = "mapButton")
         Box(
             Modifier.size(KtmLayout.targetRiding).shadow(KtmElevation.onMap, KtmShapes.Card).clip(KtmShapes.Card)
-                .background(if (recenter) a.fill else r.surface)
+                .background(container)
                 .clickable(role = Role.Button, onClickLabel = label) { haptics.tap(); onTap() }
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(if (recenter) KtmIcons.Recenter else KtmIcons.Route, null, tint = if (recenter) a.onFill else r.onSurface)
+            AnimatedContent(
+                targetState = recenter,
+                transitionSpec = {
+                    (fadeIn(motion.effectsDefault()) + scaleIn(motion.ridingSpatial(), initialScale = MORPH_SCALE)) togetherWith
+                        (fadeOut(motion.effectsFast()) + scaleOut(motion.ridingSpatial(), targetScale = MORPH_SCALE))
+                },
+                label = "mapButtonIcon",
+            ) { toRecenter ->
+                val turn by transition.animateFloat(transitionSpec = { motion.ridingSpatial() }, label = "mapButtonTurn") {
+                    if (it == EnterExitState.Visible || motion.reduced) 0f else if (toRecenter) -MORPH_TURN else MORPH_TURN
+                }
+                Icon(
+                    if (toRecenter) KtmIcons.Recenter else KtmIcons.Route, null, tint = if (toRecenter) a.onFill else r.onSurface,
+                    modifier = Modifier.graphicsLayer { rotationZ = turn },
+                )
+            }
         }
     }
 }
+
+private const val MORPH_SCALE = 0.6f
+private const val MORPH_TURN = 90f

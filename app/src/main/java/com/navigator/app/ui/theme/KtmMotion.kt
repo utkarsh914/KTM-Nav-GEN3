@@ -36,6 +36,13 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     fun <T> ridingSpatial(delayMs: Int = 0): FiniteAnimationSpec<T> =
         if (reduced) snap() else tween(RIDING_MAX_MS, delayMillis = delayMs)
 
+    /** A riding fade that starts [delayMs] late (the staggered entrance); reduced motion drops the delay. */
+    fun <T> ridingFade(delayMs: Int = 0): FiniteAnimationSpec<T> =
+        if (reduced) tween(EFFECTS_FAST_MS) else tween(EFFECTS_DEFAULT_MS, delayMillis = delayMs)
+
+    /** MO3: the next-maneuver swap, 160 ms; reduced motion jumps the slide and keeps a short fade (see [effectsFast]). */
+    fun <T> ridingQuick(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(MANEUVER_SWAP_MS)
+
     /** The overspeed colour change: a plain 100 ms fade, never a flash. */
     fun <T> ridingColor(): FiniteAnimationSpec<T> = tween(EFFECTS_FAST_MS)
 
@@ -51,6 +58,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val EFFECTS_FAST_MS = 100
         const val EFFECTS_DEFAULT_MS = 200
         const val RIDING_MAX_MS = 250
+        const val MANEUVER_SWAP_MS = 160
         const val CAMERA_RECENTER_MS = 400
         const val CAMERA_FIT_MS = 600
 
