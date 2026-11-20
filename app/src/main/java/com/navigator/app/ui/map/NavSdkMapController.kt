@@ -172,12 +172,12 @@ class NavSdkMapController(
         scene.stops.forEachIndexed { i, stop ->
             val options = MarkerOptions().position(LatLng(stop.point.lat, stop.point.lng)).title(stop.title)
             if (pins != null) options.icon(pins.numbered(i + 1)).anchor(0.5f, 0.5f)
-            gm.addMarker(options)
+            gm.addMarker(options.zIndex(5f))
         }
         scene.pending?.let { gm.addMarker(MarkerOptions().position(LatLng(it.lat, it.lng)).zIndex(3f)) }
         val destination = MarkerOptions().position(dest).title(scene.destinationTitle)
         if (pins != null) destination.icon(pins.flag()).anchor(8f / 36f, 1f)
-        gm.addMarker(destination)
+        gm.addMarker(destination.zIndex(6f))
         if (scene.routes.isEmpty()) {
             if (scene.reframe) gm.animateCamera(CameraUpdateFactory.newLatLngZoom(dest, 14f))
             return
@@ -194,9 +194,11 @@ class NavSdkMapController(
         }
         // A time label on each route; tapping it selects the route, like tapping the line.
         if (pins != null) {
+            val avoid = scene.frameAlso + scene.stops.map { it.point } + scene.destination
             scene.routes.forEachIndexed { i, points ->
                 val label = scene.routeLabels.getOrNull(i) ?: return@forEachIndexed
-                val at = points.getOrNull((points.lastIndex * com.navigator.app.ui.feature.navigate.plan.RouteSelection.calloutFraction(i, scene.selectedRoute)).toInt()) ?: return@forEachIndexed
+                val at = com.navigator.app.ui.feature.navigate.plan.RouteSelection.calloutPoint(points, i, scene.selectedRoute, avoid)
+                    ?: return@forEachIndexed
                 gm.addMarker(
                     MarkerOptions().position(LatLng(at.lat, at.lng)).icon(pins.callout(label, i == scene.selectedRoute))
                         .anchor(0.5f, 0.5f).zIndex(if (i == scene.selectedRoute) 2f else 1f),

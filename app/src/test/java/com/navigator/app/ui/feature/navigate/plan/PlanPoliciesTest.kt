@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.navigate.plan
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.map.MapPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -93,5 +94,30 @@ class PlanPoliciesTest {
         assertTrue("same spot to four decimals", PlaceSaving.isSaved(listOf(cafe), SavedPlace(13.00001, 77.50001, "x")))
         assertFalse("Home is its own slot", PlaceSaving.isSaved(listOf(home), SavedPlace(12.97, 77.64, "Home")))
         assertFalse(PlaceSaving.isSaved(emptyList(), SavedPlace(1.0, 1.0, "x")))
+    }
+
+    @Test fun aLabelIsNotPlacedOnAPin() {
+        val line = (0..10).map { MapPoint(it * 0.01, it * 0.01) }
+        val preferred = RouteSelection.calloutPoint(line, 0, 0, emptyList())!!
+        assertEquals(line[5], preferred)
+        val moved = RouteSelection.calloutPoint(line, 0, 0, listOf(line[5]))!!
+        assertFalse("moved off the pin", moved == line[5])
+        assertEquals(null, RouteSelection.calloutPoint(line, 0, 0, line))
+        assertEquals(null, RouteSelection.calloutPoint(emptyList(), 0, 0, emptyList()))
+    }
+
+    @Test fun routesGetTimeLabelsOnlyWhenThereAreAlternatives() {
+        fun r(m: Int) = com.navigator.app.nav.destination.RoutePreview(m * 60, 1000, emptyList(), null, 0, com.navigator.app.nav.model.TravelMode.TWO_WHEELER, emptyList())
+        assertEquals(listOf("30 min", "35 min"), RouteSheetMapper.callouts(listOf(r(30), r(35)), 0))
+        assertTrue(RouteSheetMapper.callouts(listOf(r(30)), 0).isEmpty())
+        assertTrue("with stops the header carries the time", RouteSheetMapper.callouts(listOf(r(30), r(35)), 1).isEmpty())
+    }
+
+    @Test fun stopsWithTheSameNameAreToldApart() {
+        val a = SavedPlace(1.0, 1.0, "Churkhi Road", "Near the mill")
+        val b = SavedPlace(2.0, 2.0, "Churkhi Road")
+        val c = SavedPlace(3.0, 3.0, "Fuel")
+        assertEquals(listOf("Churkhi Road · Near the mill", "Churkhi Road (2)", "Fuel"), RouteSheetMapper.distinctLabels(listOf(a, b, c)))
+        assertEquals(listOf("Fuel"), RouteSheetMapper.distinctLabels(listOf(c)))
     }
 }

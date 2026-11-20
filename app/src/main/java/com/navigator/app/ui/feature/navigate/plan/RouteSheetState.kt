@@ -44,7 +44,23 @@ object RouteSheetMapper {
     }
 
     /** The time label on each route of the map. */
-    fun callouts(routes: List<RoutePreview>): List<String> = routes.map { StopLegs.duration(it.durationSeconds) }
+    /** The time label on each route of the map. Only alternatives need telling apart: a single route's time is in the sheet. */
+    fun callouts(routes: List<RoutePreview>, stopCount: Int): List<String> =
+        if (stopCount > 0 || routes.size < 2) emptyList() else routes.map { StopLegs.duration(it.durationSeconds) }
+
+    /** Stops that share a name get their address (or a number) added, so a reorder can be seen. */
+    fun distinctLabels(stops: List<SavedPlace>): List<String> {
+        val count = stops.groupingBy { it.label }.eachCount()
+        val seen = mutableMapOf<String, Int>()
+        return stops.map { s ->
+            if ((count[s.label] ?: 0) < 2) s.label else {
+                val n = (seen[s.label] ?: 0) + 1
+                seen[s.label] = n
+                val extra = s.address?.takeIf { it.isNotBlank() && it != s.label }
+                if (extra != null) "${s.label} · $extra" else "${s.label} ($n)"
+            }
+        }
+    }
 
     fun state(
         destination: SavedPlace,
@@ -60,7 +76,7 @@ object RouteSheetMapper {
         else StopLegs.lines(selected.legs, stops.size + 1, nowMs)
         return RouteSheetState(
             destination = destination.label,
-            stops = stops.map { it.label },
+            stops = distinctLabels(stops),
             options = options,
             selected = preview.selected,
             loading = preview.loading,

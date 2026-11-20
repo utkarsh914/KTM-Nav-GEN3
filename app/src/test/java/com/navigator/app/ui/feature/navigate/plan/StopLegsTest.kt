@@ -21,9 +21,9 @@ class StopLegsTest {
         val legs = listOf(RouteLeg(600, 5_000, emptyList()), RouteLeg(1_200, 12_400, emptyList()), RouteLeg(300, 800, emptyList()))
         val lines = StopLegs.lines(legs, 3, now, utc)
         assertEquals(3, lines.size)
-        assertEquals("10 min \u00b7 5.0 km \u00b7 arrive 22:23", lines[0])
-        assertEquals("20 min \u00b7 12 km \u00b7 arrive 22:43", lines[1])
-        assertEquals("5 min \u00b7 800 m \u00b7 arrive 22:48", lines[2])
+        assertEquals("arrive 22:23 \u00b7 10 min \u00b7 5.0 km", lines[0])
+        assertEquals("arrive 22:43 \u00b7 20 min \u00b7 12 km", lines[1])
+        assertEquals("arrive 22:48 \u00b7 5 min \u00b7 800 m", lines[2])
     }
 
     @Test fun noLinesWhenLegsDontMatchTheStops() {

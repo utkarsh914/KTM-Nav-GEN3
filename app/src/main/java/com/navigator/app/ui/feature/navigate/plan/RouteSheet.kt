@@ -128,18 +128,28 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
     val c = KtmTheme.colors
     // Height of one stop slot (row + leg line), measured, to turn a drag distance into rows.
     var slotPx by remember { mutableFloatStateOf(0f) }
+    // The stop that was just moved lights up for a moment, so a reorder is visible even between similar names.
+    var lit by remember { mutableStateOf<Int?>(null) }
+    androidx.compose.runtime.LaunchedEffect(lit) {
+        if (lit != null) { kotlinx.coroutines.delay(LIT_MS); lit = null }
+    }
+    val moving = remember(actions) {
+        RouteSheetActions(
+            actions.onBack, actions.onClose, actions.onSelect, actions.onAddStop, actions.onRemoveStop,
+            { index, delta -> lit = index + delta; actions.onMoveStop(index, delta) }, actions.onStart,
+        )
+    }
     Column {
-        StopLine(stringResource(R.string.route_your_location), c.fg2, null)
-        LegLine(state.legLines.getOrNull(0))
+        StopLine(stringResource(R.string.route_your_location), c.fg2, null, null)
         state.stops.forEachIndexed { i, label ->
             androidx.compose.runtime.key(i) {
                 StopSlot(
-                    index = i, count = state.stops.size, label = label, legLine = state.legLines.getOrNull(i + 1),
-                    slotPx = slotPx, onSlotSize = { slotPx = it }, actions = actions,
+                    index = i, count = state.stops.size, label = label, legLine = state.legLines.getOrNull(i),
+                    slotPx = slotPx, onSlotSize = { slotPx = it }, actions = moving, lit = lit == i,
                 )
             }
         }
-        StopLine(state.destination, KtmTheme.accent.text, KtmIcons.Flag)
+        StopLine(state.destination, KtmTheme.accent.text, KtmIcons.Flag, state.legLines.getOrNull(state.stops.size))
     }
     if (state.stops.isEmpty()) {
         // PL2: a labelled tonal button, so adding a stop is findable before any stop exists.
@@ -157,24 +167,31 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
 }
 
 @Composable
-private fun StopLine(text: String, color: Color, icon: androidx.compose.ui.graphics.vector.ImageVector?) {
+private fun StopLine(text: String, color: Color, icon: androidx.compose.ui.graphics.vector.ImageVector?, legLine: String?) {
     Row(Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(KtmLayout.targetRest / 2), contentAlignment = Alignment.Center) {
             if (icon != null) Icon(icon, null, tint = color, modifier = Modifier.size(KtmSpacing.xl))
             else Box(Modifier.size(KtmSpacing.md).background(color, KtmShapes.Pill))
         }
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        NameAndLeg(text, color, legLine, Modifier.weight(1f))
     }
 }
 
+/** The place's name with, under it, the leg that ends there: arrival, time and distance from the previous point. */
 @Composable
-private fun LegLine(text: String?) {
-    if (text == null) return
-    Text(
-        text, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
-        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmLayout.targetRest / 2, bottom = KtmSpacing.xs),
-    )
+private fun NameAndLeg(name: String, color: Color, legLine: String?, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(name, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (legLine != null) {
+            Text(
+                legLine, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
+
+private const val LIT_MS = 900L
 
 /** One editable stop (row + leg line) as a draggable unit; the grip's drag distance becomes whole-row moves. */
 @Composable
@@ -186,6 +203,7 @@ private fun StopSlot(
     slotPx: Float,
     onSlotSize: (Float) -> Unit,
     actions: RouteSheetActions,
+    lit: Boolean,
 ) {
     val c = KtmTheme.colors
     var dragY by remember { mutableFloatStateOf(0f) }
@@ -206,16 +224,19 @@ private fun StopSlot(
             .onSizeChanged { onSlotSize(it.height.toFloat()) }
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer { translationY = dragY }
-            .then(if (dragging) Modifier.background(c.surf3, KtmShapes.Control) else Modifier),
+            .then(
+                when {
+                    dragging -> Modifier.background(c.surf3, KtmShapes.Control)
+                    lit -> Modifier.background(KtmTheme.accent.container, KtmShapes.Control)
+                    else -> Modifier
+                },
+            ),
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(KtmLayout.targetRest / 2), contentAlignment = Alignment.Center) {
                 Text(number.toString(), style = MaterialTheme.typography.labelMedium, color = KtmTheme.accent.text)
             }
-            Text(
-                label, style = MaterialTheme.typography.bodyLarge, color = c.fg, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-            )
+            NameAndLeg(label, c.fg, legLine, Modifier.weight(1f))
             if (count > 1) {
                 Box {
                     Box(
@@ -253,7 +274,6 @@ private fun StopSlot(
             }
             KtmIconButton(KtmIcons.Close, stringResource(R.string.route_remove_stop, number), { actions.onRemoveStop(index) })
         }
-        LegLine(legLine)
     }
 }
 

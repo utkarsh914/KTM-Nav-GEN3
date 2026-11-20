@@ -428,7 +428,7 @@ fun NavigationHomeScreen(
                         selectedRoute = routePreview.selected,
                         frameAlso = listOfNotNull(origin?.let { MapPoint(it.first, it.second) }) +
                             stops.map { MapPoint(it.lat, it.lng) },
-                        routeLabels = RouteSheetMapper.callouts(routePreview.routes),
+                        routeLabels = RouteSheetMapper.callouts(routePreview.routes, stops.size),
                         style = pinStyle,
                         pending = stopCandidate?.let { MapPoint(it.lat, it.lng) },
                         reframe = reframe,

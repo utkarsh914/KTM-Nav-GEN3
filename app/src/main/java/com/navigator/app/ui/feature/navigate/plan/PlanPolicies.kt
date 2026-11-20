@@ -2,6 +2,8 @@ package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.trip.MAX_STOPS
+import com.navigator.app.ui.map.MapPoint
+import kotlin.math.abs
 
 /** The editable stops between the rider and the destination (PL3), as pure list operations. */
 object StopList {
@@ -66,6 +68,26 @@ object RouteSelection {
         index % 2 == 0 -> 0.68
         else -> 0.32
     }
+
+    /**
+     * Where the time label of route [index] goes: its preferred spot, or the nearest alternative along the line that
+     * is not close to a pin ([avoid]: where the ride starts, the stops, the destination). Null when every spot is taken.
+     */
+    fun calloutPoint(points: List<MapPoint>, index: Int, selected: Int, avoid: List<MapPoint>): MapPoint? {
+        if (points.isEmpty()) return null
+        val span = maxOf(
+            points.maxOf { it.lat } - points.minOf { it.lat },
+            points.maxOf { it.lng } - points.minOf { it.lng },
+        )
+        val clear = span * CALLOUT_CLEARANCE
+        val preferred = calloutFraction(index, selected)
+        val tries = listOf(preferred, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.5)
+        return tries.map { points[(points.lastIndex * it).toInt()] }.firstOrNull { p ->
+            avoid.none { abs(it.lat - p.lat) < clear && abs(it.lng - p.lng) < clear }
+        }
+    }
+
+    private const val CALLOUT_CLEARANCE = 0.12
 }
 
 /** What Directions / Start do while another trip may be running (DL3). */

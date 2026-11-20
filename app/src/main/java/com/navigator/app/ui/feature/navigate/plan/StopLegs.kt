@@ -35,8 +35,8 @@ object StopLegs {
         return legs.map { leg ->
             elapsed += leg.durationSeconds * 1000L
             val arrive = CLOCK.format(Instant.ofEpochMilli(nowMs + elapsed).atZone(zone))
-            duration(leg.durationSeconds) + " \u00b7 " +
-                DistanceFormatter.format(leg.distanceMeters, DistanceUnits.METRIC) + " \u00b7 arrive $arrive"
+            "arrive $arrive \u00b7 " + duration(leg.durationSeconds) + " \u00b7 " +
+                DistanceFormatter.format(leg.distanceMeters, DistanceUnits.METRIC)
         }
     }
 

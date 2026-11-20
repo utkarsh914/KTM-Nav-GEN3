@@ -146,14 +146,15 @@ class PlanSheetsTest {
                 RouteSheet(
                     routeState(
                         stops = listOf("Fuel", "Cafe"), options = listOf(option("40 min", RouteBadge.Only)),
-                        legLines = listOf("10 min · 5 km · arrive 10:10", "12 min · 6 km · arrive 10:22", "9 min · 4 km · arrive 10:31"),
+                        legLines = listOf("arrive 10:10 · 10 min · 5 km", "arrive 10:22 · 12 min · 6 km", "arrive 10:31 · 9 min · 4 km"),
                     ),
                     routeActions(),
                 )
             }
         }
         rule.onNodeWithText("Fuel").assertIsDisplayed()
-        rule.onNodeWithText("12 min · 6 km · arrive 10:22").assertIsDisplayed()
+        rule.onNodeWithText("arrive 10:10 · 10 min · 5 km").assertIsDisplayed()
+        rule.onNodeWithText("arrive 10:31 · 9 min · 4 km").assertIsDisplayed()
         rule.onNodeWithContentDescription("Remove stop 2").performClick()
         assertEquals(listOf("remove1"), log)
         rule.onNodeWithContentDescription("Reorder stop 1").performClick()
