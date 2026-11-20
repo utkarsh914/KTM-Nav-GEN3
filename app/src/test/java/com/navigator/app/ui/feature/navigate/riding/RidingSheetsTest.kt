@@ -124,7 +124,7 @@ class RidingSheetsTest {
 
     @Test fun theTripSheetShowsTheNextStopWithARemoveButton() {
         val actions = TripSheetActions({}, {}, {}, {}, {}, {}, { log += "removeNext" }, {}, {})
-        riding { TripSheet(beeps = true, messages = true, dashStatus = null, canAddStop = true, nextStop = "Indian Oil", actions = actions) }
+        riding { TripSheetForTest(beeps = true, messages = true, dashStatus = null, canAddStop = true, nextStop = "Indian Oil", actions = actions) }
         rule.onNodeWithText("Indian Oil").assertIsDisplayed()
         rule.onNodeWithText("Next stop").assertIsDisplayed()
         rule.onNodeWithContentDescription("Remove next stop").performClick()
@@ -132,7 +132,7 @@ class RidingSheetsTest {
     }
 
     @Test fun noNextStopNoRow() {
-        riding { TripSheet(beeps = true, messages = true, dashStatus = null, canAddStop = true, nextStop = null, actions = TripSheetActions({}, {}, {}, {}, {}, {}, {}, {}, {})) }
+        riding { TripSheetForTest(beeps = true, messages = true, dashStatus = null, canAddStop = true, nextStop = null, actions = TripSheetActions({}, {}, {}, {}, {}, {}, {}, {}, {})) }
         rule.onAllNodesWithText("Next stop").assertCountEquals(0)
     }
 }

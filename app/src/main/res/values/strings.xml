@@ -267,6 +267,7 @@
     <string name="riding_chip_max_stops">That trip already has the maximum number of stops</string>
     <string name="trip_sheet_title">Trip</string>
     <string name="trip_add_stop">Add stop</string>
+    <string name="trip_sheet_close">Close trip menu</string>
     <string name="trip_minimise">Minimise</string>
     <string name="trip_beeps">Turn beeps</string>
     <string name="trip_messages">Phone messages on the dash</string>

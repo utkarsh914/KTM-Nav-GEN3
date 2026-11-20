@@ -1,5 +1,19 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.fadeOut
+import com.navigator.app.ui.components.KtmScrim
+import com.navigator.app.R
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
@@ -29,6 +43,7 @@ class RidingActions(
     val onOpenSheet: () -> Unit,
     val onMapButton: () -> Unit,
     val onNorthUp: () -> Unit,
+    val onDismissSheet: () -> Unit,
 )
 
 /**
@@ -46,6 +61,9 @@ fun RidingScreen(
     actions: RidingActions,
     onInsets: (topPx: Int, bottomPx: Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** MO2: the trip sheet, grown out of the trip bar while [sheetOpen]. */
+    sheetOpen: Boolean = false,
+    sheet: @Composable ColumnScope.() -> Unit = {},
 ) {
     val density = LocalDensity.current
     val sys = WindowInsets.systemBars.union(WindowInsets.displayCutout)
@@ -53,7 +71,18 @@ fun RidingScreen(
     val sysBottom = sys.getBottom(density)
     val gap = with(density) { KtmSpacing.sm.roundToPx() }
     val size = remember { IntArray(2) }
-    Box(modifier.fillMaxSize().edgePadding().padding(horizontal = KtmSpacing.ridingEdge, vertical = KtmSpacing.sm)) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+    val sheetMax = maxHeight * SHEET_MAX_FRACTION
+    val close = stringResource(R.string.trip_sheet_close)
+    // The scrim covers the whole window (edges included) and closes the sheet on a tap.
+    AnimatedVisibility(sheetOpen, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast())) {
+        Box(
+            Modifier.fillMaxSize().background(KtmScrim)
+                .pointerInput(Unit) { detectTapGestures { actions.onDismissSheet() } }
+                .semantics { contentDescription = close; role = Role.Button; onClick { actions.onDismissSheet(); true } },
+        )
+    }
+    Box(Modifier.fillMaxSize().edgePadding().padding(horizontal = KtmSpacing.ridingEdge, vertical = KtmSpacing.sm)) {
         // MO1: the card drops in from the top, then the bar rises from the bottom a beat later; no overshoot, at most 250 ms. Reduced motion: a short crossfade.
         val motion = KtmTheme.motion
         val entered = remember { MutableTransitionState(false).apply { targetState = true } }
@@ -72,18 +101,22 @@ fun RidingScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             enter = fadeIn(motion.ridingFade(BAR_DELAY_MS)) + slideInVertically(motion.ridingSpatial(BAR_DELAY_MS)) { if (motion.reduced) 0 else it },
         ) {
-          Column(Modifier.fillMaxWidth().onSizeChanged { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) }) {
+          Column(Modifier.fillMaxWidth().onSizeChanged { if (!sheetOpen) { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) } }) {
             RidingMapButton(
                 recenter = recenter, bearing = bearing, onTap = actions.onMapButton, onNorthUp = actions.onNorthUp,
                 modifier = Modifier.align(Alignment.End),
             )
             Spacer(Modifier.height(KtmSpacing.sm))
-            TripBar(bar, actions.onOpenSheet)
+            TripBarSheet(bar, sheetOpen, actions.onOpenSheet, actions.onDismissSheet, sheetMax, sheet = sheet)
           }
         }
+    }
     }
 }
 
 /** MO1: the card drops in after the sheet has gone, and the bar rises a beat after it. */
 private const val CARD_DELAY_MS = 100
 private const val BAR_DELAY_MS = 150
+
+/** The open trip sheet takes at most this much of the screen height (the card above stays visible). */
+private const val SHEET_MAX_FRACTION = 0.72f

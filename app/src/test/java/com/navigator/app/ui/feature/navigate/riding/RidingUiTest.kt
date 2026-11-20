@@ -132,7 +132,7 @@ class RidingUiTest {
     )
 
     @Test fun theTripSheetHasTheTilesTogglesDashAndEnd() {
-        riding { TripSheet(beeps = true, messages = false, dashStatus = "Connected", canAddStop = true, nextStop = null, actions = sheetActions()) }
+        riding { TripSheetForTest(beeps = true, messages = false, dashStatus = "Connected", canAddStop = true, nextStop = null, actions = sheetActions()) }
         rule.onNodeWithText("Add stop").performClick()
         rule.onNodeWithText("Overview").performClick()
         rule.onNodeWithText("Minimise").performClick()
@@ -144,7 +144,7 @@ class RidingUiTest {
     }
 
     @Test fun addStopIsDisabledWhenNoTripCanTakeOne() {
-        riding { TripSheet(beeps = true, messages = true, dashStatus = null, canAddStop = false, nextStop = null, actions = sheetActions()) }
+        riding { TripSheetForTest(beeps = true, messages = true, dashStatus = null, canAddStop = false, nextStop = null, actions = sheetActions()) }
         rule.onNodeWithText("Add stop").assertIsNotEnabled()
     }
 

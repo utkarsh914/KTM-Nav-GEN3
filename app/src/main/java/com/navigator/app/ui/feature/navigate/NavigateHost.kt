@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
+import com.navigator.app.ui.theme.KtmSpacing
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.navigator.app.ui.feature.record.RecordRidePill
@@ -84,7 +86,8 @@ import com.navigator.app.ui.feature.navigate.riding.StartFailedActions
 import com.navigator.app.ui.feature.navigate.riding.StartFailedSheet
 import com.navigator.app.ui.feature.navigate.riding.TripStopSheetHost
 import com.navigator.app.ui.feature.navigate.riding.TripBarModel
-import com.navigator.app.ui.feature.navigate.riding.TripSheet
+import com.navigator.app.ui.feature.navigate.riding.EndTripButton
+import com.navigator.app.ui.feature.navigate.riding.TripControlsBody
 import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
 import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
 import com.navigator.app.ui.map.FollowMode
@@ -1104,6 +1107,7 @@ fun NavigateHost(
                     onOpenSheet = { showTripSheet = true },
                     onMapButton = { applyMapButton(MapButtonEvent.Tap) },
                     onNorthUp = { map.resetNorth() },
+                    onDismissSheet = { showTripSheet = false },
                 )
                 val dashText = BikeSheetMapper.status(bikeStatus)
                 val nextStopTarget = if (showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
@@ -1141,6 +1145,12 @@ fun NavigateHost(
                         bearing = mapBearing,
                         actions = ridingActions,
                         onInsets = { top, bottom -> ridingInsets = MapInsets(top = top, bottom = bottom) },
+                        sheetOpen = showTripSheet,
+                        sheet = {
+                            TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
+                            Spacer(Modifier.height(KtmSpacing.xl))
+                            EndTripButton(tripActions.onEnd)
+                        },
                     )
                 }
                 if (showBike && startFailure == null) {
@@ -1151,16 +1161,6 @@ fun NavigateHost(
                         trip = trip,
                         onSearchByName = { showTripStops = false; openTripStopSearch() },
                         onDismiss = { showTripStops = false },
-                    )
-                }
-                if (showTripSheet && !landscape && startFailure == null) {
-                    TripSheet(
-                        beeps = settingsSnap.turnBeepEnabled,
-                        messages = settingsSnap.mirrorEnabled,
-                        dashStatus = dashStatus,
-                        canAddStop = canAddStop,
-                        nextStop = nextStop,
-                        actions = tripActions,
                     )
                 }
               }

@@ -18,7 +18,6 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmIconButton
-import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.theme.KtmIcons
@@ -38,28 +37,11 @@ class TripSheetActions(
 )
 
 /**
- * NV7: everything the riding screen no longer carries as buttons. Add stop, Overview and Minimise are large tiles;
- * the two riding toggles (turn beeps, phone messages on the dash) are 56 dp rows; the dash row opens the bike
- * screen; End trip is a danger-tonal 64 dp button set well apart from the rest, and asks first (DL2).
- * Stop-adding is offered only when [canAddStop].
+ * NV7: everything the riding screen no longer carries as buttons, shown in the sheet the trip bar grows into
+ * ([TripBarSheet]) and in the landscape controls panel: Add stop, Overview and Minimise are large tiles; the two riding
+ * toggles are 56 dp rows; the dash row opens the bike screen; End trip is a danger-tonal 64 dp button set apart from
+ * the rest and asks first (DL2).
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-fun TripSheet(
-    beeps: Boolean,
-    messages: Boolean,
-    dashStatus: String?,
-    canAddStop: Boolean,
-    /** The next stop still to visit, or null when there is none (or the SDK can't tell). */
-    nextStop: String?,
-    actions: TripSheetActions,
-) {
-    KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trip_sheet_title)) {
-        TripControlsBody(beeps, messages, dashStatus, canAddStop, nextStop, actions)
-        Spacer(Modifier.height(KtmSpacing.xl))
-        EndTripButton(actions.onEnd)
-    }
-}
 
 /** End trip: danger-tonal, 64 dp, set apart from the rest; it asks first. */
 @Composable
