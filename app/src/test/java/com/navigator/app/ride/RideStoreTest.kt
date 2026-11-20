@@ -23,6 +23,8 @@ class RideStoreTest {
     private lateinit var ctx: Context
     private lateinit var store: RideStore
 
+    private fun mergedOf(r: MergeResult): MergeResult.Merged = r as? MergeResult.Merged ?: error("the merge was refused: $r")
+
     @Before fun setUp() {
         ctx = RuntimeEnvironment.getApplication()
         File(ctx.filesDir, "rides").deleteRecursively()
@@ -292,7 +294,7 @@ class RideStoreTest {
     @Test fun mergeJoinsStatsKeepsTheGapAndSoftDeletesTheOriginals() {
         val a = store.importRide("First", pts(60, 1_000_000L))!!.also { store.updateMeta(it.id, "First", "n1") }
         val b = store.importRide("Second", pts(60, 2_000_000L, lng0 = 77.1))!!.also { store.updateMeta(it.id, "Second", "n2"); store.setSaved(it.id, true) }
-        val m = merge(b.id, a.id) as MergeResult.Merged
+        val m = mergedOf(merge(b.id, a.id))
         assertEquals("First", m.ride.destinationLabel)
         assertEquals("n1\n\nn2", m.ride.notes)
         assertEquals(RideSource.MERGED, m.ride.source)
@@ -319,7 +321,7 @@ class RideStoreTest {
 
     @Test fun undoMergeBringsTheOriginalsBackAndDropsTheMergedRide() {
         val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
-        val m = merge(a.id, b.id) as MergeResult.Merged
+        val m = mergedOf(merge(a.id, b.id))
         assertTrue(store.undoMerge(m.token))
         assertEquals(setOf(a.id, b.id), store.list().map { it.id }.toSet())
         assertFalse(store.trackFile(m.ride.id).exists())
@@ -328,7 +330,7 @@ class RideStoreTest {
 
     @Test fun undoMergeFailsOnceAnOriginalIsPurged() {
         val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
-        val m = merge(a.id, b.id) as MergeResult.Merged
+        val m = mergedOf(merge(a.id, b.id))
         store.deleteAll(listOf(a.id))
         assertFalse(store.undoMerge(m.token))
         assertEquals(listOf(m.ride.id), store.list().map { it.id })
@@ -336,7 +338,7 @@ class RideStoreTest {
 
     @Test fun gpxExportOfAMergedRideHasOneSegmentPerPart() {
         val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
-        val m = merge(a.id, b.id) as MergeResult.Merged
+        val m = mergedOf(merge(a.id, b.id))
         val xml = Gpx.write(m.ride.destinationLabel, store.points(m.ride.id))
         assertEquals(2, Regex("<trkseg>").findAll(xml).count())
     }

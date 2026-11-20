@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.rides
 
+import com.navigator.app.ui.shell.rideContainer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
@@ -148,7 +149,7 @@ fun RidesContent(
                                         onClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onOpenRide(id) },
                                         onLongClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onSelect(id) },
                                         onToggleStar = { actions.onToggleStar(id) },
-                                        modifier = Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsDefault(), placementSpec = KtmTheme.motion.spatialDefault(), fadeOutSpec = KtmTheme.motion.effectsFast()),
+                                        modifier = Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsDefault(), placementSpec = KtmTheme.motion.spatialDefault(), fadeOutSpec = KtmTheme.motion.effectsFast()).rideContainer(id),
                                     )
                                 }
                             }

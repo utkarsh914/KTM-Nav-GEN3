@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
+import com.navigator.app.ui.shell.rideContainer
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberReducedMotion
@@ -65,6 +66,35 @@ class MotionAndSemanticsTest {
         val riding = normal.ridingSpatial<Float>(delayMs = 50) as androidx.compose.animation.core.TweenSpec
         assertEquals(KtmMotionSpecs.RIDING_MAX_MS, riding.durationMillis)
         assertEquals(50, riding.delay)
+    }
+
+    @Test fun aRideContainerWithoutASharedScopeIsJustAModifier() {
+        rule.setContent { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("1")) { androidx.compose.material3.Text("card") } }
+        rule.onNodeWithText("card").assertIsDisplayed()
+    }
+
+    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    @Test fun aRideContainerSharesBoundsWithItsPageUnderASharedScope() {
+        var showPage by mutableStateOf(false)
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                androidx.compose.animation.SharedTransitionLayout {
+                    androidx.compose.animation.AnimatedContent(showPage, label = "t") { page ->
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            com.navigator.app.ui.shell.LocalSharedElements provides com.navigator.app.ui.shell.SharedElements(this@SharedTransitionLayout, this),
+                        ) {
+                            if (page) androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("7", remeasure = false)) { androidx.compose.material3.Text("page") }
+                            else androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("7")) { androidx.compose.material3.Text("card") }
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("card").assertIsDisplayed()
+        showPage = true
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithText("page").assertIsDisplayed()
     }
 
     @Test fun turnIconNamesReadAsWords() {
