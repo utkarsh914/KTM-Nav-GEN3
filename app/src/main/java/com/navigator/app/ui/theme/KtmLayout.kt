@@ -62,6 +62,23 @@ object KtmLayout {
 
     /** An app's icon in a picker row. */
     val appIcon = 40.dp
+
+    /** Accent swatch (the touch area is [targetRest]) and its selection ring. */
+    val swatch = 40.dp
+    val swatchRing = 2.dp
+
+    /** The speed-colour legend bar. */
+    val legendBar = 12.dp
+
+    /** The custom-colour picker: shade panel, hue slider track, and the drag handle. */
+    val colorPanel = 176.dp
+    val hueTrack = 20.dp
+    val colorHandle = 28.dp
+    val colorHandleRing = 2.dp
+
+    /** Settings that are not in use right now (still editable) are drawn at this opacity. */
+    const val inactiveAlpha = 0.6f
+
     /** The replay's seek bar: track thickness, thumb, the hatched stop between merged parts, and the chart. */
     val seekTrack = 6.dp
     val seekThumb = 24.dp

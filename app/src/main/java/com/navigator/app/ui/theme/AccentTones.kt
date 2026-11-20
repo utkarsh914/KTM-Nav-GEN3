@@ -95,6 +95,11 @@ val KtmOrange: AccentTones = AccentTones.preset(0xFFFF6600, 0xFFFF7A1F, 0xFFC24E
     inverseOnDark = Color(0xFFB84A00), inverseOnLight = Color(0xFFFF9A57),
 )
 
+/** The hues a "Custom" swatch shows before a custom colour is chosen. */
+val RainbowHint: List<Color> = listOf(
+    Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFF22C55E), Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFFEF4444),
+)
+
 /** Preset accents offered in Settings, in display order (the first is the default). */
 val AccentPalettes: List<AccentOption> = listOf(
     AccentOption("orange", "KTM orange", KtmOrange),

@@ -8,7 +8,6 @@ import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.theme.ThemeMode
-import com.navigator.app.ui.theme.accentFor
 
 /** The line under a category on the Settings home: the values that matter, so most riders never open the page. */
 data class CategorySummary(val parts: List<UiText>, val attention: Boolean = false)
@@ -51,7 +50,7 @@ object SettingsSummary {
                             ThemeMode.DARK -> R.string.settings_sum_theme_dark
                         },
                     ),
-                    UiText.Raw(accentFor(snap.accentColorId).displayName),
+                    UiText.Res(AccentNames.res(snap.accentColorId)),
                 ),
             )
             SettingsPage.PERMISSIONS -> {

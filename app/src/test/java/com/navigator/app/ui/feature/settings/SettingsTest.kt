@@ -196,7 +196,7 @@ class SettingsSummaryTest {
     @Test fun appearanceNamesTheThemeAndTheAccent() {
         val s = summary(SettingsPage.APPEARANCE, snap { themeMode = ThemeMode.DARK })
         assertEquals(UiText.Res(R.string.settings_sum_theme_dark), s.parts[0])
-        assertTrue(s.parts[1] is UiText.Raw)
+        assertEquals(UiText.Res(R.string.accent_orange), s.parts[1])
     }
 
     @Test fun aboutShowsTheVersion() {

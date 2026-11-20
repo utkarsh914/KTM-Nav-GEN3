@@ -67,12 +67,16 @@ import com.navigator.app.ui.feature.replay.ReplayScreen
 import com.navigator.app.ui.feature.replay.edit.EditRideScreen
 import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
 import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.settings.AppearanceScreen
 import com.navigator.app.ui.feature.settings.BikeDashScreen
+import com.navigator.app.ui.feature.settings.NavigationScreen
+import com.navigator.app.ui.feature.settings.RecordingScreen
 import com.navigator.app.ui.feature.settings.SettingsHomeScreen
 import com.navigator.app.ui.feature.settings.SettingsPage
 import com.navigator.app.ui.feature.settings.SoundsScreen
 import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
+import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
 import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
@@ -313,6 +317,9 @@ fun KtmApp(onQuit: () -> Unit) {
                                     },
                                     onRePaired = { navController.push(Route.Pairing(toHome = true)) },
                                 )
+                                SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) })
+                                SettingsPage.RECORDING -> RecordingScreen(onBack = back)
+                                SettingsPage.APPEARANCE -> AppearanceScreen(onBack = back)
                                 SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })
                                 // Pages not rebuilt yet open the previous Settings screen, which still has every setting.
                                 else -> {
@@ -348,6 +355,7 @@ fun KtmApp(onQuit: () -> Unit) {
                             }
                         }
                         composable<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }

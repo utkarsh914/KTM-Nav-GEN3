@@ -706,4 +706,101 @@
     <string name="picker_audio_unavailable">Chosen device (not available now)</string>
     <string name="picker_audio_permission">Allow Nearby devices for this app in Android settings to see your paired headsets.</string>
     <string name="picker_audio_empty">No paired audio devices. Pair a headset in Bluetooth settings first.</string>
+
+    <!-- Settings: shared stepper text -->
+    <string name="stepper_lower">Lower %1$s</string>
+    <string name="stepper_raise">Raise %1$s</string>
+    <string name="stepper_type">Type %1$s</string>
+    <string name="stepper_range">%1$d to %2$d %3$s</string>
+
+    <!-- Navigation (ST3) -->
+    <string name="nav_title">Navigation</string>
+    <string name="nav_section_engine">Navigation engine</string>
+    <string name="nav_engine_in_app">In-app maps (Google)</string>
+    <string name="nav_engine_in_app_hint">Enter a destination in the app and Google guides you on the dash. Needs internet and shows an extra notification while navigating.</string>
+    <string name="nav_engine_mirror">Notification mirror</string>
+    <string name="nav_engine_mirror_hint">Mirrors turn-by-turn from another nav app, such as Google Maps, to the dash. Start navigation in that app. Works offline.</string>
+    <string name="nav_section_route">Route</string>
+    <string name="nav_route_for">Route for</string>
+    <string name="nav_route_bike">Bike</string>
+    <string name="nav_route_car">Car</string>
+    <string name="nav_marker">Location marker</string>
+    <string name="nav_marker_chevron">Arrow</string>
+    <string name="nav_marker_beam">Beam</string>
+    <string name="nav_live_updates">Live Updates notification</string>
+    <string name="nav_live_updates_hint">Shows the next turn in the status bar while navigating (Android 16 QPR2 and newer). Applies from the next notification update.</string>
+    <string name="nav_section_mirror">When mirroring another app</string>
+    <string name="nav_mirror_note">These apply only to the notification mirror. They stay editable while in-app maps are on.</string>
+    <string name="nav_auto_detect">Detect the nav app</string>
+    <string name="nav_auto_detect_hint">Use whichever nav app is guiding you.</string>
+    <string name="nav_app">Nav app</string>
+    <string name="nav_app_choose">Choose</string>
+    <string name="nav_drive_on">Drive on</string>
+    <string name="nav_drive_auto">Auto</string>
+    <string name="nav_drive_left">Left</string>
+    <string name="nav_drive_right">Right</string>
+    <string name="nav_drive_hint">Decides which way merges, exits and roundabouts are drawn. Auto uses your phone\'s region.</string>
+    <string name="picker_nav_title">Navigation app</string>
+    <string name="picker_nav_hint">Mirror turns from this app only.</string>
+
+    <!-- Recording (ST5) -->
+    <string name="rec_title">Recording</string>
+    <string name="rec_record">Record rides</string>
+    <string name="rec_record_hint">Start recording when a trip starts. You can also record by hand from the trip sheet.</string>
+    <string name="rec_avg">Average speed</string>
+    <string name="rec_avg_moving">Moving</string>
+    <string name="rec_avg_overall">Overall</string>
+    <string name="rec_avg_hint">Moving leaves out stops. Overall counts the whole time. Both are saved for every ride.</string>
+    <string name="rec_section_keep">What to keep</string>
+    <string name="rec_keep_note">A recording shorter than both limits is dropped when it ends. This applies to manual recordings too.</string>
+    <string name="rec_min_distance">Minimum distance</string>
+    <string name="rec_min_duration">Minimum time</string>
+    <string name="rec_history">Rides to keep</string>
+    <string name="rec_unit_m">m</string>
+    <string name="rec_unit_s">s</string>
+    <string name="rec_unit_rides">rides</string>
+    <string name="rec_section_colors">Track colours</string>
+    <string name="rec_colors_note">Rides are drawn in these speed colours, slow to fast.</string>
+    <string name="rec_band_base">Green up to</string>
+    <string name="rec_band_step">Each colour step</string>
+    <string name="rec_band_count">Number of colours</string>
+    <string name="rec_unit_colors">colours</string>
+    <string name="rec_legend_cd">Speed colours from 0 to %1$d km per hour and over</string>
+    <string name="rec_legend_start">0</string>
+    <string name="rec_legend_end">%1$d+ km/h</string>
+
+    <!-- Appearance (ST6, ST12) -->
+    <string name="look_title">Appearance</string>
+    <string name="look_preview_title">Next turn in 200 m</string>
+    <string name="look_preview_button">Start</string>
+    <string name="look_preview_badge">Connected</string>
+    <string name="look_theme">Theme</string>
+    <string name="look_theme_system">System</string>
+    <string name="look_theme_light">Light</string>
+    <string name="look_theme_dark">Dark</string>
+    <string name="look_riding">Riding screens</string>
+    <string name="look_riding_day_night">Day / Night</string>
+    <string name="look_riding_app">Same as app</string>
+    <string name="look_riding_hint">Navigation, trip and recording screens switch to light by day and dark by night, or follow the app theme.</string>
+    <string name="look_font">App font</string>
+    <string name="look_font_brand">Brand</string>
+    <string name="look_font_system">System</string>
+    <string name="look_accent">Accent colour</string>
+    <string name="look_accent_custom_swatch">Custom colour</string>
+    <string name="accent_orange">KTM orange</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_purple">Purple</string>
+    <string name="accent_teal">Teal</string>
+    <string name="accent_green">Green</string>
+    <string name="accent_magenta">Magenta</string>
+    <string name="accent_custom">Custom</string>
+    <string name="custom_title">Custom colour</string>
+    <string name="custom_panel_cd">Colour shade and brightness</string>
+    <string name="custom_hue_cd">Hue</string>
+    <string name="custom_hex">Hex colour</string>
+    <string name="custom_hex_error">Enter 6 hex digits, like FF6A00</string>
+    <string name="custom_sample">Sample text</string>
+    <string name="custom_ok">Readable as it is. Contrast %1$s:1.</string>
+    <string name="custom_adjusted">This colour is too close to the background, so text in it is adjusted to stay readable. Contrast %1$s:1.</string>
+    <string name="custom_save">Use this colour</string>
 </resources>

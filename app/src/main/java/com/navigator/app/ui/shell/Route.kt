@@ -29,6 +29,7 @@ sealed interface Route {
     @Serializable data class SettingsPage(val page: com.navigator.app.ui.feature.settings.SettingsPage) : Route
     @Serializable data object DashApps : Route
     @Serializable data object CallAudio : Route
+    @Serializable data object NavApp : Route
 
     @Serializable data object Logs : Route
     @Serializable data object SymbolTest : Route
