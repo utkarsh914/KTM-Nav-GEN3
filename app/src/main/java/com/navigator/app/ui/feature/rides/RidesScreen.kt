@@ -98,8 +98,12 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
         onRecord = startRecording,
         onTurnOnAutoRecord = { container.settings.update { rideRecordingEnabled = true } },
     )
+    var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose { } }
     // "Today" and "Yesterday" move on at midnight even if the tab stays open.
-    val today by androidx.compose.runtime.produceState(java.time.LocalDate.now()) {
+    val today by androidx.compose.runtime.produceState(java.time.LocalDate.now(), resumes) {
+        // Coming back to the app also refreshes it: a timer doesn't tick while the phone sleeps, or across a DST or clock change.
+        value = java.time.LocalDate.now()
         while (true) {
             val now = java.time.LocalDateTime.now()
             val untilMidnight = java.time.Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).toMillis()

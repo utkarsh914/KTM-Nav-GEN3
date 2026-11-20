@@ -97,7 +97,7 @@ a rich Trip Finished screen with duration, average and max speed, and your route
 jump into Replay. You can also leave the active-navigation screen without ending the trip: minimise back to
 the map and a "Resume navigation" pill brings you back.
 
-**Custom accent colour.** Pick the app's accent independently of your bike brand — from presets or a full
+**Custom accent colour.** Pick the app's accent independently of the app theme — from presets or a full
 colour picker in Settings → Appearance.
 
 **Day/night navigation theme.** The in-app map and guidance UI switch between day and night styles

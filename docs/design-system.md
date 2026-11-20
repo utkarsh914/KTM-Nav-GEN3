@@ -4,7 +4,7 @@ The tokens and components every screen uses, so the app stays consistent and new
 screens inherit the same feel. The reference mock-ups are in
 `overhaul/design/redesign.html` (local, not committed); the code follows them.
 When adding UI, reach for these before hand-rolling values, and run
-`overhaul/scripts/check-ui-rules.sh` (see "Rules").
+`overhaul/scripts/check-ui-rules.sh` (a local-only script; the rules are listed below).
 
 ## Theme (`ui/theme/`)
 - `KtmTheme(darkTheme, accent) { … }` wraps the app (`KtmApp`). Read tokens with
@@ -35,7 +35,7 @@ When adding UI, reach for these before hand-rolling values, and run
 ## Components (`ui/components/`)
 `KtmButton` (Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal; sizes
 Small 48, Rest 56, Riding 64, Tile 72), `KtmIconButton`, `MapControlButton`,
-`KtmFab`, `ListRow`, `KtmSwitchRow`, `KtmSelectionRows`, `KtmCard`, `KtmBadge`,
+`KtmFab`, `ListRow`, `KtmSwitchRow`, `KtmCheckboxRow`/`KtmRadioRow`, `KtmSelectionBar`, `KtmCard`, `KtmBadge`,
 `KtmFilterChip`, `KtmSegmented`, `KtmSearchField`, `KtmTextField`, `KtmStepper`,
 `KtmSwitch`, `KtmColorPicker`, `KtmTopBar`, `LargeTitle`, `SectionHeader`,
 `EmptyState`, `InfoBanner`, `FixItBanner`, `Skeleton`/`SkeletonRow`, `StatTile`,
@@ -61,7 +61,8 @@ that previews and tests render, and a thin `*Screen` that wires them.
   predictive back previews the page shrinking to 90 %.
 
 ## Haptics (`ui/theme/Haptics.kt`)
-`val haptics = rememberHaptics()`: `tap()`, `toggle(on)`, `confirm()`, `warn()`,
+`val haptics = rememberHaptics()`: `tap()`, `toggle(on)`, `confirm()`, `reject()`
+(destructive or blocked), `segmentTick()`, `clockTick()` (steppers and detents),
 `longPress()`. Touches only; never for riding events (gloves and a vibrating
 mount hide them: sound and the dash carry those). Shared components already fire
 the right one.
@@ -80,7 +81,7 @@ panes with a Close action; glyphs are decorative unless given a description
 (`TurnIconRef(contentDescription = …)`). Font scale 1.3 and TalkBack are part of
 the QA list.
 
-## Rules (checked by `overhaul/scripts/check-ui-rules.sh`)
+## Rules (grep-checked by the local-only `overhaul/scripts/check-ui-rules.sh`)
 No `Toast`, no raw `AlertDialog` (use `KtmDialog`), no Material icons, no
 `Color(0x…)` or `.sp`/`.em` in screens, no `AppSettings(…)` in `ui/` (use the
 container's `SettingsRepository`), no legacy `Ktm.*` accessor. Strings live in

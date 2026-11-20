@@ -21,7 +21,7 @@ rebrand note in [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md)).
 The app is now **phone-first and map-centric**. The primary surface is a Google-Maps-style
 map home (`NavigateHost`) built on the Nav SDK's bundled `NavigationView`: search →
 confirm → route preview (with alternates) → on-phone turn-by-turn, while the same guidance
-is streamed to the KTM/Husqvarna Gen-3 dash over BLE.
+is streamed to the KTM Gen-3 dash (Husqvarna dashes share the electronics) over BLE.
 
 The app is now **navigation-only** (the D2 lean-down has landed): two mutually-exclusive
 navigation engines, selectable in Settings, each with its own home. There are only two jobs:
@@ -169,8 +169,8 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   `PlacesStore` (recents deduped + capped; favorites with unique Home/Work slots) persisted
   as JSON in a private `SharedPreferences`.
 - **CONFIRM** — red pin + place card (name / address / straight-line distance) with **Get
-  Directions** and a **Save toggle** (brand-accent filled bookmark → Saved list; Home/Work
-  are managed in Settings → Saved places, `PlacesScreen`).
+  Directions** and a **Save toggle** (accent-filled bookmark → Saved list; Home/Work
+  are managed in the Places tab, `PlacesScreen`).
 - **PREVIEW** — `RoutesClient` (Routes API `computeRoutes`, TWO_WHEELER→DRIVE, alternates)
   draws the selected route (Google blue) + alternates (desaturated blue); a **route chip per
   option** selects reliably. ETA/distance + **Start**. The origin is a **fresh** location fix

@@ -13,7 +13,7 @@
 - Notifications rebuilt: a Live Update for guidance (turn glyph, progress with stops, Mute beeps and End trip), a recording notification with Pause and Stop, a quiet bike-connection notification with its likely fix, and a one-time heads-up if it can't connect. Launcher shortcuts: Record a ride, Where to?, Ride home and Ride work.
 - Diagnostics screens rebuilt (logs with filters and search, symbol testing, turn-icon calibration) and a debug overlay for builds.
 - Motion and accessibility: transitions follow Android's "Remove animations" setting live, TalkBack labels and actions on the controls, the colour picker is adjustable by screen readers, and large-font layouts were checked.
-- Husqvarna theming and the brand picker were removed: the app is KTM-only. Distances are shown in kilometres everywhere.
+- The brand picker and Husqvarna theming were removed: the app has one KTM identity (Husqvarna dashes still work, they share the electronics). Distances are shown in kilometres everywhere.
 
 ### Navigation
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
