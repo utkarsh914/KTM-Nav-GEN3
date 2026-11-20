@@ -1,6 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
-import com.navigator.app.ui.screens.RecordControlsHost
+import com.navigator.app.ui.feature.record.RecordRidePill
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
@@ -879,7 +879,7 @@ fun NavigateHost(
                 onOpenPairing = onOpenConnect,
                 onOpenPlaces = onOpenPlaces,
                 onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
-                recordControls = { RecordControlsHost() },
+                recordControls = { RecordRidePill() },
             )
 
             NavStage.SEARCH -> PlaceSearchRoute(

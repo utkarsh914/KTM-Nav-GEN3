@@ -1,5 +1,6 @@
 package com.navigator.app.ui.screens
 
+import com.navigator.app.ride.formatElapsed
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth

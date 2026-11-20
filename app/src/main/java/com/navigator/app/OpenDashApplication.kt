@@ -1,5 +1,12 @@
 package com.navigator.app
 
+import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.notifications.NotificationRepository
+import com.navigator.app.ride.MirrorAutoRecordController
+import com.navigator.app.ride.MirrorRecordPolicy
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
@@ -78,6 +85,26 @@ class OpenDashApplication : Application() {
             startRecording = { trip ->
                 RideRecordingService.start(this, trip.dest.label, trip.dest.lat, trip.dest.lng)
             },
+            stopRecording = { RideRecordingService.stop(this) },
+        ).start()
+        // Mirror mode: Google Maps' guidance is the trip (Q11).
+        val guiding = kotlinx.coroutines.flow.flow {
+            var last = false
+            combine(
+                NotificationRepository.navGuidance, NotificationRepository.currentNavText, NotificationRepository.currentNavPackage,
+                com.navigator.app.nav.providers.NotificationNavProvider.paused,
+            ) { g, t, pkg, paused ->
+                MirrorRecordPolicy.guiding(pkg != null && (g != null || t != null), paused, last).also { last = it }
+            }.collect { emit(it) }
+        }
+        MirrorAutoRecordController(
+            scope = appScope,
+            phase = combine(container.settings.snapshot.map { it.engine == NavEngine.MIRROR }, guiding, MirrorRecordPolicy::phase)
+                .distinctUntilChanged(),
+            session = { com.navigator.app.ride.RideSession.state.value },
+            recordingEnabled = { AppSettings(this).rideRecordingEnabled },
+            locationGranted = ::hasLocationPermission,
+            startRecording = { RideRecordingService.start(this, null, null, null) },
             stopRecording = { RideRecordingService.stop(this) },
         ).start()
     }

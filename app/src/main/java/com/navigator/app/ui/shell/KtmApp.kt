@@ -52,7 +52,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.screens.LogsScreen
-import com.navigator.app.ui.screens.MirrorHomeScreen
+import com.navigator.app.ui.feature.mirror.MirrorScreen
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
@@ -180,6 +180,7 @@ fun KtmApp(onQuit: () -> Unit) {
                             feedback = feedback,
                             onOpenActivity = { navController.openTab(Tab.Navigate) },
                             onOpenRides = { navController.openTab(Tab.Rides) },
+                            mirrorEngine = !inAppState.value,
                         )
                     },
                 ) {
@@ -236,7 +237,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                 )
                             } else {
                                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                                    MirrorHomeScreen(onOpenConnect = { navController.push(Route.Pairing()) })
+                                    MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
                                     // A Google Maps link shared in mirror mode: Google Maps does the navigating.
                                     pending.sharedLink?.let { link ->
                                         SharedLinkCard(

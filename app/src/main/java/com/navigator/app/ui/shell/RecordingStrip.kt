@@ -26,16 +26,16 @@ import com.navigator.app.ui.components.ActivityStripState
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
-import com.navigator.app.ui.screens.formatElapsed
+import com.navigator.app.ride.formatElapsed
 import kotlinx.coroutines.delay
 
 /**
- * The activity strip for a ride the rider started with Record. It shows on every tab above the bar;
- * a running trip and mirroring get their own strips in later batches. Stop asks first, and the
- * outcome (saved or too short) comes back as a snackbar.
+ * The activity strip for a ride the rider started with Record, and for the rides mirror mode records by itself
+ * ([mirrorEngine]). It shows on every tab above the bar. Stop asks first, and the outcome (saved or too short)
+ * comes back as a snackbar.
  */
 @Composable
-fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: () -> Unit) {
+fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: () -> Unit, mirrorEngine: Boolean = false) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val session by RideSession.state.collectAsState()
@@ -51,7 +51,9 @@ fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: 
         }
         nowMs = System.currentTimeMillis()
     }
-    LaunchedEffect(session.active) { if (session.active) awaitingResult = false }
+    // The strip answers for the rides it shows: the rider's own and, in mirror mode, the auto-recorded ones. Their outcome
+    // (saved or too short) is announced whenever they end, however they were stopped.
+    LaunchedEffect(session.active) { if (session.active) awaitingResult = session.manual || mirrorEngine }
     LaunchedEffect(finish) {
         val f = finish ?: return@LaunchedEffect
         if (!awaitingResult) return@LaunchedEffect
@@ -70,7 +72,7 @@ fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: 
         }
     }
 
-    if (session.active && session.manual) {
+    if (session.active && (session.manual || mirrorEngine)) {
         val elapsed = formatElapsed(session.elapsedMs(nowMs))
         val distance = DistanceFormatter.format(session.distanceMeters, DistanceUnits.METRIC)
         ActivityStrip(

@@ -322,4 +322,39 @@
     <string name="finished_recording_next">Recording is on now. Your next trip will be kept.</string>
     <string name="finished_change">Change</string>
     <string name="finished_limits">%1$s / %2$s</string>
+    <!-- Recording -->
+    <string name="record_ride">Record a ride</string>
+    <string name="record_needs_location">Allow location to record rides</string>
+    <string name="record_failed">Couldn\'t start recording</string>
+    <!-- Mirror mode (MR1-MR7) -->
+    <string name="mirror_title">Mirror mode</string>
+    <string name="mirror_live_now">Live · just now</string>
+    <string name="mirror_live_seconds">Live · %1$d s ago</string>
+    <plurals name="mirror_live_minutes">
+        <item quantity="one">Live · %1$d min ago</item>
+        <item quantity="other">Live · %1$d min ago</item>
+    </plurals>
+    <string name="mirror_age_seconds">%1$d s</string>
+    <plurals name="mirror_age_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="mirror_stale_title">No update for %1$s</string>
+    <string name="mirror_stale_body">The turns shown may be old. Check that the trip is still running in Google Maps, and that Android isn\'t limiting it in the background.</string>
+    <string name="mirror_access_title">Notification access</string>
+    <string name="mirror_access_why">Mirror mode reads Google Maps\' turn notifications. Without access no turns reach the dash.</string>
+    <string name="mirror_listener_title">Notification listener</string>
+    <string name="mirror_listener_why">Notification listener isn\'t running. Android stopped it, so no turns reach the dash.</string>
+    <string name="mirror_battery_title">Keep it running</string>
+    <string name="mirror_battery_why">Allow unrestricted battery use so Android doesn\'t stop turn-by-turn mid-ride.</string>
+    <string name="mirror_allow">Allow</string>
+    <string name="mirror_reconnect">Reconnect</string>
+    <string name="mirror_ready_title">Ready</string>
+    <string name="mirror_ready_hint">Start a trip in Google Maps and the turns appear here and on your dash.</string>
+    <string name="mirror_ready_line">Mirror mode is set up</string>
+    <string name="mirror_sending_title">Send turns to the dash</string>
+    <string name="mirror_sending_on">Turn off to stop updating the dash. Google Maps keeps guiding.</string>
+    <string name="mirror_sending_paused">Paused: the dash isn\'t being updated. Turn on to resume.</string>
+    <string name="mirror_paused_badge">Paused</string>
+    <string name="mirror_open_maps">Open Google Maps</string>
 </resources>

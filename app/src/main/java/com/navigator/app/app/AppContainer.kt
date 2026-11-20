@@ -14,6 +14,7 @@ import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.feature.navigate.link.SharedLinkController
 import com.navigator.app.data.connection.ConnectionRepository
 import com.navigator.app.data.places.PlacesRepository
+import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.location.SpeedSource
@@ -35,6 +36,7 @@ interface AppContainer {
     val appScope: CoroutineScope
     val settings: SettingsRepository
     val permissions: PermissionsRepository
+    val mirror: MirrorRepository
     val intents: AppIntents
     val trip: TripController
     val speed: SpeedSource
@@ -96,6 +98,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     }
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val permissions by lazy { PermissionsRepository(appContext, settings, appScope) }
+    override val mirror by lazy { MirrorRepository(permissions) }
 }
 
 val Context.appContainer: AppContainer

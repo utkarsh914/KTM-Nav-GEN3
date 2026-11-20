@@ -75,6 +75,10 @@ object KtmLayout {
     val ridingToggle = 56.dp
     val ridingGlyph = 60.dp
     val ridingGlyphLand = 76.dp
+    val mirrorGlyph = 96.dp
+
+    /** Outline of an emphasised row (the paused switch row). */
+    val outline = 2.dp
     val laneArrowLand = 30.dp
     val rowStop = 76.dp
     val laneArrow = 28.dp

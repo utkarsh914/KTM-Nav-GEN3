@@ -1,6 +1,5 @@
 package com.navigator.app.ride
 
-import com.navigator.app.ui.screens.formatElapsed
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
