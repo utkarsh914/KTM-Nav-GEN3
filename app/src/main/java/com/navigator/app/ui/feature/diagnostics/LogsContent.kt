@@ -26,9 +26,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -63,9 +65,19 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
     val listState = rememberLazyListState()
     var following by rememberSaveable { mutableStateOf(true) }
 
-    // Scrolling by hand pauses following; reaching the end again resumes it.
+    // Scrolling by hand pauses following; reaching the end again resumes it. Only the rider's own drag counts: the
+    // auto-scroll below is also a scroll in progress and must not pause itself.
+    var byHand by remember { mutableStateOf(false) }
     LaunchedEffect(listState) {
-        snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (moving, more) -> if (moving) following = !more }
+        listState.interactionSource.interactions.collect { if (it is DragInteraction.Start) byHand = true }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (moving, more) ->
+            if (byHand) {
+                following = !more
+                if (!moving) byHand = false
+            }
+        }
     }
     LaunchedEffect(ui.entries.size, ui.entries.lastOrNull(), following) {
         if (following && ui.entries.isNotEmpty()) listState.scrollToItem(ui.entries.lastIndex)

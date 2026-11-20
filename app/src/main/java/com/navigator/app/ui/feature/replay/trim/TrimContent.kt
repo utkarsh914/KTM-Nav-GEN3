@@ -36,7 +36,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -204,6 +206,8 @@ fun TrimRangeBar(
             .semantics {
                 contentDescription = description
                 stateDescription = valueText
+                // The kept share of the ride, so a screen reader can say how much is left.
+                progressBarRangeInfo = ProgressBarRangeInfo((to - from).coerceIn(0f, 1f), 0f..1f)
                 customActions = if (!enabled) emptyList() else listOf(
                     CustomAccessibilityAction(startEarlier) { onNudgeStart(-nudge); true },
                     CustomAccessibilityAction(startLater) { onNudgeStart(nudge); true },

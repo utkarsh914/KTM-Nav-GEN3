@@ -165,7 +165,7 @@ private fun CandidateTile(icon: TurnIcon, selected: Boolean, working: Boolean, o
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(KtmLayout.diagCell), contentAlignment = Alignment.Center) {
-            TurnIconRef(icon = icon, size = KtmLayout.diagTile, color = if (selected) a.onContainer else c.fg)
+            TurnIconRef(icon = icon, size = KtmLayout.diagGlyphLarge, color = if (selected) a.onContainer else c.fg)
         }
         Text(
             (if (working) "\u2605 " else "") + name, style = MaterialTheme.typography.labelSmall,

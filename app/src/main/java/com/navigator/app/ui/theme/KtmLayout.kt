@@ -167,6 +167,10 @@ object KtmLayout {
     val diagGlyph = 40.dp
     val diagThumb = 44.dp
     val diagTile = 56.dp
+    /** The big turn glyph in a calibration cell (it fills the cell's tile). */
+    val diagGlyphLarge = 56.dp
+    /** The square behind a turn glyph in a diagnostics row. */
+    val diagRowTile = 48.dp
     val diagCell = 64.dp
     val diagCellWidth = 80.dp
     val diagRowMin = 72.dp

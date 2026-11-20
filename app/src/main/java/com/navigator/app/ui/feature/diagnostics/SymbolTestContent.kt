@@ -108,7 +108,7 @@ private fun SymbolRowCard(row: SymbolRow, actions: SymbolTestActions) {
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             row.turn?.let {
-                Box(Modifier.size(KtmLayout.targetRest).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(KtmLayout.diagRowTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
                     TurnIconRef(icon = it, size = KtmLayout.diagGlyphSmall, color = c.fg)
                 }
             }
