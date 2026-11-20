@@ -12,19 +12,19 @@ import android.location.LocationManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.navigator.app.ui.theme.edgePadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,12 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -125,9 +122,10 @@ import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideStore
-import com.navigator.app.ui.components.SquareMapControl
-import com.navigator.app.ui.theme.BarlowCondensed
-import com.navigator.app.ui.theme.Ktm
+import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.MapControlButton
+import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
@@ -149,8 +147,6 @@ import com.navigator.app.trip.FinishedTrip
 import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.trip.StopAddProblem
 import com.navigator.app.trip.TripEvent
-import com.navigator.app.ui.theme.Motion
-import com.navigator.app.ui.theme.OpenDashIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -161,10 +157,14 @@ import kotlin.math.abs
 /** Transition between [NavStage] chrome. The full-screen SEARCH panel slides up
  *  from / down to the bottom; every other stage change is a gentle fade + small
  *  vertical drift so cards/overlays never hard-cut. */
-private fun stageTransition(initial: NavStage, target: NavStage): ContentTransform = when {
-    target == NavStage.SEARCH -> Motion.bottomSheetTransition(rising = true)
-    initial == NavStage.SEARCH -> Motion.bottomSheetTransition(rising = false)
-    else -> Motion.driftTransition()
+private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
+    target == NavStage.SEARCH ->
+        (slideInVertically(motion.spatialDefault()) { it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
+    initial == NavStage.SEARCH ->
+        fadeIn(motion.effectsDefault()) togetherWith (slideOutVertically(motion.spatialDefault()) { it } + fadeOut(motion.effectsFast()))
+    else ->
+        (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { it / 12 }) togetherWith
+            (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { -it / 12 })
 }
 
 
@@ -210,7 +210,7 @@ fun NavigateHost(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    val appSettings = remember { com.navigator.app.settings.AppSettings(context) }
+    val appSettings = remember { context.appContainer.settings.legacy }
     // Speed-band colouring scheme for the trip-finished route (Advanced settings).
     val speedBands = remember {
         com.navigator.app.ride.RideMetrics.SpeedBands(
@@ -327,7 +327,7 @@ fun NavigateHost(
                     api = RoutesApi { o, d, mode, via -> RoutesClient.computeRoutes(o, d, PlacesClient.androidAuth(appContext), mode, via) },
                     freshLocation = { freshLocation(appContext) },
                     lastKnown = { lastKnownLocation(appContext) },
-                    mode = { com.navigator.app.settings.AppSettings(appContext).vehicleMode },
+                    mode = { appContext.appContainer.settings.legacy.vehicleMode },
                 ) as T
             }
         },
@@ -852,7 +852,8 @@ fun NavigateHost(
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
-    Box(modifier = Modifier.fillMaxSize().background(Ktm.Screen)) {
+    val motionSpecs = KtmTheme.motion
+    Box(modifier = Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         // --- Map surface -----------------------------------------------------
         when {
             available && navReady -> MapSurface(
@@ -863,7 +864,7 @@ fun NavigateHost(
                 dark = mapDark,
             )
             // Not ready: the Navigate screen says why and offers Try again; behind it is plain ground.
-            else -> Box(Modifier.fillMaxSize().background(Ktm.Screen))
+            else -> Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg))
         }
 
         // Animated stage chrome (overlays the persistent map above). The map layer
@@ -871,7 +872,7 @@ fun NavigateHost(
         AnimatedContent(
             targetState = stage,
             modifier = Modifier.fillMaxSize(),
-            transitionSpec = { stageTransition(initialState, targetState) },
+            transitionSpec = { stageTransition(initialState, targetState, motionSpecs) },
             label = "navStage",
         ) { s ->
           Box(Modifier.fillMaxSize()) {
@@ -980,10 +981,10 @@ fun NavigateHost(
                         modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
                         horizontalAlignment = Alignment.End,
                     ) {
-                        SquareMapControl(
-                            OpenDashIcons.Compass, "Reset orientation to north",
-                            tint = Ktm.Danger, rotation = -mapBearing,
-                        ) { map.resetNorth() }
+                        MapControlButton(
+                            KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
+                            rotationDegrees = -mapBearing, tinted = false,
+                        )
                     }
                 }
             }
@@ -1053,10 +1054,10 @@ fun NavigateHost(
                         modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
                         horizontalAlignment = Alignment.End,
                     ) {
-                        SquareMapControl(
-                            OpenDashIcons.Compass, "Reset orientation to north",
-                            tint = Ktm.Danger, rotation = -mapBearing,
-                        ) { map.resetNorth() }
+                        MapControlButton(
+                            KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
+                            rotationDegrees = -mapBearing, tinted = false,
+                        )
                     }
                 }
             }
@@ -1248,25 +1249,10 @@ fun NavigateHost(
     }
 }
 
-/** Pill shown on the browse map while a trip keeps running in the background. */
+/** Pill shown while planning another trip (confirm, preview) when one keeps running in the background. */
 @Composable
 internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Orange)
-            .clickable { haptics.confirm(); onClick() }
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(OpenDashIcons.Navigation, null, tint = Ktm.OnAccent, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(
-            "Resume navigation", color = Ktm.OnAccent, fontFamily = BarlowCondensed,
-            fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 0.5.sp,
-        )
-    }
+    KtmButton(stringResource(R.string.navigate_resume), onClick, modifier, icon = KtmIcons.Navigation)
 }
 
 // ============================ Preview ==================================

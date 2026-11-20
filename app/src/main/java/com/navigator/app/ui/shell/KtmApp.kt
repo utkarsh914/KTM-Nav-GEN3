@@ -87,7 +87,6 @@ import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
 import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
-import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.accentFor
@@ -116,7 +115,6 @@ fun KtmApp(onQuit: () -> Unit) {
     // The whole app follows the rider's own light/dark; Day/Night applies to the riding surfaces only (RidingTheme).
     val dark = resolveAppDark(snap.themeMode, isSystemInDarkTheme())
     val accent = remember(snap.accentColorId) { accentFor(snap.accentColorId) }
-    LaunchedEffect(dark, snap.accentColorId) { Ktm.apply(dark, accent) }
 
     val feedback = rememberFeedback()
     val scope = rememberCoroutineScope()

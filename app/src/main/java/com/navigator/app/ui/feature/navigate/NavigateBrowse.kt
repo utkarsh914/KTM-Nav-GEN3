@@ -262,7 +262,7 @@ private fun Overlays(
                 if (mapState == MapState.Ready && abs(mapBearing) > 0.5f) {
                     MapControlButton(
                         KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), actions.onResetNorth,
-                        rotationDegrees = -mapBearing,
+                        rotationDegrees = -mapBearing, tinted = false,
                     )
                 }
                 if (mapState == MapState.Ready) {

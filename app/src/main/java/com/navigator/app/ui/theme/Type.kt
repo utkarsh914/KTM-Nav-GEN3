@@ -66,7 +66,7 @@ enum class FontMode(val id: String) {
 }
 
 /**
- * Reactive font-mode accessor, mirroring [Ktm] for colours. The public font
+ * Reactive font-mode accessor, The public font
  * families below read [mode] (Compose state), so flipping it re-fonts the whole
  * app live — every `fontFamily = Barlow` call site follows without edits.
  */

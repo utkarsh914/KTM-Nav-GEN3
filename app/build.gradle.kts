@@ -198,7 +198,6 @@ dependencies {
     // Compose rule for the Robolectric smoke test that composes the galleries (manifest hosts the test activity).
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
     // Bar in portrait / rail in landscape for the four-tab shell (version from the BOM).
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
     // Type-safe routes (@Serializable) for the app shell.

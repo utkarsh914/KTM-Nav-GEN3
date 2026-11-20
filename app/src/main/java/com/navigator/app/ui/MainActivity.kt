@@ -16,9 +16,6 @@ import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.shell.KtmApp
-import com.navigator.app.ui.theme.Ktm
-import com.navigator.app.ui.theme.ThemeMode
-import com.navigator.app.ui.theme.accentFor
 import kotlinx.coroutines.launch
 
 /**
@@ -57,25 +54,6 @@ class MainActivity : ComponentActivity() {
 
         settings = appContainer.settings.legacy
         appContainer.activityHolder.current = this
-        // Apply the saved accent + light/dark appearance before the first
-        // frame so the app opens in the right skin with no flash of the wrong one.
-        // System appearance is read from the current config's night flag here;
-        // OpenDashApp keeps it in sync afterwards via isSystemInDarkTheme().
-        run {
-            val nightNow = (resources.configuration.uiMode and
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-            val dark = when (settings.themeMode) {
-                com.navigator.app.ui.theme.ThemeMode.LIGHT -> false
-                com.navigator.app.ui.theme.ThemeMode.DARK -> true
-                com.navigator.app.ui.theme.ThemeMode.SYSTEM -> nightNow
-            }
-            com.navigator.app.ui.theme.Ktm.apply(
-                dark,
-                com.navigator.app.ui.theme.accentFor(settings.accentColorId),
-            )
-        }
-
         if (com.navigator.app.BuildConfig.DEBUG) {
             com.navigator.app.nav.DashPreview.setOverlayEnabled(settings.dashPreviewOverlay)
         }
@@ -92,17 +70,6 @@ class MainActivity : ComponentActivity() {
         // owns its own reconnect loop from there on). The AutoConnectReceiver
         // covers the "app never opened" cases (boot, bike back in range).
         settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
-
-        // Notification "Exit" pressed while this activity sits in the recents
-        // stack: the service can't finish us, so it broadcasts and we do.
-        finishReceiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(c: android.content.Context?, i: Intent?) {
-                finishAndRemoveTask()
-            }
-        }.also {
-            val filter = android.content.IntentFilter(BccuConnectionService.ACTION_FINISH_ACTIVITY)
-            registerReceiver(it, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        }
 
         // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
         forwardIntent(intent, freshLaunch = savedInstanceState == null)
@@ -140,12 +107,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private var maneuverExportReceiver: android.content.BroadcastReceiver? = null
-    private var finishReceiver: android.content.BroadcastReceiver? = null
 
     override fun onDestroy() {
         if (appContainer.activityHolder.current === this) appContainer.activityHolder.current = null
         maneuverExportReceiver?.let { runCatching { unregisterReceiver(it) } }
-        finishReceiver?.let { runCatching { unregisterReceiver(it) } }
         super.onDestroy()
     }
 
@@ -162,7 +127,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Fully quit: stop the foreground service (removes its ongoing notification),
      * cancel any of our notifications, then remove the app task entirely. Invoked
-     * from Settings' Quit row and the notification "Exit".
+     * from the Quit confirm (Settings' Quit row or the notification's Quit).
      */
     private fun exitApp() {
         appContainer.connection.quit()

@@ -289,7 +289,7 @@ private fun Landscape(
 private fun MapButtons(bearing: Float, actions: ReplayActions, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm), horizontalAlignment = Alignment.End) {
         if (abs(bearing) > NORTH_EPSILON) {
-            MapControlButton(KtmIcons.CompassNorth, stringResource(R.string.replay_north), actions.onResetNorth, rotationDegrees = -bearing)
+            MapControlButton(KtmIcons.CompassNorth, stringResource(R.string.replay_north), actions.onResetNorth, rotationDegrees = -bearing, tinted = false)
         }
         MapControlButton(KtmIcons.Recenter, stringResource(R.string.replay_recenter), actions.onRecenter)
     }

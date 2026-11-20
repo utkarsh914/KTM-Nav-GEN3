@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- KTM orange, matching the in-app theme's Ktm.Orange. -->
+    <!-- KTM orange, matching the default accent (KtmOrange). -->
     <color name="ic_launcher_background">#FF6600</color>
 </resources>

@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
  * val haptics = rememberHaptics()
  * Modifier.clickable { haptics.tap(); onClick() }
  * ```
- * The shared components in `KtmComponents` already call these, so most screens
+ * The shared components already call these, so most screens
  * get consistent haptics for free.
  */
 class Haptics(private val view: View) {

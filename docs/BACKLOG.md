@@ -40,7 +40,7 @@ of the shipped work.
 - **Remove the legacy `DestinationScreen` LINK path** — only the shared-Maps-link handling is
   still reachable (share-link fold-in now covers this in `NavigateHost`); safe to
   delete once confirmed unused.
-- **Extract a shared `PlaceSearch` composable** to de-duplicate `SavedPlacesScreen`'s inline
+- **Extract a shared `PlaceSearch` composable** to de-duplicate `PlacesScreen`'s inline
   place picker against the main search sheet. Cosmetic/internal; skip if it risks regressing
   either of the two working autocomplete screens.
 - **Full code-namespace rename** `com.navigator.app` → `com.navigator.ktm` (package

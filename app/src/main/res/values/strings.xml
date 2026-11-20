@@ -84,6 +84,7 @@
     <string name="navigate_sheet_collapse">Hide saved and recent places</string>
     <string name="navigate_needs_location">Needs location</string>
     <string name="navigate_recenter">Recenter</string>
+    <string name="navigate_resume">Resume navigation</string>
     <string name="navigate_reset_north">Reset orientation to north</string>
     <string name="navigate_map_loading">Loading map…</string>
     <string name="navigate_map_failed_title">Couldn\'t start the map</string>

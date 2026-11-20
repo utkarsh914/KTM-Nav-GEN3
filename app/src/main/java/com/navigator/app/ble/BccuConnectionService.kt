@@ -182,11 +182,6 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.reevaluateLocationFeatures()
         }
 
-        /** Notification action: fully quit - stop the service, drop notifications, close the app task. */
-        const val ACTION_EXIT = "com.navigator.app.action.EXIT"
-        /** Broadcast the running MainActivity listens for to finish its task on notification-exit. */
-        const val ACTION_FINISH_ACTIVITY = "com.navigator.app.action.FINISH_ACTIVITY"
-
         fun sendTurnIconIfRunning(icon: BccuProtocol.TurnIcon) {
             runningInstance?.sendTurnIcon(icon)
         }
@@ -681,16 +676,6 @@ class BccuConnectionService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         if (fgsStartFailed) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-        if (intent?.action == ACTION_EXIT) {
-            AppLogger.log("BLE", "Exit requested from the notification - shutting down")
-            // Ask the (possibly backgrounded) activity to remove its task, drop
-            // every notification we own, and stop - onDestroy tears the rest down.
-            sendBroadcast(Intent(ACTION_FINISH_ACTIVITY).setPackage(packageName))
-            runCatching { getSystemService(NotificationManager::class.java).cancelAll() }
-            androidx.core.app.ServiceCompat.stopForeground(this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }

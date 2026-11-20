@@ -168,7 +168,7 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   as JSON in a private `SharedPreferences`.
 - **CONFIRM** — red pin + place card (name / address / straight-line distance) with **Get
   Directions** and a **Save toggle** (brand-accent filled bookmark → Saved list; Home/Work
-  are managed in Settings → Saved places, `SavedPlacesScreen`).
+  are managed in Settings → Saved places, `PlacesScreen`).
 - **PREVIEW** — `RoutesClient` (Routes API `computeRoutes`, TWO_WHEELER→DRIVE, alternates)
   draws the selected route (Google blue) + alternates (desaturated blue); a **route chip per
   option** selects reliably. ETA/distance + **Start**. The origin is a **fresh** location fix

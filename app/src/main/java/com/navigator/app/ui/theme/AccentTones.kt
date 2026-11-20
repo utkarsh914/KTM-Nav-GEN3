@@ -79,10 +79,6 @@ data class AccentTones(
 
 /** A selectable accent. `null` in settings means [KtmOrange]. */
 data class AccentOption(val id: String, val displayName: String, val tones: AccentTones) {
-    // Legacy views for screens that still read the old shape (removed with the Ktm bridge).
-    val color: Color get() = tones.fill
-    val onAccent: Color get() = tones.onFill
-    val deep: Color get() = Color(tones.fill.red * 0.78f, tones.fill.green * 0.78f, tones.fill.blue * 0.78f, 1f)
 }
 
 private val OnBlack = Color(0xFF0B0C0E)
