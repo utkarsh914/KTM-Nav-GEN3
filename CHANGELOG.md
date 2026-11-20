@@ -17,6 +17,7 @@
 - Polish pass: the open trip sheet always fits under the maneuver card, rerouting shows in landscape, start and end markers on ride maps, Back from a Home/Work route goes to the map, merged rides show their parts and tell joins from pauses, failed backups leave no empty file, a restart reminder after restoring settings, and higher text contrast in the light theme.
 - More polish: replay keeps real-time pace, tapping the map to seek follows the zoom, onboarding resumes where it was after the app is closed by Android, "Use my current location" asks for permission, the can't-connect alert has Re-pair and Quit, the dash notification line keeps ticking, launcher shortcuts have their own icons and a message when recording can't start, and removed navigation apps show their name.
 - Logs: following live no longer switches itself off after the first scroll, and a screen reader's scroll pauses it; the trim bar's two handles are each adjustable by a screen reader; the corners of the colour panel take touches.
+- Landscape: the Where-to panel is a floating card like the other landscape panels, the rail shows the bike's state on Navigate, pages without a map get rounded corners while a back swipe shrinks them, and the trim bar keeps its time order in right-to-left languages.
 
 ### Navigation
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final

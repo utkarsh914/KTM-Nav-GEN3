@@ -48,6 +48,7 @@ class ShellTest {
     private var tab by mutableStateOf<Tab?>(null)
     private var immersive by mutableStateOf(false)
     private var attention by mutableStateOf(false)
+    private var bike by mutableStateOf<BikeRailStatus?>(null)
     private lateinit var feedback: Feedback
     private val selected = mutableListOf<Tab>()
 
@@ -56,7 +57,7 @@ class ShellTest {
         feedback = rememberFeedback()
         KtmTheme(darkTheme = true) {
             MainShell(
-                currentTab = tab, immersive = immersive, settingsNeedsAttention = attention,
+                currentTab = tab, immersive = immersive, settingsNeedsAttention = attention, bike = bike,
                 onSelectTab = { selected += it }, feedback = feedback, strip = { Text("STRIP") }, content = content,
             )
         }
@@ -80,6 +81,23 @@ class ShellTest {
         attention = false
         rule.waitForIdle()
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Needs attention")).assertDoesNotExist()
+    }
+
+    @Test fun theBikeDotIsOnlyInTheLandscapeRail() {
+        tab = Tab.Rides
+        bike = BikeRailStatus(com.navigator.app.ui.components.PillTone.Connected, "Connected")
+        rule.setContent { Shell { Box {} } }
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Connected")).assertDoesNotExist()
+    }
+
+    @Test @Config(sdk = [36], qualifiers = "w780dp-h360dp") fun theRailCarriesTheBikeStateOnTheNavigateItem() {
+        tab = Tab.Rides
+        bike = BikeRailStatus(com.navigator.app.ui.components.PillTone.Connected, "Connected")
+        rule.setContent { Shell { Box {} } }
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Connected")).assertExists()
+        bike = null
+        rule.waitForIdle()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Connected")).assertDoesNotExist()
     }
 
     @Test fun theStripShowsAboveTheBarUnlessRidingTakesTheScreen() {

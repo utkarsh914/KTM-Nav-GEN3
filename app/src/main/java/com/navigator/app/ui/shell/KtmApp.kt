@@ -69,6 +69,7 @@ import com.navigator.app.ui.feature.onboarding.OnboardingScreen
 import com.navigator.app.ui.feature.onboarding.ReadyScreen
 import com.navigator.app.ui.feature.pairing.PairingScreen
 import com.navigator.app.ui.feature.rides.RidesScreen
+import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.theme.KtmLayout
 import kotlinx.coroutines.launch
 import com.navigator.app.ui.feature.rides.merge.MergeScreen
@@ -138,6 +139,9 @@ fun KtmApp(onQuit: () -> Unit) {
     // changed it in system settings).
     val permissions = container.permissions
     val permissionState by permissions.state.collectAsState()
+    val bikeStatus by container.connection.status.collectAsState()
+    val bikePill = BikePillMapper.map(bikeStatus)
+    val bikeRail = BikeRailStatus(bikePill.tone, stringResource(bikePill.state))
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) permissions.refresh() }
@@ -226,6 +230,7 @@ fun KtmApp(onQuit: () -> Unit) {
                     currentTab = currentTab,
                     immersive = chrome.immersive,
                     settingsNeedsAttention = permissionState.attentionNeeded,
+                    bike = bikeRail,
                     onSelectTab = { navController.openTab(it) },
                     feedback = feedback,
                     strip = {
@@ -360,7 +365,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     onQuit = { showQuit = true },
                                 )
                             }
-                            composable<Route.SettingsPage> { backStackEntry ->
+                            listPage<Route.SettingsPage> { backStackEntry ->
                                 val back = { navController.popFrom(backStackEntry) }
                                 when (backStackEntry.toRoute<Route.SettingsPage>().page) {
                                     SettingsPage.BIKE_DASH -> BikeDashScreen(
@@ -383,12 +388,12 @@ fun KtmApp(onQuit: () -> Unit) {
                                     )
                                 }
                             }
-                            composable<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
+                            listPage<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
                             composable<Route.MergeRides> { backStackEntry ->
                                 MergeScreen(
                                     ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
@@ -429,7 +434,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                 )
                                 }
                             }
-                            composable<Route.EditRide> { backStackEntry ->
+                            listPage<Route.EditRide> { backStackEntry ->
                                 val id = backStackEntry.toRoute<Route.EditRide>().rideId
                                 EditRideScreen(
                                     rideId = id,

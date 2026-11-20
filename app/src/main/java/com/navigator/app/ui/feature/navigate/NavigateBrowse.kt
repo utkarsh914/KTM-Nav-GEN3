@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.shadow
@@ -128,14 +130,22 @@ fun NavigateBrowse(
         val landscape = maxWidth > maxHeight
         if (landscape) {
             val panelWidth = KtmLayout.panelWidth(maxWidth.value)
-            val panelPx = with(density) { panelWidth.roundToPx() }
-            LaunchedEffect(panelPx, mapReady) {
-                if (mapReady) actions.onMapInsets(panelPx, 0)
+            // The map is framed by what the panel and its margins cover, measured: the shell's rail and the cutout
+            // inset are part of it without being counted twice.
+            var coveredPx by remember { mutableIntStateOf(0) }
+            LaunchedEffect(coveredPx, mapReady) {
+                if (mapReady && coveredPx > 0) actions.onMapInsets(coveredPx, 0)
             }
             Row(Modifier.fillMaxSize()) {
+                // HM10: the Where-to panel is the same floating card as every other landscape panel.
                 Column(
-                    Modifier.width(panelWidth).fillMaxHeight().background(KtmTheme.colors.surf)
-                        .windowInsetsPadding(safe.only(WindowInsetsSides.Start + WindowInsetsSides.Top + WindowInsetsSides.Bottom)),
+                    Modifier.onSizeChanged { coveredPx = it.width }
+                        .windowInsetsPadding(safe.only(WindowInsetsSides.Start + WindowInsetsSides.Top + WindowInsetsSides.Bottom))
+                        .padding(KtmLayout.panelInset)
+                        .width(panelWidth).fillMaxHeight()
+                        .shadow(KtmElevation.sheet, KtmShapes.Card)
+                        .background(KtmTheme.colors.surf, KtmShapes.Card)
+                        .clip(KtmShapes.Card),
                 ) {
                     WhereToSheetContent(state, voiceAvailable, actions.sheet)
                 }

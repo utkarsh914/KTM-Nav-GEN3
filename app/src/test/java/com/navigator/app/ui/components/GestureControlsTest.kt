@@ -181,4 +181,20 @@ class GestureControlsTest {
         val end = rule.onNodeWithContentDescription("End of the part to keep").fetchSemanticsNode()
         assertTrue(SemanticsActions.SetProgress !in end.config)
     }
+
+    @Test fun theTrimBarKeepsTheStartOnTheLeftInARightToLeftLanguage() {
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl) {
+                KtmTheme(darkTheme = true) {
+                    TrimRangeBar(
+                        from = 0.2f, to = 0.8f, onMoveStart = {}, onMoveEnd = {}, onMoveNearest = {}, onNudgeStart = {}, onNudgeEnd = {},
+                        nudge = 1, valueText = "kept", startText = "10:00", endText = "11:00", modifier = Modifier.width(300.dp),
+                    )
+                }
+            }
+        }
+        val start = rule.onNodeWithContentDescription("Start of the part to keep").fetchSemanticsNode().boundsInRoot
+        val end = rule.onNodeWithContentDescription("End of the part to keep").fetchSemanticsNode().boundsInRoot
+        assertTrue("start ${start.left} before end ${end.left}", start.left < end.left)
+    }
 }

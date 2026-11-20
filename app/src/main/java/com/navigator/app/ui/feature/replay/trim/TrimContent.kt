@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.replay.trim
 
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -47,6 +49,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
@@ -148,9 +151,12 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
         startText = timeAt(ui, ui.range.from), endText = timeAt(ui, ui.range.to),
         enabled = !ui.applying,
     )
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(stringResource(R.string.trim_start_label, timeAt(ui, ui.range.from)), style = MaterialTheme.typography.labelMedium, color = c.fg)
-        Text(stringResource(R.string.trim_end_label, timeAt(ui, ui.range.to)), style = MaterialTheme.typography.labelMedium, color = c.fg)
+    // Under the bar, so on the same sides as its handles.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(R.string.trim_start_label, timeAt(ui, ui.range.from)), style = MaterialTheme.typography.labelMedium, color = c.fg)
+            Text(stringResource(R.string.trim_end_label, timeAt(ui, ui.range.to)), style = MaterialTheme.typography.labelMedium, color = c.fg)
+        }
     }
     ui.kept?.let {
         Text(
@@ -207,60 +213,63 @@ fun TrimRangeBar(
     val startLater = stringResource(R.string.trim_start_later)
     val endEarlier = stringResource(R.string.trim_end_earlier)
     val endLater = stringResource(R.string.trim_end_later)
-    BoxWithConstraints(modifier.fillMaxWidth().height(KtmLayout.targetRest)) {
-        // One node per handle, adjustable on its own (like a range slider), over the drawn bar.
-        val band = KtmLayout.targetRest
-        val handleDp = KtmLayout.trimHandle
-        val travel = maxWidth - handleDp
-        ThumbNode(stringResource(R.string.trim_start_handle), startText, from, 0f..toNow.coerceAtLeast(0f), onMoveStart, enabled, handleDp / 2 + travel * from - band / 2, band)
-        ThumbNode(stringResource(R.string.trim_end_handle), endText, to, fromNow.coerceAtMost(1f)..1f, onMoveEnd, enabled, handleDp / 2 + travel * to - band / 2, band)
-        Canvas(
-            Modifier.matchParentSize()
-                .semantics {
-                    contentDescription = description
-                    stateDescription = valueText
-                    customActions = if (!enabled) emptyList() else listOf(
-                        CustomAccessibilityAction(startEarlier) { onNudgeStart(-nudge); true },
-                        CustomAccessibilityAction(startLater) { onNudgeStart(nudge); true },
-                        CustomAccessibilityAction(endEarlier) { onNudgeEnd(-nudge); true },
-                        CustomAccessibilityAction(endLater) { onNudgeEnd(nudge); true },
-                    )
+    // The ride runs left to right under the chart in every language (a time axis is not mirrored), so does this bar.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(modifier.fillMaxWidth().height(KtmLayout.targetRest)) {
+            // One node per handle, adjustable on its own (like a range slider), over the drawn bar.
+            val band = KtmLayout.targetRest
+            val handleDp = KtmLayout.trimHandle
+            val travel = maxWidth - handleDp
+            ThumbNode(stringResource(R.string.trim_start_handle), startText, from, 0f..toNow.coerceAtLeast(0f), onMoveStart, enabled, handleDp / 2 + travel * from - band / 2, band)
+            ThumbNode(stringResource(R.string.trim_end_handle), endText, to, fromNow.coerceAtMost(1f)..1f, onMoveEnd, enabled, handleDp / 2 + travel * to - band / 2, band)
+            Canvas(
+                Modifier.matchParentSize()
+                    .semantics {
+                        contentDescription = description
+                        stateDescription = valueText
+                        customActions = if (!enabled) emptyList() else listOf(
+                            CustomAccessibilityAction(startEarlier) { onNudgeStart(-nudge); true },
+                            CustomAccessibilityAction(startLater) { onNudgeStart(nudge); true },
+                            CustomAccessibilityAction(endEarlier) { onNudgeEnd(-nudge); true },
+                            CustomAccessibilityAction(endLater) { onNudgeEnd(nudge); true },
+                        )
+                    }
+                    .pointerInput(enabled) {
+                        if (!enabled) return@pointerInput
+                        val handle = KtmLayout.trimHandle.toPx()
+                        detectTapGestures { at -> nearest(trackFraction(at.x, this.size.width.toFloat(), handle)) }
+                    }
+                    .pointerInput(enabled) {
+                        if (!enabled) return@pointerInput
+                        val handle = KtmLayout.trimHandle.toPx()
+                        var movingStart = true
+                        detectHorizontalDragGestures(
+                            onDragStart = { at ->
+                                val f = trackFraction(at.x, this.size.width.toFloat(), handle)
+                                movingStart = abs(f - fromNow) <= abs(f - toNow)
+                                if (movingStart) start(f) else end(f)
+                            },
+                            onHorizontalDrag = { change, _ ->
+                                val f = trackFraction(change.position.x, this.size.width.toFloat(), handle)
+                                if (movingStart) start(f) else end(f)
+                            },
+                        )
+                    },
+            ) {
+                val handle = KtmLayout.trimHandle.toPx()
+                val track = KtmLayout.seekTrack.toPx()
+                val left = handle / 2
+                val width = (size.width - handle).coerceAtLeast(1f)
+                val y = size.height / 2
+                val x1 = left + width * from
+                val x2 = left + width * to
+                drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
+                drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
+                for (x in listOf(x1, x2)) {
+                    drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
+                    drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
+                    drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
                 }
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    val handle = KtmLayout.trimHandle.toPx()
-                    detectTapGestures { at -> nearest(trackFraction(at.x, this.size.width.toFloat(), handle)) }
-                }
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    val handle = KtmLayout.trimHandle.toPx()
-                    var movingStart = true
-                    detectHorizontalDragGestures(
-                        onDragStart = { at ->
-                            val f = trackFraction(at.x, this.size.width.toFloat(), handle)
-                            movingStart = abs(f - fromNow) <= abs(f - toNow)
-                            if (movingStart) start(f) else end(f)
-                        },
-                        onHorizontalDrag = { change, _ ->
-                            val f = trackFraction(change.position.x, this.size.width.toFloat(), handle)
-                            if (movingStart) start(f) else end(f)
-                        },
-                    )
-                },
-        ) {
-            val handle = KtmLayout.trimHandle.toPx()
-            val track = KtmLayout.seekTrack.toPx()
-            val left = handle / 2
-            val width = (size.width - handle).coerceAtLeast(1f)
-            val y = size.height / 2
-            val x1 = left + width * from
-            val x2 = left + width * to
-            drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
-            drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
-            for (x in listOf(x1, x2)) {
-                drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
-                drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
-                drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
             }
         }
     }

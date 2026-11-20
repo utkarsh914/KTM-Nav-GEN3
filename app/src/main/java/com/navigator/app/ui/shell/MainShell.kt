@@ -35,8 +35,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.window.core.layout.WindowSizeClass
 import com.navigator.app.R
 import com.navigator.app.ui.components.KtmSnackbarHost
+import com.navigator.app.ui.components.PillTone
+import com.navigator.app.ui.components.pillDotColor
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+
+/** The bike's state for the rail's status dot (MR7): its tone and the state in words. */
+data class BikeRailStatus(val tone: PillTone, val state: String)
 
 /** Portrait: a 64 dp bar. A phone on its side (short and wide): a rail, so the map keeps its height. */
 internal fun shellNavigationType(minWidthDp: Int): NavigationSuiteType =
@@ -56,6 +61,8 @@ fun MainShell(
     currentTab: Tab?,
     immersive: Boolean,
     settingsNeedsAttention: Boolean,
+    /** The bike's state as a dot on the Navigate item, with its words for screen readers; shown in the landscape rail only. */
+    bike: BikeRailStatus?,
     onSelectTab: (Tab) -> Unit,
     feedback: Feedback,
     strip: @Composable () -> Unit,
@@ -86,15 +93,23 @@ fun MainShell(
         navigationItems = {
             Tab.entries.forEach { tab ->
                 val dot = tab == Tab.Settings && settingsNeedsAttention
+                val bikeDot = if (tab == Tab.Navigate && type != NavigationSuiteType.ShortNavigationBarCompact) bike else null
                 val label = stringResource(tab.label)
                 NavigationSuiteItem(
                     selected = tab == currentTab,
                     onClick = { onSelectTab(tab) },
-                    modifier = Modifier.semantics { if (dot) stateDescription = attention },
+                    modifier = Modifier.semantics {
+                        if (dot) stateDescription = attention
+                        if (bikeDot != null) stateDescription = bikeDot.state
+                    },
                     icon = { Icon(tab.icon, contentDescription = null) },
                     label = { Text(label, maxLines = 1) },
                     navigationSuiteType = type,
-                    badge = if (dot) ({ Badge(containerColor = c.bad) }) else null,
+                    badge = when {
+                        dot -> ({ Badge(containerColor = c.bad) })
+                        bikeDot != null -> ({ Badge(containerColor = pillDotColor(bikeDot.tone, c)) })
+                        else -> null
+                    },
                     colors = itemColors,
                 )
             }
