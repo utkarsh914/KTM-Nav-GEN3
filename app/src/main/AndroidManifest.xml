@@ -76,6 +76,18 @@
             </intent-filter>
         </activity>
 
+        <!-- The "Record a ride" launcher shortcut: starts recording and finishes, no UI. -->
+        <activity
+            android:name=".ride.RecordRideShortcutActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <receiver
+            android:name=".notify.NotificationActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".ble.BccuConnectionService"
             android:exported="false"

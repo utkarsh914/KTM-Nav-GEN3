@@ -1,17 +1,35 @@
 package com.navigator.app.ride
 
-import android.app.NotificationChannel
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.navigator.app.R
+import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.notify.NotificationActions
+import com.navigator.app.notify.NotificationChannels
+import com.navigator.app.notify.PromotedOngoing
+import com.navigator.app.notify.RecordingNotice
+import com.navigator.app.settings.AppSettings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 
 /**
  * Dedicated location foreground service that owns a [RideRecorder] for the life
@@ -25,6 +43,8 @@ import com.navigator.app.logging.AppLogger
 class RideRecordingService : Service() {
 
     private var recorder: RideRecorder? = null
+    private var source: String? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -46,7 +66,8 @@ class RideRecordingService : Service() {
                 return START_NOT_STICKY
             }
             else -> {
-                createChannel()
+                // Before the first notification is built: it chooses its slot from the source.
+                if (recorder == null) source = RideSource.clean(intent?.getStringExtra(EXTRA_SOURCE)) ?: RideSource.NAV
                 try {
                     startForegroundCompat()
                 } catch (e: Exception) {
@@ -66,6 +87,7 @@ class RideRecordingService : Service() {
                     if (ok) {
                         recorder = r
                         refreshNotification()
+                        watchTripAndRecording()
                     } else {
                         // Don't leave an empty "Recording ride" foreground notification behind.
                         AppLogger.log("Ride", "Recorder failed to start - stopping the service")
@@ -87,7 +109,21 @@ class RideRecordingService : Service() {
         stopSelf()
     }
 
+    /** The same notification moves between the promoted slot and a silent row as a trip starts and ends. */
+    private var watching: Job? = null
+
+    private fun watchTripAndRecording() {
+        if (watching != null) return
+        watching = scope.launch {
+            combine(
+                GoogleNavSdkProvider.state.map { it.sessionState.isActiveNav() }.distinctUntilChanged(),
+                RideSession.state.sample(NOTIFICATION_SAMPLE_MS), BccuConnectionService.connectionState,
+            ) { _, _, _ -> }.collect { if (recorder != null) refreshNotification() }
+        }
+    }
+
     override fun onDestroy() {
+        scope.cancel()
         // Safety net: finalise if we were killed without an explicit stop.
         recorder?.stop()
         recorder = null
@@ -107,51 +143,53 @@ class RideRecordingService : Service() {
     }
 
     private fun buildNotification(): android.app.Notification {
-        val open = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, com.navigator.app.ui.MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val open = NotificationActions.open(this, 0)
         val stop = PendingIntent.getService(
             this, 1,
             Intent(this, RideRecordingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
         val session = RideSession.state.value
-        val paused = recorder?.isPaused == true || session.paused
+        val now = System.currentTimeMillis()
+        val mode = RecordingNotice.mode(GoogleNavSdkProvider.state.value.sessionState.isActiveNav(), source)
+        val paired = AppSettings(this).bondedDeviceAddress != null
+        val dash = if (paired) BccuConnectionService.connectionState.value == BccuConnectionService.ConnectionState.AUTHENTICATED else null
+        val content = RecordingNotice.build(session.copy(paused = recorder?.isPaused == true || session.paused), now, mode, dash, resources)
+        val paused = content.paused
         val toggle = PendingIntent.getService(
             this, 2,
             Intent(this, RideRecordingService::class.java).setAction(if (paused) ACTION_RESUME else ACTION_PAUSE),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val b = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(if (paused) "Ride paused" else "Recording ride")
-            .setContentText(
-                if (paused) "Tap Resume to keep recording" else "Saving your GPS track",
-            )
+        val channel = if (content.promoted) NotificationChannels.RECORDING else NotificationChannels.RECORDING_QUIET
+        NotificationChannels.ensure(this, channel)
+        val b = Notification.Builder(this, channel)
+            .setContentTitle(content.title)
+            .setContentText(content.text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(open)
-            .addAction(0, if (paused) "Resume" else "Pause", toggle)
-            .addAction(0, "Stop", stop)
-        if (!paused) {
-            // System-drawn elapsed timer (excludes earlier paused time).
-            b.setUsesChronometer(true).setShowWhen(true)
-                .setWhen(System.currentTimeMillis() - session.elapsedMs(System.currentTimeMillis()))
-        } else b.setShowWhen(false)
+        if (content.showActions) {
+            // Visible without expanding: Pause / Stop are the point of the promoted notification (SY4).
+            b.addAction(action(if (paused) R.string.rec_action_resume else R.string.rec_action_pause, toggle))
+            b.addAction(action(R.string.rec_action_stop, stop))
+            if (!paused) {
+                // System-drawn elapsed timer (excludes earlier paused time).
+                b.setUsesChronometer(true).setShowWhen(true).setWhen(now - session.elapsedMs(now))
+            } else b.setShowWhen(false)
+            PromotedOngoing.apply(b)
+        } else {
+            b.setShowWhen(false)
+        }
         return b.build()
     }
 
-    private fun createChannel() {
-        val ch = NotificationChannel(CHANNEL_ID, "Ride recording", NotificationManager.IMPORTANCE_LOW)
-        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
-    }
+    private fun action(label: Int, intent: PendingIntent) =
+        Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notification), getString(label), intent).build()
 
     companion object {
-        private const val CHANNEL_ID = "ride_recording"
         private const val NOTIFICATION_ID = 43
+        private const val NOTIFICATION_SAMPLE_MS = 2_000L
         private const val ACTION_STOP = "com.navigator.app.action.STOP_RIDE_RECORDING"
         private const val ACTION_PAUSE = "com.navigator.app.action.PAUSE_RIDE_RECORDING"
         private const val ACTION_RESUME = "com.navigator.app.action.RESUME_RIDE_RECORDING"

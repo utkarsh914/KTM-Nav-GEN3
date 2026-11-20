@@ -90,6 +90,20 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private fun clearTrip() {
         _activeTrip.value = null
         _currentDestination.value = null
+        _routeMarks.value = com.navigator.app.notify.RouteMarks()
+    }
+
+    /** Where the stops sit along the route and how long it is, for the notification's progress bar. */
+    private val _routeMarks = MutableStateFlow(com.navigator.app.notify.RouteMarks())
+    val routeMarks: StateFlow<com.navigator.app.notify.RouteMarks> = _routeMarks.asStateFlow()
+
+    private fun publishRouteMarks(nav: Navigator) {
+        runCatching {
+            val legs = nav.routeSegments.map { seg ->
+                com.navigator.app.notify.GeoLength.polyline(seg.latLngs.map { it.latitude to it.longitude })
+            }
+            _routeMarks.value = com.navigator.app.notify.GeoLength.marks(legs)
+        }.onFailure { AppLogger.log("Nav", "route marks unavailable: ${it.javaClass.simpleName}") }
     }
 
     enum class TripEnd { ARRIVED }
@@ -292,6 +306,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                         }
                         guidanceActive = true
                         nav.startGuidance()
+                        publishRouteMarks(nav)
                     }
                     // Canceled while this trip is still current: something outside the
                     // provider replaced the request. Never retried; end the trip visibly.
@@ -349,6 +364,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                         AppLogger.log("Nav", "Route OK - starting guidance")
                         guidanceActive = true
                         nav.startGuidance()
+                        publishRouteMarks(nav)
                     }
                     RouteResultAction.IGNORE_CANCELED -> failTrip(trip, "route canceled by the SDK")
                     RouteResultAction.RETRY -> {

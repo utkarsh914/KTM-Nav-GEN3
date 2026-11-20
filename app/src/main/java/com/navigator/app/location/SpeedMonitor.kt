@@ -1,7 +1,6 @@
 package com.navigator.app.location
 
 import android.Manifest
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -14,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 class SpeedMonitor(private val context: Context) : LocationListener {
 
     companion object {
-        private const val CHANNEL_ID = "overspeed_alert"
+        private const val CHANNEL_ID = com.navigator.app.notify.NotificationChannels.OVERSPEED
         private const val NOTIFICATION_ID = 42
         private const val HYSTERESIS_KMH = 10
         private const val STALE_FIX_MS = 15_000L
@@ -41,6 +41,10 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         /** Live GPS speed in km/h for any UI that wants it; null = no recent fix. */
         private val _speedKmh = MutableStateFlow<Float?>(null)
         val speedKmh: StateFlow<Float?> = _speedKmh
+
+        /** Whole km/h while the overspeed alert is on, else null: the guidance notification shows it as a state. */
+        private val _overspeedKmh = MutableStateFlow<Int?>(null)
+        val overspeedKmh: StateFlow<Int?> = _overspeedKmh
     }
 
     private val settings = AppSettings(context)
@@ -137,16 +141,23 @@ class SpeedMonitor(private val context: Context) : LocationListener {
 
     private fun showAlert(kmh: Float, limit: Int) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val n = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("OVERSPEED  %.0f km/h".format(kmh))
-            .setContentText("Limit $limit km/h - slow down")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .build()
-        nm.notify(NOTIFICATION_ID, n)
+        _overspeedKmh.value = kmh.toInt()
+        // While a trip is guiding, overspeed is a state of its Live Update (SY3), not a notification of its own.
+        if (com.navigator.app.nav.providers.GoogleNavSdkProvider.state.value.sessionState.isActiveNav()) {
+            nm.cancel(NOTIFICATION_ID)
+        } else {
+            val n = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle(context.getString(R.string.live_overspeed, kmh.toInt()))
+                .setContentText(context.getString(R.string.overspeed_limit, limit))
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(com.navigator.app.notify.LargeIcons.speed(kmh.toInt()))
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .build()
+            nm.notify(NOTIFICATION_ID, n)
+        }
         // Mirror the LIVE speed onto the dash's bottom notification banner,
         // refreshed while the alert is active (throttled: each update is a BLE
         // write; also re-sent when the rounded value changes).
@@ -169,13 +180,11 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         staleHandler.removeCallbacks(staleClear)
         staleHandler.removeCallbacks(beepLoop)
         lastDashSpeed = -1
+        _overspeedKmh.value = null
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
     }
 
-    private fun createChannel() {
-        val ch = NotificationChannel(CHANNEL_ID, "Overspeed alert", NotificationManager.IMPORTANCE_HIGH)
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
-    }
+    private fun createChannel() = com.navigator.app.notify.NotificationChannels.ensure(context, CHANNEL_ID)
 
     @Deprecated("Deprecated in API 29 but still called on older devices")
     override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}

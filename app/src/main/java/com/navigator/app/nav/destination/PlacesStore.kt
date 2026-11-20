@@ -118,7 +118,7 @@ class PlacesStore(context: Context) {
     private fun writeFavorites(favs: List<FavoritePlace>) {
         prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs)).apply()
         // Keep the launcher's "Ride home / work" shortcuts in step with Home / Work.
-        PlaceShortcuts.sync(appContext, favs)
+        AppShortcuts.sync(appContext, favs)
     }
 
     /** The raw stored lists, for a backup file. */
@@ -141,7 +141,7 @@ class PlacesStore(context: Context) {
     }
 
     /** Re-publish the launcher shortcuts from what is stored (app start). */
-    fun syncShortcuts() = PlaceShortcuts.sync(appContext, favorites())
+    fun syncShortcuts() = AppShortcuts.sync(appContext, favorites())
 
     private fun coordKey(lat: Double, lng: Double): String = PlacesJson.coordKey(lat, lng)
 

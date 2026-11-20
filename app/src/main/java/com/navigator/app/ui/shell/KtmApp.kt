@@ -47,6 +47,7 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
+import com.navigator.app.ui.feature.places.PlaceActions
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
@@ -103,6 +104,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val legacy = settings.legacy
     val snap by settings.snapshot.collectAsState()
     val intents = container.intents
+    var showQuit by remember { mutableStateOf(false) }
 
     LaunchedEffect(snap.fontMode) { AppFonts.apply(snap.fontMode) }
 
@@ -159,12 +161,24 @@ fun KtmApp(onQuit: () -> Unit) {
             listOfNotNull(
                 pending.sharedLink?.let { AppIntent.SharedLink(it) }, pending.quickRoute?.let { AppIntent.QuickRoute(it) },
                 pending.place?.let { AppIntent.OpenPlace(it, pending.placeDirections) }, AppIntent.OpenNav.takeIf { pending.openNav },
+                AppIntent.ConfirmEndTrip.takeIf { pending.confirmEnd }, AppIntent.OpenSearch.takeIf { pending.openSearch },
             ).toSet(),
         )
         fun handle(intent: AppIntent, consume: () -> Unit) {
             when (val outcome = AppIntents.decide(intent, readiness)) {
                 IntentOutcome.Navigate -> if (taken.add(intent)) navController.openTab(Tab.Navigate)
                 IntentOutcome.Defer -> {}
+                IntentOutcome.Act -> consume()
+                IntentOutcome.OpenInMaps -> {
+                    consume()
+                    val slot = (intent as? AppIntent.QuickRoute)?.slot
+                    val place = container.places.favorites.value.firstOrNull { it.slot == slot }?.place
+                    when {
+                        place == null -> feedback.snackbar(resources.getString(R.string.places_slot_unset_mirror))
+                        !runCatching { context.startActivity(PlaceActions.navigationIntent(place)) }.isSuccess ->
+                            feedback.snackbar(resources.getString(R.string.places_maps_missing))
+                    }
+                }
                 IntentOutcome.Drop -> consume()
                 is IntentOutcome.Reject -> {
                     consume()
@@ -177,9 +191,15 @@ fun KtmApp(onQuit: () -> Unit) {
         pending.place?.let { handle(AppIntent.OpenPlace(it, pending.placeDirections), intents::consumePlace) }
         // The Navigate screen reads the flag when it composes (it may only be composing now), then clears it.
         if (pending.openNav) handle(AppIntent.OpenNav, intents::consumeOpenNav)
+        // Both are read by the Navigate screen once it composes (it may only be composing now), then cleared.
+        if (pending.confirmEnd) handle(AppIntent.ConfirmEndTrip, intents::consumeConfirmEnd)
+        if (pending.openSearch) handle(AppIntent.OpenSearch, intents::consumeOpenSearch)
+        // These open a dialog or a page of the shell itself, wherever the rider is.
+        if (pending.quit) { handle(AppIntent.ConfirmQuit, intents::consumeQuit).also { if (setupDone) showQuit = true } }
+        if (pending.rePair) { handle(AppIntent.OpenRePair, intents::consumeRePair); if (setupDone) navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) }
+        pending.rideId?.let { id -> handle(AppIntent.OpenRide(id), intents::consumeRide); if (setupDone) navController.push(Route.RideReplay(id)) }
     }
 
-    var showQuit by remember { mutableStateOf(false) }
     val startRoute = remember {
         when {
             !snap.onboardingComplete -> Route.Onboarding
@@ -270,6 +290,10 @@ fun KtmApp(onQuit: () -> Unit) {
                                     quickRoute = pending.quickRoute?.name,
                                     onQuickRouteConsumed = intents::consumeQuickRoute,
                                     openNavRequest = pending.openNav,
+                                    confirmEndRequest = pending.confirmEnd,
+                                    onConfirmEndConsumed = intents::consumeConfirmEnd,
+                                    searchRequest = pending.openSearch,
+                                    onSearchRequestConsumed = intents::consumeOpenSearch,
                                 )
                             } else {
                                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
@@ -301,7 +325,7 @@ fun KtmApp(onQuit: () -> Unit) {
                             RidesScreen(
                                 onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
                                 onMerge = { ids -> navController.push(Route.MergeRides(ids)) },
-                                onOpenSettings = { navController.openTab(Tab.Settings) },
+                                onOpenSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
                             )
                         }
                         composable<Route.Places> {
@@ -438,7 +462,6 @@ fun KtmApp(onQuit: () -> Unit) {
 }
 
 private fun RejectReason.message(): Int = when (this) {
-    RejectReason.SHORTCUT_NEEDS_IN_APP -> R.string.intent_shortcut_needs_in_app
     RejectReason.MAP_NEEDS_IN_APP -> R.string.intent_map_needs_in_app
 }
 

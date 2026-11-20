@@ -25,7 +25,7 @@ class AppIntentsTest {
         val go = AppIntent.QuickRoute(FavoriteSlot.HOME)
         assertEquals(IntentOutcome.Navigate, AppIntents.decide(go, ready))
         assertEquals(IntentOutcome.Drop, AppIntents.decide(go, firstRun))
-        assertEquals(IntentOutcome.Reject(RejectReason.SHORTCUT_NEEDS_IN_APP), AppIntents.decide(go, mirrorOnly))
+        assertEquals("mirror mode: Google Maps starts the route", IntentOutcome.OpenInMaps, AppIntents.decide(go, mirrorOnly))
     }
 
     @Test fun aNotificationTapNeedsNoInAppMapsButNeedsSetup() {
@@ -92,6 +92,46 @@ class AppIntentsTest {
         assertEquals(FavoriteSlot.HOME, intents.pending.value.quickRoute)
         intents.consumeQuickRoute()
         intents.consumePlace()
+        assertTrue(intents.pending.value.isEmpty)
+    }
+
+    @Test fun endTripNeedsInAppMapsAndSetupButSearchOnlyLandsOnNavigate() {
+        val end = AppIntent.ConfirmEndTrip
+        assertEquals(IntentOutcome.Navigate, AppIntents.decide(end, ready))
+        assertEquals(IntentOutcome.Reject(RejectReason.MAP_NEEDS_IN_APP), AppIntents.decide(end, mirrorOnly))
+        assertEquals(IntentOutcome.Drop, AppIntents.decide(end, firstRun))
+        assertEquals(IntentOutcome.Navigate, AppIntents.decide(AppIntent.OpenSearch, ready))
+        assertEquals(IntentOutcome.Navigate, AppIntents.decide(AppIntent.OpenSearch, mirrorOnly))
+        assertEquals(IntentOutcome.Drop, AppIntents.decide(AppIntent.OpenSearch, firstRun))
+    }
+
+    @Test fun quitRePairAndRideAreActedOnByTheShellInEitherEngine() {
+        for (i in listOf(AppIntent.ConfirmQuit, AppIntent.OpenRePair, AppIntent.OpenRide("7"))) {
+            assertEquals(IntentOutcome.Act, AppIntents.decide(i, ready))
+            assertEquals(IntentOutcome.Act, AppIntents.decide(i, mirrorOnly))
+            assertEquals(IntentOutcome.Drop, AppIntents.decide(i, firstRun))
+        }
+    }
+
+    @Test fun parsesTheNotificationRequests() {
+        fun parse(request: String?, rideId: String? = null) = AppIntents.parse(null, null, null, false, null, request, rideId)
+        assertEquals(listOf<AppIntent>(AppIntent.ConfirmEndTrip), parse(AppIntents.REQUEST_END_TRIP))
+        assertEquals(listOf<AppIntent>(AppIntent.ConfirmQuit), parse(AppIntents.REQUEST_QUIT))
+        assertEquals(listOf<AppIntent>(AppIntent.OpenRePair), parse(AppIntents.REQUEST_REPAIR))
+        assertEquals(listOf<AppIntent>(AppIntent.OpenSearch), parse(AppIntents.REQUEST_SEARCH))
+        assertEquals(listOf<AppIntent>(AppIntent.OpenRide("7")), parse(AppIntents.REQUEST_RIDE, "7"))
+        assertTrue("a ride request with no id is nothing", parse(AppIntents.REQUEST_RIDE, null).isEmpty())
+        assertTrue(parse("unknown").isEmpty())
+    }
+
+    @Test fun postedRequestsWaitUntilTheyAreConsumed() {
+        val intents = AppIntents()
+        intents.post(AppIntent.ConfirmEndTrip); intents.post(AppIntent.OpenSearch); intents.post(AppIntent.ConfirmQuit)
+        intents.post(AppIntent.OpenRePair); intents.post(AppIntent.OpenRide("9"))
+        with(intents.pending.value) {
+            assertTrue(confirmEnd && openSearch && quit && rePair && rideId == "9")
+        }
+        intents.consumeConfirmEnd(); intents.consumeOpenSearch(); intents.consumeQuit(); intents.consumeRePair(); intents.consumeRide()
         assertTrue(intents.pending.value.isEmpty)
     }
 }

@@ -134,7 +134,8 @@ class MainActivity : ComponentActivity() {
     /** Hand what the launch intent carries (a share, a shortcut, a notification tap) to the app. */
     private fun forwardIntent(intent: Intent?, freshLaunch: Boolean) {
         AppIntents.fromIntent(intent)
-            .filter { freshLaunch || it !is AppIntent.QuickRoute }
+            // A recreated activity must not re-open a dialog or page the rider already used.
+            .filter { freshLaunch || it is AppIntent.SharedLink || it == AppIntent.OpenNav }
             .forEach { appContainer.intents.post(it) }
     }
 

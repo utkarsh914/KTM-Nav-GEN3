@@ -28,7 +28,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import com.navigator.app.app.AppIntents
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.providers.GoogleNavSdkController
+import com.navigator.app.notify.ConnectionAction
+import com.navigator.app.notify.ConnectionNotice
+import com.navigator.app.notify.ConnectionNoticeContent
+import com.navigator.app.notify.NotificationActions
+import com.navigator.app.notify.NotificationChannels
+import com.navigator.app.ride.formatElapsed
 import java.util.ArrayDeque
 
 /**
@@ -44,8 +55,9 @@ class BccuConnectionService : LifecycleService() {
     enum class ConnectionState { DISCONNECTED, CONNECTING, AUTHENTICATED }
 
     companion object {
-        private const val CHANNEL_ID = "bccu_connection"
         private const val NOTIFICATION_ID = 1
+        private const val ALERT_ID = 44
+        private const val MIRROR_LINE_MS = 5_000L
         private const val NOTIFICATION_CLEAR_DELAY_MS = 5000L
         /** The dash's bottom banner shows at most 16 characters. */
         private const val NOTIFICATION_BANNER_CHARS = 16
@@ -321,8 +333,9 @@ class BccuConnectionService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        watchMirrorLine()
         try {
-            startForegroundWithTypes("Connecting...")
+            startForegroundWithTypes(ConnectionNotice.CONNECTING)
         } catch (e: Exception) {
             // e.g. Nearby-devices (BLUETOOTH_CONNECT) revoked, or FGS start not allowed.
             AppLogger.log("BLE", "!! cannot start foreground service: ${e.javaClass.simpleName}: ${e.message}")
@@ -423,7 +436,7 @@ class BccuConnectionService : LifecycleService() {
             AppSettings(this).hasPairedBefore(addr) && !_repairHint.value
         ) {
             _repairHint.value = true
-            updateForegroundNotification("Can't connect to the dash - try Re-pair in Settings")
+            updateForegroundNotification(ConnectionNotice.CANT_CONNECT)
         }
     }
 
@@ -439,7 +452,7 @@ class BccuConnectionService : LifecycleService() {
      * the boot/ACL receiver starts us before the rider grants location.
      * Safe to call again later to UPGRADE the type once permissions arrive.
      */
-    private fun startForegroundWithTypes(status: String) {
+    private fun startForegroundWithTypes(status: ConnectionNotice) {
         var fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         val fine = androidx.core.content.ContextCompat.checkSelfPermission(
             this, android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -463,13 +476,13 @@ class BccuConnectionService : LifecycleService() {
      * the location type until the next reboot.
      */
     private fun reevaluateLocationFeatures() {
-        runCatching { startForegroundWithTypes(statusText) }
+        runCatching { startForegroundWithTypes(notice) }
         speedMonitor?.start()
         // App came to the foreground: the rider is probably about to ride - skip any long wait.
         resetAbsentBackoff("app foreground")
     }
 
-    private var statusText: String = "Connecting..."
+    private var notice: ConnectionNotice = ConnectionNotice.CONNECTING
 
     /**
      * Android does NOT reliably deliver onConnectionStateChange when the LOCAL
@@ -490,11 +503,11 @@ class BccuConnectionService : LifecycleService() {
                         settleJob?.cancel(); settleJob = null
                         rescanJob?.cancel(); rescanJob = null
                         teardownLink("adapter off")
-                        updateForegroundNotification("Bluetooth is off")
+                        updateForegroundNotification(ConnectionNotice.BLUETOOTH_OFF)
                     }
                     BluetoothAdapter.STATE_ON -> {
                         AppLogger.log("BLE", "Bluetooth adapter turned ON - resuming reconnect scan")
-                        updateForegroundNotification("Reconnecting…")
+                        updateForegroundNotification(ConnectionNotice.RECONNECTING)
                         absentFailures = 0
                         rescanJob?.cancel(); rescanJob = null
                         val addr = AppSettings(this@BccuConnectionService).bondedDeviceAddress
@@ -771,6 +784,7 @@ class BccuConnectionService : LifecycleService() {
 
     override fun onDestroy() {
         AppLogger.log("BLE", "Service destroyed")
+        runCatching { getSystemService(NotificationManager::class.java).cancel(ALERT_ID) }
         adapterStateReceiver?.let { runCatching { unregisterReceiver(it) } }
         adapterStateReceiver = null
         speedMonitor?.stop(); speedMonitor = null
@@ -801,47 +815,89 @@ class BccuConnectionService : LifecycleService() {
 
     // --- Foreground notification plumbing ---
 
-    private fun createNotificationChannel() {
-        val manager = getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(
-            CHANNEL_ID, "Bike connection", NotificationManager.IMPORTANCE_LOW
-        )
-        manager.createNotificationChannel(channel)
-    }
+    private fun createNotificationChannel() = NotificationChannels.ensure(this, NotificationChannels.CONNECTION)
 
-    private fun buildForegroundNotification(status: String): Notification {
-        // Tapping the notification fronts the existing task (launchMode=singleTask)
-        // and asks it to show the active navigation screen. REORDER_TO_FRONT keeps
-        // the live activity/state instead of relaunching a fresh instance.
-        val openIntent = Intent(this, com.navigator.app.ui.MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(com.navigator.app.app.AppIntents.EXTRA_OPEN_NAV, true)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        // A real way out from the notification: stops this service (removing
-        // the ongoing notification) and closes the app task - the R20 field
-        // request was an exit that actually exits, not just opens the app.
-        val exitIntent = PendingIntent.getService(
-            this, 1,
-            Intent(this, BccuConnectionService::class.java).setAction(ACTION_EXIT),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("KTM Navigator")
-            .setContentText(status)
+    private fun buildForegroundNotification(status: ConnectionNotice): Notification {
+        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources)
+        val builder = NotificationCompat.Builder(this, NotificationChannels.CONNECTION)
+            .setContentTitle(content.title)
+            .setContentText(content.text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
-            .setContentIntent(pendingIntent)
-            .addAction(0, "Exit", exitIntent)
-            .build()
+            // Tapping fronts the existing task (launchMode=singleTask) and shows the active navigation screen.
+            .setContentIntent(NotificationActions.open(this, 0))
+        content.actions.forEach { action ->
+            when (action) {
+                ConnectionAction.TURN_ON -> builder.addAction(
+                    0, getString(R.string.conn_action_turn_on),
+                    PendingIntent.getActivity(
+                        this, 2, Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+                // Re-pairing and quitting each ask for their confirm in the app (DL5, DL1).
+                ConnectionAction.REPAIR -> builder.addAction(
+                    0, getString(R.string.conn_action_repair), NotificationActions.open(this, 3, AppIntents.REQUEST_REPAIR),
+                )
+                ConnectionAction.QUIT -> builder.addAction(
+                    0, getString(R.string.conn_action_quit), NotificationActions.open(this, 4, AppIntents.REQUEST_QUIT),
+                )
+            }
+        }
+        return builder.build()
     }
 
-    private fun updateForegroundNotification(status: String) {
-        statusText = status
+    /** The "Mirroring to dash · 350 m · ● Rec" line, only while connected in mirror mode. */
+    private fun mirrorLine(status: ConnectionNotice): String? {
+        if (status != ConnectionNotice.CONNECTED) return null
+        if (GoogleNavSdkController.isActive(this, AppSettings(this))) return null
+        val nav = com.navigator.app.nav.providers.NotificationNavProvider.state.value
+        val session = com.navigator.app.ride.RideSession.state.value
+        val toTurn = nav.preformattedDistance?.takeIf { nav.sessionState == NavSessionState.ENROUTE }
+        // Idle and connected is just Dash connected: the one-liner is for a trip or a recording.
+        if (toTurn == null && !session.active) return null
+        return ConnectionNoticeContent.mirrorLine(
+            toTurn = toTurn, turn = null,
+            recording = session.takeIf { it.active }?.let { formatElapsed(it.elapsedMs(System.currentTimeMillis())) }, res = resources,
+        )
+    }
+
+    private fun updateForegroundNotification(status: ConnectionNotice) {
+        notice = status
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildForegroundNotification(status))
+        // A real problem gets one heads-up on its own channel; it goes again when the problem goes.
+        if (status == ConnectionNotice.CANT_CONNECT) {
+            if (!alertShown) {
+                alertShown = true
+                NotificationChannels.ensure(this, NotificationChannels.CONNECTION_ALERT)
+                val content = ConnectionNoticeContent.of(status, null, resources)
+                manager.notify(
+                    ALERT_ID,
+                    NotificationCompat.Builder(this, NotificationChannels.CONNECTION_ALERT)
+                        .setContentTitle(content.title).setContentText(content.text)
+                        .setSmallIcon(R.drawable.ic_notification).setAutoCancel(true)
+                        .setContentIntent(NotificationActions.open(this, 5, AppIntents.REQUEST_REPAIR))
+                        .build(),
+                )
+            }
+        } else if (alertShown) {
+            alertShown = false
+            manager.cancel(ALERT_ID)
+        }
+    }
+
+    private var alertShown = false
+
+    /** Keeps the mirror one-liner (turn distance, recording time) current while connected. */
+    private fun watchMirrorLine() {
+        lifecycleScope.launch {
+            combine(
+                com.navigator.app.nav.providers.NotificationNavProvider.state, com.navigator.app.ride.RideSession.state,
+            ) { nav, rec -> nav.preformattedDistance to rec.active }.sample(MIRROR_LINE_MS).collect {
+                if (notice == ConnectionNotice.CONNECTED && mirrorLine(notice) != null) updateForegroundNotification(notice)
+            }
+        }
     }
 
     /**
@@ -888,7 +944,7 @@ class BccuConnectionService : LifecycleService() {
                     // one - reusing a disconnected BluetoothGatt is a known source
                     // of silent reconnect failures (status 133).
                     teardownLink("peer disconnected (status=$status)", disconnectFirst = false)
-                    updateForegroundNotification("Reconnecting…")
+                    updateForegroundNotification(ConnectionNotice.RECONNECTING)
                     // Reconnect by actively SCANNING for the bike and connecting the
                     // moment it advertises again. Field logs showed connectGatt(
                     // autoConnect=true) silently never relinks on some phones, and a
@@ -1182,7 +1238,7 @@ class BccuConnectionService : LifecycleService() {
                         // genuine first run) - narrows the reconnect-prompt bug.
                         AppLogger.log("Auth", "markPairedBefore($it) persisted=${s.hasPairedBefore(it)}")
                     }
-                    updateForegroundNotification("Connected")
+                    updateForegroundNotification(ConnectionNotice.CONNECTED)
                     enableNotification(BccuProtocol.TBT_NAV_REQUEST)
                     sendNavigationState(guidanceOn = true, gpsIconOn = true)
                     // Re-push any active guidance snapshot so a reconnect never

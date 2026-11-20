@@ -196,6 +196,12 @@ fun NavigateHost(
     onQuickRouteConsumed: () -> Unit = {},
     /** The foreground notification was tapped: resume the live guidance view if a trip is running. */
     openNavRequest: Boolean = false,
+    /** The notification's End trip: show the end-trip confirm over the live trip. */
+    confirmEndRequest: Boolean = false,
+    onConfirmEndConsumed: () -> Unit = {},
+    /** The Where to? shortcut: open the search. */
+    searchRequest: Boolean = false,
+    onSearchRequestConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val feedback = com.navigator.app.ui.shell.LocalFeedback.current
@@ -672,6 +678,19 @@ fun NavigateHost(
     // Notification tap while stepped-away resumes the live guidance view.
     LaunchedEffect(openNavRequest) {
         if (openNavRequest && navState.sessionState.isActiveNav()) resumeNav()
+    }
+
+    LaunchedEffect(confirmEndRequest) {
+        if (!confirmEndRequest) return@LaunchedEffect
+        onConfirmEndConsumed()
+        if (navState.sessionState.isActiveNav()) { resumeNav(); showEndConfirm = true }
+    }
+
+    LaunchedEffect(searchRequest) {
+        if (!searchRequest) return@LaunchedEffect
+        onSearchRequestConsumed()
+        // A running trip keeps its screen: a shortcut must not pull the rider out of guidance.
+        if (stage == NavStage.BROWSE && !navState.sessionState.isActiveNav()) openSearch()
     }
 
     // The recorder's outcome is resolved while the finished screen is up (FinishResolution, with its 6 s wait).

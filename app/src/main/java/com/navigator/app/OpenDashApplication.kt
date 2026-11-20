@@ -46,6 +46,7 @@ class OpenDashApplication : Application() {
         recoverOrphanRides()
         container.trip // start watching for arrival even before any screen is shown
         startAutoRecording()
+        com.navigator.app.notify.RideSavedNotice.start(this, appScope)
         appScope.launch(Dispatchers.IO) {
             runCatching { com.navigator.app.nav.destination.PlacesStore(this@OpenDashApplication).syncShortcuts() }
         }
