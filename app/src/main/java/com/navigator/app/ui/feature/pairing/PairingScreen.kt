@@ -2,7 +2,6 @@ package com.navigator.app.ui.feature.pairing
 
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,6 +21,7 @@ import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.ui.feature.permissions.PermissionFix
 import com.navigator.app.ui.feature.permissions.rememberPermissionFixer
 import com.navigator.app.ui.shell.LocalOpenLogs
+import com.navigator.app.ui.shell.openBluetoothSettings
 
 /**
  * The pairing flow: [PairingContent] over its view model, with Android's Bluetooth and permission prompts.
@@ -47,9 +47,7 @@ fun PairingScreen(
     LaunchedEffect(vm) { vm.refreshPermissions(); vm.events.collect { if (it == PairingEvent.Paired) paired() } }
     BackHandler(enabled = ui.phase is PairingPhase.Confirming) { vm.cancel() }
 
-    fun openBluetoothSettings() {
-        runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    }
+    fun openBluetoothSettings() = context.openBluetoothSettings()
 
     PairingContent(
         ui,

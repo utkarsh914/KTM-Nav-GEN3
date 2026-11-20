@@ -160,6 +160,10 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 The app's primary surface. One persistent Nav SDK `NavigationView` is the map across a small
 stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
 
+`NavigateHost` owns the shared state and effects (the `NavFlow` stage machine, the map, the trip). The riding stage
+is `NavigatingStage` (`NavigateRidingStage.kt`, with what only it opens in `RidingOverlayState`), the summary is
+`TripFinishedStage` (`NavigateFinishedStage.kt`), and small helpers live in `NavigateSupport.kt`.
+
 - **BROWSE** — full map + location dot; top search bar; a **Connect/Connected** pill (bound
   to `BccuConnectionService.connectionState`, tap → Pairing); recenter (bottom-left); a
   custom compass (top-right, below Settings) shown only when the map is rotated (tap resets

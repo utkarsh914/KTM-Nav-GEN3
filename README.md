@@ -48,7 +48,7 @@ what it found in the connection banner. Nothing to configure.
 
 **Made for the KTM Gen-3 dash.** The app is themed for the bike (dark and orange by default, with accent colours of your choice and a Day/Night mode for the riding screens). The riding screens are built for gloves and sunlight: large touch targets, a maneuver card you can read at a glance, and the heavy controls tucked in a trip sheet.
 
-> The screenshots in `docs/screenshots` predate the 2026 redesign and are being refreshed; see `docs/design-system.md` for how the new screens are put together.
+> New screenshots of the redesigned screens will be added to `docs/screenshots` after the on-device pass; see `docs/design-system.md` for how the screens are put together.
 
 **Phone-first map home.** Open the app to a full Google map with your live location, a bike-connection
 pill and a search bar. Find a destination by search (with Recents and Home/Work/Saved shortcuts), by

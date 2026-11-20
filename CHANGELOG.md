@@ -14,6 +14,7 @@
 - Diagnostics screens rebuilt (logs with filters and search, symbol testing, turn-icon calibration) and a debug overlay for builds.
 - Motion and accessibility: transitions follow Android's "Remove animations" setting live, TalkBack labels and actions on the controls, the colour picker is adjustable by screen readers, and large-font layouts were checked.
 - The brand picker and Husqvarna theming were removed: the app has one KTM identity (Husqvarna dashes still work, they share the electronics). Distances are shown in kilometres everywhere.
+- Polish pass: the open trip sheet always fits under the maneuver card, rerouting shows in landscape, start and end markers on ride maps, Back from a Home/Work route goes to the map, merged rides show their parts and tell joins from pauses, failed backups leave no empty file, a restart reminder after restoring settings, and higher text contrast in the light theme.
 
 ### Navigation
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final

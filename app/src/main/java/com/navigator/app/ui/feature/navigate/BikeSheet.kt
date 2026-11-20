@@ -1,7 +1,5 @@
 package com.navigator.app.ui.feature.navigate
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.ui.platform.LocalContext
 import com.navigator.app.ui.feature.pairing.HavingTroubleSheet
 import com.navigator.app.ui.shell.LocalOpenLogs
@@ -31,6 +29,7 @@ import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.settings.RePairDialog
+import com.navigator.app.ui.shell.openBluetoothSettings
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -134,9 +133,7 @@ fun BikeSheet(
         val context = LocalContext.current
         HavingTroubleSheet(
             onViewLogs = openLogs,
-            onBluetoothSettings = {
-                runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            },
+            onBluetoothSettings = { context.openBluetoothSettings() },
             onDismiss = { trouble = false },
         )
     }

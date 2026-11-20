@@ -28,6 +28,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.navigator.app.ui.shell.rememberLifecycleStarted
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -161,21 +162,6 @@ internal fun rememberDeviceHeadingState(active: Boolean = true): State<Float?> {
         }
     }
     return headingState
-}
-
-/** True while the host lifecycle is at least STARTED (sensors/GPS stop when backgrounded). */
-@Composable
-internal fun rememberLifecycleStarted(): Boolean {
-    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    var started by remember { mutableStateOf(owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) }
-    DisposableEffect(owner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, _ ->
-            started = owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
-        }
-        owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer) }
-    }
-    return started
 }
 
 private const val SMOOTHING = 0.15f
