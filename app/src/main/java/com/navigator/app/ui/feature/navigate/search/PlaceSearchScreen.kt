@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.search
 
+import androidx.compose.foundation.lazy.LazyItemScope
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.animation.core.tween
@@ -233,7 +234,7 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
         else -> LazyColumn(Modifier.alpha(if (state.resolving) 0.5f else 1f)) {
             itemsIndexed(state.suggestions, key = { _, s -> s.placeId }) { index, s ->
                 // SE2: results fade in 20 ms after one another.
-                Box(Modifier.animateItem(fadeInSpec = tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS))) {
+                Box(Modifier.staggeredFade(this, index, KtmTheme.motion)) {
                     MatchRow(s, state.query) { if (!state.resolving) actions.onSuggestion(s) }
                 }
             }
@@ -254,7 +255,7 @@ private fun CategoryList(state: PlaceSearchState, actions: PlaceSearchActions) {
             item { SectionHeader(stringResource(if (state.alongRoute) R.string.search_along_route else R.string.search_near_you)) }
             itemsIndexed(state.categoryResults, key = { _, r -> "${r.lat},${r.lng},${r.name}" }) { index, r ->
                 ListRow(
-                    modifier = Modifier.animateItem(fadeInSpec = tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS)),
+                    modifier = Modifier.staggeredFade(this, index, KtmTheme.motion),
                     title = r.name, supporting = r.address, leadingIcon = KtmIcons.Pin,
                     onClick = { actions.onCategoryResult(r) },
                     trailing = { r.distanceMeters?.takeIf { state.origin != null }?.let { RowValue(DistanceFormatter.format(it, DistanceUnits.METRIC)) } },
@@ -304,3 +305,11 @@ private fun MatchRow(s: PlaceSuggestion, query: String, onClick: () -> Unit) {
 
 private const val STAGGER_MS = 20
 private const val STAGGER_ROWS = 10
+
+/** SE2: a result fades in 20 ms after the one above it; with "Remove animations" they just appear, and don't move. */
+private fun Modifier.staggeredFade(scope: LazyItemScope, index: Int, motion: KtmMotionSpecs): Modifier = with(scope) {
+    animateItem(
+        fadeInSpec = if (motion.reduced) motion.effectsFast() else tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS),
+        placementSpec = if (motion.reduced) null else motion.spatialDefault(),
+    )
+}

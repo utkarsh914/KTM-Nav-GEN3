@@ -36,13 +36,6 @@ class TripSheetActions(
     val onDismiss: () -> Unit,
 )
 
-/**
- * NV7: everything the riding screen no longer carries as buttons, shown in the sheet the trip bar grows into
- * ([TripBarSheet]) and in the landscape controls panel: Add stop, Overview and Minimise are large tiles; the two riding
- * toggles are 56 dp rows; the dash row opens the bike screen; End trip is a danger-tonal 64 dp button set apart from
- * the rest and asks first (DL2).
- */
-
 /** End trip: danger-tonal, 64 dp, set apart from the rest; it asks first. */
 @Composable
 fun EndTripButton(onEnd: () -> Unit, modifier: Modifier = Modifier) {
@@ -52,7 +45,11 @@ fun EndTripButton(onEnd: () -> Unit, modifier: Modifier = Modifier) {
     )
 }
 
-/** What the trip sheet and the landscape controls panel both show above End trip (NV7, NL4): same actions, same order. */
+/**
+ * NV7: everything the riding screen no longer carries as buttons, shown in the sheet the trip bar grows into
+ * ([TripBarSheet]) and in the landscape controls panel (NL4): Add stop, Overview and Minimise are large tiles, the two
+ * riding toggles are 56 dp rows, the dash row opens the bike screen. End trip follows, set apart (DL2).
+ */
 @Composable
 fun ColumnScope.TripControlsBody(
     beeps: Boolean,

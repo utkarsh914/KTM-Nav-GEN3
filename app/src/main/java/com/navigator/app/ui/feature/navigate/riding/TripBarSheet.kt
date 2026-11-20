@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.SizeTransform
 import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.shell.LocalTripShared
 import androidx.activity.compose.PredictiveBackHandler
@@ -127,7 +129,8 @@ private fun TripBarSheetBody(
                 scaleX = shrink; scaleY = shrink
                 transformOrigin = TransformOrigin(0.5f, 1f)
             },
-            transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+            // The shared bounds do the growing; the default size spring would outlast the 250 ms riding limit and stream sizes to the map.
+            transitionSpec = { (EnterTransition.None togetherWith ExitTransition.None).using(SizeTransform(clip = false) { _, _ -> snap() }) },
             label = "tripBarSheet",
         ) { isOpen ->
             val container = Modifier.sharedBounds(
@@ -196,7 +199,7 @@ private const val CONTAINER_KEY = "trip-container"
 
 /** MO2: the bar's content is gone within 60 ms; the sheet's content arrives as the container settles. */
 private const val CONTENT_OUT_MS = 60
-private const val CONTENT_IN_DELAY_MS = 60
+private const val CONTENT_IN_DELAY_MS = 50
 
 /** How far the sheet is dragged before letting go closes it. */
 private val DISMISS_DRAG = KtmSpacing.xxxl + KtmSpacing.xxxl

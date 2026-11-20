@@ -63,7 +63,7 @@ fun KtmTextField(
             {
                 // A validation message slides down under the field instead of popping in.
                 androidx.compose.animation.AnimatedVisibility(
-                    visibleState = remember(it) { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } },
+                    visibleState = remember(it, error != null) { androidx.compose.animation.core.MutableTransitionState(error == null).apply { targetState = true } },
                     enter = androidx.compose.animation.fadeIn(motion.effectsFast()) + androidx.compose.animation.slideInVertically(motion.spatialFast()) { if (motion.reduced) 0 else -it },
                 ) { Text(it, style = MaterialTheme.typography.bodySmall) }
             }

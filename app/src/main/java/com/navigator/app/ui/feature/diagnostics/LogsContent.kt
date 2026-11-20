@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.diagnostics
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
@@ -98,7 +99,11 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                     // Room under the pill, so the newest lines are never behind it.
                     contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, top = KtmSpacing.sm, bottom = KtmLayout.targetRest + KtmSpacing.xl),
                     modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
-                ) { items(ui.entries, key = { it.key }) { LogRow(it, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsFast(), placementSpec = null)) } }
+                ) {
+                    itemsIndexed(ui.entries, key = { index, e -> e.key.ifEmpty { "#$index" } }) { _, e ->
+                        LogRow(e, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsFast(), placementSpec = null))
+                    }
+                }
             }
             FollowPill(
                 following, { following = !following },

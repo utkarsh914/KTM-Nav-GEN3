@@ -1,5 +1,7 @@
 package com.navigator.app.ui.shell
 
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -55,7 +57,10 @@ fun Modifier.tripStripBounds(): Modifier {
         this@tripStripBounds.sharedBounds(
             sharedContentState = rememberSharedContentState(key = TRIP_STRIP_KEY),
             animatedVisibilityScope = shared.visibility,
-            boundsTransform = { _, _ -> motion.spatialDefault() },
+            enter = fadeIn(motion.effectsFast()),
+            exit = fadeOut(motion.effectsFast()),
+            // On the riding stage: at most 250 ms, no overshoot.
+            boundsTransform = { _, _ -> motion.ridingSpatial<androidx.compose.ui.geometry.Rect>() },
             resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
             clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
         )

@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.getValue
 import com.navigator.app.ui.shell.LocalTripShared
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.EnterTransition
@@ -99,7 +102,9 @@ fun RidingScreen(
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().then(cardExit),
             enter = fadeIn(motion.ridingFade(CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
         ) {
-            Column {
+            // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
+            val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.effectsDefault(), label = "cardDim")
+            Column(Modifier.graphicsLayer { alpha = cardAlpha }.then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
                 RidingChipHost(chip)
             }
@@ -110,11 +115,13 @@ fun RidingScreen(
             enter = fadeIn(motion.ridingFade(BAR_DELAY_MS)) + slideInVertically(motion.ridingSpatial(BAR_DELAY_MS)) { if (motion.reduced) 0 else it },
         ) {
           Column(Modifier.fillMaxWidth().onSizeChanged { if (!sheetOpen) { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) } }) {
-            RidingMapButton(
-                recenter = recenter, bearing = bearing, onTap = actions.onMapButton, onNorthUp = actions.onNorthUp,
-                modifier = Modifier.align(Alignment.End),
-            )
-            Spacer(Modifier.height(KtmSpacing.sm))
+            // The map control gives way to the sheet: it can't be tapped, or focused, behind it.
+            AnimatedVisibility(!sheetOpen, Modifier.align(Alignment.End), enter = fadeIn(motion.effectsDefault()), exit = fadeOut(motion.effectsFast())) {
+                Column {
+                    RidingMapButton(recenter = recenter, bearing = bearing, onTap = actions.onMapButton, onNorthUp = actions.onNorthUp)
+                    Spacer(Modifier.height(KtmSpacing.sm))
+                }
+            }
             TripBarSheet(bar, sheetOpen, actions.onOpenSheet, actions.onDismissSheet, sheetMax, sheet = sheet)
           }
         }
@@ -128,3 +135,6 @@ private const val BAR_DELAY_MS = 150
 
 /** The open trip sheet takes at most this much of the screen height (the card above stays visible). */
 private const val SHEET_MAX_FRACTION = 0.72f
+
+/** The maneuver card behind the open sheet: about what a 60 % scrim leaves of it. */
+private const val CARD_DIMMED = 0.4f

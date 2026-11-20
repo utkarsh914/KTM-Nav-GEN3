@@ -164,6 +164,9 @@ import kotlin.math.abs
  *  from / down to the bottom; every other stage change is a gentle fade + small
  *  vertical drift so cards/overlays never hard-cut. */
 private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
+    // The riding screen has its own choreography (MO1, MO6): around it the stage only fades, with no drift and no spring.
+    initial == NavStage.NAVIGATING || target == NavStage.NAVIGATING ->
+        fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
     target == NavStage.SEARCH ->
         (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
     initial == NavStage.SEARCH ->
@@ -593,6 +596,8 @@ fun NavigateHost(
     // service + dash guidance continue). A "Resume navigation" pill brings it back.
     fun moveAwayFromNav() {
         trip.setMinimised(true)
+        // MO6: the map flattens back to a north-up 2D view as the trip bar becomes the strip.
+        map.resetNorth()
         stage = NavStage.BROWSE
     }
 
@@ -882,7 +887,7 @@ fun NavigateHost(
                 transitionSpec = { stageTransition(initialState, targetState, motionSpecs) },
                 label = "navStage",
             ) { s ->
-              CompositionLocalProvider(LocalTripShared provides SharedElements(this@SharedTransitionLayout, this)) {
+              CompositionLocalProvider(LocalTripShared provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
               Box(Modifier.fillMaxSize()) {
                 when (s) {
                 NavStage.BROWSE -> NavigateRoute(
