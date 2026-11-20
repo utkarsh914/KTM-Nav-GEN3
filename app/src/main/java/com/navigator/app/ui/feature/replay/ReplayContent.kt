@@ -1,8 +1,8 @@
 package com.navigator.app.ui.feature.replay
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.activity.compose.BackHandler
@@ -33,11 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -47,7 +45,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.semantics
@@ -231,7 +228,7 @@ private fun ReplaySheet(
         Column(Modifier.padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) { pinned() }
         AnimatedVisibility(
             expanded, Modifier.weight(1f, fill = false),
-            enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)), exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)),
+            enter = expandVertically(KtmTheme.motion.spatialDefault()), exit = shrinkVertically(KtmTheme.motion.spatialDefault()),
         ) {
             Column(
                 Modifier.verticalScroll(rememberScrollState()).padding(start = KtmSpacing.lg, end = KtmSpacing.lg, top = KtmSpacing.md),

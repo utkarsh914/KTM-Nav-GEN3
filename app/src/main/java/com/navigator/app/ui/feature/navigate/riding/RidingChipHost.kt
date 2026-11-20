@@ -1,7 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -40,12 +39,13 @@ import com.navigator.app.ui.theme.KtmTheme
  */
 @Composable
 fun RidingChipHost(source: ChipSource?, modifier: Modifier = Modifier) {
+    val motion = KtmTheme.motion
     Box(modifier.fillMaxWidth().clipToBounds(), contentAlignment = Alignment.TopCenter) {
         AnimatedContent(
             targetState = source,
             transitionSpec = {
-                (fadeIn(tween(150)) + slideInVertically(tween(200)) { -it }) togetherWith
-                    (fadeOut(tween(120)) + slideOutVertically(tween(150)) { -it })
+                (fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it }) togetherWith
+                    (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it })
             },
             contentKey = { chipKey(it) },
             label = "ridingChip",

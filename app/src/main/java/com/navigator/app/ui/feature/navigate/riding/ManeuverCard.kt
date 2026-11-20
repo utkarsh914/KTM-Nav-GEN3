@@ -1,8 +1,8 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -46,6 +46,7 @@ import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
 
 private val LANE_ARROW = KtmLayout.laneArrow
@@ -88,10 +89,11 @@ class ManeuverMetrics(
 @Composable
 fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: ManeuverMetrics = ManeuverMetrics.portrait()) {
     val r = KtmTheme.riding
+    val motion = KtmTheme.motion
     AnimatedContent(
         targetState = ui,
         modifier = modifier.fillMaxWidth().then(if (metrics.fill) Modifier.fillMaxHeight() else Modifier),
-        transitionSpec = { maneuverTransition() },
+        transitionSpec = { maneuverTransition(motion) },
         contentKey = { if (it is ManeuverUi.Active) ManeuverKey(it.icon, it.road, it.instruction, it.rerouting) else it },
         label = "maneuver",
     ) { shown ->
@@ -104,10 +106,10 @@ fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: Maneuve
 
 private data class ManeuverKey(val icon: TurnIcon, val road: String?, val instruction: String, val rerouting: Boolean)
 
-/** A short fade with a small drift; no overshoot, well under 250 ms. */
-private fun maneuverTransition(): ContentTransform =
-    (fadeIn(tween(150)) + slideInVertically(tween(150)) { -it / 12 }) togetherWith
-        (fadeOut(tween(100)) + slideOutVertically(tween(100)) { it / 12 })
+/** A short fade with a small drift; no overshoot, at most 250 ms; reduced motion keeps only the fade. */
+private fun maneuverTransition(motion: KtmMotionSpecs): ContentTransform =
+    (fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it / 12 }) togetherWith
+        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else it / 12 })
 
 @Composable
 private fun StartingCard(m: ManeuverMetrics) {
@@ -128,7 +130,8 @@ private fun StartingCard(m: ManeuverMetrics) {
 private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: androidx.compose.ui.graphics.Color, band: androidx.compose.ui.graphics.Color, on: androidx.compose.ui.graphics.Color) {
     val dim = if (ui.rerouting) 0.6f else 1f
     val rerouting = stringResource(R.string.riding_rerouting)
-    Column(Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier).clip(KtmShapes.Card).background(bg)) {
+    // The band switching between Then and lanes grows the card smoothly, so the map below moves rather than jumps.
+    Column(Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier.animateContentSize(KtmTheme.motion.ridingSpatial())).clip(KtmShapes.Card).background(bg)) {
         Row(
             Modifier.fillMaxWidth().then(if (m.fill) Modifier.weight(1f) else Modifier).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
@@ -172,7 +175,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: androidx.c
                 horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
             ) {
                 Text(stringResource(R.string.riding_then), style = KtmTheme.type.ridingLabel, color = on)
-                TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on)
+                TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on, contentDescription = com.navigator.app.ui.components.TurnIconNames.human(footer.icon))
             }
             is ManeuverFooter.Lanes -> Box(Modifier.fillMaxWidth().background(band).padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs)) {
                 LaneBand(footer.lanes, arrow = m.laneArrow)

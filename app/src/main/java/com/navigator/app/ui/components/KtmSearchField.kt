@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +61,8 @@ fun KtmSearchField(
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         Icon(KtmIcons.Search, null, tint = c.fg2, modifier = Modifier.size(24.dp))
-        Box(Modifier.weight(1f)) {
+        // Merged, so the empty field reads its placeholder as the label and a filled one reads what was typed.
+        Box(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
             if (value.isEmpty()) Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = c.fg3, maxLines = 1)
             BasicTextField(
                 value = value,

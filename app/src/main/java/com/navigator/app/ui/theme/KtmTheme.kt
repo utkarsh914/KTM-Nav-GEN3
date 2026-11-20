@@ -44,7 +44,8 @@ fun KtmTheme(
     val typography = remember(fontMode) { ktmTypography() }
     val typeExtras = remember(fontMode) { ktmTypeExtras() }
     val context = LocalContext.current
-    val motion = remember { KtmMotionSpecs(reduced = KtmMotionSpecs.isReducedMotion(context)) }
+    val reduced = rememberReducedMotion()
+    val motion = remember(reduced) { KtmMotionSpecs(reduced = reduced) }
 
     val view = LocalView.current
     if (!view.isInEditMode) {

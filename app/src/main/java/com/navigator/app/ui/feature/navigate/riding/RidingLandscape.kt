@@ -1,9 +1,9 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -35,12 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
@@ -159,10 +156,9 @@ fun RidingLandscape(
 
 /** MO5: shared axis Y. The guidance slides up and out while the controls rise in; the reverse going back. */
 private fun androidx.compose.animation.AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: KtmMotionSpecs, toControls: Boolean): ContentTransform {
-    if (motion.reduced) return EnterTransition.None togetherWith ExitTransition.None
     val dir = if (toControls) 1 else -1
-    return (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { dir * it / 8 }) togetherWith
-        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { -dir * it / 8 })
+    return (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
+        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else -dir * it / 8 })
 }
 
 /** NL4: a compact green row keeps the next turn visible; the actions of NV7 follow; End trip stays at the foot. */

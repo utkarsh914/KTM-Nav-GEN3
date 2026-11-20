@@ -1,11 +1,18 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -52,11 +59,18 @@ fun KtmDialog(
     content: (@Composable () -> Unit)? = null,
 ) {
     val c = KtmTheme.colors
+    val motion = KtmTheme.motion
+    // Fade and settle in from 92 %; a dialog window can't play an exit, it goes with its window.
+    val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
+        AnimatedVisibility(
+            visibleState = entered,
+            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(motion.spatialDefault(), initialScale = DIALOG_SCALE)),
+        ) {
         Box(
             Modifier.fillMaxSize().safeDrawingPadding()
-                .clickable(indication = null, interactionSource = null, onClick = onDismiss)
+                .pointerInput(onDismiss) { detectTapGestures { onDismiss() } }
                 .padding(KtmSpacing.xl),
             contentAlignment = Alignment.Center,
         ) {
@@ -65,7 +79,7 @@ fun KtmDialog(
                     .widthIn(max = 312.dp)
                     .shadow(KtmElevation.dialog, KtmShapes.Sheet)
                     .background(c.surf, KtmShapes.Sheet)
-                    .clickable(indication = null, interactionSource = null) {}
+                    .pointerInput(Unit) { detectTapGestures { } }
                     .verticalScroll(rememberScrollState())
                     .padding(KtmSpacing.xl)
                     .semantics { paneTitle = title },
@@ -91,8 +105,11 @@ fun KtmDialog(
                 }
             }
         }
+        }
     }
 }
+
+private const val DIALOG_SCALE = 0.92f
 
 @Composable
 private fun DialogButton(action: DialogAction, size: ButtonSize, style: ButtonStyle, modifier: Modifier) {

@@ -1,12 +1,22 @@
 package com.navigator.app.ui.theme
 
 import android.content.Context
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Motion tokens (design §3.5). The spring numbers match the table; with "Remove animations" on
@@ -23,8 +33,8 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     fun <T> effectsDefault(): FiniteAnimationSpec<T> = fade(EFFECTS_DEFAULT_MS)
 
     /** Riding: a plain ease with no overshoot, and a hard ceiling of [RIDING_MAX_MS]. */
-    fun <T> ridingSpatial(): FiniteAnimationSpec<T> =
-        if (reduced) snap() else tween(RIDING_MAX_MS)
+    fun <T> ridingSpatial(delayMs: Int = 0): FiniteAnimationSpec<T> =
+        if (reduced) snap() else tween(RIDING_MAX_MS, delayMillis = delayMs)
 
     /** The overspeed colour change: a plain 100 ms fade, never a flash. */
     fun <T> ridingColor(): FiniteAnimationSpec<T> = tween(EFFECTS_FAST_MS)
@@ -51,3 +61,19 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
 }
 
 val LocalKtmMotion = staticCompositionLocalOf { KtmMotionSpecs() }
+
+/** Whether "Remove animations" is on, kept current while the app is open (the setting can change from the shade). */
+@Composable
+fun rememberReducedMotion(): Boolean {
+    val context = LocalContext.current
+    var reduced by remember { mutableStateOf(KtmMotionSpecs.isReducedMotion(context)) }
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { reduced = KtmMotionSpecs.isReducedMotion(context) }
+        }
+        context.contentResolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        reduced = KtmMotionSpecs.isReducedMotion(context)
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+    return reduced
+}

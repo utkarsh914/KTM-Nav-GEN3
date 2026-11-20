@@ -1,7 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +54,8 @@ fun timeLeftText(t: TimeLeft): String = when (t.kind) {
 fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val r = KtmTheme.riding
     val haptics = rememberHaptics()
-    val speedBg by animateColorAsState(if (ui.overspeed) r.overspeed else r.surfaceHigh, tween(100), label = "overspeed")
-    val speedFg by animateColorAsState(if (ui.overspeed) r.onOverspeed else r.onSurface, tween(100), label = "overspeedText")
+    val speedBg by animateColorAsState(if (ui.overspeed) r.overspeed else r.surfaceHigh, KtmTheme.motion.ridingColor(), label = "overspeed")
+    val speedFg by animateColorAsState(if (ui.overspeed) r.onOverspeed else r.onSurface, KtmTheme.motion.ridingColor(), label = "overspeedText")
     val menu = stringResource(R.string.riding_trip_menu)
     val speedDescription = when {
         !ui.speedKnown -> stringResource(R.string.riding_speed_no_fix)

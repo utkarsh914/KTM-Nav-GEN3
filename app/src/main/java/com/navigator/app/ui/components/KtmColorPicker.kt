@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,12 +22,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
+import com.navigator.app.R
+import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+
+private const val PICKER_STEP = 0.1f
 
 /** A colour as hue (0..360), saturation and value (0..1). */
 data class Hsv(val hue: Float, val sat: Float, val value: Float) {
@@ -57,10 +68,23 @@ fun KtmColorPicker(
     val current by rememberUpdatedState(hsv)
     val change by rememberUpdatedState(onChange)
     val c = KtmTheme.colors
+    val moreSaturated = stringResource(R.string.picker_more_saturated)
+    val lessSaturated = stringResource(R.string.picker_less_saturated)
+    val brighter = stringResource(R.string.picker_brighter)
+    val darker = stringResource(R.string.picker_darker)
+    val hueState = stringResource(R.string.picker_hue_degrees, current.hue.roundToInt())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         Box(
             Modifier.fillMaxWidth().height(KtmLayout.colorPanel).clip(KtmShapes.Control)
-                .semantics { contentDescription = panelDescription }
+                .semantics {
+                    contentDescription = panelDescription
+                    customActions = listOf(
+                        CustomAccessibilityAction(moreSaturated) { change(current.copy(sat = (current.sat + PICKER_STEP).coerceIn(0f, 1f))); true },
+                        CustomAccessibilityAction(lessSaturated) { change(current.copy(sat = (current.sat - PICKER_STEP).coerceIn(0f, 1f))); true },
+                        CustomAccessibilityAction(brighter) { change(current.copy(value = (current.value + PICKER_STEP).coerceIn(0f, 1f))); true },
+                        CustomAccessibilityAction(darker) { change(current.copy(value = (current.value - PICKER_STEP).coerceIn(0f, 1f))); true },
+                    )
+                }
                 .pointerInput(Unit) {
                     detectTapGestures { o -> change(current.copy(sat = (o.x / size.width).coerceIn(0f, 1f), value = 1f - (o.y / size.height).coerceIn(0f, 1f))) }
                 }
@@ -81,7 +105,12 @@ fun KtmColorPicker(
         }
         Box(
             Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest)
-                .semantics { contentDescription = hueDescription }
+                .semantics {
+                    contentDescription = hueDescription
+                    stateDescription = hueState
+                    progressBarRangeInfo = ProgressBarRangeInfo(current.hue, 0f..360f)
+                    setProgress { target -> change(current.copy(hue = target.coerceIn(0f, 360f))); true }
+                }
                 .pointerInput(Unit) { detectTapGestures { o -> change(current.copy(hue = (o.x / size.width * 360f).coerceIn(0f, 360f))) } }
                 .pointerInput(Unit) { detectDragGestures { pointer, _ -> change(current.copy(hue = (pointer.position.x / size.width * 360f).coerceIn(0f, 360f))) } },
         ) {

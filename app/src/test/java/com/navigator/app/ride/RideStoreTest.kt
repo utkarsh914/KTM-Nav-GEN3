@@ -218,7 +218,7 @@ class RideStoreTest {
                 pts(60, 5_000_000L).joinToString("\n") { RideJson.pointLine(it) } + "\n",
         )
         store.recoverOrphans(10, 10)
-        assertEquals(RideSource.MIRROR, store.get(id)!!.source)
+        assertEquals(RideSource.MIRROR, (store.get(id) ?: error("the orphan was not recovered; recovered=${store.list().map { it.id }}")).source)
     }
 
     @Test fun softDeleteHidesRestoreBringsBackAndPurgeRemoves() {

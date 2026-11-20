@@ -57,11 +57,7 @@ interface SymbolTestPorts {
 }
 
 object SymbolNames {
-    /** "LIGHT_LEFT" becomes "Light left". */
-    fun human(enumName: String): String {
-        Regex("""RAB_SECT_(\d+)_(RH|LH)""").matchEntire(enumName)?.let { return "Roundabout exit ${it.groupValues[1]} (${it.groupValues[2]})" }
-        return enumName.lowercase().replace("uturn", "u-turn").replace('_', ' ').replaceFirstChar { it.uppercase() }
-    }
+    fun human(enumName: String): String = com.navigator.app.ui.components.TurnIconNames.human(enumName)
 }
 
 /** DG2: send each dash symbol, look at the dash, mark Works or Wrong. Results persist across sessions. */

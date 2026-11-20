@@ -1,7 +1,7 @@
 package com.navigator.app.ui.shell
 
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -88,7 +88,8 @@ import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
 import com.navigator.app.ui.theme.KtmTheme
-import com.navigator.app.ui.theme.KtmMotionSpecs
+import com.navigator.app.ui.theme.rememberReducedMotion
+import androidx.compose.animation.scaleIn
 import com.navigator.app.ui.theme.accentFor
 
 /**
@@ -150,7 +151,7 @@ fun KtmApp(onQuit: () -> Unit) {
     // Not "paired": after Re-pair the rider is back on the tabs without a bike and requests must still work.
     val setupDone = snap.onboardingComplete && !inSetupScreen
     val pending by intents.pending.collectAsState()
-    val reducedMotion = KtmMotionSpecs.isReducedMotion(context)
+    val reducedMotion = rememberReducedMotion()
     // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
     // not again each time something else changes.
     val taken = remember { mutableSetOf<AppIntent>() }
@@ -523,13 +524,15 @@ fun NavHostController.openRoot(route: Route) {
 
 private const val FADE_MS = 200
 private const val SLIDE_MS = 300
+private const val TAB_SCALE = 0.92f
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boolean =
     initialState.destination.tab() != null && targetState.destination.tab() != null
 
 // With "Remove animations" every move becomes a crossfade.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(reduced: Boolean): EnterTransition = when {
-    tabSwitch() || reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
+    reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
+    tabSwitch() -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2)) + scaleIn(tween(FADE_MS, delayMillis = FADE_MS / 2), initialScale = TAB_SCALE)
     else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { it / 12 } + fadeIn(tween(FADE_MS))
 }
 
@@ -539,7 +542,8 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(reduced: B
 }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(reduced: Boolean): EnterTransition = when {
-    tabSwitch() || reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
+    reduced -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2))
+    tabSwitch() -> fadeIn(tween(FADE_MS, delayMillis = FADE_MS / 2)) + scaleIn(tween(FADE_MS, delayMillis = FADE_MS / 2), initialScale = TAB_SCALE)
     else -> slideInHorizontally(tween(SLIDE_MS, easing = FastOutSlowInEasing)) { -it / 12 } + fadeIn(tween(FADE_MS))
 }
 

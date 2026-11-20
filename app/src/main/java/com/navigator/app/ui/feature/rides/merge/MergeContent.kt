@@ -1,5 +1,11 @@
 package com.navigator.app.ui.feature.rides.merge
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,12 +61,15 @@ fun MergeContent(ui: MergeUi, onBack: () -> Unit, onMerge: () -> Unit, modifier:
     val c = KtmTheme.colors
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.merge_title), onBack = onBack)
-        when (ui) {
-            MergeUi.Loading -> Column { repeat(3) { SkeletonRow(announce = it == 0) } }
-            MergeUi.Gone -> EmptyState(
-                KtmIcons.Warning, stringResource(R.string.merge_gone_title), stringResource(R.string.merge_gone_body),
-            )
-            is MergeUi.Ready -> Ready(ui, onMerge)
+        val motionSpecs = KtmTheme.motion
+        AnimatedContent(targetState = ui, contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+            when (shown) {
+                MergeUi.Loading -> Column { repeat(3) { SkeletonRow(announce = it == 0) } }
+                MergeUi.Gone -> EmptyState(
+                    KtmIcons.Warning, stringResource(R.string.merge_gone_title), stringResource(R.string.merge_gone_body),
+                )
+                is MergeUi.Ready -> Ready(shown, onMerge)
+            }
         }
     }
 }

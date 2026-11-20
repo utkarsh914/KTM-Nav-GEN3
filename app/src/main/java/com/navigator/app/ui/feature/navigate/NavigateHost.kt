@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.navigator.app.ui.feature.record.RecordRidePill
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.rememberDeviceHeadingState
@@ -25,18 +27,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.navigator.app.ui.theme.edgePadding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -159,12 +157,12 @@ import kotlin.math.abs
  *  vertical drift so cards/overlays never hard-cut. */
 private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
     target == NavStage.SEARCH ->
-        (slideInVertically(motion.spatialDefault()) { it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
+        (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
     initial == NavStage.SEARCH ->
-        fadeIn(motion.effectsDefault()) togetherWith (slideOutVertically(motion.spatialDefault()) { it } + fadeOut(motion.effectsFast()))
+        fadeIn(motion.effectsDefault()) togetherWith (slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeOut(motion.effectsFast()))
     else ->
-        (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { it / 12 }) togetherWith
-            (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { -it / 12 })
+        (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it / 12 }) togetherWith
+            (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else -it / 12 })
 }
 
 

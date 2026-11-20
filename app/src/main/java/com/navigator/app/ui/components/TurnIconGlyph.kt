@@ -46,12 +46,14 @@ fun TurnIconRef(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     color: Color = Color.White,
+    /** Null (the default) for decoration: where a glyph carries meaning, its row or card says it in words. */
+    contentDescription: String? = null,
 ) {
     val res = TurnIconArt.drawableFor(icon)
     if (res != null) {
         androidx.compose.material3.Icon(
             painter = androidx.compose.ui.res.painterResource(res),
-            contentDescription = icon.name,
+            contentDescription = contentDescription,
             tint = color,
             modifier = modifier.size(size),
         )

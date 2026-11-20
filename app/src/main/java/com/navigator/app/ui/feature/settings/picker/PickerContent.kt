@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings.picker
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -52,23 +53,25 @@ fun AppPickerContent(ui: AppPickerUi, actions: AppPickerActions, modifier: Modif
             stringResource(R.string.picker_apps_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2,
             modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.xs),
         )
-        when {
-            ui.loading -> Column { repeat(5) { SkeletonRow(announce = it == 0) } }
-            ui.sections.isEmpty() -> Text(
-                stringResource(R.string.picker_none_found), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                modifier = Modifier.padding(KtmSpacing.edge),
-            )
-            else -> LazyColumn(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
-                ui.sections.forEachIndexed { index, section ->
-                    section.title?.let { title -> item(key = "h$index") { SectionHeader(title.resolve()) } }
-                    items(section.apps, key = { "$index-${it.packageName}" }) { app ->
-                        val checked = app.packageName in ui.selected
-                        ListRow(
-                            title = app.label,
-                            leading = { AppIcon(app.packageName) },
-                            modifier = Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = { haptics.toggle(it); actions.onToggle(app.packageName) }),
-                            trailing = { KtmCheckIndicator(checked) },
-                        )
+        Crossfade(targetState = ui.loading, animationSpec = KtmTheme.motion.effectsDefault(), label = "loading") { loading ->
+            when {
+                loading -> Column { repeat(5) { SkeletonRow(announce = it == 0) } }
+                ui.sections.isEmpty() -> Text(
+                    stringResource(R.string.picker_none_found), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
+                    modifier = Modifier.padding(KtmSpacing.edge),
+                )
+                else -> LazyColumn(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+                    ui.sections.forEachIndexed { index, section ->
+                        section.title?.let { title -> item(key = "h$index") { SectionHeader(title.resolve()) } }
+                        items(section.apps, key = { "$index-${it.packageName}" }) { app ->
+                            val checked = app.packageName in ui.selected
+                            ListRow(
+                                title = app.label,
+                                leading = { AppIcon(app.packageName) },
+                                modifier = Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = { haptics.toggle(it); actions.onToggle(app.packageName) }),
+                                trailing = { KtmCheckIndicator(checked) },
+                            )
+                        }
                     }
                 }
             }

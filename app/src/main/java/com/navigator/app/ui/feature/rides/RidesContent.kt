@@ -1,5 +1,13 @@
 package com.navigator.app.ui.feature.rides
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +31,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -108,40 +114,43 @@ fun RidesContent(
                 else -> RidesBar(actions, hasRides = ui.body !is RidesBody.Empty, onSort = { showSort = true })
             }
             if (ui == null || (!ui.searchOpen && !ui.selecting)) LargeTitle(stringResource(R.string.rides_title))
-            when (val body = ui?.body) {
-                null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
-                RidesBody.Empty -> EmptyRides(autoRecordOn, actions)
-                RidesBody.NoMatch -> EmptyState(
-                    KtmIcons.Search, stringResource(R.string.rides_no_match_title, ui?.query.orEmpty().trim()),
-                    stringResource(R.string.rides_no_match_message),
-                    primary = StateAction(stringResource(R.string.rides_clear_search)) { actions.onCloseSearch() },
-                )
-                is RidesBody.Items -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
-                    verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-                ) {
-                    if (ui.selecting) {
-                        item(key = "select-all") {
-                            KtmCheckboxRow(
-                                title = stringResource(if (ui.allSelected) R.string.rides_select_none else R.string.rides_select_all),
-                                checked = ui.allSelected, onCheckedChange = actions.onSelectAll,
-                            )
-                        }
-                    }
-                    body.items.forEach { item ->
-                        when (item) {
-                            is RideListItem.Header -> stickyHeader(key = item.key) { DayHeader(item.date, today) }
-                            is RideListItem.Ride -> item(key = item.key) {
-                                val id = item.ride.id
-                                RideCard(
-                                    item, selecting = ui.selecting, selected = id in ui.selected, thumbnail = thumbnail,
-                                    onClick = { if (ui.selecting) actions.onToggleSelected(id) else actions.onOpenRide(id) },
-                                    onLongClick = { if (ui.selecting) actions.onToggleSelected(id) else actions.onSelect(id) },
-                                    onToggleStar = { actions.onToggleStar(id) },
-                                    modifier = Modifier.animateItem(),
+            val motionSpecs = KtmTheme.motion
+            AnimatedContent(targetState = ui, contentKey = { it?.body?.let { b -> b::class } }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+                when (val body = shown?.body) {
+                    null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
+                    RidesBody.Empty -> EmptyRides(autoRecordOn, actions)
+                    RidesBody.NoMatch -> EmptyState(
+                        KtmIcons.Search, stringResource(R.string.rides_no_match_title, shown?.query.orEmpty().trim()),
+                        stringResource(R.string.rides_no_match_message),
+                        primary = StateAction(stringResource(R.string.rides_clear_search)) { actions.onCloseSearch() },
+                    )
+                    is RidesBody.Items -> LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
+                        verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+                    ) {
+                        if (shown.selecting) {
+                            item(key = "select-all") {
+                                KtmCheckboxRow(
+                                    title = stringResource(if (shown.allSelected) R.string.rides_select_none else R.string.rides_select_all),
+                                    checked = shown.allSelected, onCheckedChange = actions.onSelectAll,
                                 )
+                            }
+                        }
+                        body.items.forEach { item ->
+                            when (item) {
+                                is RideListItem.Header -> stickyHeader(key = item.key) { DayHeader(item.date, today) }
+                                is RideListItem.Ride -> item(key = item.key) {
+                                    val id = item.ride.id
+                                    RideCard(
+                                        item, selecting = shown.selecting, selected = id in shown.selected, thumbnail = thumbnail,
+                                        onClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onOpenRide(id) },
+                                        onLongClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onSelect(id) },
+                                        onToggleStar = { actions.onToggleStar(id) },
+                                        modifier = Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsDefault(), placementSpec = KtmTheme.motion.spatialDefault(), fadeOutSpec = KtmTheme.motion.effectsFast()),
+                                    )
+                                }
                             }
                         }
                     }

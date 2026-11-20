@@ -1046,6 +1046,11 @@
     <string name="shortcut_ride_label">Ride %1$s</string>
 
     <!-- Diagnostics (DG1 to DG4) -->
+    <string name="picker_more_saturated">More vivid</string>
+    <string name="picker_less_saturated">Less vivid</string>
+    <string name="picker_brighter">Brighter</string>
+    <string name="picker_darker">Darker</string>
+    <string name="picker_hue_degrees">%1$d\u00b0</string>
     <string name="logs_title">Logs</string>
     <string name="logs_share">Share log</string>
     <string name="logs_share_chooser">Share KTM Navigator log</string>

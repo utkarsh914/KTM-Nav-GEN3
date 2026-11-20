@@ -1,9 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Box
@@ -56,13 +54,13 @@ fun RidingScreen(
     val gap = with(density) { KtmSpacing.sm.roundToPx() }
     val size = remember { IntArray(2) }
     Box(modifier.fillMaxSize().edgePadding().padding(horizontal = KtmSpacing.ridingEdge, vertical = KtmSpacing.sm)) {
-        // MO1: the card drops in from the top, then the bar rises from the bottom; no overshoot, each 200 ms after a short stagger (the card first), reduced motion off.
-        val reduced = KtmTheme.motion.reduced
+        // MO1: the card drops in from the top, then the bar rises from the bottom a beat later; no overshoot, at most 250 ms. Reduced motion: a short crossfade.
+        val motion = KtmTheme.motion
         val entered = remember { MutableTransitionState(false).apply { targetState = true } }
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
-            enter = if (reduced) EnterTransition.None else fadeIn(tween(200, delayMillis = 100)) + slideInVertically(tween(200, delayMillis = 100)) { -it },
+            enter = fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it },
         ) {
             Column {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
@@ -72,7 +70,7 @@ fun RidingScreen(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            enter = if (reduced) EnterTransition.None else fadeIn(tween(200, delayMillis = 150)) + slideInVertically(tween(200, delayMillis = 150)) { it },
+            enter = fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial(delayMs = BAR_STAGGER_MS)) { if (motion.reduced) 0 else it },
         ) {
           Column(Modifier.fillMaxWidth().onSizeChanged { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) }) {
             RidingMapButton(
@@ -85,3 +83,6 @@ fun RidingScreen(
         }
     }
 }
+
+/** The trip bar rises this long after the maneuver card drops in. */
+private const val BAR_STAGGER_MS = 50
