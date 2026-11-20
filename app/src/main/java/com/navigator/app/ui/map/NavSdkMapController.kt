@@ -153,6 +153,8 @@ class NavSdkMapController(
 
     override fun cameraCenter(): MapPoint? = map?.cameraPosition?.target?.let { MapPoint(it.latitude, it.longitude) }
 
+    override fun cameraZoom(): Float? = map?.cameraPosition?.zoom
+
     private var idleWanted = false
 
     override fun setCameraIdleListening(enabled: Boolean) {

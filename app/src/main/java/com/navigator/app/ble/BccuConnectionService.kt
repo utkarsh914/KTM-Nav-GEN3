@@ -28,8 +28,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import com.navigator.app.app.AppIntents
 import com.navigator.app.nav.model.NavSessionState
@@ -863,6 +861,8 @@ class BccuConnectionService : LifecycleService() {
                         .setContentTitle(content.title).setContentText(content.text)
                         .setSmallIcon(R.drawable.ic_notification).setAutoCancel(true)
                         .setContentIntent(NotificationActions.open(this, 5, AppIntents.REQUEST_REPAIR))
+                        .addAction(0, getString(R.string.conn_action_repair), NotificationActions.open(this, 6, AppIntents.REQUEST_REPAIR))
+                        .addAction(0, getString(R.string.conn_action_quit), NotificationActions.open(this, 7, AppIntents.REQUEST_QUIT))
                         .build(),
                 )
             }
@@ -874,12 +874,11 @@ class BccuConnectionService : LifecycleService() {
 
     private var alertShown = false
 
-    /** Keeps the mirror one-liner (turn distance, recording time) current while connected. */
+    /** Keeps the mirror one-liner (turn distance, recording time) current while connected: it ticks even when nothing else changes. */
     private fun watchMirrorLine() {
         lifecycleScope.launch {
-            combine(
-                com.navigator.app.nav.providers.NotificationNavProvider.state, com.navigator.app.ride.RideSession.state,
-            ) { nav, rec -> nav.preformattedDistance to rec.active }.sample(MIRROR_LINE_MS).collect {
+            while (true) {
+                delay(MIRROR_LINE_MS)
                 if (notice == ConnectionNotice.CONNECTED && mirrorLine(notice) != null) updateForegroundNotification(notice)
             }
         }

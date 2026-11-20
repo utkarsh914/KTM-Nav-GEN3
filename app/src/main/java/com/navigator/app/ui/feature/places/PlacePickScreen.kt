@@ -1,6 +1,12 @@
 package com.navigator.app.ui.feature.places
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -63,6 +69,30 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
         onBack()
     }
 
+    fun useHere(unavailable: String, fallback: String) {
+        val here = lastKnownLocation(context)
+        if (here == null) feedback.snackbar(unavailable)
+        else if (!busy) {
+            busy = true
+            scope.launch {
+                // Never wait long on a slow geocoder: the point is what matters, the name is a nicety.
+                val name = withTimeoutOrNull(NAME_TIMEOUT_MS) {
+                    AndroidReverseGeocoder(context).streetName(MapPoint(here.first, here.second))
+                }
+                busy = false
+                done(SavedPlace(here.first, here.second, name ?: fallback))
+            }
+        }
+    }
+
+    val unavailableText = resources.getString(R.string.search_current_unavailable)
+    val fallbackName = resources.getString(R.string.places_current_label)
+    // Asked at the moment it is needed; a refusal says so instead of doing nothing.
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { it }) useHere(unavailableText, fallbackName)
+        else feedback.snackbar(resources.getString(R.string.search_current_denied))
+    }
+
     BackHandler(enabled = mapping) { mapping = false }
     Box(modifier.fillMaxSize()) {
         if (mapping) {
@@ -74,27 +104,13 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
             }
             PickOnMapHost(map = map, onBack = { mapping = false }, onUse = ::done)
         } else {
-            val unavailable = resources.getString(R.string.search_current_unavailable)
-            val fallback = resources.getString(R.string.places_current_label)
             PlaceSearchRoute(
                 mode = SearchMode.Pick(slot),
                 onPicked = ::done,
                 onBack = onBack,
                 onPickOnMap = { mapping = true },
                 onUseCurrent = {
-                    val here = lastKnownLocation(context)
-                    if (here == null) feedback.snackbar(unavailable)
-                    else if (!busy) {
-                        busy = true
-                        scope.launch {
-                            // Never wait long on a slow geocoder: the point is what matters, the name is a nicety.
-                            val name = withTimeoutOrNull(NAME_TIMEOUT_MS) {
-                                AndroidReverseGeocoder(context).streetName(MapPoint(here.first, here.second))
-                            }
-                            busy = false
-                            done(SavedPlace(here.first, here.second, name ?: fallback))
-                        }
-                    }
+                    if (hasLocationPermission(context)) useHere(unavailableText, fallbackName) else askLocation.launch(LOCATION_PERMISSIONS)
                 },
             )
         }
@@ -102,3 +118,9 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
 }
 
 private const val NAME_TIMEOUT_MS = 3_000L
+
+private val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+private fun hasLocationPermission(context: Context) = LOCATION_PERMISSIONS.any {
+    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+}

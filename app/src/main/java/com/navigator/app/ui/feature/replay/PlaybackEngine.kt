@@ -21,8 +21,19 @@ object PlaybackEngine {
     /** Longest wait honoured between two fixes, so a GPS dropout doesn't freeze the marker for minutes. */
     const val MAX_STEP_MS = 3_000L
 
-    /** A tap further than this from the track is a map tap, not a seek. */
+    /** The tap radius when the zoom is unknown: a tap further than this from the track is a map tap, not a seek. */
     const val SEEK_TAP_MAX_M = 100.0
+
+    /** How far from the track a tap still seeks: about a fingertip (40 dp) of map at [zoom], kept within sane bounds. */
+    fun tapRadiusM(zoom: Float?, lat: Double): Double {
+        if (zoom == null) return SEEK_TAP_MAX_M
+        val metersPerDp = 156_543.03392 * kotlin.math.cos(Math.toRadians(lat)) / Math.pow(2.0, zoom.toDouble())
+        return (TAP_RADIUS_DP * metersPerDp).coerceIn(MIN_TAP_RADIUS_M, MAX_TAP_RADIUS_M)
+    }
+
+    private const val TAP_RADIUS_DP = 40.0
+    private const val MIN_TAP_RADIUS_M = 15.0
+    private const val MAX_TAP_RADIUS_M = 2_000.0
 
     /** The next speed up or down, staying within the range. */
     fun stepSpeed(current: Int, direction: Int): Int {

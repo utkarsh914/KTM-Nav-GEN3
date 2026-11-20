@@ -93,4 +93,14 @@ class ChartAxisTest {
         assertEquals(0f, plotFraction(10f, 400f, 36f), 0f)
         assertEquals(0.5f, plotFraction(218f, 400f, 36f), 0.001f)
     }
+
+    @Test fun theTapRadiusFollowsTheZoom() {
+        val street = PlaybackEngine.tapRadiusM(17f, 12.0)
+        val region = PlaybackEngine.tapRadiusM(9f, 12.0)
+        assertTrue("street $street", street in 30.0..60.0)
+        assertTrue("region $region", region > 1_000.0)
+        assertEquals(PlaybackEngine.SEEK_TAP_MAX_M, PlaybackEngine.tapRadiusM(null, 12.0), 0.0)
+        assertEquals(15.0, PlaybackEngine.tapRadiusM(25f, 12.0), 0.0)
+        assertEquals(2_000.0, PlaybackEngine.tapRadiusM(2f, 12.0), 0.0)
+    }
 }

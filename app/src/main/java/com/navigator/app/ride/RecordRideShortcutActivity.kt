@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
+import com.navigator.app.R
 import androidx.core.content.ContextCompat
 
 /**
@@ -19,8 +21,11 @@ class RecordRideShortcutActivity : Activity() {
         val alreadyRecording = RideSession.state.value.active
         when (RecordStartPolicy.result(granted) { alreadyRecording || RideRecordingService.startManual(this) }) {
             RecordStartResult.Started -> {}
-            RecordStartResult.NeedsLocation, RecordStartResult.Failed ->
+            RecordStartResult.NeedsLocation, RecordStartResult.Failed -> {
+                // The app opens next; say why, so it doesn't look like the shortcut did nothing.
+                Toast.makeText(this, R.string.shortcut_record_failed, Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, com.navigator.app.ui.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
         }
         finish()
     }

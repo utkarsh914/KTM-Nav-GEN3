@@ -55,9 +55,26 @@ class OnboardingViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun kotlinx.coroutines.test.TestScope.vm(available: Boolean = true, accepted: Boolean = false): OnboardingViewModel {
+    private fun kotlinx.coroutines.test.TestScope.vm(
+        available: Boolean = true, accepted: Boolean = false, saved: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle(),
+    ): OnboardingViewModel {
         val perms = PermissionsRepository({ grants }, settings, backgroundScope)
-        return OnboardingViewModel(settings, perms, available, accepted).also { it.ui.launchIn(backgroundScope) }
+        return OnboardingViewModel(settings, perms, available, accepted, saved).also { it.ui.launchIn(backgroundScope) }
+    }
+
+    @Test fun theStepSurvivesTheProcessBeingKilled() = runTest(UnconfinedTestDispatcher()) {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        val first = vm(saved = handle)
+        first.next(); first.chooseEngine(NavEngine.IN_APP); first.next()
+        assertEquals(OnboardingStep.TERMS, first.ui.value.step)
+        val restored = vm(saved = handle)
+        assertEquals(OnboardingStep.TERMS, restored.ui.value.step)
+    }
+
+    @Test fun aSavedStepThatIsNoLongerInTheListStartsOver() = runTest(UnconfinedTestDispatcher()) {
+        val handle = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.TERMS.name))
+        assertEquals(OnboardingStep.WELCOME, vm(available = true, accepted = true, saved = handle).ui.value.step)
+        assertEquals(OnboardingStep.WELCOME, vm(saved = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to "NOPE"))).ui.value.step)
     }
 
     @Test fun walksTheStepsWithTermsForInAppAndSavesTheChoices() = runTest(UnconfinedTestDispatcher()) {

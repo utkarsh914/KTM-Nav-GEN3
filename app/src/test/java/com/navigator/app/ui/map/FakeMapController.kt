@@ -31,6 +31,8 @@ class FakeMapController : MapController {
     var guiding: Boolean? = null
 
     override fun cameraCenter() = center
+    var zoom: Float? = null
+    override fun cameraZoom() = zoom
     override fun setCameraIdleListening(enabled: Boolean) { idleListening = enabled }
     var poisOn = false
     var gesturesOn = false

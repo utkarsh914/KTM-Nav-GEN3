@@ -77,6 +77,8 @@ class ReplayViewModel(
     val avgMode: AvgSpeedMode,
     val bands: RideMetrics.SpeedBands,
     private val compute: CoroutineDispatcher = Dispatchers.Default,
+    /** Monotonic milliseconds: playback is paced by it, so a slow frame doesn't slow the replay down. */
+    private val nowMs: () -> Long = { System.nanoTime() / 1_000_000L },
 ) : ViewModel() {
     private val _ui = MutableStateFlow<ReplayUi>(ReplayUi.Loading)
     val ui: StateFlow<ReplayUi> = _ui.asStateFlow()
@@ -150,10 +152,15 @@ class ReplayViewModel(
 
     private suspend fun play(points: List<RidePoint>) {
         var carry = 0L
+        var last = nowMs()
         while (true) {
             delay(FRAME_MS)
             val speed = (_ui.value as? ReplayUi.Ready)?.speed ?: break
-            val step = PlaybackEngine.advance(points, _position.value, carry, FRAME_MS * speed)
+            val now = nowMs()
+            // Capped: a stall (doze, a long GC) must not make the marker jump across the track.
+            val elapsed = (now - last).coerceIn(0L, MAX_FRAME_MS)
+            last = now
+            val step = PlaybackEngine.advance(points, _position.value, carry, elapsed * speed)
             carry = step.carryMs
             _position.value = step.index
             if (step.index >= points.lastIndex) break
@@ -182,8 +189,8 @@ class ReplayViewModel(
     fun pause() = stopPlaying()
 
     /** A tap on the map: the fix nearest to it, if the tap was close to the track. */
-    fun seekToMap(lat: Double, lng: Double) = ready { r ->
-        PlaybackEngine.nearest(r.points, lat, lng)?.let { stopPlaying(); _position.value = it }
+    fun seekToMap(lat: Double, lng: Double, maxM: Double = PlaybackEngine.SEEK_TAP_MAX_M) = ready { r ->
+        PlaybackEngine.nearest(r.points, lat, lng, maxM)?.let { stopPlaying(); _position.value = it }
     }
 
     fun stepSpeed(direction: Int) = change { it.copy(speed = PlaybackEngine.stepSpeed(it.speed, direction)) }
@@ -219,8 +226,11 @@ class ReplayViewModel(
     }
 
     companion object {
-        /** One playback tick; each consumes [FRAME_MS] times the speed of recorded time. */
+        /** One playback tick; each consumes the real time since the last one (at most [MAX_FRAME_MS]) times the speed. */
         const val FRAME_MS = 16L
+
+        /** The most real time one tick may count. */
+        const val MAX_FRAME_MS = 100L
 
         fun factory(rideId: String, container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

@@ -1,6 +1,8 @@
 package com.navigator.app.ui.feature.onboarding
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.navigator.app.app.AppContainer
@@ -43,15 +45,27 @@ class OnboardingViewModel(
     private val permissions: PermissionsRepository,
     private val engineAvailable: Boolean,
     private val termsAcceptedAtStart: Boolean,
+    /** Keeps the step across the process being killed (a permission screen or Google's terms can take the app away). */
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
-    private val step = MutableStateFlow(OnboardingStep.WELCOME)
+    private val step = MutableStateFlow(saved.get<String>(KEY_STEP)?.let { name -> OnboardingStep.entries.firstOrNull { it.name == name } } ?: OnboardingStep.WELCOME)
     private val engine = MutableStateFlow(if (engineAvailable) settings.snapshot.value.engine else NavEngine.MIRROR)
     private val name = MutableStateFlow(settings.snapshot.value.userName.orEmpty())
     private val termsDone = MutableStateFlow(termsAcceptedAtStart)
     private var finished = false
 
+    init {
+        // A saved step that is not in this run's list (the terms were accepted since) starts over.
+        if (step.value !in steps()) step.value = OnboardingStep.WELCOME
+    }
+
     private val _events = Channel<OnboardingEvent>(Channel.BUFFERED)
     val events: Flow<OnboardingEvent> = _events.receiveAsFlow()
+
+    private fun goTo(next: OnboardingStep) {
+        step.value = next
+        saved[KEY_STEP] = next.name
+    }
 
     private fun steps() = OnboardingFlow.steps(engineAvailable, engine.value, termsDone.value)
 
@@ -81,16 +95,16 @@ class OnboardingViewModel(
             OnboardingStep.PERMISSIONS -> { finish(); return }
             else -> {}
         }
-        OnboardingFlow.next(steps(), step.value)?.let { step.value = it }
+        OnboardingFlow.next(steps(), step.value)?.let { goTo(it) }
     }
 
     /** Skip on the name step: nothing is saved and the greeting stays "Welcome!". */
     fun skipName() {
-        OnboardingFlow.next(steps(), OnboardingStep.NAME)?.let { step.value = it }
+        OnboardingFlow.next(steps(), OnboardingStep.NAME)?.let { goTo(it) }
     }
 
     fun back() {
-        OnboardingFlow.previous(steps(), step.value)?.let { step.value = it }
+        OnboardingFlow.previous(steps(), step.value)?.let { goTo(it) }
     }
 
     /** Google's dialog was accepted: the step is done and Back no longer returns to it. */
@@ -102,7 +116,7 @@ class OnboardingViewModel(
     fun useMirror() {
         engine.value = NavEngine.MIRROR
         saveEngine()
-        step.value = OnboardingFlow.next(steps(), OnboardingStep.TERMS) ?: OnboardingStep.NAME
+        goTo(OnboardingFlow.next(steps(), OnboardingStep.TERMS) ?: OnboardingStep.NAME)
     }
 
     /** What the primary button on the permissions step does: the next required permission still off, or finish. */
@@ -122,15 +136,17 @@ class OnboardingViewModel(
 
     companion object {
         const val MAX_NAME = 30
+        private const val KEY_STEP = "onboarding_step"
 
         fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
             private val app = context.applicationContext
 
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: androidx.lifecycle.viewmodel.CreationExtras): T {
                 val available = GoogleNavSdkController.isAvailable(app)
                 return OnboardingViewModel(
                     container.settings, container.permissions, available, termsAcceptedAtStart = !available || GoogleTerms.accepted(app),
+                    saved = extras.createSavedStateHandle(),
                 ) as T
             }
         }

@@ -59,6 +59,9 @@ interface MapController {
     /** The point under the middle of the map, or null before the map is ready. */
     fun cameraCenter(): MapPoint?
 
+    /** The camera's zoom level, or null before the map is ready. */
+    fun cameraZoom(): Float?
+
     /**
      * Start or stop [cameraIdle]. Off by default: the listener replaces any other on the shared map,
      * so only the screens that need it (Pick on map) switch it on, and off again when they leave.

@@ -52,7 +52,7 @@ class ReplayViewModelTest {
     private fun plain(name: String, n: Int, start: Long, lng0: Double = 77.0) =
         store.importRide(name, pts(n, start, lng0))!!.also { store.setSaved(it.id, false) }
     private fun ride(start: Long, name: String = "A", n: Int = 60) = plain(name, n, start)
-    private fun vm(id: String) = ReplayViewModel(id, repo, AvgSpeedMode.MOVING, RideMetrics.SpeedBands.DEFAULT, dispatcher)
+    private fun vm(id: String) = ReplayViewModel(id, repo, AvgSpeedMode.MOVING, RideMetrics.SpeedBands.DEFAULT, dispatcher) { dispatcher.scheduler.currentTime }
     private fun ReplayViewModel.ready() = ui.value as ReplayUi.Ready
 
     private fun kotlinx.coroutines.test.TestScope.events(vm: ReplayViewModel): List<ReplayEvent> {
@@ -203,5 +203,20 @@ class ReplayViewModelTest {
         val v = vm(r.id)
         store.updateMeta(r.id, "New", null)
         assertEquals("New", v.ready().ride.destinationLabel)
+    }
+
+    @Test fun aSlowFrameDoesNotSlowThePlaybackDown() = runTest(dispatcher) {
+        val id = ride(1_000_000L).id
+        var clock = 0L
+        val v = ReplayViewModel(id, repo, AvgSpeedMode.MOVING, RideMetrics.SpeedBands.DEFAULT, dispatcher) { clock }
+        runCurrent()
+        v.togglePlay()
+        // One tick arrives 90 ms late: it still counts the real time that passed (x4 speed = 360 ms of the ride).
+        clock = 90; advanceTimeBy(16); runCurrent()
+        assertEquals(0, v.position.value)
+        clock = 1_000; advanceTimeBy(16); runCurrent()
+        // The late frame is capped at MAX_FRAME_MS, so a stall can't leap the track.
+        assertEquals(0, v.position.value)
+        v.togglePlay()
     }
 }

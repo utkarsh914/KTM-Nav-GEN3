@@ -592,6 +592,7 @@
     <string name="search_hint_add">Search for a place to save</string>
     <string name="search_use_current">Use my current location</string>
     <string name="search_use_current_caption">Saves where you are right now</string>
+    <string name="search_current_denied">Location access is off. Allow it to use where you are.</string>
     <string name="search_current_unavailable">Can\'t find your location yet. Check that location is on.</string>
 
     <!-- Settings home (ST1, ST10) -->
@@ -1045,6 +1046,7 @@
     <string name="conn_action_turn_on">Turn on</string>
     <string name="conn_action_repair">Re-pair</string>
     <string name="conn_action_quit">Quit</string>
+    <string name="shortcut_record_failed">Couldn\'t start recording. Allow location in the app, then try again.</string>
     <string name="shortcut_record_short">Record</string>
     <string name="shortcut_record_long">Record a ride</string>
     <string name="shortcut_search_short">Where to?</string>

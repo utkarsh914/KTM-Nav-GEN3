@@ -124,7 +124,7 @@ fun ReplayScreen(
             map.setMapClickListening(true)
             map.setGestureListening(true)
         }
-        LaunchedEffect(map) { map.mapClicks.collect { vm.seekToMap(it.lat, it.lng) } }
+        LaunchedEffect(map) { map.mapClicks.collect { vm.seekToMap(it.lat, it.lng, PlaybackEngine.tapRadiusM(map.cameraZoom(), it.lat)) } }
         LaunchedEffect(map) { map.gesturePans.collect { vm.stopFollowing() } }
 
         // The track is drawn again when it, or its smoothing, changes (this puts the marker back where playback is).
