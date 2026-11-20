@@ -180,7 +180,7 @@ fun NavigateRoute(
     }
 }
 
-private tailrec fun Context.findHostActivity(): android.app.Activity? = when (this) {
+internal tailrec fun Context.findHostActivity(): android.app.Activity? = when (this) {
     is android.app.Activity -> this
     is ContextWrapper -> baseContext.findHostActivity()
     else -> null

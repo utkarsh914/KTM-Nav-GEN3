@@ -20,4 +20,11 @@ sealed interface UiText {
         is Plural -> pluralStringResource(id, count, *args.toTypedArray())
         is Raw -> text
     }
+
+    /** The same text outside composition (a snackbar raised from an event). */
+    fun text(resources: android.content.res.Resources): String = when (this) {
+        is Res -> resources.getString(id, *args.toTypedArray())
+        is Plural -> resources.getQuantityString(id, count, *args.toTypedArray())
+        is Raw -> text
+    }
 }

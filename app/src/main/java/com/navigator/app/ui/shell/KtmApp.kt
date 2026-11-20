@@ -14,7 +14,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -67,7 +66,10 @@ import com.navigator.app.ui.feature.replay.ReplayScreen
 import com.navigator.app.ui.feature.replay.edit.EditRideScreen
 import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
 import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.settings.AboutScreen
 import com.navigator.app.ui.feature.settings.AppearanceScreen
+import com.navigator.app.ui.feature.settings.BackupScreen
+import com.navigator.app.ui.feature.settings.PermissionsScreen
 import com.navigator.app.ui.feature.settings.BikeDashScreen
 import com.navigator.app.ui.feature.settings.NavigationScreen
 import com.navigator.app.ui.feature.settings.RecordingScreen
@@ -78,7 +80,6 @@ import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
 import com.navigator.app.ui.feature.places.PlacesScreen
-import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
 import com.navigator.app.ui.screens.TurnCalibrationScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
@@ -311,47 +312,21 @@ fun KtmApp(onQuit: () -> Unit) {
                                 SettingsPage.BIKE_DASH -> BikeDashScreen(
                                     onBack = back,
                                     onOpenApps = { navController.push(Route.DashApps) },
-                                    // Until the Permissions page is rebuilt (B16c): straight to Android's notification-access screen, as the old row did.
-                                    onOpenPermissions = {
-                                        runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-                                    },
+                                    onOpenPermissions = { navController.push(Route.SettingsPage(SettingsPage.PERMISSIONS)) },
                                     onRePaired = { navController.push(Route.Pairing(toHome = true)) },
                                 )
                                 SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) })
                                 SettingsPage.RECORDING -> RecordingScreen(onBack = back)
                                 SettingsPage.APPEARANCE -> AppearanceScreen(onBack = back)
                                 SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })
-                                // Pages not rebuilt yet open the previous Settings screen, which still has every setting.
-                                else -> {
-                                    val legacyList = rememberLazyListState()
-                                    SettingsScreen(
-                                        settings = legacy,
-                                        onQuit = { showQuit = true },
-                                        onOpenLogs = { navController.push(Route.Logs) },
-                                        onOpenSymbolTest = { navController.push(Route.SymbolTest) },
-                                        onOpenTurnCalibration = { navController.push(Route.TurnCalibration) },
-                                        onOpenPlaces = { navController.openTab(Tab.Places) },
-                                        onOpenRecordings = { navController.openTab(Tab.Rides) },
-                                        themeMode = snap.themeMode,
-                                        onThemeModeChanged = { mode -> settings.update { themeMode = mode } },
-                                        fontMode = snap.fontMode,
-                                        onFontModeChanged = { mode -> settings.update { fontMode = mode } },
-                                        navThemeMode = snap.ridingScreens,
-                                        onNavThemeModeChanged = { mode -> settings.update { navThemeMode = mode } },
-                                        accentColorId = snap.accentColorId,
-                                        onAccentColorChanged = { id -> settings.update { accentColorId = id } },
-                                        listState = legacyList,
-                                        onEngineChanged = { googleNav ->
-                                            // Switching to the mirror engine ends any in-app SDK trip so the two
-                                            // engines never drive the dash at once.
-                                            if (!googleNav) container.trip.cancel()
-                                        },
-                                        onRepair = {
-                                            container.connection.rePair()
-                                            navController.push(Route.Pairing(toHome = true))
-                                        },
-                                    )
-                                }
+                                SettingsPage.PERMISSIONS -> PermissionsScreen(onBack = back)
+                                SettingsPage.BACKUP -> BackupScreen(onBack = back)
+                                SettingsPage.ABOUT -> AboutScreen(
+                                    onBack = back,
+                                    onLogs = { navController.push(Route.Logs) },
+                                    onSymbols = { navController.push(Route.SymbolTest) },
+                                    onCalibration = { navController.push(Route.TurnCalibration) },
+                                )
                             }
                         }
                         composable<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }

@@ -803,4 +803,94 @@
     <string name="custom_ok">Readable as it is. Contrast %1$s:1.</string>
     <string name="custom_adjusted">This colour is too close to the background, so text in it is adjusted to stay readable. Contrast %1$s:1.</string>
     <string name="custom_save">Use this colour</string>
+
+    <!-- Permissions (ST7, DL10, DL11) -->
+    <string name="perm_title">Permissions</string>
+    <string name="perm_banner_required_title">Some things are switched off</string>
+    <string name="perm_banner_required">Needs to be on: %1$s. Without them, parts of the app won\'t work.</string>
+    <string name="perm_banner_optional_title">Works, but could be better</string>
+    <string name="perm_banner_optional">Optional: %1$s. Turn on for the most reliable rides.</string>
+    <string name="perm_banner_ok">Everything the app needs is allowed.</string>
+    <string name="perm_optional">Optional</string>
+    <string name="perm_allowed">Allowed</string>
+    <string name="perm_allow">Allow</string>
+    <string name="perm_open">Open</string>
+    <string name="perm_allow_cd">Allow %1$s</string>
+    <string name="perm_open_cd">Open settings for %1$s</string>
+    <string name="perm_background_title">Allow location all the time</string>
+    <string name="perm_background_body">Guidance and ride recording keep working when the screen is off or the app is in the background, like when the bike reconnects by itself. Android asks for this separately. Choose \"Allow all the time\" on the next screen.</string>
+    <string name="perm_background_go">Continue</string>
+    <string name="perm_access_title">Allow notification access</string>
+    <string name="perm_access_body">To mirror turns from Google Maps, Android has to let this app read notifications. On the next screen, find KTM Navigator and switch it on. The app only looks at notifications from the apps you chose.</string>
+    <string name="perm_access_go">Open Android settings</string>
+    <string name="perm_explainer_cancel">Not now</string>
+
+    <!-- Backup & restore (ST8, DL6) -->
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_action_backup">Back up now</string>
+    <string name="backup_action_restore">Restore from a backup</string>
+    <string name="backup_included">What\'s included</string>
+    <string name="backup_inc_rides">Your rides</string>
+    <string name="backup_inc_rides_hint">With their tracks</string>
+    <string name="backup_inc_places">Saved places</string>
+    <string name="backup_inc_places_hint">Home, Work, saved and recent</string>
+    <string name="backup_inc_settings">Your settings</string>
+    <string name="backup_inc_settings_hint">Everything in Settings</string>
+    <string name="backup_not_included">The bike pairing is never included. Pair again on a new phone.</string>
+    <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones.</string>
+    <plurals name="backup_done">
+        <item quantity="one">Backed up %1$d ride, your places and settings</item>
+        <item quantity="other">Backed up %1$d rides, your places and settings</item>
+    </plurals>
+    <string name="backup_share">Share</string>
+    <string name="backup_share_title">Share backup</string>
+    <string name="backup_failed">Backup failed</string>
+    <string name="backup_retry">Retry</string>
+    <string name="backup_restored">Restored %1$s</string>
+    <plurals name="backup_restored_rides">
+        <item quantity="one">%1$d ride</item>
+        <item quantity="other">%1$d rides</item>
+    </plurals>
+    <plurals name="backup_restored_places">
+        <item quantity="one">%1$d place</item>
+        <item quantity="other">%1$d places</item>
+    </plurals>
+    <plurals name="backup_restored_settings">
+        <item quantity="one">%1$d setting</item>
+        <item quantity="other">%1$d settings</item>
+    </plurals>
+    <string name="backup_restart_now">Restart now</string>
+    <string name="backup_restore_failed">Couldn\'t restore that file</string>
+    <string name="restore_title">Restore from backup</string>
+    <string name="restore_reading">Reading the file</string>
+    <string name="restore_unreadable_title">Couldn\'t read that file</string>
+    <string name="restore_unreadable">It isn\'t a KTM Navigator backup, or it\'s too large.</string>
+    <string name="restore_choose_another">Choose another file</string>
+    <string name="restore_intro">Choose what to restore. Nothing is ever deleted.</string>
+    <string name="restore_rides">Rides</string>
+    <string name="restore_places">Saved places</string>
+    <string name="restore_settings">Settings</string>
+    <string name="restore_none">None in this file</string>
+    <string name="restore_rides_detail">New: %1$d of %2$d in file</string>
+    <string name="restore_places_detail">In file: %1$d, merged with yours</string>
+    <string name="restore_settings_detail">In file: %1$d, replace yours. Restart the app to apply.</string>
+    <string name="restore_close">Close</string>
+    <string name="restore_confirm">Restore</string>
+
+    <!-- About & diagnostics (ST9) -->
+    <string name="about_title">About &amp; diagnostics</string>
+    <string name="about_section_logs">Logs</string>
+    <string name="about_logs">View and share logs</string>
+    <string name="about_logs_hint">What the app has been doing. Send these when reporting a problem.</string>
+    <string name="about_copy_logs">Copy logs to Downloads</string>
+    <string name="about_copy_logs_hint">Keeps a readable copy outside the app, for sharing from a file manager.</string>
+    <string name="about_section_tools">Developer tools</string>
+    <string name="about_symbols">Symbol testing</string>
+    <string name="about_symbols_hint">Send any turn symbol to the dash to see how it looks.</string>
+    <string name="about_calibration">Turn icon calibration</string>
+    <string name="about_calibration_hint">Match turn icons to what your dash shows.</string>
+    <string name="about_overlay">Dash preview overlay</string>
+    <string name="about_overlay_hint">A floating chip with what would be sent to the dash.</string>
+    <string name="about_section_app">App</string>
+    <string name="about_version">Version</string>
 </resources>
