@@ -306,7 +306,13 @@ private fun BigTurn(live: MirrorStatus.Live) {
     ) {
         if (live.stale) StaleBanner(live.freshness)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
-            t.icon?.let { TurnIconRef(it, size = KtmLayout.mirrorGlyph, color = c.fg) }
+            // With no instruction text the glyph is the only thing that says which way to turn.
+            t.icon?.let {
+                TurnIconRef(
+                    it, size = KtmLayout.mirrorGlyph, color = c.fg,
+                    contentDescription = if (t.instruction.isNullOrBlank()) com.navigator.app.ui.components.TurnIconNames.human(it) else null,
+                )
+            }
             Column {
                 Text(t.distance ?: t.instruction.orEmpty(), style = MaterialTheme.typography.displayLarge, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (t.distance != null) t.instruction?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = c.fg2, maxLines = 1) }

@@ -1,5 +1,9 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.SizeTransform
 import com.navigator.app.ui.shell.tripStripBounds
@@ -80,13 +84,20 @@ fun TripBarSheet(
     val motion = KtmTheme.motion
     var drag by remember { mutableFloatStateOf(0f) }
     var backProgress by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(open) { drag = 0f; backProgress = 0f }
+    // The drag offset and the back preview ease back to rest (also as the sheet closes) instead of snapping.
+    val settle = motion.ridingSpatial<Float>()
+    suspend fun easeBack() = coroutineScope {
+        launch { animate(drag, 0f, animationSpec = settle) { v, _ -> drag = v } }
+        launch { animate(backProgress, 0f, animationSpec = settle) { v, _ -> backProgress = v } }
+    }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(open) { if (open) { drag = 0f; backProgress = 0f } else easeBack() }
     PredictiveBackHandler(enabled = open) { events ->
         try {
             events.collect { backProgress = it.progress }
             onDismiss()
         } catch (cancelled: CancellationException) {
-            backProgress = 0f
+            easeBack()
             throw cancelled
         }
     }
@@ -94,10 +105,10 @@ fun TripBarSheet(
     // MO6: inside the riding stage, the whole bar also shares bounds with the activity strip; on its own (tests) it brings its own scope.
     val stage = LocalTripShared.current
     if (stage != null) {
-        TripBarSheetBody(stage.scope, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss(); drag = 0f }, modifier.tripStripBounds(), sheet)
+        TripBarSheetBody(stage.scope, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss() else scope.launch { easeBack() } }, modifier.tripStripBounds(), sheet)
     } else {
         SharedTransitionLayout(modifier) {
-            TripBarSheetBody(this, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss(); drag = 0f }, Modifier, sheet)
+            TripBarSheetBody(this, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss() else scope.launch { easeBack() } }, Modifier, sheet)
         }
     }
 }

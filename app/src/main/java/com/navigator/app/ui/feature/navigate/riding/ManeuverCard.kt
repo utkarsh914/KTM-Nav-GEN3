@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
@@ -94,7 +95,7 @@ fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: Maneuve
     AnimatedContent(
         targetState = ui,
         modifier = modifier.fillMaxWidth().then(if (metrics.fill) Modifier.fillMaxHeight() else Modifier),
-        transitionSpec = { maneuverTransition(motion) },
+        transitionSpec = { maneuverTransition(motion).using(SizeTransform(clip = true) { _, _ -> motion.ridingQuick() }) },
         contentKey = { if (it is ManeuverUi.Active) ManeuverKey(it.icon, it.road, it.instruction, it.rerouting) else it },
         label = "maneuver",
     ) { shown ->

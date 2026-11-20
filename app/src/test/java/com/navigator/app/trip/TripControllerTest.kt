@@ -198,6 +198,17 @@ class TripControllerTest {
         assertTrue(events.contains(TripEvent.StopAdded("Fuel")))
     }
 
+    @Test fun theStartingRouteSurvivesAStopReplanAsAHintForSearch() = runTest {
+        val e = Env(backgroundScope)
+        val route = listOf(1.0 to 2.0, 1.5 to 2.5)
+        e.controller.start(dest, 1.0 to 2.0, route)
+        e.guidance.enroute()
+        e.guidance.target = dest.lat to dest.lng
+        e.controller.addStop(SavedPlace(12.5, 77.1, "Fuel")); runCurrent()
+        assertNull(e.controller.state.value.route)
+        assertEquals(route, e.controller.state.value.routeHint)
+    }
+
     @Test fun removingTheNextStopReplansWithoutItAndCanBeUndoneByFailure() = runTest {
         val e = Env(backgroundScope)
         val events = mutableListOf<TripEvent>()

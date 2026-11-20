@@ -196,6 +196,7 @@ fun NavigateHost(
     onOpenPlaces: () -> Unit = {},
     onOpenReplay: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenRecordingSettings: () -> Unit = onOpenSettings,
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
     pendingPlace: SavedPlace? = null,
@@ -515,6 +516,9 @@ fun NavigateHost(
                 if (!pts.isNullOrEmpty() && covered != null) {
                     map.setPadding(covered.first, 0, 0, covered.second)
                     map.showTrack(pts, speedBands)
+                } else if (pts.isNullOrEmpty() && finishState.ui is FinishUi.NoRecording) {
+                    // No track to frame: leave the riding camera's tilt and bearing behind.
+                    map.resetNorth()
                 }
             }
             // The place and route sheets pad the map to what they leave open (above); search and the pin use all of it
@@ -831,8 +835,8 @@ fun NavigateHost(
         if (stage != NavStage.NAVIGATING) { dashWasUp = null; dashLostShown = false; return@LaunchedEffect }
         val was = dashWasUp
         dashWasUp = dashUp
-        // Red when it drops; green only after a red.
-        if (was == true && !dashUp) {
+        // Red when it drops, or when a paired bike isn't there as the trip starts or resumes; green only after a red.
+        if ((was == true && !dashUp) || (was == null && !dashUp && bikeStatus !is BikeStatus.NotPaired)) {
             dashLostShown = true
             feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = { showBike = true })
         }
@@ -928,7 +932,7 @@ fun NavigateHost(
                     routeAhead = {
                         // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
                         when (searchTarget) {
-                            SearchTarget.TRIP_STOP -> trip.state.value.route?.let { r ->
+                            SearchTarget.TRIP_STOP -> trip.state.value.let { it.route ?: it.routeHint }?.let { r ->
                                 // Only what is still ahead of the rider.
                                 (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
                             }
@@ -1214,7 +1218,7 @@ fun NavigateHost(
                                     }
                                 },
                                 onTurnOnRecording = { appSettings.rideRecordingEnabled = true; recordingTurnedOn = true },
-                                onChangeLimits = onOpenSettings,
+                                onChangeLimits = onOpenRecordingSettings,
                             ),
                         )
                     }

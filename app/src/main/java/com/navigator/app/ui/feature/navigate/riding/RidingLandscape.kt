@@ -1,5 +1,9 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
@@ -100,8 +104,11 @@ fun RidingLandscape(
     val flipBack by rememberUpdatedState(controlActions.onDismiss)
     val open = controls != null
     val motion = KtmTheme.motion
+    // With a screen reader running, the controls stay until dismissed: a panel that flips away while it is being read is worse than one left open.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val screenReader = remember { (context.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager)?.isTouchExplorationEnabled == true }
     LaunchedEffect(open) {
-        if (!open) return@LaunchedEffect
+        if (!open || screenReader) return@LaunchedEffect
         idleMs.longValue = 0L
         while (true) {
             delay(ControlsIdle.CHECK_EVERY_MS)
@@ -142,7 +149,9 @@ fun RidingLandscape(
                 contentKey = { it != null },
                 label = "panelFlip",
             ) { shown ->
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(KtmLayout.panelPadding)) {
+                // Each face is a pane of its own, so a screen reader announces the flip and moves to it.
+                val paneName = stringResource(if (shown == null) R.string.riding_guidance_pane else R.string.trip_sheet_title)
+                Column(Modifier.fillMaxSize().semantics { paneTitle = paneName }, verticalArrangement = Arrangement.spacedBy(KtmLayout.panelPadding)) {
                     if (shown == null) {
                         ManeuverCard(maneuver, Modifier.weight(1f), ManeuverMetrics.landscape(narrow))
                         TripBar(bar, actions.onOpenSheet)
@@ -158,8 +167,8 @@ fun RidingLandscape(
 /** MO5: shared axis Y. The guidance slides up and out while the controls rise in; the reverse going back. */
 private fun androidx.compose.animation.AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: KtmMotionSpecs, toControls: Boolean): ContentTransform {
     val dir = if (toControls) 1 else -1
-    return (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
-        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else -dir * it / 8 })
+    return (fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
+        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -dir * it / 8 })
 }
 
 /** NL4: a compact green row keeps the next turn visible; the actions of NV7 follow; End trip stays at the foot. */
@@ -191,11 +200,17 @@ private fun CompactGuidance(maneuver: ManeuverUi, onBack: () -> Unit) {
                 modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             is ManeuverUi.Active -> {
-                TurnIconRef(maneuver.icon, size = KtmLayout.iconRiding, color = r.onGuidance)
+                if (maneuver.rerouting) CircularProgressIndicator(Modifier.size(KtmLayout.iconRiding * 0.8f), color = r.onGuidance, strokeWidth = KtmSpacing.xs)
+                else TurnIconRef(maneuver.icon, size = KtmLayout.iconRiding, color = r.onGuidance)
                 Column(Modifier.weight(1f)) {
-                    if (maneuver.distance != null) Text(maneuver.distance, style = MaterialTheme.typography.headlineSmall, color = r.onGuidance, maxLines = 1)
+                    if (maneuver.rerouting) {
+                        Text(
+                            stringResource(R.string.riding_rerouting), style = MaterialTheme.typography.headlineSmall, color = r.onGuidance,
+                            maxLines = 1, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    } else if (maneuver.distance != null) Text(maneuver.distance, style = MaterialTheme.typography.headlineSmall, color = r.onGuidance, maxLines = 1)
                     val line = listOfNotNull(maneuver.instruction.takeIf { it.isNotBlank() }, maneuver.road).joinToString(" ")
-                    if (line.isNotEmpty()) Text(line, style = MaterialTheme.typography.bodyLarge, color = r.onGuidance, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (line.isNotEmpty() && !maneuver.rerouting) Text(line, style = MaterialTheme.typography.bodyLarge, color = r.onGuidance, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

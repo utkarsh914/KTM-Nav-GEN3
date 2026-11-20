@@ -38,6 +38,8 @@ data class TripState(
     val origin: Pair<Double, Double>? = null,
     /** The route being navigated (lat, lng), for "search along route"; null once a stop re-plans it. */
     val route: List<Pair<Double, Double>>? = null,
+    /** The route the trip started on, kept through stop re-plans: not exact any more, but still the corridor to search along. */
+    val routeHint: List<Pair<Double, Double>>? = null,
     /** Every stop of the trip in visiting order, passed ones included. */
     val allStops: List<Stop> = emptyList(),
     val startMs: Long = 0L,
@@ -146,7 +148,7 @@ class TripController(
         allStopsBefore = null
         lastStopAddMs = 0L
         _state.value = TripState(
-            dest = dest, origin = origin, route = route, allStops = dest.stops, startMs = now,
+            dest = dest, origin = origin, route = route, routeHint = route, allStops = dest.stops, startMs = now,
         )
         guidance.start(dest)
         nearSince = null

@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -71,6 +74,12 @@ fun ColumnScope.TripControlsBody(
         KtmButton(
             stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
             style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.ChevronDown,
+        )
+    }
+    if (!canAddStop) {
+        Text(
+            stringResource(R.string.trip_add_stop_unavailable), style = MaterialTheme.typography.bodyMedium,
+            color = KtmTheme.riding.onSurfaceVariant, modifier = Modifier.padding(top = KtmSpacing.sm),
         )
     }
     Spacer(Modifier.height(KtmSpacing.md))

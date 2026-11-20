@@ -215,7 +215,7 @@ private fun FollowUps(model: TripFinishedModel, actions: TripFinishedActions, la
             KtmButton(
                 stringResource(if (model.placeSaved) R.string.finished_place_saved else if (landscape) R.string.finished_save_short else R.string.finished_save_place), actions.onSavePlace,
                 Modifier.weight(1f), style = ButtonStyle.Tonal, size = size, enabled = !model.placeSaved,
-                icon = if (landscape) null else if (model.placeSaved) KtmIcons.BookmarkFilled else KtmIcons.Bookmark,
+                icon = if (model.placeSaved) KtmIcons.Done else if (landscape) null else KtmIcons.Bookmark,
             )
         }
         KtmButton(

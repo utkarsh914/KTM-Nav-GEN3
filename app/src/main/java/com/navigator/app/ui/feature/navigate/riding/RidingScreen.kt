@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
@@ -77,8 +78,12 @@ fun RidingScreen(
     val sysBottom = sys.getBottom(density)
     val gap = with(density) { KtmSpacing.sm.roundToPx() }
     val size = remember { IntArray(2) }
+    val cardPx = remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val sysBottomDp = with(density) { sysBottom.toDp() }
     BoxWithConstraints(modifier.fillMaxSize()) {
-    val sheetMax = maxHeight * SHEET_MAX_FRACTION
+    // The sheet takes what the maneuver card leaves, so the two never overlap (small screens, large fonts).
+    val cardBottom = with(density) { cardPx.intValue.toDp() }
+    val sheetMax = (maxHeight - cardBottom - sysBottomDp - KtmSpacing.sm).coerceAtLeast(SHEET_MIN)
     val close = stringResource(R.string.trip_sheet_close)
     // The scrim covers the whole window (edges included) and closes the sheet on a tap.
     AnimatedVisibility(sheetOpen, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast())) {
@@ -105,7 +110,7 @@ fun RidingScreen(
             // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
             val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.effectsDefault(), label = "cardDim")
             Column(Modifier.graphicsLayer { alpha = cardAlpha }.then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
-                ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; onInsets(size[0], size[1]) })
+                ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; cardPx.intValue = size[0]; onInsets(size[0], size[1]) })
                 RidingChipHost(chip)
             }
         }
@@ -133,8 +138,8 @@ fun RidingScreen(
 private const val CARD_DELAY_MS = 100
 private const val BAR_DELAY_MS = 150
 
-/** The open trip sheet takes at most this much of the screen height (the card above stays visible). */
-private const val SHEET_MAX_FRACTION = 0.72f
+/** The open trip sheet never gets smaller than this, however tall the card above it is. */
+private val SHEET_MIN = 240.dp
 
 /** The maneuver card behind the open sheet: about what a 60 % scrim leaves of it. */
 private const val CARD_DIMMED = 0.4f

@@ -59,12 +59,12 @@ class RidingLandscapeTest {
     private val bar = TripBarUi("62", true, false, null, TimeLeft.of(4320), "38 km", "17:42", 0.4f, "Toit", false)
     private val controls = TripControlsUi(beeps = true, messages = false, dashStatus = "Connected", canAddStop = true, nextStop = null)
 
-    private fun show(controlsUi: TripControlsUi?) {
+    private fun show(controlsUi: TripControlsUi?, m: ManeuverUi = maneuver) {
         rule.setContent {
             KtmTheme(darkTheme = false) {
                 RidingTheme(night = false) {
                     RidingLandscape(
-                        maneuver, bar, chip = null, recenter = false, bearing = 0f, narrow = false, controls = controlsUi,
+                        m, bar, chip = null, recenter = false, bearing = 0f, narrow = false, controls = controlsUi,
                         actions = RidingActions({ log += "open" }, { log += "map" }, { log += "north" }, { log += "dismiss" }),
                         controlActions = TripSheetActions(
                             { log += "add" }, { log += "overview" }, { log += "minimise" }, {}, {}, {}, {}, { log += "end" }, { log += "flipBack" },
@@ -84,6 +84,11 @@ class RidingLandscapeTest {
         assertEquals(listOf("open"), log)
         rule.onNodeWithContentDescription("Overview").performClick()
         assertEquals(listOf("open", "map"), log)
+    }
+
+    @Test fun theCompactRowSaysRerouting() {
+        show(controls, maneuver.copy(rerouting = true))
+        rule.onNodeWithText("Rerouting").assertIsDisplayed()
     }
 
     @Test fun theMapIsToldHowMuchOfItsLeftThePanelCovers() {

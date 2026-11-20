@@ -295,6 +295,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                         onOpenConnect = { navController.push(Route.Pairing()) },
                                         onOpenReplay = { id -> navController.push(Route.RideReplay(id)) },
                                         onOpenSettings = { navController.openTab(Tab.Settings) },
+                                        onOpenRecordingSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
                                         onOpenPlaces = { navController.openTab(Tab.Places) },
                                         sharedLink = pending.sharedLink,
                                         onSharedLinkConsumed = intents::consumeSharedLink,
