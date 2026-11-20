@@ -56,6 +56,9 @@ sealed interface TripEvent {
 
     /** The re-plan with the new stop failed; the rider's earlier trip was restored. */
     data object StopAddFailed : TripEvent
+
+    /** The route picked in the preview could not be used: guidance went on Google's own route. */
+    data object RouteSubstituted : TripEvent
 }
 
 /**
@@ -91,6 +94,7 @@ class TripController(
 
     init {
         guidance.arrivals.onEach { if (owning) end() }.launchIn(scope)
+        guidance.routeSubstituted.onEach { if (owning) _events.tryEmit(TripEvent.RouteSubstituted) }.launchIn(scope)
 
         var lastSession: NavSessionState? = null
         guidance.state.onEach { nav ->

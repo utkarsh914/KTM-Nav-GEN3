@@ -44,9 +44,10 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     @Volatile private var serviceRegistered = false
     @Volatile private var arrivalListenerAdded = false
 
-    /** App context, kept to surface a Toast when the picked preview route can't
-     *  be honored and guidance falls back to the SDK's own default route. */
-    @Volatile private var appContext: Context? = null
+    private val _routeSubstituted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** One event when the route the rider picked in the preview could not be used and guidance went on Google's own route. */
+    val routeSubstituted: SharedFlow<Unit> = _routeSubstituted.asSharedFlow()
 
     /** True only while guidance is live. Set when guidance actually starts and
      *  cleared on stop/arrival, so continued-movement NavInfo frames that arrive
@@ -182,7 +183,6 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     /** Called from [GoogleNavSdkController] on NavigatorListener.onNavigatorReady. */
     fun onNavigatorReady(nav: Navigator, context: Context) {
         navigator = nav
-        appContext = context.applicationContext
         if (!arrivalListenerAdded) {
             nav.addArrivalListener(arrivalListener)
             arrivalListenerAdded = true
@@ -313,17 +313,9 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         false
     }
 
-    /** Tell the rider the picked route couldn't be loaded so we're using the
-     *  recommended one — avoids a surprising silent route swap at Start. */
+    /** The picked route could not be loaded: say so (a riding chip), instead of a silent route swap at Start. */
     private fun notifyRouteSubstituted() {
-        val ctx = appContext ?: return
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            android.widget.Toast.makeText(
-                ctx,
-                "Couldn't load the selected route - using the recommended route",
-                android.widget.Toast.LENGTH_LONG,
-            ).show()
-        }
+        _routeSubstituted.tryEmit(Unit)
     }
 
     private fun setDestinationAndGuide(

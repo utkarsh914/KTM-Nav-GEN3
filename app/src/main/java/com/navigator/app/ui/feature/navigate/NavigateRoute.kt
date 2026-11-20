@@ -39,7 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapPoint
-import com.navigator.app.ui.screens.lastKnownLocation
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.shell.LocalFeedback
 import java.text.SimpleDateFormat
 import java.util.Date

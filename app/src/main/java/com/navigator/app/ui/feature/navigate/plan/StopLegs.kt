@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RouteLeg
 import com.navigator.app.nav.ktm.DistanceFormatter
@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 /** Per-leg summary lines and drag-reorder maths for the multi-stop preview (pure, JVM-testable). */
-internal object StopLegs {
+object StopLegs {
 
     private val CLOCK = DateTimeFormatter.ofPattern("HH:mm")
 

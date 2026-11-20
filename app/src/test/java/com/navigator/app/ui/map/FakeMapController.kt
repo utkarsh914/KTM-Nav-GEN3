@@ -31,6 +31,8 @@ class FakeMapController : MapController {
 
     override fun cameraCenter() = center
     override fun setCameraIdleListening(enabled: Boolean) { idleListening = enabled }
+    var poisOn = false
+    override fun setPoiListening(enabled: Boolean) { poisOn = enabled }
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) { padding = listOf(left, top, right, bottom) }
 
     override fun clearOverlays() {

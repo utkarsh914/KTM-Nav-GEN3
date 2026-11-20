@@ -182,4 +182,51 @@
     <string name="shared_link_mirror_message">In mirror mode Google Maps does the navigating and your dash follows. Switch to in-app maps to plan here.</string>
     <string name="shared_link_open_maps">Open in Google Maps</string>
     <string name="shared_link_switch">Switch to in-app maps</string>
+    <!-- Place sheet (PL1) -->
+    <string name="common_close">Close</string>
+    <string name="common_undo">Undo</string>
+    <string name="place_save">Save</string>
+    <string name="place_saved">Saved</string>
+    <string name="place_saved_description">Saved. Tap to remove from Places</string>
+    <string name="place_removed">Removed from Places</string>
+    <string name="place_directions">Directions</string>
+    <string name="place_replace_trip">Replace trip…</string>
+    <string name="place_add_as_stop">Add as stop</string>
+    <string name="place_away">%1$s away</string>
+    <!-- Route sheet (PL2–PL4) -->
+    <string name="route_your_location">Your location</string>
+    <string name="route_fastest">Fastest</string>
+    <string name="route_alternative">Alternative %1$d</string>
+    <string name="route_only">Route</string>
+    <string name="route_on_time">On time</string>
+    <string name="route_delay">+%1$d min</string>
+    <string name="route_option_description">%1$s, %2$s, %3$s, %4$s</string>
+    <string name="route_add_stop_button">Stop</string>
+    <plurals name="route_add_stop_row">
+        <item quantity="one">Add a stop · %1$d left</item>
+        <item quantity="other">Add a stop · %1$d left</item>
+    </plurals>
+    <string name="route_stop_limit">Stop limit reached</string>
+    <string name="route_remove_stop">Remove stop %1$d</string>
+    <string name="route_stop_removed">%1$s removed</string>
+    <string name="route_reorder">Reorder stop %1$d</string>
+    <string name="route_move_up">Move up</string>
+    <string name="route_move_down">Move down</string>
+    <string name="route_loading_description">Finding routes</string>
+    <string name="route_failed">Couldn\'t load a route preview. You can still start navigation.</string>
+    <string name="route_start">Start</string>
+    <string name="route_start_anyway">Start anyway</string>
+    <string name="route_using_google">Using Google\'s route</string>
+    <!-- Replace trip (DL3) -->
+    <string name="replace_title">Replace current trip?</string>
+    <string name="replace_message">Your current navigation will stop and a new trip to %1$s will start.</string>
+    <string name="replace_message_generic">Your current navigation will stop and a new trip will start.</string>
+    <string name="replace_confirm">Replace</string>
+    <string name="replace_keep">Keep current</string>
+    <string name="replace_add_stop">Add as a stop instead</string>
+    <!-- Add a stop on the map (PL6) -->
+    <string name="stop_pick_title">Add a stop</string>
+    <string name="stop_new">New stop</string>
+    <string name="stop_goes_before">Stop %1$d · goes before %2$s</string>
+    <string name="stop_add_here">Add stop here</string>
 </resources>

@@ -48,6 +48,8 @@ class NavSdkMapController(
     markerStyle: LocationMarkerStyle,
     context: Context,
 ) : MapController {
+    private val appContext = context.applicationContext
+    private val framePaddingPx = (64 * context.resources.displayMetrics.density).toInt()
     private val userMarker = UserLocationMarker(context, markerStyle)
     private var map: GoogleMap? = null
     private var navView: NavigationView? = null
@@ -81,6 +83,7 @@ class NavSdkMapController(
         map.setOnMapLongClickListener { _longClicks.tryEmit(MapPoint(it.latitude, it.longitude)) }
         // A screen that asked for camera-idle before the map arrived gets it now.
         if (idleWanted) setCameraIdleListening(true)
+        if (poiWanted) setPoiListening(true)
         _ready.value = true
     }
 
@@ -99,6 +102,7 @@ class NavSdkMapController(
                 gm.setOnCameraMoveStartedListener(null)
                 gm.setOnMapLongClickListener(null)
                 gm.setOnPolylineClickListener(null)
+                gm.setOnMarkerClickListener(null)
                 gm.setOnPoiClickListener(null)
                 gm.setOnCameraIdleListener(null)
             }
@@ -119,9 +123,14 @@ class NavSdkMapController(
         }
     }
 
-    /** Start emitting [poiClicks]. Off by default for the same reason as [listenForGestures]: a POI listener changes tap behaviour. */
-    fun listenForPois() {
-        map?.setOnPoiClickListener { _poiClicks.tryEmit(MapPoi(MapPoint(it.latLng.latitude, it.latLng.longitude), it.name, it.placeId)) }
+    private var poiWanted = false
+
+    override fun setPoiListening(enabled: Boolean) {
+        poiWanted = enabled
+        val gm = map ?: return
+        if (enabled) {
+            gm.setOnPoiClickListener { _poiClicks.tryEmit(MapPoi(MapPoint(it.latLng.latitude, it.latLng.longitude), it.name, it.placeId)) }
+        } else gm.setOnPoiClickListener(null)
     }
 
     override fun cameraCenter(): MapPoint? = map?.cameraPosition?.target?.let { MapPoint(it.latitude, it.longitude) }
@@ -142,6 +151,7 @@ class NavSdkMapController(
     override fun clearOverlays() {
         val gm = map ?: return
         gm.setOnPolylineClickListener(null)
+        gm.setOnMarkerClickListener(null)
         gm.clear()
         // gm.clear() dropped the user marker: forget the stale handle so showUserMarker re-adds it.
         userMarker.remove()
@@ -157,11 +167,19 @@ class NavSdkMapController(
     override fun showTripPreview(scene: TripPreviewScene) {
         val gm = map ?: return
         val dest = LatLng(scene.destination.lat, scene.destination.lng)
-        // Numbered stop markers (1..n), then the destination pin on top.
-        scene.stops.forEach { gm.addMarker(MarkerOptions().position(LatLng(it.point.lat, it.point.lng)).title(it.title)) }
-        gm.addMarker(MarkerOptions().position(dest).title(scene.destinationTitle))
+        val pins = scene.style?.let { MapPins(appContext, it) }
+        // Numbered stop markers (1..n), then the destination on top.
+        scene.stops.forEachIndexed { i, stop ->
+            val options = MarkerOptions().position(LatLng(stop.point.lat, stop.point.lng)).title(stop.title)
+            if (pins != null) options.icon(pins.numbered(i + 1)).anchor(0.5f, 0.5f)
+            gm.addMarker(options)
+        }
+        scene.pending?.let { gm.addMarker(MarkerOptions().position(LatLng(it.lat, it.lng)).zIndex(3f)) }
+        val destination = MarkerOptions().position(dest).title(scene.destinationTitle)
+        if (pins != null) destination.icon(pins.flag()).anchor(8f / 36f, 1f)
+        gm.addMarker(destination)
         if (scene.routes.isEmpty()) {
-            gm.animateCamera(CameraUpdateFactory.newLatLngZoom(dest, 14f))
+            if (scene.reframe) gm.animateCamera(CameraUpdateFactory.newLatLngZoom(dest, 14f))
             return
         }
         scene.routes.forEachIndexed { i, points ->
@@ -172,7 +190,23 @@ class NavSdkMapController(
             val b = LatLngBounds.builder()
             selected.forEach { b.include(LatLng(it.lat, it.lng)) }
             scene.frameAlso.forEach { b.include(LatLng(it.lat, it.lng)) }
-            runCatching { gm.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 120)) }
+            if (scene.reframe) runCatching { gm.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), framePaddingPx)) }
+        }
+        // A time label on each route; tapping it selects the route, like tapping the line.
+        if (pins != null) {
+            scene.routes.forEachIndexed { i, points ->
+                val label = scene.routeLabels.getOrNull(i) ?: return@forEachIndexed
+                val at = points.getOrNull((points.lastIndex * com.navigator.app.ui.feature.navigate.plan.RouteSelection.calloutFraction(i, scene.selectedRoute)).toInt()) ?: return@forEachIndexed
+                gm.addMarker(
+                    MarkerOptions().position(LatLng(at.lat, at.lng)).icon(pins.callout(label, i == scene.selectedRoute))
+                        .anchor(0.5f, 0.5f).zIndex(if (i == scene.selectedRoute) 2f else 1f),
+                )?.tag = i
+            }
+            gm.setOnMarkerClickListener { m ->
+                val route = m.tag as? Int
+                if (route != null) _polylineClicks.tryEmit(route)
+                route != null // other markers keep the default (info window)
+            }
         }
         gm.setOnPolylineClickListener { poly -> (poly.tag as? Int)?.let { _polylineClicks.tryEmit(it) } }
     }

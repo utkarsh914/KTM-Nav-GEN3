@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
-import com.navigator.app.ui.screens.hasLocationPermission
-import com.navigator.app.ui.screens.lastKnownLocation
+import com.navigator.app.location.hasLocationPermission
+import com.navigator.app.location.lastKnownLocation
 
 /**
  * Hosts the app-scoped [RetainedNavigationView] and attaches [controller] to its map. Reusing the

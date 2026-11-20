@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RouteLeg
 import org.junit.Assert.assertEquals

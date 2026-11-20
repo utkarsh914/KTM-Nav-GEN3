@@ -27,7 +27,7 @@ import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.feature.navigate.ActivityCardModel
 import com.navigator.app.ui.feature.navigate.voiceAvailable
-import com.navigator.app.ui.screens.lastKnownLocation
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.shell.LocalFeedback
 
 /**
@@ -48,6 +48,7 @@ fun PlaceSearchRoute(
     activity: ActivityCardModel? = null,
     onResumeTrip: (() -> Unit)? = null,
     onQueryChanged: (String) -> Unit = {},
+    onPickOnMap: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val container = context.appContainer
@@ -125,6 +126,7 @@ fun PlaceSearchRoute(
             onCategoryResult = vm::pickCategoryResult,
             onRemoveRecent = vm::removeRecent,
             onResumeTrip = onResumeTrip,
+            onPickOnMap = onPickOnMap,
         ),
     )
 }

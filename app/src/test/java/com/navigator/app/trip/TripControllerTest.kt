@@ -28,6 +28,8 @@ private class FakeGuidance : GuidanceSource {
     override val startFailure = MutableStateFlow<StartFailure?>(null)
     val arrival = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     override val arrivals: Flow<Unit> = arrival
+    val substituted = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    override val routeSubstituted: Flow<Unit> = substituted
     var target: Pair<Double, Double>? = null
     val started = mutableListOf<NavDestination>()
     var stops = 0
@@ -294,6 +296,21 @@ class TripControllerTest {
         e.controller.cancel()
         e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent()
         assertEquals("no restart of a cancelled trip", startsBefore, e.guidance.started.size)
+    }
+
+    @Test fun aSubstitutedRouteIsReportedOnlyForATripWeOwn() = runTest {
+        val e = Env(backgroundScope)
+        val events = mutableListOf<TripEvent>()
+        backgroundScope.launch { e.controller.events.toList(events) }
+        runCurrent()
+        e.guidance.substituted.tryEmit(Unit); runCurrent()
+        assertTrue("no trip, nothing to report", events.isEmpty())
+        e.controller.start(dest, null, null)
+        e.guidance.substituted.tryEmit(Unit); runCurrent()
+        assertEquals(listOf<TripEvent>(TripEvent.RouteSubstituted), events)
+        e.controller.cancel()
+        e.guidance.substituted.tryEmit(Unit); runCurrent()
+        assertEquals("a cancelled trip says nothing", 1, events.size)
     }
 
     @Test fun theDwellNeverEndsATripThatWasCancelledOrNeverStarted() = runTest {

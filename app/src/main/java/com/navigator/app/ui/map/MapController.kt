@@ -21,6 +21,14 @@ data class TripPreviewScene(
     val selectedRoute: Int,
     /** Extra points the camera must keep in view (where the trip starts, the stops). */
     val frameAlso: List<MapPoint>,
+    /** The time label drawn on each route (same order as [routes]); empty for none. */
+    val routeLabels: List<String> = emptyList(),
+    /** Colours for numbered pins, the destination flag and the labels; null falls back to the SDK's default markers. */
+    val style: PreviewPinStyle? = null,
+    /** A spot the rider picked on the map and has not added yet. */
+    val pending: MapPoint? = null,
+    /** Move the camera to frame the route; false when only the markers changed. */
+    val reframe: Boolean = true,
 )
 
 enum class FollowMode { TILTED, NORTH_UP, HEADING_UP }
@@ -56,6 +64,12 @@ interface MapController {
      * so only the screens that need it (Pick on map) switch it on, and off again when they leave.
      */
     fun setCameraIdleListening(enabled: Boolean)
+
+    /**
+     * Start or stop [poiClicks] (a tap on a place label). Off by default for the same reason: the
+     * listener changes what a tap on the map does, so only the planning preview switches it on.
+     */
+    fun setPoiListening(enabled: Boolean)
 
     fun setPadding(left: Int, top: Int, right: Int, bottom: Int)
     fun clearOverlays()

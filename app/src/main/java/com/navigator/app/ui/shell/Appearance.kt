@@ -1,14 +1,10 @@
 package com.navigator.app.ui.shell
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
+import com.navigator.app.location.lastKnownLocation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.SunTimes
 import com.navigator.app.ui.theme.ThemeMode
@@ -46,14 +42,3 @@ fun rememberNightNow(): State<Boolean> {
         }
     }
 }
-
-private fun lastKnownLocation(context: Context): Pair<Double, Double>? = runCatching {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-        return@runCatching null
-    }
-    val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
-        .mapNotNull { p -> runCatching { @Suppress("MissingPermission") lm.getLastKnownLocation(p) }.getOrNull() }
-        .maxByOrNull { it.time }
-        ?.let { it.latitude to it.longitude }
-}.getOrNull()

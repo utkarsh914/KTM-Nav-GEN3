@@ -61,6 +61,8 @@ class PlaceSearchActions(
     val onCategoryResult: (CategoryResult) -> Unit,
     val onRemoveRecent: (SavedPlace) -> Unit,
     val onResumeTrip: (() -> Unit)?,
+    /** "Pick on map" row of the empty list (adding a stop); null when the mode has none. */
+    val onPickOnMap: (() -> Unit)? = null,
 )
 
 @StringRes
@@ -156,14 +158,19 @@ fun PlaceSearchScreen(
 @Composable
 private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: PlaceSearchActions) {
     val saved = SearchPolicy.browseFavorites(state.favorites, mode)
+    val pickOnMap = actions.onPickOnMap
     if (saved.isEmpty() && state.recents.isEmpty()) {
-        Text(
-            stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
-            color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.sm),
-        )
+        Column {
+            if (pickOnMap != null) PickOnMapRow(pickOnMap)
+            Text(
+                stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
+                color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.sm),
+            )
+        }
         return
     }
     LazyColumn {
+        if (pickOnMap != null) item { PickOnMapRow(pickOnMap) }
         if (saved.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.navigate_saved_header)) }
             items(saved, key = { "s-${it.slot}-${it.place.lat},${it.place.lng}" }) {
@@ -182,6 +189,14 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
             }
         }
     }
+}
+
+@Composable
+private fun PickOnMapRow(onClick: () -> Unit) {
+    ListRow(
+        title = stringResource(R.string.navigate_tile_pick), supporting = stringResource(R.string.navigate_tile_pick_caption),
+        leadingIcon = KtmIcons.Pin, onClick = onClick,
+    )
 }
 
 @Composable

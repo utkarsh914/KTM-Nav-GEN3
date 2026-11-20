@@ -47,6 +47,11 @@ fun PickOnMapScreen(
     onBack: () -> Unit,
     onUse: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.navigate_tile_pick),
+    /** A line under the street ("Stop 2 · goes before Toit"). */
+    subtitle: String? = null,
+    useLabel: String = stringResource(R.string.pick_use),
+    useEnabled: Boolean = true,
 ) {
     val c = KtmTheme.colors
     // The pin sits in the un-inset box so its tip is the map's centre, which is where the point is read.
@@ -59,7 +64,7 @@ fun PickOnMapScreen(
         ) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), onBack)
             Text(
-                stringResource(R.string.navigate_tile_pick), style = MaterialTheme.typography.titleLarge, color = c.fg,
+                title, style = MaterialTheme.typography.titleLarge, color = c.fg,
                 modifier = Modifier.padding(end = KtmSpacing.lg),
             )
         }
@@ -83,7 +88,8 @@ fun PickOnMapScreen(
                     else -> Text(stringResource(R.string.pick_hint), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
                 }
             }
-            KtmButton(stringResource(R.string.pick_use), onUse, Modifier.fillMaxWidth(), enabled = state.center != null && !state.resolving)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = c.fg2)
+            KtmButton(useLabel, onUse, Modifier.fillMaxWidth(), enabled = useEnabled && state.center != null && !state.resolving)
         }
     }
 }

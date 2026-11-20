@@ -1,36 +1,20 @@
 package com.navigator.app.ui.screens
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.os.CancellationSignal
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.background
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Column
@@ -73,18 +57,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
+import com.navigator.app.nav.destination.RoutesClient
+import com.navigator.app.ui.feature.navigate.plan.NewStop
+import com.navigator.app.ui.feature.navigate.plan.PickStopOverlay
+import com.navigator.app.ui.feature.navigate.plan.PlaceSaving
+import com.navigator.app.ui.feature.navigate.plan.PlaceSheet
+import com.navigator.app.ui.feature.navigate.plan.PlaceSheetActions
+import com.navigator.app.ui.feature.navigate.plan.PlaceSheetState
+import com.navigator.app.ui.feature.navigate.plan.PlanPanel
+import com.navigator.app.ui.feature.navigate.plan.ReplaceDecision
+import com.navigator.app.ui.feature.navigate.plan.ReplacePolicy
+import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
+import com.navigator.app.ui.feature.navigate.plan.RoutePreviewViewModel
+import com.navigator.app.ui.feature.navigate.plan.RouteSheet
+import com.navigator.app.ui.feature.navigate.plan.RouteSheetActions
+import com.navigator.app.ui.feature.navigate.plan.RouteSheetMapper
+import com.navigator.app.ui.feature.navigate.plan.RoutesApi
+import com.navigator.app.ui.feature.navigate.plan.StopCandidateSheet
+import com.navigator.app.ui.feature.navigate.plan.StopList
+import com.navigator.app.ui.theme.KtmTheme
+import androidx.compose.ui.graphics.toArgb
+import com.navigator.app.location.freshLocation
+import com.navigator.app.location.hasLocationPermission
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.PlacesStore
-import com.navigator.app.nav.destination.RoutePreview
-import com.navigator.app.nav.destination.RoutesClient
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
@@ -103,7 +107,6 @@ import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.CircleBackButton
 import com.navigator.app.ui.components.ConnectIconPill
 import com.navigator.app.ui.components.Eyebrow
-import com.navigator.app.ui.components.IconPill
 import com.navigator.app.ui.components.KtmOutlineButton
 import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.components.SquareMapControl
@@ -138,8 +141,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import kotlin.math.abs
 
@@ -283,12 +284,31 @@ fun NavigationHomeScreen(
     }
 
     // ---- Preview state ----------------------------------------------------
-    var previewRoutes by remember { mutableStateOf<List<RoutePreview>>(emptyList()) }
-    var selectedRoute by remember { mutableIntStateOf(0) }
-    // The stops previewRoutes were computed for (leg lines are only valid against these).
-    var routesForStops by remember { mutableStateOf<List<SavedPlace>>(emptyList()) }
-    var previewLoading by remember { mutableStateOf(false) }
-    var previewFailed by remember { mutableStateOf(false) }
+    // The routes (and which is selected) belong to the RoutePreviewViewModel; the stops stay with the flow.
+    val appContext = remember(context) { context.applicationContext }
+    val routeVm: RoutePreviewViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = remember {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = RoutePreviewViewModel(
+                    api = RoutesApi { o, d, mode, via -> RoutesClient.computeRoutes(o, d, PlacesClient.androidAuth(appContext), mode, via) },
+                    freshLocation = { freshLocation(appContext) },
+                    lastKnown = { lastKnownLocation(appContext) },
+                    mode = { com.navigator.app.settings.AppSettings(appContext).vehicleMode },
+                ) as T
+            }
+        },
+    )
+    val routePreview by routeVm.state.collectAsState()
+    // Planning-sheet state: a place picked on the preview map (long press, place label) waiting to be added,
+    // and Pick on map for a stop.
+    var stopCandidate by remember { mutableStateOf<SavedPlace?>(null) }
+    var pickingStop by remember { mutableStateOf(false) }
+    // How much of the map the plan sheet covers (left, bottom in px), so the camera frames the route in the rest.
+    var planInsets by remember { mutableStateOf(0 to 0) }
+    // Bumped when the sheet settles at a new height so the camera frames the route again (not for the proposed-stop sheet).
+    var fitKey by remember { mutableIntStateOf(0) }
+    val lastFit = remember { arrayOfNulls<Any>(1) }
     // Intermediate stops (up to MAX_STOPS), in visit order, shown/edited in the
     // preview. Feeds the Routes API `intermediates` and the SDK waypoint list.
     var stops by flow::stops
@@ -306,8 +326,8 @@ fun NavigationHomeScreen(
     val leftNavManually = tripState.minimised
     // Confirm before actually ending an in-progress trip.
     var showEndConfirm by remember { mutableStateOf(false) }
-    // Destination awaiting "replace the current trip?" confirmation.
-    var confirmReplaceFor by remember { mutableStateOf<SavedPlace?>(null) }
+    // A new trip asked for while another runs: DL3 (replace, keep, or add the place as a stop).
+    var replaceRequest by remember { mutableStateOf<ReplaceRequest?>(null) }
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
@@ -323,6 +343,11 @@ fun NavigationHomeScreen(
     val navState by GoogleNavSdkProvider.state.collectAsState()
     // Why the requested trip couldn't start (route failure / navigator unavailable).
     val startFailure by GoogleNavSdkProvider.startFailure.collectAsState()
+    val places = remember { context.appContainer.places }
+    val savedPlaces by places.favorites.collectAsState()
+    /** A trip is running (even stepped away from), so starting another asks first. */
+    fun tripRunning(): Boolean = !tripState.arrivalLatched &&
+        ((GoogleNavSdkProvider.activeTrip.value != null && startFailure == null) || navState.sessionState.isActiveNav())
 
     // Internet reachability, for the offline banner during active navigation.
     val isOnline by ConnectivityMonitor.isOnline.collectAsState()
@@ -356,26 +381,19 @@ fun NavigationHomeScreen(
         if (p.label != RIDE_BACK_LABEL) {
             store.addRecent(p)
         }
-        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false
-        // Compute from a FRESH fix so route-token origins match the SDK's GPS at
-        // Start (a stale origin makes the SDK snap to the nearest/fastest route).
-        previewLoading = true
-        val o = (withTimeoutOrNull(4000) { freshLocation(context) }) ?: origin ?: lastKnownLocation(context)
-        if (o == null) { previewLoading = false; previewFailed = true; return@LaunchedEffect }
-        origin = o
-        val stopsForRoutes = stops
-        val routes = RoutesClient.computeRoutes(
-            o, p.lat to p.lng, auth, appSettings.vehicleMode,
-            intermediates = stopsForRoutes.map { it.lat to it.lng },
-        )
-        previewLoading = false
-        routesForStops = stopsForRoutes
-        previewRoutes = routes
-        previewFailed = routes.isEmpty()
+        routeVm.load(p, stops)
     }
+    LaunchedEffect(routePreview.origin) { routePreview.origin?.let { origin = it } }
 
     // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
-    LaunchedEffect(stage, selected, mapReady, previewRoutes, selectedRoute, stops) {
+    val pinStyle = com.navigator.app.ui.map.PreviewPinStyle(
+        accent = KtmTheme.accent.fill.toArgb(), onAccent = KtmTheme.accent.onFill.toArgb(),
+        surface = KtmTheme.colors.surf.toArgb(), onSurface = KtmTheme.colors.fg.toArgb(), outline = KtmTheme.colors.line2.toArgb(),
+    )
+    LaunchedEffect(planInsets) {
+        if (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) { delay(250); fitKey++ }
+    }
+    LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate) {
         if (!mapReady) return@LaunchedEffect
         // The finished screen owns the map (draws the ride track); don't clear it.
         if (stage == NavStage.TRIP_FINISHED) return@LaunchedEffect
@@ -384,6 +402,18 @@ fun NavigationHomeScreen(
         map.clearOverlays()
         val p = selected
         when (stage) {
+            NavStage.CONFIRM, NavStage.PREVIEW -> {
+                // Framed in what the sheet leaves open (PL2); picking a stop uses the whole map (the pin is at its middle).
+                if (pickingStop) map.setPadding(0, 0, 0, 0) else map.setPadding(planInsets.first, 0, 0, planInsets.second)
+            }
+            else -> {}
+        }
+        // The camera is moved only when what is framed changed, not when a spot is proposed or a sheet resizes.
+        val frameKey = listOf(stage, selected, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey)
+        // While routes load there is nothing to frame (the camera stays where it is); it moves when they arrive.
+        val reframe = !pickingStop && frameKey != lastFit[0] && !(stage == NavStage.PREVIEW && routePreview.routes.isEmpty())
+        lastFit[0] = frameKey
+        when (stage) {
             NavStage.CONFIRM -> if (p != null) map.showPlace(MapPoint(p.lat, p.lng), p.label)
             NavStage.PREVIEW -> if (p != null) {
                 map.showTripPreview(
@@ -391,13 +421,17 @@ fun NavigationHomeScreen(
                         destination = MapPoint(p.lat, p.lng),
                         destinationTitle = p.label,
                         stops = stops.mapIndexed { i, st ->
-                            MapStop(MapPoint(st.lat, st.lng), "Stop ${i + 1}${st.label?.let { ": $it" } ?: ""}")
+                            MapStop(MapPoint(st.lat, st.lng), "Stop ${i + 1}: ${st.label}")
                         },
                         // With stops there are no alternates (single multi-leg route).
-                        routes = previewRoutes.map { r -> r.points.map { MapPoint(it.latitude, it.longitude) } },
-                        selectedRoute = selectedRoute,
+                        routes = routePreview.routes.map { r -> r.points.map { MapPoint(it.latitude, it.longitude) } },
+                        selectedRoute = routePreview.selected,
                         frameAlso = listOfNotNull(origin?.let { MapPoint(it.first, it.second) }) +
                             stops.map { MapPoint(it.lat, it.lng) },
+                        routeLabels = RouteSheetMapper.callouts(routePreview.routes),
+                        style = pinStyle,
+                        pending = stopCandidate?.let { MapPoint(it.lat, it.lng) },
+                        reframe = reframe,
                     ),
                 )
             }
@@ -405,7 +439,19 @@ fun NavigationHomeScreen(
         }
         if (showUserMarker) deviceLatLng?.let { map.showUserMarker(MapPoint(it.latitude, it.longitude), deviceHeadingState.value) }
     }
-    LaunchedEffect(map) { map.polylineClicks.collect { selectedRoute = it } }
+    LaunchedEffect(map) { map.polylineClicks.collect { routeVm.select(it) } }
+    // Place labels are tappable only while planning the route: a tap adds that place as a stop (PL6).
+    LaunchedEffect(mapReady, stage) { map.setPoiListening(mapReady && stage == NavStage.PREVIEW) }
+    DisposableEffect(map) { onDispose { map.setPoiListening(false) } }
+    LaunchedEffect(stage) { if (stage != NavStage.PREVIEW) { stopCandidate = null; pickingStop = false } }
+    val newStopLabel = resources.getString(R.string.stop_new)
+    LaunchedEffect(map) {
+        map.poiClicks.collect { poi ->
+            if (stage == NavStage.PREVIEW && !pickingStop) {
+                stopCandidate = SavedPlace(poi.point.lat, poi.point.lng, NewStop.title(poi.name, newStopLabel))
+            }
+        }
+    }
 
     // Draw the just-finished ride's speed-coloured track on the map behind the
     // summary card, framed above the card. Clears the finished padding on return.
@@ -419,8 +465,9 @@ fun NavigationHomeScreen(
                     map.showTrack(pts, speedBands)
                 }
             }
-            // Planning stages use the whole map (the browse sheet pads it itself; NAVIGATING is owned by MapSurface).
-            stage == NavStage.CONFIRM || stage == NavStage.PREVIEW || stage == NavStage.SEARCH -> map.setPadding(0, 0, 0, 0)
+            // The place and route sheets pad the map to what they leave open (above); search and the pin use all of it
+            // (the browse sheet pads it itself; NAVIGATING is owned by MapSurface).
+            stage == NavStage.SEARCH -> map.setPadding(0, 0, 0, 0)
             else -> {}
         }
     }
@@ -466,7 +513,7 @@ fun NavigationHomeScreen(
 
     fun backToBrowse() {
         flow.update { it.backToBrowse() }
-        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+        routeVm.clear()
         // Keep the "stepped away" flag while a trip is still running so arrival/auto-resume
         // logic still treats this screen as owning it (only reset once nothing is live).
         if (!navState.sessionState.isActiveNav()) trip.setMinimised(false)
@@ -475,7 +522,7 @@ fun NavigationHomeScreen(
     }
 
     fun startTo(p: SavedPlace) {
-        val sel = previewRoutes.getOrNull(selectedRoute)
+        val sel = routePreview.selectedRoute
         // Carry the mode that produced the token so the SDK consumes it with the
         // same mode (else it rejects the token and silently picks its own route).
         val mode = sel?.travelMode ?: appSettings.vehicleMode
@@ -509,6 +556,12 @@ fun NavigationHomeScreen(
         flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, RIDE_BACK_LABEL), tripStops) }
     }
 
+    /** DL3 "Add as a stop instead" and PL1 "Add as stop": the place becomes a stop of the running trip. */
+    fun addAsStop(p: SavedPlace) {
+        // A refusal is announced by the TripController's event.
+        if (trip.addStop(p)) { searchTarget = SearchTarget.DESTINATION; trip.setMinimised(false); stage = NavStage.NAVIGATING }
+    }
+
     fun resumeNav() {
         searchTarget = SearchTarget.DESTINATION
         trip.setMinimised(false)
@@ -521,7 +574,7 @@ fun NavigationHomeScreen(
     // loads this trip's result. Also adopts a trip that ended while this screen was away.
     fun adoptFinish(f: FinishedTrip) {
         if (stage == NavStage.TRIP_FINISHED) return
-        previewRoutes = emptyList(); selectedRoute = 0; previewFailed = false; previewLoading = false
+        routeVm.clear()
         finishedRide = null; finishedPoints = null; finishResolved = false
         // The card names the trip that ended, not whatever place the rider was looking at since.
         flow.update { it.copy(selected = f.destination).finishTrip() }
@@ -554,6 +607,11 @@ fun NavigationHomeScreen(
                 }
                 TripEvent.StopAddFailed -> "Couldn't add the stop \u2013 continuing your trip" to true
                 is TripEvent.Finished -> return@collect
+                TripEvent.RouteSubstituted -> {
+                    // The riding chip is drawn from B9; until then the same words go out as a snackbar.
+                    feedback.snackbar(resources.getString(R.string.route_using_google))
+                    return@collect
+                }
             }
             android.widget.Toast.makeText(
                 context, msg.first, if (msg.second) android.widget.Toast.LENGTH_LONG else android.widget.Toast.LENGTH_SHORT,
@@ -570,7 +628,8 @@ fun NavigationHomeScreen(
     // We "own" the trip on this screen while showing guidance OR while stepped
     // away on the map with a trip still running — arrival should finish it either way.
     LaunchedEffect(navState.sessionState) {
-        if (NavFlowRules.shouldAutoResume(navState.sessionState.isActiveNav(), stage, leftNavManually)) {
+        // A trip the rider just replaced or closed (latched) is not resumed by a late frame of its session.
+        if (!tripState.arrivalLatched && NavFlowRules.shouldAutoResume(navState.sessionState.isActiveNav(), stage, leftNavManually)) {
             stage = NavStage.NAVIGATING
         }
     }
@@ -644,12 +703,12 @@ fun NavigationHomeScreen(
 
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
-        // Mid-guidance a shortcut must not tear the planning flow out from under the live trip
-        // (the screen would stop owning it); ending/replacing a trip stays an explicit action.
+        // Mid-guidance a shortcut must not tear the planning flow out from under the live trip: ask first (DL3).
         if (stage == NavStage.NAVIGATING) {
-            android.widget.Toast.makeText(
-                context, "Navigation in progress \u2013 end it first to plan another ride", android.widget.Toast.LENGTH_SHORT,
-            ).show()
+            replaceRequest = ReplaceRequest(place, cancelFirst = true) {
+                backToBrowse()
+                flow.update { it.quickRoute(place) }
+            }
             return
         }
         backToBrowse()
@@ -674,7 +733,12 @@ fun NavigationHomeScreen(
     // opens the confirm card, like Google Maps.
     LaunchedEffect(map) {
         map.longClicks.collect { ll ->
-            if (stage != NavStage.NAVIGATING) choose(SavedPlace(ll.lat, ll.lng, "Dropped pin"))
+            when {
+                stage == NavStage.NAVIGATING -> {}
+                // On the route preview a long press proposes a stop, not a new destination (PL6).
+                stage == NavStage.PREVIEW -> if (!pickingStop) stopCandidate = SavedPlace(ll.lat, ll.lng, newStopLabel)
+                else -> choose(SavedPlace(ll.lat, ll.lng, "Dropped pin"))
+            }
         }
     }
 
@@ -694,6 +758,10 @@ fun NavigationHomeScreen(
     }
     // At the map with nothing running there is nothing to step back to: Back is the system's (it leaves the app).
     BackHandler(enabled = stage != NavStage.BROWSE || navState.sessionState.isActiveNav()) { performBack() }
+    // Registered after the stage's: picking a stop (or a proposed one) is left first.
+    BackHandler(enabled = pickingStop || stopCandidate != null) {
+        if (pickingStop) pickingStop = false else stopCandidate = null
+    }
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
@@ -761,7 +829,7 @@ fun NavigationHomeScreen(
                             // Only what is still ahead of the rider.
                             (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
                         }
-                        SearchTarget.STOP -> previewRoutes.getOrNull(selectedRoute)?.points?.map { it.latitude to it.longitude }
+                        SearchTarget.STOP -> routePreview.selectedRoute?.points?.map { it.latitude to it.longitude }
                         SearchTarget.DESTINATION -> null
                     }
                 },
@@ -769,6 +837,9 @@ fun NavigationHomeScreen(
                     ActivityCard.build(tripState, navState, System.currentTimeMillis())
                 } else null,
                 onResumeTrip = ::resumeNav,
+                onPickOnMap = if (searchTarget == SearchTarget.STOP) {
+                    { flow.update { it.copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.PREVIEW) }; pickingStop = true }
+                } else null,
             )
 
             NavStage.CONFIRM -> {
@@ -780,33 +851,46 @@ fun NavigationHomeScreen(
                     )
                 }
                 val sel = selected
-                var savedNow by remember(sel) {
-                    mutableStateOf(sel?.let { store.isSaved(it.lat, it.lng) } ?: false)
+                if (sel != null) {
+                    val removedMessage = resources.getString(R.string.place_removed)
+                    val undoLabel = resources.getString(R.string.common_undo)
+                    val saved = PlaceSaving.isSaved(savedPlaces, sel)
+                    PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                        PlaceSheet(
+                            state = PlaceSheetState(
+                                title = sel.label, address = sel.address,
+                                distance = distanceLabel(origin, sel.lat, sel.lng),
+                                saved = saved, tripRunning = tripRunning(),
+                            ),
+                            actions = PlaceSheetActions(
+                                onBack = ::performBack,
+                                onClose = ::backToBrowse,
+                                onToggleSave = {
+                                    scope.launch(Dispatchers.IO) {
+                                        if (saved) places.removeFavorite(sel) else places.saveFavorite(sel, FavoriteSlot.OTHER)
+                                    }
+                                    if (saved) {
+                                        feedback.snackbar(removedMessage, undoLabel) {
+                                            scope.launch(Dispatchers.IO) { places.saveFavorite(sel, FavoriteSlot.OTHER) }
+                                        }
+                                    }
+                                },
+                                onDirections = {
+                                    if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
+                                        replaceRequest = ReplaceRequest(sel, cancelFirst = true) { stage = NavStage.PREVIEW }
+                                    } else stage = NavStage.PREVIEW
+                                },
+                                onAddAsStop = { addAsStop(sel) },
+                            ),
+                        )
+                    }
                 }
-                Box(Modifier.align(Alignment.BottomCenter)) {
-                    ConfirmCard(
-                        place = sel,
-                        origin = origin,
-                        saved = savedNow,
-                        onGetDirections = { stage = NavStage.PREVIEW },
-                        onToggleSave = {
-                            sel?.let {
-                                if (savedNow) store.removeFavorite(it.lat, it.lng)
-                                else store.saveFavorite(it, FavoriteSlot.OTHER)
-                                savedNow = !savedNow
-                            }
-                        },
-                    )
-                }
-                // Top-right control column: Clear, then Compass (only when rotated).
-                Column(
-                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
-                        .padding(end = 16.dp, top = 16.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
-                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                // Top-right control: the compass, only when rotated (✕ is in the sheet).
+                if (available && navReady && abs(mapBearing) > 0.5f) {
+                    Column(
+                        modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
                         SquareMapControl(
                             OpenDashIcons.Compass, "Reset orientation to north",
                             tint = Ktm.Danger, rotation = -mapBearing,
@@ -823,45 +907,63 @@ fun NavigationHomeScreen(
                         modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
                     )
                 }
-                Box(Modifier.align(Alignment.BottomCenter)) {
-                    PreviewCard(
-                        place = selected,
-                        loading = previewLoading,
-                        routes = previewRoutes,
-                        selectedIndex = selectedRoute,
-                        failed = previewFailed,
-                        stops = stops,
-                        routeStops = routesForStops,
-                        origin = origin,
-                        onSelect = { selectedRoute = it },
-                        onAddStop = ::openSearchForStop,
-                        onRemoveStop = { idx -> stops = stops.filterIndexed { i, _ -> i != idx } },
-                        onMoveStop = { idx, delta ->
-                            val to = idx + delta
-                            if (to in stops.indices) {
-                                stops = stops.toMutableList().apply { add(to, removeAt(idx)) }
+                val dest = selected
+                if (dest != null) {
+                    val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
+                    val undoLabel = resources.getString(R.string.common_undo)
+                    when {
+                        pickingStop -> PickStopOverlay(
+                            map = map, number = StopList.nextNumber(stops), destination = dest.label,
+                            canAdd = StopList.canAdd(stops),
+                            onBack = { pickingStop = false },
+                            onUse = { pickingStop = false; stops = StopList.add(stops, it) },
+                        )
+                        stopCandidate != null -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                            val candidate = stopCandidate
+                            if (candidate != null) {
+                                StopCandidateSheet(
+                                    name = candidate.label, number = StopList.nextNumber(stops), destination = dest.label,
+                                    canAdd = StopList.canAdd(stops),
+                                    onAdd = { stops = StopList.add(stops, candidate); stopCandidate = null },
+                                    onCancel = { stopCandidate = null },
+                                )
                             }
-                        },
-                        onStart = {
-                            selected?.let { p ->
-                                // A trip is already running (rider stepped away to the map):
-                                // starting another replaces it, so ask first.
-                                val tripLive = GoogleNavSdkProvider.activeTrip.value != null && startFailure == null
-                                if (tripLive || navState.sessionState.isActiveNav()) confirmReplaceFor = p else startTo(p)
-                            }
-                        },
-                        onBack = { stage = NavStage.CONFIRM },
-                    )
+                        }
+                        else -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                            RouteSheet(
+                                state = RouteSheetMapper.state(dest, stops, routePreview, System.currentTimeMillis()),
+                                actions = RouteSheetActions(
+                                    onBack = ::performBack,
+                                    onClose = ::backToBrowse,
+                                    onSelect = routeVm::select,
+                                    onAddStop = ::openSearchForStop,
+                                    onRemoveStop = { index ->
+                                        stops.getOrNull(index)?.let { removed ->
+                                            stops = StopList.removeAt(stops, index)
+                                            feedback.snackbar(stopRemoved(removed.label), undoLabel) {
+                                                // Only while still planning: after Start or ✕ the stop belongs to a plan that is gone.
+                                                if (stage == NavStage.PREVIEW && selected == dest) stops = StopList.restore(stops, index, removed)
+                                            }
+                                        }
+                                    },
+                                    onMoveStop = { index, delta -> stops = StopList.move(stops, index, delta) },
+                                    onStart = {
+                                        // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
+                                        if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
+                                            replaceRequest = ReplaceRequest(dest, cancelFirst = false) { startTo(dest) }
+                                        } else startTo(dest)
+                                    },
+                                ),
+                            )
+                        }
+                    }
                 }
-                // Top-right control column: Clear, then Compass (only when rotated).
-                Column(
-                    modifier = Modifier.align(Alignment.TopEnd).edgePadding()
-                        .padding(end = 16.dp, top = 16.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    IconPill(OpenDashIcons.Close, "Clear", onClick = ::backToBrowse)
-                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                // Top-right control: the compass, only when rotated (✕ is in the sheet).
+                if (available && navReady && abs(mapBearing) > 0.5f && !pickingStop) {
+                    Column(
+                        modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
                         SquareMapControl(
                             OpenDashIcons.Compass, "Reset orientation to north",
                             tint = Ktm.Danger, rotation = -mapBearing,
@@ -1073,11 +1175,17 @@ fun NavigationHomeScreen(
           }
         }
 
-        confirmReplaceFor?.let { p ->
-            ReplaceTripConfirmDialog(
-                destination = p.label,
-                onConfirm = { confirmReplaceFor = null; startTo(p) },
-                onDismiss = { confirmReplaceFor = null },
+        replaceRequest?.let { r ->
+            ReplaceTripDialog(
+                destination = r.place.label,
+                riding = stage == NavStage.NAVIGATING,
+                onReplace = {
+                    replaceRequest = null
+                    if (r.cancelFirst) { trip.cancel(); trip.resetStartDebounce() }
+                    r.proceed()
+                },
+                onKeep = { replaceRequest = null },
+                onAddAsStop = { replaceRequest = null; addAsStop(r.place) },
             )
         }
 
@@ -1251,295 +1359,7 @@ internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 // ============================ Preview ==================================
 
-@Composable
-private fun PreviewCard(
-    place: SavedPlace?,
-    loading: Boolean,
-    routes: List<RoutePreview>,
-    selectedIndex: Int,
-    failed: Boolean,
-    stops: List<SavedPlace>,
-    routeStops: List<SavedPlace>,
-    origin: Pair<Double, Double>?,
-    onSelect: (Int) -> Unit,
-    onAddStop: () -> Unit,
-    onRemoveStop: (Int) -> Unit,
-    onMoveStop: (Int, Int) -> Unit,
-    onStart: () -> Unit,
-    onBack: () -> Unit,
-) {
-    place ?: return
-    Column(
-        modifier = Modifier.fillMaxWidth().edgePadding()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(18.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TapTarget(onClick = onBack) {
-                Icon(OpenDashIcons.ChevronLeft, "Back", tint = Ktm.TextSecondary, modifier = Modifier.size(24.dp))
-            }
-            Text(place.label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1)
-        }
-
-        // ---- Stops list (Your location -> stops -> destination) --------------
-        Spacer(Modifier.height(12.dp))
-        // Per-leg time / distance / arrival, when the (multi-stop) route carries a matching breakdown.
-        // Only for the stops the routes were computed for: right after a reorder / add / remove the
-        // old legs would otherwise show against the new order until the recompute lands.
-        val legLines = remember(routes, selectedIndex, stops, routeStops) {
-            if (routeStops != stops) emptyList()
-            else StopLegs.lines(routes.getOrNull(selectedIndex)?.legs.orEmpty(), stops.size + 1, System.currentTimeMillis())
-        }
-        // Height of one stop slot (row + leg line), measured, to turn a drag distance into rows.
-        var slotPx by remember { mutableStateOf(0f) }
-        // The list scrolls when four stops + leg lines outgrow a small screen.
-        Column(Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
-            StopRow(text = "Your location", color = Ktm.Muted2)
-            LegLine(legLines.getOrNull(0))
-            stops.forEachIndexed { i, s ->
-                androidx.compose.runtime.key(i) {
-                    StopSlot(
-                        i = i, count = stops.size, label = "Stop ${i + 1}: ${s.label}",
-                        legLine = legLines.getOrNull(i + 1), slotPx = slotPx,
-                        onSlotSize = { slotPx = it },
-                        onMove = { delta -> onMoveStop(i, delta) },
-                        onRemove = { onRemoveStop(i) },
-                    )
-                }
-            }
-            StopRow(text = place.label, color = Ktm.Orange)
-        }
-        if (stops.size < MAX_STOPS) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "+ Add stop",
-                color = Ktm.Orange, fontFamily = Barlow, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAddStop)
-                    .defaultMinSize(minHeight = 48.dp).wrapContentHeight(Alignment.CenterVertically)
-                    .padding(horizontal = 4.dp),
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-        when {
-            loading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(color = Ktm.Orange, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.size(10.dp))
-                Text("Finding routes…", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp)
-            }
-            routes.isNotEmpty() -> {
-                // One selectable chip per route (reliable vs tapping the thin line).
-                // With stops the API returns a single multi-leg route (no alternates).
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    routes.forEachIndexed { i, r ->
-                        RouteChip(
-                            durationSeconds = r.durationSeconds,
-                            distanceMeters = r.distanceMeters,
-                            delaySeconds = r.delaySeconds,
-                            label = if (stops.isNotEmpty()) "Route" else if (i == 0) "Fastest" else "Alt ${i}",
-                            selected = i == selectedIndex,
-                            modifier = Modifier.weight(1f),
-                        ) { onSelect(i) }
-                    }
-                }
-            }
-            failed -> Text(
-                "Couldn't load a route preview. You can still start navigation.",
-                color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-        KtmPrimaryButton(text = "Start Navigation", onClick = onStart)
-    }
-}
-
-/** "12 min · 8.4 km · arrive 14:32" between two stops; nothing when the route has no breakdown. */
-@Composable
-private fun LegLine(text: String?) {
-    if (text == null) return
-    Text(
-        text, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp, maxLines = 1,
-        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 18.dp, bottom = 2.dp),
-    )
-}
-
-/** One line in the preview stop list: a dot + label, with a drag handle and a remove button on
- *  editable intermediate stops (drag the handle to reorder; TalkBack gets move up/down actions). */
-@Composable
-private fun StopRow(
-    text: String,
-    color: Color,
-    index: Int = 0,
-    count: Int = 0,
-    onRemove: (() -> Unit)? = null,
-    onMoveBy: ((Int) -> Unit)? = null,
-    dragHandle: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(color),
-        )
-        Spacer(Modifier.size(10.dp))
-        Text(
-            text, color = color, fontFamily = Barlow, fontSize = 15.sp,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-        )
-        if (onRemove != null) {
-            dragHandle?.invoke()
-            TapTarget(onClick = { onRemove.invoke() }) {
-                Icon(OpenDashIcons.Close, "Remove stop", tint = Ktm.Danger, modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
-
-/**
- * One editable stop (row + leg line) as a draggable unit: the whole slot floats above its
- * neighbours while dragged, and the handle's drag distance becomes whole-row moves.
- */
-@Composable
-private fun StopSlot(
-    i: Int,
-    count: Int,
-    label: String,
-    legLine: String?,
-    slotPx: Float,
-    onSlotSize: (Float) -> Unit,
-    onMove: (Int) -> Unit,
-    onRemove: () -> Unit,
-) {
-    var dragY by remember { mutableStateOf(0f) }
-    val dragging = dragY != 0f
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    // The gesture must not restart when these change mid-drag (leg lines appear, size remeasures).
-    val slot by androidx.compose.runtime.rememberUpdatedState(slotPx)
-    val index by androidx.compose.runtime.rememberUpdatedState(i)
-    val total by androidx.compose.runtime.rememberUpdatedState(count)
-    val move by androidx.compose.runtime.rememberUpdatedState(onMove)
-    Column(
-        Modifier
-            .onSizeChanged { onSlotSize(it.height.toFloat()) }
-            .zIndex(if (dragging) 1f else 0f)
-            .graphicsLayer { translationY = dragY }
-            .then(if (dragging) Modifier.background(Ktm.SurfaceAlt) else Modifier),
-    ) {
-        StopRow(
-            text = label, color = Ktm.White, index = i, count = count, onRemove = onRemove,
-            dragHandle = if (count > 1) {
-                {
-                    Box(
-                        modifier = Modifier.size(48.dp)
-                            .semantics {
-                                contentDescription = "Reorder stop ${i + 1}"
-                                customActions = buildList {
-                                    if (i > 0) add(CustomAccessibilityAction("Move up") { onMove(-1); true })
-                                    if (i < count - 1) add(CustomAccessibilityAction("Move down") { onMove(1); true })
-                                }
-                            }
-                            .pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDragStart = { dragY = 0.001f; haptics.tap() },
-                                    onDragEnd = {
-                                        val delta = StopLegs.dragDelta(dragY, slot, index, total)
-                                        dragY = 0f
-                                        if (delta != 0) move(delta)
-                                    },
-                                    onDragCancel = { dragY = 0f },
-                                ) { change, drag ->
-                                    change.consume()
-                                    dragY += drag.y
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Filled.DragHandle, null, tint = Ktm.TextSecondary, modifier = Modifier.size(24.dp))
-                    }
-                }
-            } else null,
-        )
-        LegLine(legLine)
-    }
-}
-
-/** A selectable route option (duration + distance + traffic), highlighted when
- *  selected. Traffic shows the delay vs. free-flow with a colour-coded dot. */
-@Composable
-private fun RouteChip(
-    durationSeconds: Int,
-    distanceMeters: Int,
-    delaySeconds: Int,
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(if (selected) Ktm.Orange else Ktm.Screen)
-            .border(1.dp, if (selected) Ktm.Orange else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .selectable(selected = selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
-        Text(
-            label.uppercase(),
-            color = if (selected) Ktm.OnAccent else Ktm.Muted2,
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp,
-        )
-        Text(
-            formatDuration(durationSeconds),
-            color = if (selected) Ktm.OnAccent else Ktm.White,
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 20.sp,
-        )
-        Text(
-            DistanceFormatter.format(distanceMeters, DistanceUnits.METRIC),
-            color = if (selected) Ktm.OnAccent else Ktm.Muted2,
-            fontFamily = JetBrainsMono, fontSize = 12.sp,
-        )
-        TrafficLine(delaySeconds = delaySeconds, onAccent = selected)
-    }
-}
-
-/** Traffic delay indicator: a colour-coded dot + label. Green "On time" under a
- *  minute, otherwise "+N min" shaded light-orange / orange / red by severity. */
-@Composable
-private fun TrafficLine(delaySeconds: Int, onAccent: Boolean) {
-    val delayMin = delaySeconds / 60
-    val dotColor = when {
-        delayMin < 1 -> Ktm.Green
-        delayMin < 15 -> Ktm.Orange
-        else -> Ktm.Danger
-    }
-    val label = if (delayMin < 1) "On time" else "+$delayMin min"
-    Spacer(Modifier.height(4.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(if (onAccent) Ktm.OnAccent else dotColor))
-        Spacer(Modifier.width(5.dp))
-        Text(
-            label,
-            color = if (onAccent) Ktm.OnAccent else dotColor,
-            fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-        )
-    }
-}
-
 // ============================ Active navigation ========================
-
-/** 48dp (minimum) tap area around a small icon, centred; the icon keeps its visual size. */
-@Composable
-private fun TapTarget(enabled: Boolean = true, onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { content() }
-}
 
 /** Dialog button sized for gloved thumbs (used by the dialogs shown while riding). */
 @Composable
@@ -1561,26 +1381,6 @@ private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         text = { Text("This stops guidance to the dash and finishes the trip.", fontFamily = Barlow) },
         confirmButton = { BigDialogButton("END", Ktm.Danger, onConfirm) },
         dismissButton = { BigDialogButton("CANCEL", Ktm.TextPrimary, onDismiss) },
-    )
-}
-
-@Composable
-private fun ReplaceTripConfirmDialog(destination: String?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Ktm.Surface,
-        titleContentColor = Ktm.White,
-        textContentColor = Ktm.TextSecondary,
-        title = { Text("Replace current trip?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-        text = {
-            Text(
-                "Your current navigation will stop and a new trip" +
-                    (destination?.let { " to $it" } ?: "") + " will start.",
-                fontFamily = Barlow,
-            )
-        },
-        confirmButton = { BigDialogButton("REPLACE", Ktm.Orange, onConfirm) },
-        dismissButton = { BigDialogButton("KEEP CURRENT", Ktm.TextPrimary, onDismiss) },
     )
 }
 
@@ -1671,62 +1471,6 @@ internal fun CircleIconButton(icon: ImageVector, contentDescription: String, onC
     }
 }
 
-// ============================ Confirm ==================================
-
-@Composable
-private fun ConfirmCard(
-    place: SavedPlace?,
-    origin: Pair<Double, Double>?,
-    saved: Boolean,
-    onGetDirections: () -> Unit,
-    onToggleSave: () -> Unit,
-) {
-    place ?: return
-
-    Column(
-        modifier = Modifier.fillMaxWidth().edgePadding()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(18.dp),
-    ) {
-        Text(place.label, color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-        place.address?.let {
-            Text(it, color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-        }
-        distanceLabel(origin, place.lat, place.lng)?.let {
-            Text(it + " away", color = Ktm.Orange, fontFamily = JetBrainsMono, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-        }
-        Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            KtmPrimaryButton(text = "Get Directions", modifier = Modifier.weight(1f), onClick = onGetDirections)
-            Spacer(Modifier.size(12.dp))
-            SaveToggle(saved = saved, onClick = onToggleSave)
-        }
-    }
-}
-
-/** Bookmark toggle: outline when unsaved, brand-accent filled when saved. */
-@Composable
-private fun SaveToggle(saved: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(if (saved) Ktm.Orange else Ktm.Surface)
-            .border(1.dp, if (saved) Ktm.Orange else Ktm.Border, RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            if (saved) OpenDashIcons.BookmarkFilled else OpenDashIcons.Bookmark,
-            contentDescription = if (saved) "Saved" else "Save",
-            tint = if (saved) Ktm.OnAccent else Ktm.White,
-            modifier = Modifier.size(22.dp),
-        )
-    }
-}
-
 // ============================ Shared UI ================================
 
 // ============================ Helpers ==================================
@@ -1754,55 +1498,6 @@ internal fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Doub
     return "~" + DistanceFormatter.format(meters, DistanceUnits.METRIC)
 }
 
-internal fun hasLocationPermission(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-        PackageManager.PERMISSION_GRANTED
-
-/**
- * A fresh current-location fix (falls back to last-known). Used for the route
- * preview so the Routes API route-token origin matches the SDK's GPS at Start,
- * which is required for the SDK to honour the exact selected route.
- */
-private suspend fun freshLocation(context: Context): Pair<Double, Double>? {
-    if (!hasLocationPermission(context)) return lastKnownLocation(context)
-    val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        ?: return lastKnownLocation(context)
-    val provider = when {
-        lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-        lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-        else -> return lastKnownLocation(context)
-    }
-    return try {
-        suspendCancellableCoroutine { cont ->
-            val signal = CancellationSignal()
-            lm.getCurrentLocation(provider, signal, context.mainExecutor) { loc ->
-                cont.resume(loc?.let { it.latitude to it.longitude } ?: lastKnownLocation(context))
-            }
-            cont.invokeOnCancellation { signal.cancel() }
-        }
-    } catch (e: SecurityException) {
-        lastKnownLocation(context)
-    }
-}
-
-/** Best-effort last-known location for the initial camera / distances / recenter. */
-internal fun lastKnownLocation(context: Context): Pair<Double, Double>? {
-    return try {
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
-        val providers = listOf(
-            LocationManager.GPS_PROVIDER,
-            LocationManager.NETWORK_PROVIDER,
-            LocationManager.PASSIVE_PROVIDER,
-        )
-        // Newest fix across providers (the first non-null one could be hours stale).
-        providers.mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
-            .maxByOrNull { it.time }
-            ?.let { it.latitude to it.longitude }
-    } catch (e: SecurityException) {
-        null
-    }
-}
-
 /** Location permission granted AND the system location switch on; re-checked whenever the screen resumes. */
 @Composable
 private fun rememberLocationReady(): Boolean {
@@ -1823,3 +1518,6 @@ private fun rememberLocationReady(): Boolean {
     }
     return ready
 }
+
+/** DL3: [place] is wanted while a trip runs; [proceed] carries on once the rider says Replace. */
+private class ReplaceRequest(val place: SavedPlace, val cancelFirst: Boolean, val proceed: () -> Unit)
