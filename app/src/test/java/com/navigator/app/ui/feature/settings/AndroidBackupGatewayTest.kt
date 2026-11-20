@@ -4,11 +4,9 @@ import android.content.Context
 import android.net.Uri
 import com.navigator.app.ride.RideStore
 import com.navigator.app.ride.RidePoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -19,7 +17,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.File
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class AndroidBackupGatewayTest {
@@ -45,7 +42,6 @@ class AndroidBackupGatewayTest {
         assertEquals(1, summary.rides)
         assertTrue(File(uri.path!!).length() > 0)
         val preview = gateway.inspect(uri)
-        assertNotNull(preview)
         assertEquals(1, preview!!.ridesInFile)
     }
 
@@ -60,5 +56,19 @@ class AndroidBackupGatewayTest {
         val uri = Uri.fromFile(File(ctx.cacheDir, "missing.zip").also { it.delete() })
         assertNull(gateway.inspect(uri))
         assertFalse(gateway.restore(uri, true, true, true).ok)
+    }
+
+    @Test fun aBackupRestoresIntoAnEmptyStore() = runBlocking {
+        val store = RideStore(ctx)
+        store.importRide("Loop", (0 until 5).map { RidePoint(12.0, 77.0 + it * 0.0003, 1_000_000L + 1_000L * it, 40f) })!!
+        val uri = fileUri("b.zip")
+        assertTrue(gateway.backup(uri).ok)
+        File(ctx.filesDir, "rides").deleteRecursively()
+        ctx.getSharedPreferences("ride_store", Context.MODE_PRIVATE).edit().clear().commit()
+        RideStore(ctx).resetStaticsForTest()
+        val restored = gateway.restore(uri, rides = true, places = false, settings = false)
+        assertTrue(restored.ok)
+        assertEquals(1, restored.ridesAdded)
+        assertEquals(1, RideStore(ctx).list().size)
     }
 }

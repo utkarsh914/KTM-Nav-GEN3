@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -65,22 +66,33 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
     val listState = rememberLazyListState()
     var following by rememberSaveable { mutableStateOf(true) }
 
-    // Scrolling by hand pauses following; reaching the end again resumes it. Only the rider's own drag counts: the
-    // auto-scroll below is also a scroll in progress and must not pause itself.
+    // Scrolling by hand pauses following; reaching the end again resumes it. The auto-scroll below is also a scroll in
+    // progress and must not pause itself, so only the rider's scrolls count: a drag, or any scroll that goes backward
+    // (which also covers a screen reader's scroll action, a keyboard or a mouse wheel, none of which drag).
     var byHand by remember { mutableStateOf(false) }
+    var auto by remember { mutableStateOf(false) }
     LaunchedEffect(listState) {
-        listState.interactionSource.interactions.collect { if (it is DragInteraction.Start) byHand = true }
-    }
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.isScrollInProgress to listState.canScrollForward }.collect { (moving, more) ->
-            if (byHand) {
-                following = !more
-                if (!moving) byHand = false
+        listState.interactionSource.interactions.collect {
+            when (it) {
+                is DragInteraction.Start -> byHand = true
+                is DragInteraction.Stop, is DragInteraction.Cancel -> if (!listState.isScrollInProgress) byHand = false
             }
         }
     }
+    LaunchedEffect(listState) {
+        snapshotFlow { Triple(listState.isScrollInProgress, listState.canScrollForward, listState.lastScrolledBackward) }
+            .collect { (moving, more, backward) ->
+                if (byHand || (backward && !auto)) {
+                    following = !more
+                    if (!moving) byHand = false
+                }
+            }
+    }
     LaunchedEffect(ui.entries.size, ui.entries.lastOrNull(), following) {
-        if (following && ui.entries.isNotEmpty()) listState.scrollToItem(ui.entries.lastIndex)
+        if (following && ui.entries.isNotEmpty()) {
+            auto = true
+            try { listState.scrollToItem(ui.entries.lastIndex) } finally { auto = false }
+        }
     }
 
     Column(modifier.fillMaxSize().background(c.bg)) {
@@ -109,7 +121,7 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                     state = listState,
                     // Room under the pill, so the newest lines are never behind it.
                     contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, top = KtmSpacing.sm, bottom = KtmLayout.targetRest + KtmSpacing.xl),
-                    modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
+                    modifier = Modifier.fillMaxSize().testTag("logs-list").windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
                 ) {
                     itemsIndexed(ui.entries, key = { index, e -> e.key.ifEmpty { "#$index" } }) { _, e ->
                         LogRow(e, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsFast(), placementSpec = null))

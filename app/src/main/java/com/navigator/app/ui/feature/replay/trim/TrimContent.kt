@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.replay.trim
 
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -41,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
@@ -142,6 +145,7 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
         onMoveStart = actions.onMoveStart, onMoveEnd = actions.onMoveEnd, onMoveNearest = actions.onMoveNearest,
         onNudgeStart = actions.onNudgeStart, onNudgeEnd = actions.onNudgeEnd, nudge = (last / NUDGE_DIVISOR).coerceAtLeast(1),
         valueText = stringResource(R.string.trim_range_value, timeAt(ui, ui.range.from), timeAt(ui, ui.range.to)),
+        startText = timeAt(ui, ui.range.from), endText = timeAt(ui, ui.range.to),
         enabled = !ui.applying,
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -186,6 +190,8 @@ fun TrimRangeBar(
     onNudgeEnd: (Int) -> Unit,
     nudge: Int,
     valueText: String,
+    startText: String,
+    endText: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -201,57 +207,79 @@ fun TrimRangeBar(
     val startLater = stringResource(R.string.trim_start_later)
     val endEarlier = stringResource(R.string.trim_end_earlier)
     val endLater = stringResource(R.string.trim_end_later)
-    Canvas(
-        modifier.fillMaxWidth().height(KtmLayout.targetRest)
-            .semantics {
-                contentDescription = description
-                stateDescription = valueText
-                // The kept share of the ride, so a screen reader can say how much is left.
-                progressBarRangeInfo = ProgressBarRangeInfo((to - from).coerceIn(0f, 1f), 0f..1f)
-                customActions = if (!enabled) emptyList() else listOf(
-                    CustomAccessibilityAction(startEarlier) { onNudgeStart(-nudge); true },
-                    CustomAccessibilityAction(startLater) { onNudgeStart(nudge); true },
-                    CustomAccessibilityAction(endEarlier) { onNudgeEnd(-nudge); true },
-                    CustomAccessibilityAction(endLater) { onNudgeEnd(nudge); true },
-                )
+    BoxWithConstraints(modifier.fillMaxWidth().height(KtmLayout.targetRest)) {
+        // One node per handle, adjustable on its own (like a range slider), over the drawn bar.
+        val band = KtmLayout.targetRest
+        val handleDp = KtmLayout.trimHandle
+        val travel = maxWidth - handleDp
+        ThumbNode(stringResource(R.string.trim_start_handle), startText, from, 0f..toNow.coerceAtLeast(0f), onMoveStart, enabled, handleDp / 2 + travel * from - band / 2, band)
+        ThumbNode(stringResource(R.string.trim_end_handle), endText, to, fromNow.coerceAtMost(1f)..1f, onMoveEnd, enabled, handleDp / 2 + travel * to - band / 2, band)
+        Canvas(
+            Modifier.matchParentSize()
+                .semantics {
+                    contentDescription = description
+                    stateDescription = valueText
+                    customActions = if (!enabled) emptyList() else listOf(
+                        CustomAccessibilityAction(startEarlier) { onNudgeStart(-nudge); true },
+                        CustomAccessibilityAction(startLater) { onNudgeStart(nudge); true },
+                        CustomAccessibilityAction(endEarlier) { onNudgeEnd(-nudge); true },
+                        CustomAccessibilityAction(endLater) { onNudgeEnd(nudge); true },
+                    )
+                }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    val handle = KtmLayout.trimHandle.toPx()
+                    detectTapGestures { at -> nearest(trackFraction(at.x, this.size.width.toFloat(), handle)) }
+                }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    val handle = KtmLayout.trimHandle.toPx()
+                    var movingStart = true
+                    detectHorizontalDragGestures(
+                        onDragStart = { at ->
+                            val f = trackFraction(at.x, this.size.width.toFloat(), handle)
+                            movingStart = abs(f - fromNow) <= abs(f - toNow)
+                            if (movingStart) start(f) else end(f)
+                        },
+                        onHorizontalDrag = { change, _ ->
+                            val f = trackFraction(change.position.x, this.size.width.toFloat(), handle)
+                            if (movingStart) start(f) else end(f)
+                        },
+                    )
+                },
+        ) {
+            val handle = KtmLayout.trimHandle.toPx()
+            val track = KtmLayout.seekTrack.toPx()
+            val left = handle / 2
+            val width = (size.width - handle).coerceAtLeast(1f)
+            val y = size.height / 2
+            val x1 = left + width * from
+            val x2 = left + width * to
+            drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
+            drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
+            for (x in listOf(x1, x2)) {
+                drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
+                drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
+                drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
             }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                val handle = KtmLayout.trimHandle.toPx()
-                detectTapGestures { at -> nearest(trackFraction(at.x, this.size.width.toFloat(), handle)) }
-            }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                val handle = KtmLayout.trimHandle.toPx()
-                var movingStart = true
-                detectHorizontalDragGestures(
-                    onDragStart = { at ->
-                        val f = trackFraction(at.x, this.size.width.toFloat(), handle)
-                        movingStart = abs(f - fromNow) <= abs(f - toNow)
-                        if (movingStart) start(f) else end(f)
-                    },
-                    onHorizontalDrag = { change, _ ->
-                        val f = trackFraction(change.position.x, this.size.width.toFloat(), handle)
-                        if (movingStart) start(f) else end(f)
-                    },
-                )
-            },
-    ) {
-        val handle = KtmLayout.trimHandle.toPx()
-        val track = KtmLayout.seekTrack.toPx()
-        val left = handle / 2
-        val width = (size.width - handle).coerceAtLeast(1f)
-        val y = size.height / 2
-        val x1 = left + width * from
-        val x2 = left + width * to
-        drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
-        drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
-        for (x in listOf(x1, x2)) {
-            drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
-            drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
-            drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
         }
     }
+}
+
+/** A handle as its own accessibility node: its time, and adjustable within its range. Draws nothing and takes no touches. */
+@Composable
+private fun ThumbNode(
+    description: String, state: String, value: Float, range: ClosedFloatingPointRange<Float>,
+    onSet: (Float) -> Unit, enabled: Boolean, x: androidx.compose.ui.unit.Dp, size: androidx.compose.ui.unit.Dp,
+) {
+    Box(
+        Modifier.offset(x = x).size(size).semantics {
+            contentDescription = description
+            stateDescription = state
+            progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(range), range)
+            if (enabled) setProgress { target -> onSet(target.coerceIn(range)); true }
+        },
+    )
 }
 
 /** A screen-reader nudge moves a handle by this fraction (1/100) of the track, at least one fix. */

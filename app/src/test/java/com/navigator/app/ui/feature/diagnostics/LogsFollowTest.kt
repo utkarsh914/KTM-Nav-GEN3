@@ -9,6 +9,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Rule
 import org.junit.Test
@@ -51,7 +54,7 @@ class LogsFollowTest {
         rule.onNodeWithText("line 79").assertIsDisplayed()
     }
 
-    @Test fun theAutoScrollDoesNotPauseItselfAndADragAwayFromTheEndDoes() {
+    @Test fun aDragAwayFromTheEndPausesFollowing() {
         val ui = LogsUi(entries = entries(60), tags = listOf("BLE"))
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, noActions) } }
         rule.waitForIdle()
@@ -59,5 +62,29 @@ class LogsFollowTest {
         rule.onNodeWithText("line 59").performTouchInput { swipeDown() }
         rule.waitForIdle()
         rule.onNodeWithText("Paused").assertIsDisplayed()
+    }
+
+    @Test fun aScreenReaderScrollBackwardPausesFollowingAndLinesDontPullItBack() {
+        var ui by mutableStateOf(LogsUi(entries = entries(60), tags = listOf("BLE")))
+        rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, noActions) } }
+        rule.waitForIdle()
+        rule.onNodeWithTag("logs-list").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, -300f) }
+        rule.waitForIdle()
+        rule.onNodeWithText("Paused").assertIsDisplayed()
+        ui = LogsUi(entries = entries(80), tags = listOf("BLE"))
+        rule.waitForIdle()
+        rule.onNodeWithText("line 79").assertDoesNotExist()
+    }
+
+    @Test fun draggingBackToTheEndResumesFollowing() {
+        val ui = LogsUi(entries = entries(60), tags = listOf("BLE"))
+        rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, noActions) } }
+        rule.waitForIdle()
+        rule.onNodeWithText("line 59").performTouchInput { swipeDown() }
+        rule.waitForIdle()
+        rule.onNodeWithText("Paused").assertIsDisplayed()
+        rule.onNodeWithTag("logs-list").performTouchInput { swipeUp(); swipeUp(); swipeUp() }
+        rule.waitForIdle()
+        rule.onNodeWithText("Following live").assertIsDisplayed()
     }
 }

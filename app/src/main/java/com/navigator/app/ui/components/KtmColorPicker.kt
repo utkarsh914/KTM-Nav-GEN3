@@ -76,7 +76,7 @@ fun KtmColorPicker(
     val hueState = stringResource(R.string.picker_hue_degrees, current.hue.roundToInt())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         Box(
-            Modifier.fillMaxWidth().height(KtmLayout.colorPanel).clip(KtmShapes.Control)
+            Modifier.fillMaxWidth().height(KtmLayout.colorPanel)
                 .semantics {
                     contentDescription = panelDescription
                     stateDescription = panelState
@@ -96,7 +96,8 @@ fun KtmColorPicker(
                     }
                 },
         ) {
-            Canvas(Modifier.matchParentSize()) {
+            // Clipped here, not on the box: the corners still take touches.
+            Canvas(Modifier.matchParentSize().clip(KtmShapes.Control)) {
                 drawRect(Brush.horizontalGradient(listOf(Color.White, Hsv(current.hue, 1f, 1f).toColor())))
                 drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
                 val r = KtmLayout.colorHandle.toPx() / 2
