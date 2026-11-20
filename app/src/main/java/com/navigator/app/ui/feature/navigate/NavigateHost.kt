@@ -836,7 +836,7 @@ fun NavigateHost(
         val was = dashWasUp
         dashWasUp = dashUp
         // Red when it drops, or when a paired bike isn't there as the trip starts or resumes; green only after a red.
-        if ((was == true && !dashUp) || (was == null && !dashUp && bikeStatus !is BikeStatus.NotPaired)) {
+        if ((was == true && !dashUp) || (was == null && !dashUp && bikeStatus !is BikeStatus.NotPaired && bikeStatus !is BikeStatus.Connecting && bikeStatus !is BikeStatus.Reconnecting)) {
             dashLostShown = true
             feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = { showBike = true })
         }

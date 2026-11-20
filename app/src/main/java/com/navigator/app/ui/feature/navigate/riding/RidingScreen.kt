@@ -83,7 +83,7 @@ fun RidingScreen(
     BoxWithConstraints(modifier.fillMaxSize()) {
     // The sheet takes what the maneuver card leaves, so the two never overlap (small screens, large fonts).
     val cardBottom = with(density) { cardPx.intValue.toDp() }
-    val sheetMax = (maxHeight - cardBottom - sysBottomDp - KtmSpacing.sm).coerceAtLeast(SHEET_MIN)
+    val sheetMax = (maxHeight - cardBottom - sysBottomDp - KtmSpacing.md).coerceAtLeast(SHEET_MIN)
     val close = stringResource(R.string.trip_sheet_close)
     // The scrim covers the whole window (edges included) and closes the sheet on a tap.
     AnimatedVisibility(sheetOpen, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast())) {

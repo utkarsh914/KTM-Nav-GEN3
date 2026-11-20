@@ -38,7 +38,7 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
         val picked = category ?: run { loading = false; return@LaunchedEffect }
         loading = true; failed = false; results = emptyList()
         val here = lastKnownLocation(context)
-        val route = trip.state.value.route?.let { r -> here?.let { PolylineCodec.aheadOf(r, it.first, it.second) } ?: r }
+        val route = trip.state.value.let { it.route ?: it.routeHint }?.let { r -> here?.let { PolylineCodec.aheadOf(r, it.first, it.second) } ?: r }
         val found = api.category(picked, here, route)
         results = found.items; failed = found.failed; loading = false
     }
