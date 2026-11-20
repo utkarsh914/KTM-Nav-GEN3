@@ -38,7 +38,7 @@ of the shipped work.
   pre-refactor behavior. Decide whether to keep these or fully normalize the notification path
   to numeric fields now that the Nav SDK path is stable.
 - **Remove the legacy `DestinationScreen` LINK path** — only the shared-Maps-link handling is
-  still reachable (share-link fold-in now covers this in `NavigationHomeScreen`); safe to
+  still reachable (share-link fold-in now covers this in `NavigateHost`); safe to
   delete once confirmed unused.
 - **Extract a shared `PlaceSearch` composable** to de-duplicate `SavedPlacesScreen`'s inline
   place picker against the main search sheet. Cosmetic/internal; skip if it risks regressing

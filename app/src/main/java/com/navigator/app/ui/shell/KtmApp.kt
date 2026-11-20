@@ -56,7 +56,7 @@ import com.navigator.app.ui.screens.MirrorHomeScreen
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
-import com.navigator.app.ui.screens.NavigationHomeScreen
+import com.navigator.app.ui.feature.navigate.NavigateHost
 import com.navigator.app.ui.screens.OnboardingScreen
 import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.screens.RideHistoryScreen
@@ -220,10 +220,11 @@ fun KtmApp(onQuit: () -> Unit) {
                             val openNav = pending.openNav
                             LaunchedEffect(openNav) { if (openNav) intents.consumeOpenNav() }
                             if (inAppState.value) {
-                                NavigationHomeScreen(
+                                NavigateHost(
                                     retainedNav = retainedNav,
                                     onOpenConnect = { navController.push(Route.Pairing()) },
                                     onOpenReplay = { id -> navController.push(Route.RideReplay(id)) },
+                                    onOpenSettings = { navController.openTab(Tab.Settings) },
                                     onOpenPlaces = { navController.openTab(Tab.Places) },
                                     sharedLink = pending.sharedLink,
                                     onSharedLinkConsumed = intents::consumeSharedLink,

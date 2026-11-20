@@ -41,9 +41,6 @@ import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.shell.LocalFeedback
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /** Whether the phone has a speech recogniser to hand the voice button to. */
 internal fun voiceAvailable(context: android.content.Context): Boolean =
@@ -65,6 +62,7 @@ fun NavigateRoute(
     /** A point picked on the map: on to the place card. */
     onChoose: (SavedPlace) -> Unit,
     onResumeTrip: () -> Unit,
+    onAddStop: () -> Unit = {},
     onOpenPairing: () -> Unit,
     onOpenPlaces: () -> Unit,
     onRetryMap: () -> Unit,
@@ -128,6 +126,7 @@ fun NavigateRoute(
             },
             onPlace = onRide,
             onResumeTrip = onResumeTrip,
+            onAddStop = onAddStop,
             onCategory = { onSearch(null, it) },
             onRemoveRecent = { place ->
                 container.places.removeRecent(place)
@@ -177,13 +176,7 @@ fun NavigateRoute(
     BackHandler(enabled = overlay != BrowseOverlay.None) { overlay = BrowseOverlay.None }
 
     if (showBike) {
-        val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
-        BikeSheet(
-            state = state, dashTime = time,
-            onBeeps = vm::setBeeps, onMessages = vm::setMessages, onSendTest = vm::sendTest,
-            onRePair = { showBike = false; vm.rePair(); onOpenPairing() },
-            onDismiss = { showBike = false },
-        )
+        BikeSheetHost(tripRunning = state.activity != null, onOpenPairing = onOpenPairing, onDismiss = { showBike = false })
     }
 }
 

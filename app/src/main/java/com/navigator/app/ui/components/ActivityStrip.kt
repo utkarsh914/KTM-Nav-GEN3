@@ -57,6 +57,8 @@ fun ActivityStrip(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     onResume: (() -> Unit)? = null,
+    /** Trip only: add a stop without going back to the riding screen first (SE4). */
+    onAddStop: (() -> Unit)? = null,
     onTogglePause: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
 ) {
@@ -91,10 +93,14 @@ fun ActivityStrip(
         // A control without a callback is not drawn, so a missing wiring is visible, not a dead button.
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
             when (state) {
-                is ActivityStripState.Trip ->
+                is ActivityStripState.Trip -> {
+                    if (onAddStop != null) {
+                        KtmIconButton(KtmIcons.PinPlus, stringResource(R.string.trip_add_stop), onAddStop)
+                    }
                     if (onResume != null) {
                         KtmButton(stringResource(R.string.activity_strip_resume), onResume, style = ButtonStyle.Tonal, size = ButtonSize.Small)
                     }
+                }
                 is ActivityStripState.Recording -> {
                     if (onTogglePause != null) {
                         if (state.paused) {

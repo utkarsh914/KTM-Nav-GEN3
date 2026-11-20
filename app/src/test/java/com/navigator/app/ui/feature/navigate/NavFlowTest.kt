@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.feature.navigate
 
 import com.navigator.app.nav.destination.SavedPlace
 import org.junit.Assert.assertEquals

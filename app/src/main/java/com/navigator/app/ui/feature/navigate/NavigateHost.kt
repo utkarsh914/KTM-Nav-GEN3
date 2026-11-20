@@ -1,5 +1,6 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.feature.navigate
 
+import com.navigator.app.ui.screens.RecordControlsHost
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
@@ -12,26 +13,18 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.foundation.background
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.navigator.app.ui.theme.edgePadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,11 +41,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -102,6 +93,11 @@ import com.navigator.app.ui.feature.navigate.riding.TripSheet
 import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
 import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
 import com.navigator.app.ui.map.FollowMode
+import com.navigator.app.ui.feature.navigate.finished.FinishUi
+import com.navigator.app.ui.feature.navigate.finished.TripFinishedActions
+import com.navigator.app.ui.feature.navigate.finished.TripFinishedContent
+import com.navigator.app.ui.feature.navigate.finished.TripFinishedModel
+import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.theme.KtmLayout
@@ -127,20 +123,10 @@ import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
-import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideEvents
-import com.navigator.app.ride.RideFinish
-import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
-import com.navigator.app.ride.displayAvgKmh
-import com.navigator.app.ui.components.CircleBackButton
-import com.navigator.app.ui.components.Eyebrow
-import com.navigator.app.ui.components.KtmOutlineButton
-import com.navigator.app.ui.components.KtmPrimaryButton
 import com.navigator.app.ui.components.SquareMapControl
-import com.navigator.app.ui.theme.Barlow
 import com.navigator.app.ui.theme.BarlowCondensed
-import com.navigator.app.ui.theme.JetBrainsMono
 import com.navigator.app.ui.theme.Ktm
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
@@ -185,8 +171,6 @@ private fun stageTransition(initial: NavStage, target: NavStage): ContentTransfo
 /** Label of the synthetic destination built by "Ride back". */
 private const val RIDE_BACK_LABEL = "Trip start"
 
-/** Route preview polyline colors (ARGB). */
-
 /**
  * Phone-first map home (see docs/architecture.md §3).
  *
@@ -197,11 +181,12 @@ private const val RIDE_BACK_LABEL = "Trip start"
  * Directions / Save). Route preview + on-phone active guidance land in P3/P4.
  */
 @Composable
-fun NavigationHomeScreen(
+fun NavigateHost(
     retainedNav: RetainedNavigationView,
     onOpenConnect: () -> Unit,
     onOpenPlaces: () -> Unit = {},
     onOpenReplay: (String) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
     pendingPlace: SavedPlace? = null,
@@ -291,6 +276,8 @@ fun NavigationHomeScreen(
     var mapButton by remember { mutableStateOf(MapButtonState()) }
     var showTripSheet by remember { mutableStateOf(false) }
     var showTripStops by remember { mutableStateOf(false) }
+    var addStopOnResume by remember { mutableStateOf(false) }
+    var showBike by remember { mutableStateOf(false) }
     var initialRemainingM by remember { mutableStateOf<Int?>(null) }
     val locationReady = rememberLocationReady()
 
@@ -370,13 +357,22 @@ fun NavigationHomeScreen(
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
-    // The just-finished ride (route + stats), its points, and whether we've
-    // learned the recording outcome yet (Saved / Discarded / no-recording).
-    var finishedRide by remember { mutableStateOf<RecordedRide?>(null) }
-    var finishedPoints by remember { mutableStateOf<List<RidePoint>?>(null) }
-    var finishResolved by remember { mutableStateOf(false) }
-    var finishCardHeightPx by remember { mutableIntStateOf(0) }
-    val rideFinish by RideEvents.lastFinish.collectAsState()
+    var recordingTurnedOn by remember { mutableStateOf(false) }
+    val stopFallback = resources.getString(R.string.trip_stop_unnamed)
+    // The just-finished ride (route + stats) and what the recorder made of it; what the panel covers of the map.
+    val finished: TripFinishedViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = androidx.lifecycle.viewmodel.viewModelFactory {
+            addInitializer(TripFinishedViewModel::class) {
+                TripFinishedViewModel(
+                    finish = RideEvents.lastFinish,
+                    loadPoints = { id -> withContext(Dispatchers.IO) { rideStore.points(id) } },
+                    recordingEnabled = { appSettings.rideRecordingEnabled },
+                )
+            }
+        },
+    )
+    val finishState by finished.state.collectAsState()
+    var finishInsets by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     // Active navigation session state (drives the NAVIGATING stage / arrival).
     val navState by GoogleNavSdkProvider.state.collectAsState()
@@ -494,13 +490,14 @@ fun NavigationHomeScreen(
 
     // Draw the just-finished ride's speed-coloured track on the map behind the
     // summary card, framed above the card. Clears the finished padding on return.
-    LaunchedEffect(stage, mapReady, finishedPoints, finishCardHeightPx) {
+    LaunchedEffect(stage, mapReady, finishState.points, finishInsets) {
         if (!mapReady) return@LaunchedEffect
         when {
             stage == NavStage.TRIP_FINISHED -> {
-                val pts = finishedPoints
-                if (!pts.isNullOrEmpty() && finishCardHeightPx > 0) {
-                    map.setPadding(0, 0, 0, finishCardHeightPx)
+                val pts = finishState.points
+                val covered = finishInsets
+                if (!pts.isNullOrEmpty() && covered != null) {
+                    map.setPadding(covered.first, 0, 0, covered.second)
                     map.showTrack(pts, speedBands)
                 }
             }
@@ -557,7 +554,6 @@ fun NavigationHomeScreen(
         // logic still treats this screen as owning it (only reset once nothing is live).
         if (!navState.sessionState.isActiveNav()) trip.setMinimised(false)
         trip.acknowledgeFinish()
-        finishedRide = null; finishedPoints = null; finishResolved = false
     }
 
     fun startTo(p: SavedPlace) {
@@ -589,8 +585,8 @@ fun NavigationHomeScreen(
 
     // "Ride back": plan the reverse of the finished trip (start point as destination, stops reversed).
     fun rideBack() {
-        val plan = trip.rideBackPlan(finishedPoints?.firstOrNull()?.let { it.lat to it.lng }) ?: return
-        val tripStops = plan.tripStops.map { SavedPlace(it.lat, it.lng, it.label ?: "Stop") }
+        val plan = trip.rideBackPlan(finishState.points?.firstOrNull()?.let { it.lat to it.lng }) ?: return
+        val tripStops = plan.tripStops.map { SavedPlace(it.lat, it.lng, it.label ?: stopFallback) }
         backToBrowse()
         flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, RIDE_BACK_LABEL), tripStops) }
     }
@@ -614,7 +610,6 @@ fun NavigationHomeScreen(
     fun adoptFinish(f: FinishedTrip) {
         if (stage == NavStage.TRIP_FINISHED) return
         routeVm.clear()
-        finishedRide = null; finishedPoints = null; finishResolved = false
         // The card names the trip that ended, not whatever place the rider was looking at since.
         flow.update { it.copy(selected = f.destination).finishTrip() }
     }
@@ -678,28 +673,9 @@ fun NavigationHomeScreen(
         if (openNavRequest && navState.sessionState.isActiveNav()) resumeNav()
     }
 
-    // Resolve the just-finished ride once its recording is finalised (Saved with
-    // a route + stats, or Discarded/none). A timeout covers recording-disabled so
-    // the finished screen never hangs waiting.
-    LaunchedEffect(rideFinish, stage) {
-        if (stage != NavStage.TRIP_FINISHED) return@LaunchedEffect
-        when (val f = rideFinish) {
-            is RideFinish.Saved -> {
-                finishedRide = f.ride
-                finishedPoints = withContext(Dispatchers.IO) { rideStore.points(f.ride.id) }
-                finishResolved = true
-            }
-            RideFinish.Discarded -> {
-                finishedRide = null; finishedPoints = null; finishResolved = true
-            }
-            null -> {}
-        }
-    }
+    // The recorder's outcome is resolved while the finished screen is up (FinishResolution, with its 6 s wait).
     LaunchedEffect(stage) {
-        if (stage == NavStage.TRIP_FINISHED && !finishResolved) {
-            delay(6000)
-            if (!finishResolved) finishResolved = true
-        }
+        if (stage == NavStage.TRIP_FINISHED) finished.begin() else { finished.reset(); finishInsets = null; recordingTurnedOn = false }
     }
 
     // A failed start while the rider stepped away to the map: bring the failure card up.
@@ -796,7 +772,9 @@ fun NavigationHomeScreen(
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
         showTripSheet = false
-        showTripStops = false
+        showTripStops = addStopOnResume && stage == NavStage.NAVIGATING
+        addStopOnResume = false
+        showBike = false
         if (stage == NavStage.NAVIGATING) mapButton = MapButtonState()
     }
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
@@ -827,7 +805,7 @@ fun NavigationHomeScreen(
         // Red when it drops; green only after a red.
         if (was == true && !dashUp) {
             dashLostShown = true
-            feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = onOpenConnect)
+            feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = { showBike = true })
         }
         if (was == false && dashUp && dashLostShown) {
             dashLostShown = false
@@ -896,6 +874,8 @@ fun NavigationHomeScreen(
                 // (stage guard: the tiles stay tappable during the exit animation)
                 onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
                 onResumeTrip = ::resumeNav,
+                // SE4 from the minimised trip's card: back to the riding screen with the add-a-stop sheet open.
+                onAddStop = { if (stage != NavStage.NAVIGATING) addStopOnResume = true else showTripStops = true; resumeNav() },
                 onOpenPairing = onOpenConnect,
                 onOpenPlaces = onOpenPlaces,
                 onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
@@ -1119,7 +1099,7 @@ fun NavigationHomeScreen(
                     onMinimise = { showTripSheet = false; moveAwayFromNav() },
                     onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
                     onMessages = { on -> container.settings.update { mirrorEnabled = on } },
-                    onDash = { showTripSheet = false; onOpenConnect() },
+                    onDash = { showTripSheet = false; showBike = true },
                     onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
                     onEnd = { showTripSheet = false; showEndConfirm = true },
                     onDismiss = { showTripSheet = false },
@@ -1146,6 +1126,9 @@ fun NavigationHomeScreen(
                         onInsets = { top, bottom -> ridingInsets = MapInsets(top = top, bottom = bottom) },
                     )
                 }
+                if (showBike && startFailure == null) {
+                    BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
+                }
                 if (showTripStops && startFailure == null) {
                     TripStopSheetHost(
                         trip = trip,
@@ -1167,52 +1150,43 @@ fun NavigationHomeScreen(
             }
 
             NavStage.TRIP_FINISHED -> {
-                // Top-left back returns to the browse map (keeps the trip's route
-                // on the map behind the summary card).
-                Box(
-                    modifier = Modifier.align(Alignment.TopStart).edgePadding()
-                        .padding(start = 16.dp, top = 10.dp),
-                ) {
-                    CircleBackButton(onClick = ::backToBrowse)
-                }
-                var placeSaved by remember(selected) {
-                    mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false)
-                }
-                Box(Modifier.align(Alignment.BottomCenter)) {
-                    TripFinishedCard(
-                        destinationLabel = selected?.label,
-                        ride = finishedRide,
-                        avgMode = appSettings.avgSpeedMode,
-                        resolved = finishResolved,
-                        fallbackDurationSec = tripState.finished?.durationSec ?: 0,
-                        onDone = ::backToBrowse,
-                        onOpenReplay = { finishedRide?.let { onOpenReplay(it.id) } },
-                        placeSaved = placeSaved,
-                        onSavePlace = {
-                            selected?.let {
-                                scope.launch(Dispatchers.IO) {
-                                    store.saveFavorite(it, com.navigator.app.nav.destination.FavoriteSlot.OTHER)
+                var placeSaved by remember(selected) { mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false) }
+                val model = TripFinishedModel(
+                    destination = selected?.label,
+                    ui = finishState.ui,
+                    fallbackDurationSec = tripState.finished?.durationSec ?: 0,
+                    avgMode = appSettings.avgSpeedMode,
+                    placeSaved = placeSaved,
+                    canSavePlace = selected != null,
+                    canRideBack = finishState.points?.firstOrNull() != null || tripState.origin != null,
+                    minDistanceM = appSettings.rideMinDistanceMeters,
+                    minDurationS = appSettings.rideMinDurationSeconds,
+                    recordingNowOn = recordingTurnedOn,
+                )
+                val ride = (finishState.ui as? FinishUi.Recorded)?.ride
+                PlanPanel(onInsets = { left, bottom -> finishInsets = left to bottom }) {
+                    TripFinishedContent(
+                        model = model,
+                        landscape = com.navigator.app.ui.feature.navigate.plan.LocalFillPanel.current,
+                        actions = TripFinishedActions(
+                            onDone = ::backToBrowse,
+                            onReplay = { ride?.let { onOpenReplay(it.id) } },
+                            onSavePlace = {
+                                selected?.let {
+                                    scope.launch(Dispatchers.IO) { store.saveFavorite(it, com.navigator.app.nav.destination.FavoriteSlot.OTHER) }
+                                    placeSaved = true
                                 }
-                                placeSaved = true
-                                android.widget.Toast.makeText(context, "Place saved", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        canRideBack = finishedPoints?.firstOrNull() != null || tripState.origin != null,
-                        onRideBack = ::rideBack,
-                        onShareGpx = finishedRide?.let { ride ->
-                            {
-                                scope.launch {
-                                    val intent = withContext(Dispatchers.IO) {
-                                        com.navigator.app.ride.GpxShare.buildIntent(context, ride, rideStore)
-                                    }
+                            },
+                            onRideBack = ::rideBack,
+                            onShare = {
+                                if (ride != null) scope.launch {
+                                    val intent = withContext(Dispatchers.IO) { com.navigator.app.ride.GpxShare.buildIntent(context, ride, rideStore) }
                                     if (intent != null) runCatching { context.startActivity(intent) }
                                 }
-                            }
-                        },
-                        modifier = Modifier.onGloballyPositioned {
-                            finishCardHeightPx = it.size.height +
-                                with(density) { 28.dp.roundToPx() }
-                        },
+                            },
+                            onTurnOnRecording = { appSettings.rideRecordingEnabled = true; recordingTurnedOn = true },
+                            onChangeLimits = onOpenSettings,
+                        ),
                     )
                 }
             }
@@ -1253,133 +1227,6 @@ fun NavigationHomeScreen(
             Modifier.align(Alignment.BottomCenter),
             failure = linkFailure,
         )
-    }
-}
-
-/**
- * "Trip finished" summary card, anchored to the bottom over the map (which shows
- * the ride's speed-coloured route). Shows distance / duration / average speed and
- * offers Done + Open in Replay. When there's no recording to show (recording off
- * or the trip too short) it degrades to a duration-only card.
- */
-@Composable
-private fun TripFinishedCard(
-    destinationLabel: String?,
-    ride: RecordedRide?,
-    avgMode: com.navigator.app.ride.AvgSpeedMode,
-    resolved: Boolean,
-    fallbackDurationSec: Int,
-    onDone: () -> Unit,
-    onOpenReplay: () -> Unit,
-    placeSaved: Boolean,
-    onSavePlace: () -> Unit,
-    canRideBack: Boolean,
-    onRideBack: () -> Unit,
-    onShareGpx: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.fillMaxWidth().edgePadding()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(Ktm.RadiusCard))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Border, RoundedCornerShape(Ktm.RadiusCard))
-            .padding(18.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Ktm.Orange),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(OpenDashIcons.Check, null, tint = Ktm.OnAccent, modifier = Modifier.size(22.dp))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Eyebrow("Trip finished", fontSize = 12, letterSpacing = 2.0)
-                Text(
-                    destinationLabel?.takeIf { it.isNotBlank() } ?: "Destination reached",
-                    color = Ktm.White, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-        when {
-            !resolved -> Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(color = Ktm.Orange, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(10.dp))
-                Text("Saving ride…", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp)
-            }
-            ride != null -> Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TripStat("DISTANCE", DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC))
-                TripStat("TIME", formatDuration(ride.durationSeconds))
-                TripStat(avgMode.shortLabel, "${ride.displayAvgKmh(avgMode).toInt()} km/h")
-                TripStat("MAX", "${ride.maxSpeedKmh.toInt()} km/h")
-            }
-            else -> Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TripStat("TIME", formatDuration(fallbackDurationSec))
-                Text(
-                    "No route recorded for this trip.",
-                    color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
-                    modifier = Modifier.weight(1f).padding(start = 12.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                )
-            }
-        }
-
-        // Follow-ups: keep the place, go back the way you came, hand the track to another app.
-        if (resolved) {
-            Spacer(Modifier.height(10.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                FollowUpAction(if (placeSaved) "Saved \u2713" else "Save place", enabled = !placeSaved, onClick = onSavePlace)
-                FollowUpAction("Ride back", enabled = canRideBack, onClick = onRideBack)
-                if (onShareGpx != null) FollowUpAction("Share GPX", onClick = onShareGpx)
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-        if (ride != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                KtmOutlineButton(text = "Open in Replay", modifier = Modifier.weight(1f), onClick = onOpenReplay)
-                Spacer(Modifier.width(12.dp))
-                KtmPrimaryButton(text = "Done", modifier = Modifier.weight(1f), onClick = onDone)
-            }
-        } else {
-            KtmPrimaryButton(text = "Done", modifier = Modifier.fillMaxWidth(), onClick = onDone)
-        }
-    }
-}
-
-@Composable
-private fun FollowUpAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Text(
-        text.uppercase(),
-        color = if (enabled) Ktm.Orange else Ktm.Dim,
-        fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp,
-        maxLines = 1,
-        modifier = Modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .wrapContentHeight(Alignment.CenterVertically)
-            .padding(horizontal = 6.dp),
-    )
-}
-
-/** One labelled stat in the trip-finished / summary card. */
-@Composable
-private fun TripStat(label: String, value: String) {
-    Column {
-        Text(label, color = Ktm.Muted2, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1, softWrap = false)
-        Text(value, color = Ktm.White, fontFamily = JetBrainsMono, fontSize = 13.sp)
     }
 }
 

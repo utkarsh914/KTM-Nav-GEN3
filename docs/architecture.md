@@ -19,7 +19,7 @@ rebrand note in [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md)).
 ## 1. What the app does
 
 The app is now **phone-first and map-centric**. The primary surface is a Google-Maps-style
-map home (`NavigationHomeScreen`) built on the Nav SDK's bundled `NavigationView`: search →
+map home (`NavigateHost`) built on the Nav SDK's bundled `NavigationView`: search →
 confirm → route preview (with alternates) → on-phone turn-by-turn, while the same guidance
 is streamed to the KTM/Husqvarna Gen-3 dash over BLE.
 
@@ -27,7 +27,7 @@ The app is now **navigation-only** (the D2 lean-down has landed): two mutually-e
 navigation engines, selectable in Settings, each with its own home. There are only two jobs:
 
 1. **Navigate, phone-first (In-app maps engine)** — plan and run turn-by-turn in-app on the
-   map home (`NavigationHomeScreen`), pushing the same guidance to the dash over BLE.
+   map home (`NavigateHost`), pushing the same guidance to the dash over BLE.
 2. **Mirror another nav app (Notification-mirror engine)** — mirror Google Maps' turn
    notifications to the dash; the mirror home (`MirrorHomeScreen`) shows the same guidance.
    Offline-capable; also the home when no Nav SDK key/Play Services is available.
@@ -153,7 +153,7 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 
 ---
 
-## 3. Map home & destination flow (`AppRoute.NAV_HOME` · `NavigationHomeScreen`)
+## 3. Map home & destination flow (`AppRoute.NAV_HOME` · `NavigateHost`)
 
 The app's primary surface. One persistent Nav SDK `NavigationView` is the map across a small
 stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
@@ -178,7 +178,7 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   report). Overlay: a circular **END** (top-left, below the header); hardware Back also ends.
   Auto-returns to BROWSE on arrival.
 
-**Trip auto-finish** (`NavigationHomeScreen.kt`). Three paths end a trip, each guarded by a
+**Trip auto-finish** (`NavigateHost.kt`). Three paths end a trip, each guarded by a
 one-shot `arrivalLatched` (reset on new trip start) so continued movement past the destination
 can't re-trigger them:
 1. **SDK arrival callback** — `Navigator.ArrivalListener` → `NavSessionState.ARRIVED` (primary).

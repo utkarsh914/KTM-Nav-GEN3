@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
@@ -17,7 +18,13 @@ import com.navigator.app.ui.theme.KtmTheme
 
 /** A labelled number (Distance 6.3 km). The label and the number are on separate lines; the unit is small. */
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier, unit: String? = null) {
+fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    unit: String? = null,
+    valueStyle: TextStyle = MaterialTheme.typography.headlineSmall,
+) {
     val c = KtmTheme.colors
     Column(
         modifier.background(c.surf2, KtmShapes.Control).padding(KtmSpacing.md),
@@ -25,7 +32,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, unit: 
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.fg2, maxLines = 1)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
-            Text(value, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
+            Text(value, style = valueStyle, color = c.fg, maxLines = 1)
             if (unit != null) Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.padding(bottom = 3.dp))
         }
     }

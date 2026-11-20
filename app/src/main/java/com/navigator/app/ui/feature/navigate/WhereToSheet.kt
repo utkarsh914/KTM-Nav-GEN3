@@ -76,6 +76,8 @@ class WhereToActions(
     val onResumeTrip: () -> Unit,
     val onCategory: (PlaceCategory) -> Unit,
     val onRemoveRecent: (SavedPlace) -> Unit,
+    /** Add a stop to the minimised trip (SE4). */
+    val onAddStop: (() -> Unit)? = null,
 )
 
 /**
@@ -101,6 +103,7 @@ fun WhereToSheetContent(
                 ),
                 onOpen = actions.onResumeTrip,
                 onResume = actions.onResumeTrip,
+                onAddStop = actions.onAddStop,
             )
             Spacer(Modifier.height(KtmSpacing.md))
         }

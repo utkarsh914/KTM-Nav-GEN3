@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

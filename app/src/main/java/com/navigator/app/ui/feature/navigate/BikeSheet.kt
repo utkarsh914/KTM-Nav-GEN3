@@ -63,6 +63,8 @@ fun BikeSheet(
     onSendTest: (message: String) -> Unit,
     onRePair: () -> Unit,
     onDismiss: () -> Unit,
+    /** A trip is guiding (also while riding on screen): the test turn would replace its guidance on the dash. */
+    tripRunning: Boolean = state.activity != null,
 ) {
     var confirmRePair by remember { mutableStateOf(false) }
     val status = state.bikeStatus
@@ -86,7 +88,6 @@ fun BikeSheet(
                 KtmButton(stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.fillMaxWidth())
             } else {
                 // The test turn would replace the live guidance on the dash.
-                val tripRunning = state.activity != null
                 if (tripRunning) {
                     Text(
                         stringResource(R.string.bike_sheet_test_on_trip), style = MaterialTheme.typography.bodyMedium,

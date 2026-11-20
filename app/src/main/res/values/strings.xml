@@ -300,4 +300,26 @@
     <string name="trip_stop_search_name">Search by name</string>
     <string name="trip_next_stop">Next stop</string>
     <string name="trip_remove_next_stop">Remove next stop</string>
+    <!-- Trip finished (TF1-TF5) -->
+    <string name="finished_title">Trip finished</string>
+    <string name="finished_reached">Destination reached</string>
+    <string name="finished_distance">Distance</string>
+    <string name="finished_time">Time</string>
+    <string name="finished_avg_moving">Average (moving)</string>
+    <string name="finished_avg_overall">Average (overall)</string>
+    <string name="finished_max">Top speed</string>
+    <string name="finished_saving">Saving ride…</string>
+    <string name="finished_save_place">Save place</string>
+    <string name="finished_save_short">Save</string>
+    <string name="finished_place_saved">Saved</string>
+    <string name="finished_ride_back">Ride back</string>
+    <string name="finished_share">Share GPX</string>
+    <string name="finished_replay">Replay</string>
+    <string name="finished_done">Done</string>
+    <string name="finished_recording_off">Recording is off, so this ride wasn\'t kept.</string>
+    <string name="finished_recording_on">Turn on</string>
+    <string name="finished_too_short">Shorter than your keep limits (%1$s), so this ride wasn\'t kept.</string>
+    <string name="finished_recording_next">Recording is on now. Your next trip will be kept.</string>
+    <string name="finished_change">Change</string>
+    <string name="finished_limits">%1$s / %2$s</string>
 </resources>
