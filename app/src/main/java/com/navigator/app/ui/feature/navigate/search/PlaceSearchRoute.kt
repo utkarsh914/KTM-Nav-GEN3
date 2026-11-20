@@ -49,6 +49,7 @@ fun PlaceSearchRoute(
     onResumeTrip: (() -> Unit)? = null,
     onQueryChanged: (String) -> Unit = {},
     onPickOnMap: (() -> Unit)? = null,
+    onUseCurrent: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val container = context.appContainer
@@ -127,6 +128,7 @@ fun PlaceSearchRoute(
             onRemoveRecent = vm::removeRecent,
             onResumeTrip = onResumeTrip,
             onPickOnMap = onPickOnMap,
+            onUseCurrent = onUseCurrent,
         ),
     )
 }

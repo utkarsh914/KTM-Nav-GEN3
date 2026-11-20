@@ -41,6 +41,18 @@ class AppIntentsTest {
         assertEquals(IntentOutcome.Drop, AppIntents.decide(open, firstRun))
     }
 
+    @Test fun aPlaceKeepsWhetherItIsForDirections() {
+        val intents = AppIntents()
+        intents.post(AppIntent.OpenPlace(place, directions = true))
+        assertTrue(intents.pending.value.placeDirections)
+        intents.post(AppIntent.OpenPlace(place))
+        assertTrue(!intents.pending.value.placeDirections)
+        intents.post(AppIntent.OpenPlace(place, directions = true))
+        intents.consumePlace()
+        assertNull(intents.pending.value.place)
+        assertTrue(!intents.pending.value.placeDirections)
+    }
+
     @Test fun parsesAShareAShortcutAndANotificationTap() {
         assertEquals(
             listOf<AppIntent>(AppIntent.SharedLink("https://maps.app.goo.gl/x")),

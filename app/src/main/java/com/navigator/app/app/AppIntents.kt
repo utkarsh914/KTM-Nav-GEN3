@@ -21,8 +21,8 @@ sealed interface AppIntent {
     /** The foreground notification was tapped while a trip is running. */
     data object OpenNav : AppIntent
 
-    /** A saved place the rider asked to see on the map. */
-    data class OpenPlace(val place: SavedPlace) : AppIntent
+    /** A saved place the rider asked to see on the map, or to get [directions] to. */
+    data class OpenPlace(val place: SavedPlace, val directions: Boolean = false) : AppIntent
 }
 
 /** What the shell knows when it decides how to treat an [AppIntent]. */
@@ -50,6 +50,8 @@ data class PendingIntents(
     val quickRoute: FavoriteSlot? = null,
     val openNav: Boolean = false,
     val place: SavedPlace? = null,
+    /** The pending [place] is for the route preview, not the place card. */
+    val placeDirections: Boolean = false,
 ) {
     val isEmpty: Boolean get() = sharedLink == null && quickRoute == null && !openNav && place == null
 }
@@ -70,7 +72,7 @@ class AppIntents {
                 is AppIntent.SharedLink -> it.copy(sharedLink = intent.text)
                 is AppIntent.QuickRoute -> it.copy(quickRoute = intent.slot)
                 AppIntent.OpenNav -> it.copy(openNav = true)
-                is AppIntent.OpenPlace -> it.copy(place = intent.place)
+                is AppIntent.OpenPlace -> it.copy(place = intent.place, placeDirections = intent.directions)
             }
         }
     }
@@ -78,7 +80,7 @@ class AppIntents {
     fun consumeSharedLink() = _pending.update { it.copy(sharedLink = null) }
     fun consumeQuickRoute() = _pending.update { it.copy(quickRoute = null) }
     fun consumeOpenNav() = _pending.update { it.copy(openNav = false) }
-    fun consumePlace() = _pending.update { it.copy(place = null) }
+    fun consumePlace() = _pending.update { it.copy(place = null, placeDirections = false) }
 
     companion object {
         /** Notification deep-link extra: bring up the active navigation screen. */

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,9 +40,11 @@ import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmCheckboxRow
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmMenuItem
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmRadioRow
 import com.navigator.app.ui.components.KtmSearchField
+import com.navigator.app.ui.components.KtmSelectionBar
 import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.LargeTitle
 import com.navigator.app.ui.components.SkeletonRow
@@ -181,21 +181,12 @@ private fun RidesBar(actions: RidesActions, hasRides: Boolean, onSort: () -> Uni
         Box {
             KtmIconButton(KtmIcons.More, stringResource(R.string.rides_more), { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = KtmTheme.colors.surf) {
-                if (hasRides) MenuRow(stringResource(R.string.rides_menu_select)) { menu = false; actions.onSelect(null) }
-                MenuRow(stringResource(R.string.rides_menu_import)) { menu = false; actions.onImport() }
-                MenuRow(stringResource(R.string.rides_menu_recording)) { menu = false; actions.onRecordingSettings() }
+                if (hasRides) KtmMenuItem(stringResource(R.string.rides_menu_select)) { menu = false; actions.onSelect(null) }
+                KtmMenuItem(stringResource(R.string.rides_menu_import)) { menu = false; actions.onImport() }
+                KtmMenuItem(stringResource(R.string.rides_menu_recording)) { menu = false; actions.onRecordingSettings() }
             }
         }
     }
-}
-
-@Composable
-private fun MenuRow(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg) },
-        onClick = onClick,
-        modifier = Modifier.heightIn(min = KtmLayout.row1),
-    )
 }
 
 @Composable
@@ -218,24 +209,15 @@ private fun SearchBar(query: String, actions: RidesActions) {
     }
 }
 
-/** The tinted bar that takes the top bar's place while selecting: count, Star, Delete. */
+/** The tinted bar that takes the top bar's place while selecting: count, Star, Merge, Delete. */
 @Composable
 private fun SelectionBar(ui: RidesUi, actions: RidesActions) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
-    Row(
-        Modifier.background(a.container)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .fillMaxWidth().height(KtmLayout.topBar).padding(start = KtmSpacing.xs, end = KtmSpacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
+    KtmSelectionBar(
+        pluralStringResource(R.plurals.rides_selected_count, ui.selected.size, ui.selected.size),
+        stringResource(R.string.rides_selection_close), actions.onStopSelecting,
     ) {
-        KtmIconButton(KtmIcons.Close, stringResource(R.string.rides_selection_close), actions.onStopSelecting, tint = a.onContainer)
-        Text(
-            pluralStringResource(R.plurals.rides_selected_count, ui.selected.size, ui.selected.size),
-            style = MaterialTheme.typography.titleLarge, color = a.onContainer,
-            modifier = Modifier.weight(1f).semantics { heading() },
-        )
         val has = ui.selected.isNotEmpty()
         KtmIconButton(
             if (ui.starWould) KtmIcons.Star else KtmIcons.StarFilled,

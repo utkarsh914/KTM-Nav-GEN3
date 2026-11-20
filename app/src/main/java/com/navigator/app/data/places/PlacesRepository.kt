@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
+import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.nav.destination.SavedPlace
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,5 +54,54 @@ class PlacesRepository(context: Context, private val store: PlacesStore = Places
     fun saveFavorite(place: SavedPlace, slot: FavoriteSlot) {
         store.saveFavorite(place, slot)
         refresh()
+    }
+
+    /**
+     * Save [place] in [slot] and return what it replaced (the previous Home or Work, or the saved place at the same
+     * spot), so a snackbar can offer Undo with [undoAssign].
+     */
+    fun assign(place: SavedPlace, slot: FavoriteSlot): FavoritePlace? {
+        val previous = occupant(place, slot)
+        store.saveFavorite(place, slot)
+        refresh()
+        return previous
+    }
+
+    /** Undo an [assign]: the slot (or the spot) goes back to [previous], or to nothing. */
+    fun undoAssign(place: SavedPlace, slot: FavoriteSlot, previous: FavoritePlace?) {
+        if (slot == FavoriteSlot.OTHER) store.removeFavorite(place.lat, place.lng) else store.removeFavoriteSlot(slot)
+        previous?.let { store.saveFavorite(it.place, it.slot) }
+        refresh()
+    }
+
+    /** Clear Home or Work; returns what was there. */
+    fun removeSlot(slot: FavoriteSlot): FavoritePlace? {
+        val had = _favorites.value.firstOrNull { it.slot == slot }
+        store.removeFavoriteSlot(slot)
+        refresh()
+        return had
+    }
+
+    /** Remove saved places by [keys] (see [key]); returns the ones that were removed. */
+    fun removeSaved(keys: Set<String>): List<FavoritePlace> {
+        val had = store.favorites().filter { it.slot == FavoriteSlot.OTHER && key(it.place) in keys }
+        store.removeFavorites(keys)
+        refresh()
+        return had
+    }
+
+    /** Put removed places back (Undo). They go to the end of the list. */
+    fun restore(items: List<FavoritePlace>) {
+        items.forEach { store.saveFavorite(it.place, it.slot) }
+        refresh()
+    }
+
+    private fun occupant(place: SavedPlace, slot: FavoriteSlot): FavoritePlace? = store.favorites().firstOrNull {
+        if (slot == FavoriteSlot.OTHER) it.slot == FavoriteSlot.OTHER && key(it.place) == key(place) else it.slot == slot
+    }
+
+    companion object {
+        /** What identifies a saved place (its rounded coordinates), for selections. */
+        fun key(place: SavedPlace): String = PlacesJson.coordKey(place.lat, place.lng)
     }
 }

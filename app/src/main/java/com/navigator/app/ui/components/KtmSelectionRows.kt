@@ -24,8 +24,6 @@ fun KtmCheckboxRow(
     supportingLines: Int = if (supporting == null) 0 else 1,
     enabled: Boolean = true,
 ) {
-    val c = KtmTheme.colors
-    val a = KtmTheme.accent
     val haptics = rememberHaptics()
     ListRow(
         title = title,
@@ -35,15 +33,21 @@ fun KtmCheckboxRow(
             value = checked, enabled = enabled, role = Role.Checkbox,
             onValueChange = { haptics.toggle(it); onCheckedChange(it) },
         ),
-        trailing = {
-            Checkbox(
-                checked = checked, onCheckedChange = null, enabled = enabled,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = a.fill, checkmarkColor = a.onFill, uncheckedColor = c.line2,
-                    disabledCheckedColor = c.surf3, disabledUncheckedColor = c.line,
-                ),
-            )
-        },
+        trailing = { KtmCheckIndicator(checked, enabled) },
+    )
+}
+
+/** The checkbox itself, for a row that toggles as a whole (the row carries the semantics). */
+@Composable
+fun KtmCheckIndicator(checked: Boolean, enabled: Boolean = true) {
+    val c = KtmTheme.colors
+    val a = KtmTheme.accent
+    Checkbox(
+        checked = checked, onCheckedChange = null, enabled = enabled,
+        colors = CheckboxDefaults.colors(
+            checkedColor = a.fill, checkmarkColor = a.onFill, uncheckedColor = c.line2,
+            disabledCheckedColor = c.surf3, disabledUncheckedColor = c.line,
+        ),
     )
 }
 

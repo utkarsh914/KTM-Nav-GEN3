@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import com.navigator.app.R
+import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.ui.theme.KtmIcons
 import kotlinx.serialization.Serializable
 
@@ -30,6 +31,7 @@ sealed interface Route {
     @Serializable data class RideReplay(val rideId: String) : Route
     @Serializable data class EditRide(val rideId: String) : Route
     @Serializable data class TrimRide(val rideId: String) : Route
+    @Serializable data class PickPlace(val slot: FavoriteSlot) : Route
     @Serializable data class MergeRides(val rideIds: List<String>) : Route
 }
 

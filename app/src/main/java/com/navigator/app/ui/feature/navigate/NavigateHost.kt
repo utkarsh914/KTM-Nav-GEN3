@@ -190,6 +190,7 @@ fun NavigateHost(
     sharedLink: String? = null,
     onSharedLinkConsumed: () -> Unit = {},
     pendingPlace: SavedPlace? = null,
+    pendingDirections: Boolean = false,
     onPendingPlaceConsumed: () -> Unit = {},
     quickRoute: String? = null,
     onQuickRouteConsumed: () -> Unit = {},
@@ -708,14 +709,6 @@ fun NavigateHost(
         }
     }
 
-    // A saved place tapped in Saved Places -> drop its pin and open the confirm
-    // card (no network lookup needed; it already has coords).
-    LaunchedEffect(pendingPlace) {
-        val p = pendingPlace ?: return@LaunchedEffect
-        onPendingPlaceConsumed()
-        choose(p)
-    }
-
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
         // Mid-guidance a shortcut must not tear the planning flow out from under the live trip: ask first (DL3).
@@ -728,6 +721,12 @@ fun NavigateHost(
         }
         backToBrowse()
         flow.update { it.quickRoute(place) }
+    }
+    // A saved place from the Places tab: its card (no network lookup, it has coordinates), or straight to the route preview.
+    LaunchedEffect(pendingPlace) {
+        val p = pendingPlace ?: return@LaunchedEffect
+        onPendingPlaceConsumed()
+        if (pendingDirections) rideTo(p) else choose(p)
     }
     LaunchedEffect(quickRoute) {
         val slot = quickRoute ?: return@LaunchedEffect

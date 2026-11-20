@@ -1,6 +1,7 @@
 package com.navigator.app.nav.destination
 
 import android.content.Context
+import androidx.annotation.Keep
 
 /** A place the rider has navigated to or saved. */
 data class SavedPlace(
@@ -10,7 +11,8 @@ data class SavedPlace(
     val address: String? = null,
 )
 
-/** Slot for a favorite; HOME/WORK are unique, OTHER is a plain saved place. */
+/** Slot for a favorite; HOME/WORK are unique, OTHER is a plain saved place. A route argument, so it is kept from obfuscation. */
+@Keep
 enum class FavoriteSlot { HOME, WORK, OTHER }
 
 data class FavoritePlace(
@@ -72,14 +74,14 @@ class PlacesStore(context: Context) {
 
     /**
      * Save [place] as a favorite in [slot]. HOME/WORK replace any existing entry
-     * in that slot; OTHER replaces any existing favorite at the same coordinates.
+     * in that slot; OTHER replaces a saved place at the same coordinates (never Home or Work).
      */
     fun saveFavorite(place: SavedPlace, slot: FavoriteSlot) = synchronized(LOCK) {
         val key = coordKey(place.lat, place.lng)
         val kept = favorites().filterNot { fav ->
             when (slot) {
                 FavoriteSlot.HOME, FavoriteSlot.WORK -> fav.slot == slot
-                FavoriteSlot.OTHER -> coordKey(fav.place.lat, fav.place.lng) == key
+                FavoriteSlot.OTHER -> fav.slot == FavoriteSlot.OTHER && coordKey(fav.place.lat, fav.place.lng) == key
             }
         }
         writeFavorites(kept + FavoritePlace(place, slot))

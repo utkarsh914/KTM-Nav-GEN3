@@ -63,6 +63,8 @@ class PlaceSearchActions(
     val onResumeTrip: (() -> Unit)?,
     /** "Pick on map" row of the empty list (adding a stop); null when the mode has none. */
     val onPickOnMap: (() -> Unit)? = null,
+    /** Pick mode: save where the rider is now. */
+    val onUseCurrent: (() -> Unit)? = null,
 )
 
 @StringRes
@@ -81,7 +83,11 @@ fun PlaceCategory.labelRes(): Int = when (this) {
 private fun SearchMode.hint(): Int = when (this) {
     SearchMode.Destination -> R.string.navigate_field_hint
     SearchMode.Stop, SearchMode.TripStop -> R.string.search_hint_stop
-    is SearchMode.Pick -> if (slot == FavoriteSlot.HOME) R.string.search_hint_home else R.string.search_hint_work
+    is SearchMode.Pick -> when (slot) {
+        FavoriteSlot.HOME -> R.string.search_hint_home
+        FavoriteSlot.WORK -> R.string.search_hint_work
+        FavoriteSlot.OTHER -> R.string.search_hint_add
+    }
 }
 
 /**
@@ -159,8 +165,10 @@ fun PlaceSearchScreen(
 private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: PlaceSearchActions) {
     val saved = SearchPolicy.browseFavorites(state.favorites, mode)
     val pickOnMap = actions.onPickOnMap
+    val useCurrent = actions.onUseCurrent
     if (saved.isEmpty() && state.recents.isEmpty()) {
         Column {
+            if (useCurrent != null) UseCurrentRow(useCurrent)
             if (pickOnMap != null) PickOnMapRow(pickOnMap)
             Text(
                 stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
@@ -170,6 +178,7 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
         return
     }
     LazyColumn {
+        if (useCurrent != null) item { UseCurrentRow(useCurrent) }
         if (pickOnMap != null) item { PickOnMapRow(pickOnMap) }
         if (saved.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.navigate_saved_header)) }
@@ -189,6 +198,14 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
             }
         }
     }
+}
+
+@Composable
+private fun UseCurrentRow(onClick: () -> Unit) {
+    ListRow(
+        title = stringResource(R.string.search_use_current), supporting = stringResource(R.string.search_use_current_caption),
+        leadingIcon = KtmIcons.Crosshair, onClick = onClick,
+    )
 }
 
 @Composable

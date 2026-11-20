@@ -208,7 +208,7 @@ private sealed interface BrowseOverlay {
 }
 
 @Composable
-private fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (SavedPlace) -> Unit) {
+internal fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (SavedPlace) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember(map) { PickOnMapController(scope, map, AndroidReverseGeocoder(context)) }

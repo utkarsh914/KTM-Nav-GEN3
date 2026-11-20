@@ -66,7 +66,8 @@ import com.navigator.app.ui.feature.rides.merge.MergeScreen
 import com.navigator.app.ui.feature.replay.ReplayScreen
 import com.navigator.app.ui.feature.replay.edit.EditRideScreen
 import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
-import com.navigator.app.ui.screens.SavedPlacesScreen
+import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
 import com.navigator.app.ui.screens.TurnCalibrationScreen
@@ -145,7 +146,7 @@ fun KtmApp(onQuit: () -> Unit) {
         taken.retainAll(
             listOfNotNull(
                 pending.sharedLink?.let { AppIntent.SharedLink(it) }, pending.quickRoute?.let { AppIntent.QuickRoute(it) },
-                pending.place?.let { AppIntent.OpenPlace(it) }, AppIntent.OpenNav.takeIf { pending.openNav },
+                pending.place?.let { AppIntent.OpenPlace(it, pending.placeDirections) }, AppIntent.OpenNav.takeIf { pending.openNav },
             ).toSet(),
         )
         fun handle(intent: AppIntent, consume: () -> Unit) {
@@ -161,7 +162,7 @@ fun KtmApp(onQuit: () -> Unit) {
         }
         pending.sharedLink?.let { handle(AppIntent.SharedLink(it), intents::consumeSharedLink) }
         pending.quickRoute?.let { handle(AppIntent.QuickRoute(it), intents::consumeQuickRoute) }
-        pending.place?.let { handle(AppIntent.OpenPlace(it), intents::consumePlace) }
+        pending.place?.let { handle(AppIntent.OpenPlace(it, pending.placeDirections), intents::consumePlace) }
         // The Navigate screen reads the flag when it composes (it may only be composing now), then clears it.
         if (pending.openNav) handle(AppIntent.OpenNav, intents::consumeOpenNav)
     }
@@ -241,6 +242,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     sharedLink = pending.sharedLink,
                                     onSharedLinkConsumed = intents::consumeSharedLink,
                                     pendingPlace = pending.place,
+                                    pendingDirections = pending.placeDirections,
                                     onPendingPlaceConsumed = intents::consumePlace,
                                     quickRoute = pending.quickRoute?.name,
                                     onQuickRouteConsumed = intents::consumeQuickRoute,
@@ -280,7 +282,12 @@ fun KtmApp(onQuit: () -> Unit) {
                             )
                         }
                         composable<Route.Places> {
-                            SavedPlacesScreen(onOpenOnMap = { place -> intents.post(AppIntent.OpenPlace(place)) })
+                            PlacesScreen(
+                                inApp = inAppMaps,
+                                onRideSlot = { slot -> intents.post(AppIntent.QuickRoute(slot)) },
+                                onShowPlace = { place, directions -> intents.post(AppIntent.OpenPlace(place, directions)) },
+                                onPick = { slot -> navController.push(Route.PickPlace(slot)) },
+                            )
                         }
                         composable<Route.Settings> {
                             SettingsScreen(
@@ -366,6 +373,13 @@ fun KtmApp(onQuit: () -> Unit) {
                                     }
                                     offerUndoDelete(ids)
                                 },
+                            )
+                        }
+                        composable<Route.PickPlace> { backStackEntry ->
+                            PlacePickScreen(
+                                slot = backStackEntry.toRoute<Route.PickPlace>().slot,
+                                retainedNav = retainedNav,
+                                onBack = { navController.popFrom(backStackEntry) },
                             )
                         }
                         composable<Route.TrimRide> { backStackEntry ->

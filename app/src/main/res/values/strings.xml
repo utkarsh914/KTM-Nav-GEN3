@@ -547,4 +547,45 @@
     <string name="trim_end_later">Move the end later</string>
     <string name="trim_gone_title">Ride not found</string>
     <string name="trim_gone_message">It may have been deleted, or it has no track to trim.</string>
+
+    <!-- Places tab (PC1-PC5) -->
+    <string name="places_title">Places</string>
+    <string name="places_more">More</string>
+    <string name="places_menu_select">Select</string>
+    <string name="places_home_unset">Add Home</string>
+    <string name="places_work_unset">Add Work</string>
+    <string name="places_home_hint">One-tap ride home, launcher shortcut</string>
+    <string name="places_work_hint">One-tap ride to work, launcher shortcut</string>
+    <string name="places_saved_header">Saved</string>
+    <string name="places_empty">Places you save show up here. Save one from a search or a place\'s details, or tap Add place.</string>
+    <string name="places_add">Add place</string>
+    <string name="places_row_more">More actions for %1$s</string>
+    <string name="places_selection_close">Stop selecting</string>
+    <string name="places_select_all">Select all</string>
+    <string name="places_select_none">Select none</string>
+    <string name="places_delete_selected">Delete selected places</string>
+    <plurals name="places_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="places_slot_removed">%1$s removed</string>
+    <plurals name="places_removed">
+        <item quantity="one">Place removed</item>
+        <item quantity="other">%1$d places removed</item>
+    </plurals>
+    <string name="places_slot_set">%1$s set</string>
+    <string name="places_saved_one">Place saved</string>
+    <string name="places_action_change">Change</string>
+    <string name="places_action_directions">Directions</string>
+    <string name="places_action_show">Show on map</string>
+    <string name="places_action_maps">Open in Google Maps</string>
+    <string name="places_action_set_home">Set as Home</string>
+    <string name="places_action_set_work">Set as Work</string>
+    <string name="places_action_remove">Remove</string>
+    <string name="places_maps_missing">Couldn\'t open Google Maps</string>
+    <string name="places_current_label">My location</string>
+    <string name="search_hint_add">Search for a place to save</string>
+    <string name="search_use_current">Use my current location</string>
+    <string name="search_use_current_caption">Saves where you are right now</string>
+    <string name="search_current_unavailable">Can\'t find your location yet. Check that location is on.</string>
 </resources>

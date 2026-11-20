@@ -1,6 +1,7 @@
 package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +62,8 @@ fun ListRow(
     onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
+    /** A row that removes something: its title and icon are the danger colour. */
+    destructive: Boolean = false,
 ) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
@@ -83,12 +86,12 @@ fun ListRow(
     ) {
         when {
             leading != null -> leading()
-            leadingIcon != null -> TonalIconBadge(leadingIcon)
+            leadingIcon != null -> TonalIconBadge(leadingIcon, tint = if (destructive) c.bad else KtmTheme.accent.text)
         }
         Column(Modifier.weight(1f)) {
             Text(
                 annotatedTitle ?: androidx.compose.ui.text.AnnotatedString(title),
-                style = MaterialTheme.typography.bodyLarge, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge, color = if (destructive) c.bad else c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             if (supporting != null) {
                 Text(
@@ -103,9 +106,18 @@ fun ListRow(
 
 /** The 40 dp tonal square that leads a row (an icon on the second container tone). */
 @Composable
-fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier) {
+fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: androidx.compose.ui.graphics.Color = KtmTheme.accent.text) {
     Box(
         modifier.size(40.dp).background(KtmTheme.colors.surf3, KtmShapes.Control),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp)) }
+}
+
+/** The 40 dp outlined circle that leads an empty slot (Home or Work not set yet): an outlined "+". */
+@Composable
+fun OutlinedIconBadge(icon: ImageVector, modifier: Modifier = Modifier) {
+    Box(
+        modifier.size(40.dp).border(1.dp, KtmTheme.colors.line2, KtmShapes.Pill),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = KtmTheme.accent.text, modifier = Modifier.size(24.dp)) }
 }
