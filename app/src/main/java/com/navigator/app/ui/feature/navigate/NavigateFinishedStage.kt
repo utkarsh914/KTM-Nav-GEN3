@@ -1,12 +1,10 @@
 package com.navigator.app.ui.feature.navigate
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import com.navigator.app.ui.feature.navigate.plan.LocalFillPanel
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlacesStore
@@ -21,7 +19,9 @@ import com.navigator.app.ui.feature.navigate.finished.TripFinishedActions
 import com.navigator.app.ui.feature.navigate.finished.TripFinishedContent
 import com.navigator.app.ui.feature.navigate.finished.TripFinishedModel
 import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
+import com.navigator.app.ui.feature.navigate.plan.LocalFillPanel
 import com.navigator.app.ui.feature.navigate.plan.PlanPanel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +40,8 @@ internal fun TripFinishedStage(
     recordingTurnedOn: Boolean,
     store: PlacesStore,
     rideStore: RideStore,
+    /** The host's scope: Save place and Share finish even if Done is tapped right after. */
+    scope: CoroutineScope,
     onFinishInsets: (left: Int, bottom: Int) -> Unit,
     onDone: () -> Unit,
     onRideBack: () -> Unit,
@@ -48,7 +50,6 @@ internal fun TripFinishedStage(
     onOpenRecordingSettings: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var placeSaved by remember(selected) { mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false) }
     val model = TripFinishedModel(
         destination = selected?.label,
@@ -63,7 +64,7 @@ internal fun TripFinishedStage(
         recordingNowOn = recordingTurnedOn,
     )
     val ride = (finishState.ui as? FinishUi.Recorded)?.ride
-    PlanPanel(onInsets = { left, bottom -> onFinishInsets(left, bottom) }) {
+    PlanPanel(onInsets = onFinishInsets) {
         TripFinishedContent(
             model = model,
             landscape = LocalFillPanel.current,

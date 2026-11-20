@@ -1,7 +1,5 @@
 package com.navigator.app.ui.feature.navigate
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.saveable.Saver
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -11,16 +9,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.navigator.app.R
-import androidx.compose.ui.res.stringResource
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.DistanceFormatter
@@ -33,15 +33,6 @@ import com.navigator.app.ui.theme.KtmIcons
 internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
     KtmButton(stringResource(R.string.navigate_resume), onClick, modifier, icon = KtmIcons.Navigation)
 }
-
-// ============================ Preview ==================================
-
-// ============================ Active navigation ========================
-
-
-// ============================ Shared UI ================================
-
-// ============================ Helpers ==================================
 
 /** Unwrap the hosting Activity from a (possibly wrapped) Compose context. */
 internal tailrec fun Context.findActivity(): Activity? = when (this) {

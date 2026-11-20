@@ -78,17 +78,12 @@ internal fun NavigatingStage(
     onOpenTripStopSearch: () -> Unit,
     onOpenConnect: () -> Unit,
 ) {
-    var showTripSheet by riding::showTripSheet
-    var showTripStops by riding::showTripStops
-    var showBike by riding::showBike
-    var showEndConfirm by riding::showEndConfirm
-    var mapButton by riding::mapButton
     RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
             val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
             // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
-            BackHandler(enabled = landscape && showTripSheet) { showTripSheet = false }
+            BackHandler(enabled = landscape && riding.showTripSheet) { riding.showTripSheet = false }
             startFailure?.let { failure ->
                 StartFailedSheet(
                     failure = failure,
@@ -124,26 +119,26 @@ internal fun NavigatingStage(
             val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
             // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
             val ridingActions = RidingActions(
-                onOpenSheet = { showTripSheet = true },
+                onOpenSheet = { riding.showTripSheet = true },
                 onMapButton = { onApplyMapButton(MapButtonEvent.Tap) },
                 onNorthUp = { map.resetNorth() },
-                onDismissSheet = { showTripSheet = false },
+                onDismissSheet = { riding.showTripSheet = false },
             )
             val dashText = BikeSheetMapper.status(bikeStatus)
-            val nextStopTarget = if (showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
+            val nextStopTarget = if (riding.showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
             val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
             val dashStatus = stringResource(dashText.title, dashText.arg ?: 0)
             val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
             val tripActions = TripSheetActions(
-                onAddStop = { showTripSheet = false; showTripStops = true },
-                onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
-                onMinimise = { showTripSheet = false; onMoveAway() },
+                onAddStop = { riding.showTripSheet = false; riding.showTripStops = true },
+                onOverview = { riding.showTripSheet = false; riding.mapButton = MapButtonState(overview = true); map.showRouteOverview() },
+                onMinimise = { riding.showTripSheet = false; onMoveAway() },
                 onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
                 onMessages = { on -> container.settings.update { mirrorEnabled = on } },
-                onDash = { showTripSheet = false; showBike = true },
-                onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
-                onEnd = { showTripSheet = false; showEndConfirm = true },
-                onDismiss = { showTripSheet = false },
+                onDash = { riding.showTripSheet = false; riding.showBike = true },
+                onRemoveNextStop = { riding.showTripSheet = false; trip.removeNextStop(nextStopTarget) },
+                onEnd = { riding.showTripSheet = false; riding.showEndConfirm = true },
+                onDismiss = { riding.showTripSheet = false },
             )
             if (startFailure == null) {
                 val maneuver = remember(navState) { ManeuverModel.from(navState) }
@@ -151,10 +146,10 @@ internal fun NavigatingStage(
                     maneuver = maneuver,
                     bar = bar,
                     chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
-                    recenter = mapButton.recenter,
+                    recenter = riding.mapButton.recenter,
                     bearing = mapBearing,
                     narrow = narrow,
-                    controls = if (showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
+                    controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
                     actions = ridingActions,
                     controlActions = tripActions,
                     onInsets = { onRidingInsets(it) },
@@ -162,11 +157,11 @@ internal fun NavigatingStage(
                     maneuver = maneuver,
                     bar = bar,
                     chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
-                    recenter = mapButton.recenter,
+                    recenter = riding.mapButton.recenter,
                     bearing = mapBearing,
                     actions = ridingActions,
                     onInsets = { top, bottom -> onRidingInsets(MapInsets(top = top, bottom = bottom)) },
-                    sheetOpen = showTripSheet,
+                    sheetOpen = riding.showTripSheet,
                     sheet = {
                         TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
                         Spacer(Modifier.height(KtmSpacing.xl))
@@ -174,14 +169,14 @@ internal fun NavigatingStage(
                     },
                 )
             }
-            if (showBike && startFailure == null) {
-                BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
+            if (riding.showBike && startFailure == null) {
+                BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { riding.showBike = false })
             }
-            if (showTripStops && startFailure == null) {
+            if (riding.showTripStops && startFailure == null) {
                 TripStopSheetHost(
                     trip = trip,
-                    onSearchByName = { showTripStops = false; onOpenTripStopSearch() },
-                    onDismiss = { showTripStops = false },
+                    onSearchByName = { riding.showTripStops = false; onOpenTripStopSearch() },
+                    onDismiss = { riding.showTripStops = false },
                 )
             }
         }
