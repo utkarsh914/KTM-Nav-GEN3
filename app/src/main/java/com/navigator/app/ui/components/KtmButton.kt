@@ -86,7 +86,7 @@ fun buttonPalette(style: ButtonStyle, enabled: Boolean, c: KtmColors, a: AccentS
         ButtonStyle.Outline -> ButtonPalette(Color.Transparent, c.fg, c.line2)
         ButtonStyle.Text -> ButtonPalette(Color.Transparent, a.text, null)
         ButtonStyle.Danger -> ButtonPalette(c.bad, c.onStatus, null)
-        ButtonStyle.DangerTonal -> ButtonPalette(c.badContainer, c.bad, null)
+        ButtonStyle.DangerTonal -> ButtonPalette(c.badContainer, c.badText, null)
     }
 }
 

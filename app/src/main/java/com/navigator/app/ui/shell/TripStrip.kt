@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.navigator.app.app.appContainer
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ui.components.ActivityStrip
@@ -14,6 +13,7 @@ import com.navigator.app.ui.components.ActivityStripState
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.detailText
 import com.navigator.app.ui.feature.navigate.titleText
+import com.navigator.app.ui.theme.KtmSpacing
 
 /**
  * MO6: a trip the rider minimised stays visible above the tab bar on every other tab; tapping it goes back to the
@@ -27,6 +27,6 @@ fun TripStrip(onNavigateTab: Boolean, onOpen: () -> Unit) {
     val card = ActivityCard.build(trip, nav, System.currentTimeMillis()) ?: return
     ActivityStrip(
         state = ActivityStripState.Trip(title = card.titleText(), detail = card.detailText()),
-        onOpen = onOpen, onResume = onOpen, modifier = Modifier.padding(8.dp),
+        onOpen = onOpen, onResume = onOpen, modifier = Modifier.padding(KtmSpacing.sm),
     )
 }

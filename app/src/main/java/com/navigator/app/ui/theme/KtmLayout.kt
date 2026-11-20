@@ -143,6 +143,34 @@ object KtmLayout {
     val activityStrip = 64.dp
     val sheetTitleRow = 48.dp
 
+    // Small icons and the gaps around them in pills, chips and rows.
+    val iconSmall = 18.dp
+    val iconInline = 20.dp
+    val iconMedium = 24.dp
+    val pillStartPadding = 14.dp
+
+    /** The map's top controls sit this far below the status bar. */
+    val mapControlTop = 10.dp
+    val logRowPadding = 2.dp
+
+    /** The open trip sheet never gets smaller than this, however tall the card above it is. */
+    val sheetMinHeight = 240.dp
+
+    /** How far the pin on the pick-on-map screen is lifted so its foot marks the centre. */
+    val pinLift = 8.dp
+
+    /** How far a pushed page slides in from the right. */
+    val pushOffset = 30.dp
+
+    // Diagnostics: glyph tiles and cells in the calibration and symbol-test tools.
+    val diagGlyphSmall = 32.dp
+    val diagGlyph = 40.dp
+    val diagThumb = 44.dp
+    val diagTile = 56.dp
+    val diagCell = 64.dp
+    val diagCellWidth = 80.dp
+    val diagRowMin = 72.dp
+
     /** Panel width for a window [widthDp] wide. */
     fun panelWidth(widthDp: Float) = if (widthDp < panelNarrowBelow.value) panelNarrow else panelWide
 }

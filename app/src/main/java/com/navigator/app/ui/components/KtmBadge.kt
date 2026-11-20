@@ -18,10 +18,10 @@ enum class BadgeTone { Ok, Warn, Bad, Info, Accent, Neutral }
 
 /** Container and content of a [BadgeTone]. Status colours are never the accent. */
 fun badgeColors(tone: BadgeTone, c: KtmColors, a: AccentScheme): Pair<Color, Color> = when (tone) {
-    BadgeTone.Ok -> c.okContainer to c.ok
+    BadgeTone.Ok -> c.okContainer to c.okText
     BadgeTone.Warn -> c.warnContainer to c.warn
-    BadgeTone.Bad -> c.badContainer to c.bad
-    BadgeTone.Info -> c.infoContainer to c.info
+    BadgeTone.Bad -> c.badContainer to c.badText
+    BadgeTone.Info -> c.infoContainer to c.infoText
     BadgeTone.Accent -> a.container to a.onContainer
     BadgeTone.Neutral -> c.surf3 to c.fg2
 }

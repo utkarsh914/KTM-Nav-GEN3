@@ -38,7 +38,7 @@ class RidesViewModelTest {
         val ctx: Context = RuntimeEnvironment.getApplication()
         File(ctx.filesDir, "rides").deleteRecursively()
         ctx.getSharedPreferences("ride_store", Context.MODE_PRIVATE).edit().clear().commit()
-        store = RideStore(ctx).also { it.setActiveForTest(null) }
+        store = RideStore(ctx).also { it.resetStaticsForTest() }
         vm = RidesViewModel(RidesRepository(store, io = dispatcher))
     }
 

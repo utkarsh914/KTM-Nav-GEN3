@@ -957,7 +957,7 @@ fun NavigateHost(
                     if (navState.sessionState.isActiveNav() && leftNavManually) {
                         ResumeNavPill(
                             onClick = ::resumeNav,
-                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
                         )
                     }
                     val sel = selected
@@ -998,7 +998,7 @@ fun NavigateHost(
                     // Top-right control: the compass, only when rotated (✕ is in the sheet).
                     if (available && navReady && abs(mapBearing) > 0.5f) {
                         Column(
-                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
                             horizontalAlignment = Alignment.End,
                         ) {
                             MapControlButton(
@@ -1014,7 +1014,7 @@ fun NavigateHost(
                     if (navState.sessionState.isActiveNav() && leftNavManually) {
                         ResumeNavPill(
                             onClick = ::resumeNav,
-                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
                         )
                     }
                     val dest = selected
@@ -1071,7 +1071,7 @@ fun NavigateHost(
                     // Top-right control: the compass, only when rotated (✕ is in the sheet).
                     if (available && navReady && abs(mapBearing) > 0.5f && !pickingStop) {
                         Column(
-                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
                             horizontalAlignment = Alignment.End,
                         ) {
                             MapControlButton(

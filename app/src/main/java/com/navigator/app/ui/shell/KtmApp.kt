@@ -70,6 +70,7 @@ import com.navigator.app.ui.feature.onboarding.OnboardingScreen
 import com.navigator.app.ui.feature.onboarding.ReadyScreen
 import com.navigator.app.ui.feature.pairing.PairingScreen
 import com.navigator.app.ui.feature.rides.RidesScreen
+import com.navigator.app.ui.theme.KtmLayout
 import kotlinx.coroutines.launch
 import com.navigator.app.ui.feature.rides.merge.MergeScreen
 import com.navigator.app.ui.feature.replay.ReplayScreen
@@ -215,7 +216,7 @@ fun KtmApp(onQuit: () -> Unit) {
         }
     }
 
-    KtmTheme(darkTheme = dark, accent = accent) {
+    KtmTheme(darkTheme = dark, accent = accent, reducedMotion = reducedMotion) {
         CompositionLocalProvider(
             LocalFeedback provides feedback, LocalShellChrome provides chrome,
             LocalOpenLogs provides { navController.push(Route.Logs) },
@@ -551,7 +552,7 @@ private const val TAB_OUT_MS = 90
 private const val TAB_IN_MS = 210
 
 /** MO11: a pushed page enters and leaves 30 dp sideways. */
-private val PUSH_OFFSET = 30.dp
+private val PUSH_OFFSET = KtmLayout.pushOffset
 private const val TAB_SCALE = 0.92f
 private const val BACK_SCALE = 0.9f
 

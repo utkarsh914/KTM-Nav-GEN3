@@ -282,6 +282,12 @@ class RideStore(context: Context) {
         runCatching { trackFile(id).delete() }
     }
 
+    /** Test hook: forget the process-wide state a previous test left behind (marked tracks, the change counter). */
+    internal fun resetStaticsForTest() {
+        ACTIVE_TRACKS.clear()
+        CHANGES.value = 0
+    }
+
     /** Test hook: mark a track as being recorded (or clear every mark with a null id). */
     internal fun setActiveForTest(id: String?, active: Boolean = true) {
         if (id == null) ACTIVE_TRACKS.clear() else if (active) ACTIVE_TRACKS.add(id) else ACTIVE_TRACKS.remove(id)

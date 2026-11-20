@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import com.navigator.app.R
 import com.navigator.app.ui.components.KtmSnackbarHost
+import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
 /** Portrait: a 64 dp bar. A phone on its side (short and wide): a rail, so the map keeps its height. */
@@ -114,7 +115,7 @@ fun MainShell(
                 content()
                 KtmSnackbarHost(
                     feedback.snackbarHost,
-                    Modifier.align(Alignment.BottomCenter).then(ownInsets).padding(bottom = 8.dp + feedback.snackbarLift),
+                    Modifier.align(Alignment.BottomCenter).then(ownInsets).padding(bottom = KtmSpacing.sm + feedback.snackbarLift),
                 )
             }
             if (!immersive) Box(ownInsets) { strip() }

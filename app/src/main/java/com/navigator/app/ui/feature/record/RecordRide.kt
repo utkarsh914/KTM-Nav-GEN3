@@ -73,11 +73,11 @@ fun RecordRidePill(modifier: Modifier = Modifier) {
     Row(
         modifier.shadow(KtmElevation.onMap, KtmShapes.Pill).height(KtmLayout.targetRest).clip(KtmShapes.Pill).background(c.surf)
             .clickable(role = Role.Button) { haptics.tap(); start() }
-            .padding(start = 14.dp, end = KtmSpacing.lg),
+            .padding(start = KtmLayout.pillStartPadding, end = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Icon(KtmIcons.Record, null, tint = c.bad, modifier = Modifier.size(20.dp))
+        Icon(KtmIcons.Record, null, tint = c.bad, modifier = Modifier.size(KtmLayout.iconInline))
         Text(stringResource(R.string.record_ride), style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1)
     }
 }

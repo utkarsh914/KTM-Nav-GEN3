@@ -41,6 +41,7 @@ import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -108,8 +109,8 @@ private fun SymbolRowCard(row: SymbolRow, actions: SymbolTestActions) {
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             row.turn?.let {
-                Box(Modifier.size(48.dp).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                    TurnIconRef(icon = it, size = 32.dp, color = c.fg)
+                Box(Modifier.size(KtmLayout.targetRest).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                    TurnIconRef(icon = it, size = KtmLayout.diagGlyphSmall, color = c.fg)
                 }
             }
             Column(Modifier.weight(1f)) {

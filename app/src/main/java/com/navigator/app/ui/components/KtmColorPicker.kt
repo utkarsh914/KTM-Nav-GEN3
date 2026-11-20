@@ -72,12 +72,14 @@ fun KtmColorPicker(
     val lessSaturated = stringResource(R.string.picker_less_saturated)
     val brighter = stringResource(R.string.picker_brighter)
     val darker = stringResource(R.string.picker_darker)
+    val panelState = stringResource(R.string.picker_panel_state, (current.sat * 100).roundToInt(), (current.value * 100).roundToInt())
     val hueState = stringResource(R.string.picker_hue_degrees, current.hue.roundToInt())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         Box(
             Modifier.fillMaxWidth().height(KtmLayout.colorPanel).clip(KtmShapes.Control)
                 .semantics {
                     contentDescription = panelDescription
+                    stateDescription = panelState
                     customActions = listOf(
                         CustomAccessibilityAction(moreSaturated) { change(current.copy(sat = (current.sat + PICKER_STEP).coerceIn(0f, 1f))); true },
                         CustomAccessibilityAction(lessSaturated) { change(current.copy(sat = (current.sat - PICKER_STEP).coerceIn(0f, 1f))); true },

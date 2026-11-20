@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import com.navigator.app.R
 import com.navigator.app.ble.ScannedBike
@@ -115,11 +117,13 @@ private fun Scanning(ui: PairingUi, actions: PairingActions) {
         }
 
         if (ui.others.isNotEmpty()) {
+            val othersState = stringResource(if (othersOpen) R.string.pair_others_expanded else R.string.pair_others_collapsed)
             ListRow(
                 title = pluralStringResource(R.plurals.pair_others, ui.others.size, ui.others.size),
                 supporting = stringResource(R.string.pair_others_hint), supportingLines = 2,
                 leadingIcon = if (othersOpen) KtmIcons.ChevronUp else KtmIcons.ChevronDown,
                 onClick = { othersOpen = !othersOpen },
+                modifier = Modifier.semantics { stateDescription = othersState },
             )
             if (othersOpen) ui.others.forEach { BikeRow(it, actions.onPick) }
         }

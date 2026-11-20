@@ -27,6 +27,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ride.formatElapsed
+import com.navigator.app.ui.theme.KtmSpacing
 import kotlinx.coroutines.delay
 
 /**
@@ -84,7 +85,7 @@ fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: 
                 paused = session.paused,
             ),
             onOpen = onOpenActivity,
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(KtmSpacing.sm),
             onTogglePause = { togglePause(context, session.paused) },
             onStop = { confirmStop = true },
         )

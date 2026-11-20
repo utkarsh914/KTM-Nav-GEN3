@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,8 +31,10 @@ class RideStoreTest {
         File(ctx.filesDir, "rides").deleteRecursively()
         ctx.getSharedPreferences("ride_store", Context.MODE_PRIVATE).edit().clear().commit()
         store = RideStore(ctx)
-        store.setActiveForTest(null)
+        store.resetStaticsForTest()
     }
+
+    @After fun tearDown() = store.resetStaticsForTest()
 
     private fun pts(n: Int, startMs: Long = 1_000_000L, lng0: Double = 77.0) =
         (0 until n).map { RidePoint(12.0, lng0 + it * 0.0003, startMs + 1_000L * it, 40f) }

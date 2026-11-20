@@ -35,6 +35,10 @@ data class KtmColors(
     val info: Color,
     val infoContainer: Color,
     val onStatus: Color,
+    // Status as small text on its own container (badges): darker than the fill colour in the light theme to reach 4.5:1.
+    val okText: Color,
+    val badText: Color,
+    val infoText: Color,
     // Snackbars (M3 inverse roles)
     val inv: Color,
     val onInv: Color,
@@ -54,6 +58,7 @@ val KtmDarkColors = KtmColors(
     bad = Color(0xFFFF5A4E), badContainer = Color(0xFF3B1513),
     info = Color(0xFF6AA8FF), infoContainer = Color(0xFF162B4D),
     onStatus = Color(0xFF0B0C0E),
+    okText = Color(0xFF3DD68C), badText = Color(0xFFFF5A4E), infoText = Color(0xFF6AA8FF),
     inv = Color(0xFFE9EAEE), onInv = Color(0xFF15171B),
     routeSelected = Color(0xFF4C8DF6), routeSelectedCase = Color(0xFF1A56C4), routeAlternate = Color(0xFF5E7591),
 )
@@ -62,12 +67,13 @@ val KtmLightColors = KtmColors(
     isDark = false,
     bg = Color(0xFFF4F4F6), surf = Color(0xFFFFFFFF), surf2 = Color(0xFFF0F0F3), surf3 = Color(0xFFE7E7EB),
     line = Color(0xFFE2E3E7), line2 = Color(0xFFC3C6CD),
-    fg = Color(0xFF15171B), fg2 = Color(0xFF4A4F57), fg3 = Color(0xFF6B7079),
+    fg = Color(0xFF15171B), fg2 = Color(0xFF4A4F57), fg3 = Color(0xFF666B74),
     ok = Color(0xFF1B8A4E), okContainer = Color(0xFFDDF3E6),
     warn = Color(0xFF9A5B00), warnContainer = Color(0xFFFFF0D2),
     bad = Color(0xFFD92D20), badContainer = Color(0xFFFDE3E0),
     info = Color(0xFF1A63D6), infoContainer = Color(0xFFDCE8FB),
     onStatus = Color(0xFFFFFFFF),
+    okText = Color(0xFF157A43), badText = Color(0xFFB42318), infoText = Color(0xFF1553BD),
     inv = Color(0xFF2B2E33), onInv = Color(0xFFF2F3F5),
     routeSelected = Color(0xFF1A73E8), routeSelectedCase = Color(0xFF0D4FB0), routeAlternate = Color(0xFF8FA4BF),
 )

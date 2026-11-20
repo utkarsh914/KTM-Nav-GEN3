@@ -52,6 +52,7 @@ import com.navigator.app.ui.components.KtmCard
 import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -97,21 +98,21 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
     val image = remember(row.path) { runCatching { BitmapFactory.decodeFile(row.path)?.asImageBitmap() }.getOrNull() }
     KtmCard(Modifier.fillMaxWidth().animateContentSize()) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp)
+            Modifier.fillMaxWidth().heightIn(min = KtmLayout.diagRowMin)
                 .clickable(role = Role.Button, onClick = { actions.onToggle(row.hash) })
                 .semantics { stateDescription = stateText }
                 .padding(KtmSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
-            Box(Modifier.size(56.dp).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                if (image != null) Image(image, contentDescription = stringResource(R.string.calib_captured), modifier = Modifier.size(44.dp))
+            Box(Modifier.size(KtmLayout.diagTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                if (image != null) Image(image, contentDescription = stringResource(R.string.calib_captured), modifier = Modifier.size(KtmLayout.diagThumb))
                 else Text("?", style = MaterialTheme.typography.titleMedium, color = c.fg3)
             }
             row.assigned?.let {
-                Icon(KtmIcons.ChevronRight, null, tint = c.fg3, modifier = Modifier.size(18.dp))
-                Box(Modifier.size(56.dp).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                    TurnIconRef(icon = it, size = 40.dp, color = a.text)
+                Icon(KtmIcons.ChevronRight, null, tint = c.fg3, modifier = Modifier.size(KtmLayout.iconSmall))
+                Box(Modifier.size(KtmLayout.diagTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                    TurnIconRef(icon = it, size = KtmLayout.diagGlyph, color = a.text)
                 }
             }
             Column(Modifier.weight(1f)) {
@@ -156,16 +157,16 @@ private fun CandidateTile(icon: TurnIcon, selected: Boolean, working: Boolean, o
     val name = SymbolNames.human(icon.name)
     val description = if (working) stringResource(R.string.calib_working_named, name) else name
     Column(
-        Modifier.width(80.dp)
+        Modifier.width(KtmLayout.diagCellWidth)
             .background(if (selected) a.container else c.surf2, KtmShapes.Control)
-            .border(if (working) 2.dp else 1.dp, if (working) c.ok else c.line2, KtmShapes.Control)
+            .border(if (working) KtmLayout.outline else KtmLayout.hairline, if (working) c.ok else c.line2, KtmShapes.Control)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics(mergeDescendants = true) { this.selected = selected; contentDescription = description }
             .padding(horizontal = KtmSpacing.xs, vertical = KtmSpacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
-            TurnIconRef(icon = icon, size = 56.dp, color = if (selected) a.onContainer else c.fg)
+        Box(Modifier.size(KtmLayout.diagCell), contentAlignment = Alignment.Center) {
+            TurnIconRef(icon = icon, size = KtmLayout.diagTile, color = if (selected) a.onContainer else c.fg)
         }
         Text(
             (if (working) "\u2605 " else "") + name, style = MaterialTheme.typography.labelSmall,

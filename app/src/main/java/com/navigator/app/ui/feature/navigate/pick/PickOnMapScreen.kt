@@ -105,4 +105,4 @@ fun PickOnMapScreen(
 }
 
 /** The pin rises this far while the map is moving. */
-private val PIN_LIFT = 8.dp
+private val PIN_LIFT = KtmLayout.pinLift

@@ -172,7 +172,7 @@ private fun SearchField(onClick: () -> Unit, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Icon(KtmIcons.Search, null, tint = c.fg2, modifier = Modifier.size(24.dp))
+        Icon(KtmIcons.Search, null, tint = c.fg2, modifier = Modifier.size(KtmLayout.iconMedium))
         Text(stringResource(R.string.navigate_field_hint), style = MaterialTheme.typography.bodyLarge, color = c.fg2, maxLines = 1)
     }
 }
@@ -198,7 +198,7 @@ private fun TileCell(tile: WhereToTile, onTile: (TileAction) -> Unit, modifier: 
     val enabled = action != TileAction.None
     Row(
         modifier.height(WhereToMetrics.tileHeight).clip(KtmShapes.Control)
-            .let { if (unset) it.border(1.dp, c.line2, KtmShapes.Control) else it.background(c.surf2) }
+            .let { if (unset) it.border(KtmLayout.hairline, c.line2, KtmShapes.Control) else it.background(c.surf2) }
             .alpha(if (enabled) 1f else 0.5f)
             .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onTile(action) }
             .padding(horizontal = KtmSpacing.md),

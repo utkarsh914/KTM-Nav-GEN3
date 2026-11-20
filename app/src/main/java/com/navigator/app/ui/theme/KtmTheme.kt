@@ -34,6 +34,8 @@ internal val LocalAccentScheme = staticCompositionLocalOf { KtmOrange.forTheme(d
 fun KtmTheme(
     darkTheme: Boolean,
     accent: AccentOption = accentFor(null),
+    /** The app's one observer of "Remove animations"; null (previews, tests) makes the theme watch the setting itself. */
+    reducedMotion: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) KtmDarkColors else KtmLightColors
@@ -44,7 +46,7 @@ fun KtmTheme(
     val typography = remember(fontMode) { ktmTypography() }
     val typeExtras = remember(fontMode) { ktmTypeExtras() }
     val context = LocalContext.current
-    val reduced = rememberReducedMotion()
+    val reduced = reducedMotion ?: rememberReducedMotion()
     val motion = remember(reduced) { KtmMotionSpecs(reduced = reduced) }
 
     val view = LocalView.current

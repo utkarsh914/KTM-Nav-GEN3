@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.edgePadding
@@ -139,7 +140,7 @@ private const val CARD_DELAY_MS = 100
 private const val BAR_DELAY_MS = 150
 
 /** The open trip sheet never gets smaller than this, however tall the card above it is. */
-private val SHEET_MIN = 240.dp
+private val SHEET_MIN = KtmLayout.sheetMinHeight
 
 /** The maneuver card behind the open sheet: about what a 60 % scrim leaves of it. */
 private const val CARD_DIMMED = 0.4f

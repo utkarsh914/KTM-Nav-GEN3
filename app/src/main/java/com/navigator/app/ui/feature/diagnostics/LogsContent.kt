@@ -124,9 +124,9 @@ private fun LogRow(entry: LogEntry, modifier: Modifier = Modifier) {
     }
     val shape = KtmShapes.Badge
     Row(
-        modifier.fillMaxWidth().padding(vertical = 1.dp)
+        modifier.fillMaxWidth().padding(vertical = KtmLayout.hairline)
             .then(if (entry.level == LogLevel.Warn) Modifier.background(c.warnContainer, shape) else Modifier)
-            .padding(horizontal = KtmSpacing.xs, vertical = 2.dp),
+            .padding(horizontal = KtmSpacing.xs, vertical = KtmLayout.logRowPadding),
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         Text(entry.time, style = KtmTheme.type.mono.copy(fontWeight = FontWeight.Normal), color = c.fg3, maxLines = 1)
@@ -151,7 +151,7 @@ private fun FollowPill(following: Boolean, onToggle: () -> Unit, modifier: Modif
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Icon(if (following) KtmIcons.Pause else KtmIcons.Play, null, tint = if (following) a.onContainer else c.fg, modifier = Modifier.size(18.dp))
+        Icon(if (following) KtmIcons.Pause else KtmIcons.Play, null, tint = if (following) a.onContainer else c.fg, modifier = Modifier.size(KtmLayout.iconSmall))
         Text(label, style = MaterialTheme.typography.labelMedium, color = if (following) a.onContainer else c.fg)
     }
 }
