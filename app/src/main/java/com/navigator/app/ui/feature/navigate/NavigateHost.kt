@@ -12,7 +12,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
@@ -62,7 +60,6 @@ import com.navigator.app.trip.FinishedTrip
 import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.trip.StopAddProblem
 import com.navigator.app.trip.TripEvent
-import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
 import com.navigator.app.ui.feature.navigate.MapState
@@ -73,22 +70,10 @@ import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.plan.NewStop
-import com.navigator.app.ui.feature.navigate.plan.PickStopOverlay
-import com.navigator.app.ui.feature.navigate.plan.PlaceSaving
-import com.navigator.app.ui.feature.navigate.plan.PlaceSheet
-import com.navigator.app.ui.feature.navigate.plan.PlaceSheetActions
-import com.navigator.app.ui.feature.navigate.plan.PlaceSheetState
-import com.navigator.app.ui.feature.navigate.plan.PlanPanel
-import com.navigator.app.ui.feature.navigate.plan.ReplaceDecision
-import com.navigator.app.ui.feature.navigate.plan.ReplacePolicy
 import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
 import com.navigator.app.ui.feature.navigate.plan.RoutePreviewViewModel
-import com.navigator.app.ui.feature.navigate.plan.RouteSheet
-import com.navigator.app.ui.feature.navigate.plan.RouteSheetActions
 import com.navigator.app.ui.feature.navigate.plan.RouteSheetMapper
 import com.navigator.app.ui.feature.navigate.plan.RoutesApi
-import com.navigator.app.ui.feature.navigate.plan.StopCandidateSheet
-import com.navigator.app.ui.feature.navigate.plan.StopList
 import com.navigator.app.ui.feature.navigate.riding.EndTripDialog
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEffect
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
@@ -114,16 +99,11 @@ import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.rememberNightNow
 import com.navigator.app.ui.shell.resolveSurfaceDark
-import com.navigator.app.ui.theme.KtmIcons
-import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmMotionSpecs
-import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.RidingTheme
 import com.navigator.app.ui.theme.accentFor
-import com.navigator.app.ui.theme.edgePadding
 import kotlin.coroutines.resume
-import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -620,31 +600,7 @@ fun NavigateHost(
     }
 
     // Say why the trip refused or undid something (until these become snackbars / riding chips).
-    LaunchedEffect(trip) {
-        trip.events.collect { e ->
-            // While riding the message is a chip over the map; at rest it is a snackbar.
-            fun say(res: Int, tone: ChipTone, vararg args: Any) {
-                val text = resources.getString(res, *args)
-                if (stage == NavStage.NAVIGATING) feedback.chip(text, tone) else feedback.snackbar(text)
-            }
-            when (e) {
-                is TripEvent.StopAdded -> say(R.string.riding_chip_stop_added, ChipTone.Ok, e.label)
-                is TripEvent.StopAddRejected -> when (e.problem) {
-                    StopAddProblem.NOT_NAVIGATING -> say(R.string.riding_chip_not_navigating, ChipTone.Warn)
-                    StopAddProblem.ENDED -> say(R.string.riding_chip_ended, ChipTone.Warn)
-                    StopAddProblem.OFFLINE -> say(R.string.riding_chip_needs_connection, ChipTone.Warn)
-                    StopAddProblem.SETTLING -> say(R.string.riding_chip_settling, ChipTone.Warn)
-                    StopAddProblem.UNKNOWN_NEXT -> say(R.string.riding_chip_unknown_next, ChipTone.Warn)
-                    StopAddProblem.MAX_STOPS -> say(R.string.riding_chip_max_stops, ChipTone.Warn)
-                }
-                TripEvent.StopAddFailed -> say(R.string.riding_chip_stop_failed, ChipTone.Warn)
-                is TripEvent.StopRemoved -> say(R.string.riding_chip_stop_removed, ChipTone.Ok, e.label.ifBlank { resources.getString(R.string.trip_stop_unnamed) })
-                TripEvent.StopRemoveFailed -> say(R.string.riding_chip_stop_remove_failed, ChipTone.Warn)
-                is TripEvent.Finished -> {}
-                TripEvent.RouteSubstituted -> say(R.string.route_using_google, ChipTone.Warn)
-            }
-        }
-    }
+    TripEventFeedback(trip, stage, feedback)
 
     // Keep the stage in sync with the real session:
     //  - resume the NAVIGATING view whenever a trip is live but we're not showing
@@ -693,26 +649,7 @@ fun NavigateHost(
     val linkController = remember { context.appContainer.sharedLink }
     val linkState by linkController.state.collectAsState()
     val linkFailure by linkController.failure.collectAsState()
-    LaunchedEffect(sharedLink) {
-        val link = sharedLink ?: return@LaunchedEffect
-        onSharedLinkConsumed()
-        linkController.open(link)
-    }
-    val linkDuringTrip = resources.getString(R.string.navigate_link_during_trip)
-    // A link that fails while a trip runs would otherwise leave a stale card for the next visit to Browse.
-    LaunchedEffect(linkState, stage) {
-        if (linkState == SharedLinkState.Failed && stage == NavStage.NAVIGATING) {
-            linkController.dismiss()
-            feedback.snackbar(linkDuringTrip)
-        }
-    }
-    BackHandler(enabled = linkState != SharedLinkState.Idle && stage != NavStage.NAVIGATING) { linkController.dismiss() }
-    LaunchedEffect(linkController) {
-        linkController.resolved.collect {
-            // Never swap a running trip's guidance for a place card; the rider can end it first.
-            if (stage == NavStage.NAVIGATING) feedback.snackbar(linkDuringTrip) else choose(it)
-        }
-    }
+    SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, feedback, onResolved = ::choose)
 
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
@@ -838,6 +775,19 @@ fun NavigateHost(
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
+    val planStage = PlanStage(
+        selected = selected, savedPlaces = savedPlaces, origin = origin, routePreview = routePreview,
+        pickingStop = pickingStop, stopCandidate = stopCandidate,
+        showResumePill = navState.sessionState.isActiveNav() && leftNavManually,
+        mapReadyForControls = available && navReady, mapBearing = mapBearing, map = map, feedback = feedback,
+        places = places, scope = scope, tripRunning = ::tripRunning,
+        onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
+        onInsets = { left, bottom -> planInsets = left to bottom },
+        onAskReplace = { replaceRequest = it }, onGoToPreview = { stage = NavStage.PREVIEW }, onAddAsStop = ::addAsStop,
+        onPickingStop = { pickingStop = it }, onStopCandidate = { stopCandidate = it },
+        onSelectRoute = routeVm::select, onAddStop = ::openSearchForStop, onStart = ::startTo,
+    )
+
     val motionSpecs = KtmTheme.motion
     Box(modifier = Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         // --- Map surface -----------------------------------------------------
@@ -920,144 +870,21 @@ fun NavigateHost(
                     } else null,
                 )
 
-                NavStage.CONFIRM -> {
-                    // A trip is still running while the rider plans another: one tap back to it.
-                    if (navState.sessionState.isActiveNav() && leftNavManually) {
-                        ResumeNavPill(
-                            onClick = ::resumeNav,
-                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
-                        )
-                    }
-                    val sel = selected
-                    if (sel != null) {
-                        val removedMessage = resources.getString(R.string.place_removed)
-                        val undoLabel = resources.getString(R.string.common_undo)
-                        val saved = PlaceSaving.isSaved(savedPlaces, sel)
-                        PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                            PlaceSheet(
-                                state = PlaceSheetState(
-                                    title = sel.label, address = sel.address,
-                                    distance = distanceLabel(origin, sel.lat, sel.lng),
-                                    saved = saved, tripRunning = tripRunning(),
-                                ),
-                                actions = PlaceSheetActions(
-                                    onBack = ::performBack,
-                                    onClose = ::backToBrowse,
-                                    onToggleSave = {
-                                        scope.launch(Dispatchers.IO) {
-                                            if (saved) places.removeFavorite(sel) else places.saveFavorite(sel, FavoriteSlot.OTHER)
-                                        }
-                                        if (saved) {
-                                            feedback.snackbar(removedMessage, undoLabel) {
-                                                scope.launch(Dispatchers.IO) { places.saveFavorite(sel, FavoriteSlot.OTHER) }
-                                            }
-                                        }
-                                    },
-                                    onDirections = {
-                                        if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
-                                            replaceRequest = ReplaceRequest(sel, cancelFirst = true) { stage = NavStage.PREVIEW }
-                                        } else stage = NavStage.PREVIEW
-                                    },
-                                    onAddAsStop = { addAsStop(sel) },
-                                ),
-                            )
-                        }
-                    }
-                    // Top-right control: the compass, only when rotated (✕ is in the sheet).
-                    if (available && navReady && abs(mapBearing) > 0.5f) {
-                        Column(
-                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
-                            horizontalAlignment = Alignment.End,
-                        ) {
-                            MapControlButton(
-                                KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
-                                rotationDegrees = -mapBearing, tinted = false,
-                            )
-                        }
-                    }
-                }
+                NavStage.CONFIRM -> ConfirmStage(planStage)
 
-                NavStage.PREVIEW -> {
-                    // A trip is still running while the rider plans another: one tap back to it.
-                    if (navState.sessionState.isActiveNav() && leftNavManually) {
-                        ResumeNavPill(
-                            onClick = ::resumeNav,
-                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
-                        )
-                    }
-                    val dest = selected
-                    if (dest != null) {
-                        val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
-                        val undoLabel = resources.getString(R.string.common_undo)
-                        when {
-                            pickingStop -> PickStopOverlay(
-                                map = map, number = StopList.nextNumber(stops), destination = dest.label,
-                                canAdd = StopList.canAdd(stops),
-                                onBack = { pickingStop = false },
-                                onUse = { pickingStop = false; stops = StopList.add(stops, it) },
-                            )
-                            stopCandidate != null -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                                val candidate = stopCandidate
-                                if (candidate != null) {
-                                    StopCandidateSheet(
-                                        name = candidate.label, number = StopList.nextNumber(stops), destination = dest.label,
-                                        canAdd = StopList.canAdd(stops),
-                                        onAdd = { stops = StopList.add(stops, candidate); stopCandidate = null },
-                                        onCancel = { stopCandidate = null },
-                                    )
-                                }
-                            }
-                            else -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                                RouteSheet(
-                                    state = RouteSheetMapper.state(dest, stops, routePreview, System.currentTimeMillis()),
-                                    actions = RouteSheetActions(
-                                        onBack = ::performBack,
-                                        onClose = ::backToBrowse,
-                                        onSelect = routeVm::select,
-                                        onAddStop = ::openSearchForStop,
-                                        onRemoveStop = { index ->
-                                            stops.getOrNull(index)?.let { removed ->
-                                                stops = StopList.removeAt(stops, index)
-                                                feedback.snackbar(stopRemoved(removed.label), undoLabel) {
-                                                    // Only while still planning: after Start or ✕ the stop belongs to a plan that is gone.
-                                                    if (stage == NavStage.PREVIEW && selected == dest) stops = StopList.restore(stops, index, removed)
-                                                }
-                                            }
-                                        },
-                                        onMoveStop = { index, delta -> stops = StopList.move(stops, index, delta) },
-                                        onStart = {
-                                            // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
-                                            if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
-                                                replaceRequest = ReplaceRequest(dest, cancelFirst = false) { startTo(dest) }
-                                            } else startTo(dest)
-                                        },
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                    // Top-right control: the compass, only when rotated (✕ is in the sheet).
-                    if (available && navReady && abs(mapBearing) > 0.5f && !pickingStop) {
-                        Column(
-                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
-                            horizontalAlignment = Alignment.End,
-                        ) {
-                            MapControlButton(
-                                KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
-                                rotationDegrees = -mapBearing, tinted = false,
-                            )
-                        }
-                    }
-                }
+                NavStage.PREVIEW -> PreviewStage(planStage, flow)
 
                 NavStage.NAVIGATING -> NavigatingStage(
                     riding = riding, ridingDark = ridingDark, settingsSnap = settingsSnap, startFailure = startFailure,
                     tripState = tripState, navState = navState, selected = selected, navSpeedKmh = navSpeedKmh,
                     initialRemainingM = initialRemainingM, mapBearing = mapBearing, isOnline = isOnline,
-                    rerouteOfflinePaused = rerouteOfflinePaused, bikeStatus = bikeStatus, trip = trip, container = container,
-                    map = map, feedback = feedback, onRidingInsets = { ridingInsets = it }, onApplyMapButton = ::applyMapButton,
-                    onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = { stage = NavStage.PREVIEW },
-                    onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = ::openTripStopSearch, onOpenConnect = onOpenConnect,
+                    rerouteOfflinePaused = rerouteOfflinePaused, bikeStatus = bikeStatus, trip = trip,
+                    settings = container.settings, map = map, feedback = feedback,
+                    actions = NavigatingStageActions(
+                        onRidingInsets = { ridingInsets = it }, onApplyMapButton = ::applyMapButton,
+                        onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = { stage = NavStage.PREVIEW },
+                        onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = ::openTripStopSearch, onOpenConnect = onOpenConnect,
+                    ),
                 )
 
                 NavStage.TRIP_FINISHED -> TripFinishedStage(

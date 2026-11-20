@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
-import com.navigator.app.app.AppContainer
+import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.destination.SavedPlace
@@ -46,6 +46,18 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.RidingTheme
 import com.navigator.app.ui.theme.accentFor
 
+/** What the riding stage hands back to [NavigateHost]: map insets and button, and the ways out of the stage. */
+internal class NavigatingStageActions(
+    val onRidingInsets: (MapInsets) -> Unit,
+    val onApplyMapButton: (MapButtonEvent) -> Unit,
+    val onRetryStart: () -> Unit,
+    val onBackToBrowse: () -> Unit,
+    val onBackToPreview: () -> Unit,
+    val onMoveAway: () -> Unit,
+    val onOpenTripStopSearch: () -> Unit,
+    val onOpenConnect: () -> Unit,
+)
+
 /**
  * The riding stage of [NavigateHost]: the riding screen (portrait) or panel (landscape), the start-failed card, and
  * the sheets opened from the trip bar (bike, add a stop). What only this stage owns is in [RidingOverlayState].
@@ -66,17 +78,10 @@ internal fun NavigatingStage(
     rerouteOfflinePaused: Boolean,
     bikeStatus: BikeStatus,
     trip: TripController,
-    container: AppContainer,
+    settings: SettingsRepository,
     map: MapController,
     feedback: Feedback,
-    onRidingInsets: (MapInsets) -> Unit,
-    onApplyMapButton: (MapButtonEvent) -> Unit,
-    onRetryStart: () -> Unit,
-    onBackToBrowse: () -> Unit,
-    onBackToPreview: () -> Unit,
-    onMoveAway: () -> Unit,
-    onOpenTripStopSearch: () -> Unit,
-    onOpenConnect: () -> Unit,
+    actions: NavigatingStageActions,
 ) {
     RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -91,24 +96,24 @@ internal fun NavigatingStage(
                     actions = StartFailedActions(
                         onRetry = {
                             GoogleNavSdkProvider.clearStartFailure()
-                            onRetryStart()
+                            actions.onRetryStart()
                         },
                         onBack = {
                             GoogleNavSdkProvider.clearStartFailure()
                             trip.cancel()
                             trip.resetStartDebounce()
-                            onBackToPreview()
+                            actions.onBackToPreview()
                         },
                         onClose = {
                             GoogleNavSdkProvider.clearStartFailure()
                             trip.cancel()
-                            onBackToBrowse()
+                            actions.onBackToBrowse()
                         },
                         onMirror = {
                             GoogleNavSdkProvider.clearStartFailure()
                             trip.cancel()
-                            container.settings.update { googleNavEnabled = false }
-                            onBackToBrowse()
+                            settings.update { googleNavEnabled = false }
+                            actions.onBackToBrowse()
                         },
                     ),
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -120,7 +125,7 @@ internal fun NavigatingStage(
             // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
             val ridingActions = RidingActions(
                 onOpenSheet = { riding.showTripSheet = true },
-                onMapButton = { onApplyMapButton(MapButtonEvent.Tap) },
+                onMapButton = { actions.onApplyMapButton(MapButtonEvent.Tap) },
                 onNorthUp = { map.resetNorth() },
                 onDismissSheet = { riding.showTripSheet = false },
             )
@@ -132,9 +137,9 @@ internal fun NavigatingStage(
             val tripActions = TripSheetActions(
                 onAddStop = { riding.showTripSheet = false; riding.showTripStops = true },
                 onOverview = { riding.showTripSheet = false; riding.mapButton = MapButtonState(overview = true); map.showRouteOverview() },
-                onMinimise = { riding.showTripSheet = false; onMoveAway() },
-                onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
-                onMessages = { on -> container.settings.update { mirrorEnabled = on } },
+                onMinimise = { riding.showTripSheet = false; actions.onMoveAway() },
+                onBeeps = { on -> settings.update { turnBeepEnabled = on } },
+                onMessages = { on -> settings.update { mirrorEnabled = on } },
                 onDash = { riding.showTripSheet = false; riding.showBike = true },
                 onRemoveNextStop = { riding.showTripSheet = false; trip.removeNextStop(nextStopTarget) },
                 onEnd = { riding.showTripSheet = false; riding.showEndConfirm = true },
@@ -152,7 +157,7 @@ internal fun NavigatingStage(
                     controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
                     actions = ridingActions,
                     controlActions = tripActions,
-                    onInsets = { onRidingInsets(it) },
+                    onInsets = { actions.onRidingInsets(it) },
                 ) else RidingScreen(
                     maneuver = maneuver,
                     bar = bar,
@@ -160,7 +165,7 @@ internal fun NavigatingStage(
                     recenter = riding.mapButton.recenter,
                     bearing = mapBearing,
                     actions = ridingActions,
-                    onInsets = { top, bottom -> onRidingInsets(MapInsets(top = top, bottom = bottom)) },
+                    onInsets = { top, bottom -> actions.onRidingInsets(MapInsets(top = top, bottom = bottom)) },
                     sheetOpen = riding.showTripSheet,
                     sheet = {
                         TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
@@ -170,12 +175,12 @@ internal fun NavigatingStage(
                 )
             }
             if (riding.showBike && startFailure == null) {
-                BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { riding.showBike = false })
+                BikeSheetHost(tripRunning = true, onOpenPairing = actions.onOpenConnect, onDismiss = { riding.showBike = false })
             }
             if (riding.showTripStops && startFailure == null) {
                 TripStopSheetHost(
                     trip = trip,
-                    onSearchByName = { riding.showTripStops = false; onOpenTripStopSearch() },
+                    onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch() },
                     onDismiss = { riding.showTripStops = false },
                 )
             }

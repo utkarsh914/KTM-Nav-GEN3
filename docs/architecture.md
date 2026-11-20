@@ -227,7 +227,9 @@ See `PlacesClient.androidAuth()`.
 
 `NavigateHost` owns the shared state and effects (the `NavFlow` stage machine, the map, the trip). The riding stage
 is `NavigatingStage` (`NavigateRidingStage.kt`, with what only it opens in `RidingOverlayState`), the summary is
-`TripFinishedStage` (`NavigateFinishedStage.kt`), and small helpers live in `NavigateSupport.kt`.
+`TripFinishedStage` (`NavigateFinishedStage.kt`), CONFIRM and PREVIEW are `ConfirmStage`/`PreviewStage` (`NavigatePlanStage.kt`, with
+`PlanStage` carrying what they show and do), the trip-event messages and shared-link effects are in `NavigateEffects.kt`, and
+small helpers live in `NavigateSupport.kt`.
 
 ## 4. Google Navigation SDK — findings & limitations
 
