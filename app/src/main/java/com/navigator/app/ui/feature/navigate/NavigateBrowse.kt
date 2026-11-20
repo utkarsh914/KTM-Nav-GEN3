@@ -126,13 +126,14 @@ fun NavigateBrowse(
         val density = LocalDensity.current
         val landscape = maxWidth > maxHeight
         if (landscape) {
-            val panelPx = with(density) { KtmLayout.sidePanel.roundToPx() }
+            val panelWidth = KtmLayout.panelWidth(maxWidth.value)
+            val panelPx = with(density) { panelWidth.roundToPx() }
             LaunchedEffect(panelPx, mapReady) {
                 if (mapReady) actions.onMapInsets(panelPx, 0)
             }
             Row(Modifier.fillMaxSize()) {
                 Column(
-                    Modifier.width(KtmLayout.sidePanel).fillMaxHeight().background(KtmTheme.colors.surf)
+                    Modifier.width(panelWidth).fillMaxHeight().background(KtmTheme.colors.surf)
                         .windowInsetsPadding(safe.only(WindowInsetsSides.Start + WindowInsetsSides.Top + WindowInsetsSides.Bottom)),
                 ) {
                     WhereToSheetContent(state, voiceAvailable, actions.sheet)

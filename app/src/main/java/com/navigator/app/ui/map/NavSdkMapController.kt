@@ -15,10 +15,6 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
-import com.navigator.app.ui.screens.LocationMarkerStyle
-import com.navigator.app.ui.screens.UserLocationMarker
-import com.navigator.app.ui.screens.drawRideTrack
-import com.navigator.app.ui.screens.frameRideTrack
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -68,6 +64,9 @@ class NavSdkMapController(
     override val cameraIdle: SharedFlow<MapPoint> = _cameraIdle.asSharedFlow()
     private val _gesturePans = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     override val gesturePans: SharedFlow<Unit> = _gesturePans.asSharedFlow()
+
+    /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
+    internal fun arm() { detached = false }
 
     /** The retained view delivered its map: take it over and start listening. */
     internal fun attach(map: GoogleMap, view: NavigationView) {

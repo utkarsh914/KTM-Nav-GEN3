@@ -1,5 +1,6 @@
 package com.navigator.app.ui.screens
 
+import com.navigator.app.ui.map.bandColor
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.content.Intent

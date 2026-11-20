@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -28,12 +30,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+
+/** True inside the landscape panel: a sheet fills its height so its main button stays at the foot (PL5). */
+val LocalFillPanel = compositionLocalOf { false }
 
 /**
  * Where the place and route sheets sit: a bottom sheet in portrait, a 352 dp side panel on the cutout side in
@@ -52,14 +58,9 @@ fun PlanPanel(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
         if (maxWidth > maxHeight) {
-            val panelPx = with(density) { KtmLayout.sidePanel.roundToPx() }
-            LaunchedEffect(panelPx) { report(panelPx, 0) }
-            Column(
-                Modifier.align(Alignment.CenterStart).width(KtmLayout.sidePanel).fillMaxHeight().background(c.surf)
-                    .windowInsetsPadding(safe.only(WindowInsetsSides.Start + WindowInsetsSides.Top + WindowInsetsSides.Bottom))
-                    .padding(horizontal = KtmSpacing.lg),
-                content = content,
-            )
+            LandscapePanel(onFootprint = { report(it, 0) }) {
+                CompositionLocalProvider(LocalFillPanel provides true) { content() }
+            }
         } else {
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()

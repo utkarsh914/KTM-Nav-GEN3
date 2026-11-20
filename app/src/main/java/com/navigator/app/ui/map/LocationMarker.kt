@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.map
 
 import com.navigator.app.location.hasLocationPermission
 import android.content.Context

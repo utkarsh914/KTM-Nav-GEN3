@@ -1,5 +1,8 @@
 package com.navigator.app.ui.screens
 
+import com.navigator.app.ui.map.LocationMarkerStyle
+import com.navigator.app.ui.map.rememberDeviceHeadingState
+import com.navigator.app.ui.map.rememberDeviceLatLng
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -88,7 +91,9 @@ import com.navigator.app.ui.feature.navigate.riding.MapButtonMachine
 import com.navigator.app.ui.feature.navigate.riding.MapButtonState
 import com.navigator.app.ui.feature.navigate.riding.RidingActions
 import com.navigator.app.ui.feature.navigate.riding.RidingChips
+import com.navigator.app.ui.feature.navigate.riding.RidingLandscape
 import com.navigator.app.ui.feature.navigate.riding.RidingScreen
+import com.navigator.app.ui.feature.navigate.riding.TripControlsUi
 import com.navigator.app.ui.feature.navigate.riding.StartFailedActions
 import com.navigator.app.ui.feature.navigate.riding.StartFailedSheet
 import com.navigator.app.ui.feature.navigate.riding.TripStopSheetHost
@@ -97,6 +102,10 @@ import com.navigator.app.ui.feature.navigate.riding.TripSheet
 import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
 import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
 import com.navigator.app.ui.map.FollowMode
+import com.navigator.app.ui.map.MapInsets
+import com.navigator.app.ui.components.LandscapePanelSpec
+import com.navigator.app.ui.theme.KtmLayout
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.navigator.app.ui.shell.ChipTone
 import com.navigator.app.ui.shell.rememberNightNow
 import com.navigator.app.ui.shell.resolveSurfaceDark
@@ -278,7 +287,7 @@ fun NavigationHomeScreen(
     val ridingDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = true, night = night)
     val mapDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = stage == NavStage.NAVIGATING, night = night)
     // What the riding surfaces cover of the map (top, bottom in px), and whether the map button reads Recenter.
-    var ridingInsets by remember { mutableStateOf(0 to 0) }
+    var ridingInsets by remember { mutableStateOf(MapInsets()) }
     var mapButton by remember { mutableStateOf(MapButtonState()) }
     var showTripSheet by remember { mutableStateOf(false) }
     var showTripStops by remember { mutableStateOf(false) }
@@ -1055,6 +1064,11 @@ fun NavigationHomeScreen(
             }
 
             NavStage.NAVIGATING -> RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
+              BoxWithConstraints(Modifier.fillMaxSize()) {
+                val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
+                val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
+                // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
+                BackHandler(enabled = landscape && showTripSheet) { showTripSheet = false }
                 startFailure?.let { failure ->
                     StartFailedSheet(
                         failure = failure,
@@ -1089,19 +1103,49 @@ fun NavigationHomeScreen(
                 val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
                 val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
                 // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
-                if (startFailure == null) RidingScreen(
-                    maneuver = ManeuverModel.from(navState),
-                    bar = bar,
-                    chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
-                    recenter = mapButton.recenter,
-                    bearing = mapBearing,
-                    actions = RidingActions(
-                        onOpenSheet = { showTripSheet = true },
-                        onMapButton = { applyMapButton(MapButtonEvent.Tap) },
-                        onNorthUp = { map.resetNorth() },
-                    ),
-                    onInsets = { top, bottom -> ridingInsets = top to bottom },
+                val ridingActions = RidingActions(
+                    onOpenSheet = { showTripSheet = true },
+                    onMapButton = { applyMapButton(MapButtonEvent.Tap) },
+                    onNorthUp = { map.resetNorth() },
                 )
+                val dashText = BikeSheetMapper.status(bikeStatus)
+                val nextStopTarget = if (showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
+                val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
+                val dashStatus = stringResource(dashText.title, dashText.arg ?: 0)
+                val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
+                val tripActions = TripSheetActions(
+                    onAddStop = { showTripSheet = false; showTripStops = true },
+                    onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
+                    onMinimise = { showTripSheet = false; moveAwayFromNav() },
+                    onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
+                    onMessages = { on -> container.settings.update { mirrorEnabled = on } },
+                    onDash = { showTripSheet = false; onOpenConnect() },
+                    onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
+                    onEnd = { showTripSheet = false; showEndConfirm = true },
+                    onDismiss = { showTripSheet = false },
+                )
+                if (startFailure == null) {
+                    if (landscape) RidingLandscape(
+                        maneuver = ManeuverModel.from(navState),
+                        bar = bar,
+                        chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
+                        recenter = mapButton.recenter,
+                        bearing = mapBearing,
+                        narrow = narrow,
+                        controls = if (showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
+                        actions = ridingActions,
+                        controlActions = tripActions,
+                        onInsets = { ridingInsets = it },
+                    ) else RidingScreen(
+                        maneuver = ManeuverModel.from(navState),
+                        bar = bar,
+                        chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
+                        recenter = mapButton.recenter,
+                        bearing = mapBearing,
+                        actions = ridingActions,
+                        onInsets = { top, bottom -> ridingInsets = MapInsets(top = top, bottom = bottom) },
+                    )
+                }
                 if (showTripStops && startFailure == null) {
                     TripStopSheetHost(
                         trip = trip,
@@ -1109,29 +1153,17 @@ fun NavigationHomeScreen(
                         onDismiss = { showTripStops = false },
                     )
                 }
-                if (showTripSheet && startFailure == null) {
-                    val dashText = BikeSheetMapper.status(bikeStatus)
-                    val nextStopTarget = remember { trip.stopsAhead()?.firstOrNull() }
-                    val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
+                if (showTripSheet && !landscape && startFailure == null) {
                     TripSheet(
                         beeps = settingsSnap.turnBeepEnabled,
                         messages = settingsSnap.mirrorEnabled,
-                        dashStatus = stringResource(dashText.title, dashText.arg ?: 0),
-                        canAddStop = tripState.dest != null && navState.sessionState.isActiveNav(),
+                        dashStatus = dashStatus,
+                        canAddStop = canAddStop,
                         nextStop = nextStop,
-                        actions = TripSheetActions(
-                            onAddStop = { showTripSheet = false; showTripStops = true },
-                            onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
-                            onMinimise = { showTripSheet = false; moveAwayFromNav() },
-                            onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
-                            onMessages = { on -> container.settings.update { mirrorEnabled = on } },
-                            onDash = { showTripSheet = false; onOpenConnect() },
-                            onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
-                            onEnd = { showTripSheet = false; showEndConfirm = true },
-                            onDismiss = { showTripSheet = false },
-                        ),
+                        actions = tripActions,
                     )
                 }
+              }
             }
 
             NavStage.TRIP_FINISHED -> {

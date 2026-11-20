@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
@@ -84,7 +85,8 @@ class RouteSheetActions(
 @Composable
 fun RouteSheet(state: RouteSheetState, actions: RouteSheetActions, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
-    Column(modifier.fillMaxWidth()) {
+    val fill = LocalFillPanel.current
+    Column(modifier.fillMaxWidth().then(if (fill) Modifier.fillMaxHeight() else Modifier)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             Column(Modifier.weight(1f).padding(horizontal = KtmSpacing.xs)) {
@@ -102,7 +104,7 @@ fun RouteSheet(state: RouteSheetState, actions: RouteSheetActions, modifier: Mod
             KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), actions.onClose)
         }
         Column(
-            Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+            Modifier.weight(1f, fill = fill).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
             StopsList(state, actions)

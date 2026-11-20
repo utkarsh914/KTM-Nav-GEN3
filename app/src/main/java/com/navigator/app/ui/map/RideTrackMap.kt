@@ -1,4 +1,4 @@
-package com.navigator.app.ui.screens
+package com.navigator.app.ui.map
 
 import android.graphics.Color
 import com.google.android.gms.maps.CameraUpdateFactory

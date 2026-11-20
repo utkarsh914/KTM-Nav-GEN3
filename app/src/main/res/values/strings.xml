@@ -245,6 +245,7 @@
     <string name="riding_time_hm">%1$d h %2$02d min</string>
     <string name="riding_time_h">%1$d h</string>
     <string name="riding_trip_menu">Trip menu</string>
+    <string name="riding_controls_back">Back to guidance</string>
     <string name="riding_overview">Overview</string>
     <string name="riding_recenter">Recenter</string>
     <string name="riding_north_up">North up</string>

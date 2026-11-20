@@ -18,6 +18,9 @@ import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
 
+/** What the riding surfaces cover of the map, in px. */
+data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0)
+
 /**
  * Hosts the app-scoped [RetainedNavigationView] and attaches [controller] to its map. Reusing the
  * retained view means returning to the map re-attaches an already-loaded map (no reload flash).
@@ -29,8 +32,8 @@ fun MapSurface(
     retained: RetainedNavigationView,
     controller: NavSdkMapController,
     navUiEnabled: Boolean,
-    /** What the riding screen covers while guiding (top, bottom, in px): the camera and Google's logo stay clear of it. */
-    guidanceInsets: Pair<Int, Int>,
+    /** What the riding screen covers while guiding: the camera and Google's logo stay clear of it. */
+    guidanceInsets: MapInsets,
     dark: Boolean,
 ) {
     val context = LocalContext.current
@@ -51,6 +54,7 @@ fun MapSurface(
     // (Re)deliver the map on every entry. getMapAsync returns the cached GoogleMap at once for an
     // already-loaded view, so this is cheap.
     LaunchedEffect(navView) {
+        controller.arm()
         navView.getMapAsync { gm ->
             controller.attach(gm, navView)
             // Only frame the camera the first time: re-entry keeps the rider's pan and zoom.
@@ -77,8 +81,8 @@ fun MapSurface(
     // Padding on its own: the surfaces change height (lanes appear, text wraps) without the engine being touched again.
     LaunchedEffect(navUiEnabled, ready, guidanceInsets) {
         if (!ready) return@LaunchedEffect
-        val (padTop, padBottom) = if (navUiEnabled) guidanceInsets else 0 to 0
-        controller.setPadding(0, padTop, 0, padBottom)
+        val pad = if (navUiEnabled) guidanceInsets else MapInsets()
+        controller.setPadding(pad.left, pad.top, pad.right, pad.bottom)
     }
     DisposableEffect(controller) { onDispose { controller.detach() } }
 }

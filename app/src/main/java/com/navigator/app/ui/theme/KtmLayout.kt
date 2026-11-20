@@ -74,6 +74,8 @@ object KtmLayout {
     /** Riding toggle tile (Beeps, Messages). */
     val ridingToggle = 56.dp
     val ridingGlyph = 60.dp
+    val ridingGlyphLand = 76.dp
+    val laneArrowLand = 30.dp
     val rowStop = 76.dp
     val laneArrow = 28.dp
     val laneCellWidth = 40.dp
@@ -84,9 +86,6 @@ object KtmLayout {
 
     /** Sheet anatomy: handle zone is 12 · 4 · 12, the title row 48. */
     val sheetHandleZone = 28.dp
-
-    /** The landscape side panel of the Navigate sheet (352 dp, the portrait sheet's content width). */
-    val sidePanel = 352.dp
 
     /** The pin of Pick on map; its tip is the picked point. */
     val mapPin = 48.dp

@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,45 +55,64 @@ fun TripSheet(
     actions: TripSheetActions,
 ) {
     KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trip_sheet_title)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            KtmButton(
-                stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f),
-                style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.PinPlus, enabled = canAddStop,
-            )
-            KtmButton(
-                stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
-                style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.Route,
-            )
-            KtmButton(
-                stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
-                style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.ChevronDown,
-            )
-        }
-        Spacer(Modifier.height(KtmSpacing.md))
-        if (nextStop != null) {
-            ListRow(
-                title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
-                trailing = {
-                    KtmIconButton(
-                        KtmIcons.Close, stringResource(R.string.trip_remove_next_stop), actions.onRemoveNextStop,
-                        size = IconButtonSize.Map,
-                    )
-                },
-            )
-        }
-        KtmSwitchRow(stringResource(R.string.trip_beeps), beeps, actions.onBeeps, leadingIcon = KtmIcons.Sound)
-        KtmSwitchRow(stringResource(R.string.trip_messages), messages, actions.onMessages, leadingIcon = KtmIcons.Message)
-        ListRow(
-            title = stringResource(R.string.trip_dash), supporting = dashStatus, leadingIcon = KtmIcons.Bike,
-            onClick = actions.onDash,
-            trailing = { Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg2) },
-        )
+        TripControlsBody(beeps, messages, dashStatus, canAddStop, nextStop, actions)
         Spacer(Modifier.height(KtmSpacing.xl))
+        EndTripButton(actions.onEnd)
+    }
+}
+
+/** End trip: danger-tonal, 64 dp, set apart from the rest; it asks first. */
+@Composable
+fun EndTripButton(onEnd: () -> Unit, modifier: Modifier = Modifier) {
+    KtmButton(
+        stringResource(R.string.trip_end), onEnd, modifier.fillMaxWidth(),
+        style = ButtonStyle.DangerTonal, size = ButtonSize.Riding, icon = KtmIcons.Stop,
+    )
+}
+
+/** What the trip sheet and the landscape controls panel both show above End trip (NV7, NL4): same actions, same order. */
+@Composable
+fun ColumnScope.TripControlsBody(
+    beeps: Boolean,
+    messages: Boolean,
+    dashStatus: String?,
+    canAddStop: Boolean,
+    nextStop: String?,
+    actions: TripSheetActions,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
-            stringResource(R.string.trip_end), actions.onEnd, Modifier.fillMaxWidth(),
-            style = ButtonStyle.DangerTonal, size = ButtonSize.Riding, icon = KtmIcons.Stop,
+            stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f),
+            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.PinPlus, enabled = canAddStop,
+        )
+        KtmButton(
+            stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
+            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.Route,
+        )
+        KtmButton(
+            stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
+            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.ChevronDown,
         )
     }
+    Spacer(Modifier.height(KtmSpacing.md))
+    if (nextStop != null) {
+        ListRow(
+            title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
+            trailing = {
+                KtmIconButton(
+                    KtmIcons.Close, stringResource(R.string.trip_remove_next_stop), actions.onRemoveNextStop,
+                    size = IconButtonSize.Map,
+                )
+            },
+        )
+    }
+    KtmSwitchRow(stringResource(R.string.trip_beeps), beeps, actions.onBeeps, leadingIcon = KtmIcons.Sound)
+    KtmSwitchRow(stringResource(R.string.trip_messages), messages, actions.onMessages, leadingIcon = KtmIcons.Message)
+    ListRow(
+        title = stringResource(R.string.trip_dash), supporting = dashStatus, leadingIcon = KtmIcons.Bike,
+        onClick = actions.onDash,
+        trailing = { Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg2) },
+    )
 }
 
 /** DL2: ending is a deliberate act. Keeping the trip is the default (Back and outside taps keep riding). */

@@ -26,3 +26,12 @@ object TripStopRules {
 
     fun canAdd(left: Int, online: Boolean): Boolean = left > 0 && online
 }
+
+/** NL4: the landscape trip controls flip back to guidance on their own once nothing has been touched for this long. */
+object ControlsIdle {
+    const val FLIP_BACK_MS = 10_000L
+    const val CHECK_EVERY_MS = 500L
+
+    /** [idleMs] is the time since the panel was last touched, counted in the same ticks the screen waits in. */
+    fun shouldFlipBack(idleMs: Long): Boolean = idleMs >= FLIP_BACK_MS
+}

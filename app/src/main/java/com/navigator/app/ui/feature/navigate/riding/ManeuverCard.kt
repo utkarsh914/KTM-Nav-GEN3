@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -34,7 +35,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.model.LaneInfo
@@ -46,10 +48,34 @@ import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
-private val GLYPH = KtmLayout.ridingGlyph
 private val LANE_ARROW = KtmLayout.laneArrow
 private val LANE_CELL_W = KtmLayout.laneCellWidth
 private val LANE_CELL_H = KtmLayout.laneCellHeight
+
+/** The sizes the card is drawn at: the portrait card, the landscape block (NL1) and its narrow form (NL7). */
+class ManeuverMetrics(
+    val glyph: Dp,
+    val distance: TextStyle,
+    val instruction: TextStyle,
+    val instructionLines: Int,
+    val laneArrow: Dp,
+    /** The card fills the height it is given, with its band at the foot (the landscape panel). */
+    val fill: Boolean,
+) {
+    companion object {
+        @Composable
+        fun portrait() = ManeuverMetrics(
+            KtmLayout.ridingGlyph, MaterialTheme.typography.displayMedium, MaterialTheme.typography.titleMedium, 2, LANE_ARROW, false,
+        )
+
+        @Composable
+        fun landscape(narrow: Boolean): ManeuverMetrics = if (narrow) ManeuverMetrics(
+            KtmLayout.ridingGlyphLand, KtmTheme.type.ridingDistanceNarrow, KtmTheme.type.ridingInstructionNarrow, 3, LANE_ARROW, true,
+        ) else ManeuverMetrics(
+            KtmLayout.ridingGlyphLand, MaterialTheme.typography.displayLarge, KtmTheme.type.ridingInstructionLand, 3, KtmLayout.laneArrowLand, true,
+        )
+    }
+}
 
 /**
  * NV1-NV5: the card at the top of the riding screen. Glyph, distance (46 sp), the instruction, then the road
@@ -60,18 +86,18 @@ private val LANE_CELL_H = KtmLayout.laneCellHeight
  * Numbers never animate: a new maneuver replaces the card's content with a short fade.
  */
 @Composable
-fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier) {
+fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: ManeuverMetrics = ManeuverMetrics.portrait()) {
     val r = KtmTheme.riding
     AnimatedContent(
         targetState = ui,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().then(if (metrics.fill) Modifier.fillMaxHeight() else Modifier),
         transitionSpec = { maneuverTransition() },
         contentKey = { if (it is ManeuverUi.Active) ManeuverKey(it.icon, it.road, it.instruction, it.rerouting) else it },
         label = "maneuver",
     ) { shown ->
         when (shown) {
-            ManeuverUi.Starting -> StartingCard()
-            is ManeuverUi.Active -> ActiveCard(shown, r.guidance, r.guidanceBand, r.onGuidance)
+            ManeuverUi.Starting -> StartingCard(metrics)
+            is ManeuverUi.Active -> ActiveCard(shown, metrics, r.guidance, r.guidanceBand, r.onGuidance)
         }
     }
 }
@@ -84,35 +110,35 @@ private fun maneuverTransition(): ContentTransform =
         (fadeOut(tween(100)) + slideOutVertically(tween(100)) { it / 12 })
 
 @Composable
-private fun StartingCard() {
+private fun StartingCard(m: ManeuverMetrics) {
     val r = KtmTheme.riding
     val text = stringResource(R.string.riding_starting)
     Row(
-        Modifier.fillMaxWidth().clip(KtmShapes.Card).background(r.surfaceHigh).padding(KtmSpacing.lg)
+        Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier).clip(KtmShapes.Card).background(r.surfaceHigh).padding(KtmSpacing.lg)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite; contentDescription = text },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        CircularProgressIndicator(Modifier.size(GLYPH * 0.6f), color = r.onSurfaceVariant, strokeWidth = KtmSpacing.xs)
+        CircularProgressIndicator(Modifier.size(m.glyph * 0.6f), color = r.onSurfaceVariant, strokeWidth = KtmSpacing.xs)
         Text(text, style = MaterialTheme.typography.titleMedium, color = r.onSurface)
     }
 }
 
 @Composable
-private fun ActiveCard(ui: ManeuverUi.Active, bg: androidx.compose.ui.graphics.Color, band: androidx.compose.ui.graphics.Color, on: androidx.compose.ui.graphics.Color) {
+private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: androidx.compose.ui.graphics.Color, band: androidx.compose.ui.graphics.Color, on: androidx.compose.ui.graphics.Color) {
     val dim = if (ui.rerouting) 0.6f else 1f
     val rerouting = stringResource(R.string.riding_rerouting)
-    Column(Modifier.fillMaxWidth().clip(KtmShapes.Card).background(bg)) {
+    Column(Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier).clip(KtmShapes.Card).background(bg)) {
         Row(
-            Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
+            Modifier.fillMaxWidth().then(if (m.fill) Modifier.weight(1f) else Modifier).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
-            Box(Modifier.size(GLYPH), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(m.glyph), contentAlignment = Alignment.Center) {
                 if (ui.rerouting) {
-                    CircularProgressIndicator(Modifier.size(GLYPH * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
+                    CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
                 } else {
-                    TurnIconRef(ui.icon, size = GLYPH, color = on)
+                    TurnIconRef(ui.icon, size = m.glyph, color = on)
                 }
             }
             Column(Modifier.weight(1f)) {
@@ -123,12 +149,12 @@ private fun ActiveCard(ui: ManeuverUi.Active, bg: androidx.compose.ui.graphics.C
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     } else if (ui.distance != null) {
-                        Text(ui.distance, style = MaterialTheme.typography.displayMedium, color = on, maxLines = 1, modifier = Modifier.alpha(dim))
+                        Text(ui.distance, style = m.distance, color = on, maxLines = 1, modifier = Modifier.alpha(dim))
                     }
                     if (ui.exit != null && !ui.rerouting) ExitBadge(ui.exit)
                 }
                 if (ui.instruction.isNotBlank()) {
-                    Text(ui.instruction, style = MaterialTheme.typography.titleMedium, color = on, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
+                    Text(ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
                 }
                 if (ui.road != null) {
                     Text(
@@ -149,7 +175,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, bg: androidx.compose.ui.graphics.C
                 TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on)
             }
             is ManeuverFooter.Lanes -> Box(Modifier.fillMaxWidth().background(band).padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs)) {
-                LaneBand(footer.lanes)
+                LaneBand(footer.lanes, arrow = m.laneArrow)
             }
         }
     }
@@ -172,7 +198,7 @@ private fun ExitBadge(exit: String) {
  * recommended ones are also marked with an underline so the difference does not rest on brightness alone.
  */
 @Composable
-fun LaneBand(lanes: List<LaneInfo>, modifier: Modifier = Modifier) {
+fun LaneBand(lanes: List<LaneInfo>, modifier: Modifier = Modifier, arrow: Dp = LANE_ARROW) {
     val on = KtmTheme.riding.onGuidance
     val description = stringResource(R.string.riding_lanes_description)
     Row(
@@ -190,10 +216,10 @@ fun LaneBand(lanes: List<LaneInfo>, modifier: Modifier = Modifier) {
                 Row {
                     val shapes = lane.directions.ifEmpty { listOf(LaneShape.STRAIGHT) }
                     shapes.forEach { shape ->
-                        TurnIconGlyph(laneShapeIcon(shape), size = LANE_ARROW, color = if (lane.recommended) on else on.copy(alpha = 0.4f))
+                        TurnIconGlyph(laneShapeIcon(shape), size = arrow, color = if (lane.recommended) on else on.copy(alpha = 0.4f))
                     }
                 }
-                if (lane.recommended) Box(Modifier.width(LANE_ARROW).size(width = LANE_ARROW, height = KtmLayout.laneRecommendedMark).background(on, KtmShapes.Pill))
+                if (lane.recommended) Box(Modifier.width(arrow).size(width = arrow, height = KtmLayout.laneRecommendedMark).background(on, KtmShapes.Pill))
             }
         }
     }

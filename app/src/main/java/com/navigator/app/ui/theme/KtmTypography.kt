@@ -18,6 +18,9 @@ data class KtmTypeExtras(
     val ridingLabel: TextStyle,
     /** Riding instruction in the landscape panel. */
     val ridingInstructionLand: TextStyle,
+    /** The distance and the instruction in the narrow (320 dp) landscape panel (NL7). */
+    val ridingDistanceNarrow: TextStyle,
+    val ridingInstructionNarrow: TextStyle,
     /** The exit badge: bolder and larger than a chip so it reads from the saddle. */
     val ridingBadge: TextStyle,
     /** Trip-bar second line. */
@@ -72,6 +75,8 @@ fun ktmTypeExtras(
     ridingBadge = plainStyle(barlow, FontWeight.Bold, 18, 22),
     ridingInstructionLand = plainStyle(barlow, FontWeight.Medium, 22, 28),
     ridingSupport = plainStyle(barlow, FontWeight.Medium, 17, 22),
+    ridingDistanceNarrow = condensedStyle(condensed, 50, 52),
+    ridingInstructionNarrow = plainStyle(barlow, FontWeight.Medium, 19, 24),
     mono = plainStyle(mono, FontWeight.Normal, 13, 18),
 )
 

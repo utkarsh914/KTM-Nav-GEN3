@@ -47,6 +47,8 @@ class KtmTypographyTest {
         x.ridingLabel.check(barlow, FontWeight.SemiBold, 17, 22)
         x.ridingInstructionLand.check(barlow, FontWeight.Medium, 22, 28)
         x.ridingSupport.check(barlow, FontWeight.Medium, 17, 22)
+        x.ridingDistanceNarrow.check(condensed, FontWeight.Bold, 50, 52)
+        x.ridingInstructionNarrow.check(barlow, FontWeight.Medium, 19, 24)
         x.mono.check(mono, FontWeight.Normal, 13, 18)
     }
 
@@ -63,9 +65,10 @@ class KtmTypographyTest {
             t.titleLarge, t.titleMedium, t.titleSmall, t.bodyLarge, t.bodyMedium, t.bodySmall,
             t.labelLarge, t.labelMedium, t.labelSmall,
             x.buttonCompact, x.ridingLabel, x.ridingInstructionLand, x.ridingSupport, x.mono,
+            x.ridingDistanceNarrow, x.ridingInstructionNarrow,
         )
         assertEquals(13f, all.minOf { it.fontSize.value }, 0f)
-        assertEquals(20, all.size)
+        assertEquals(22, all.size)
     }
 
     @Test fun defaultFamiliesFollowTheFontMode() {
