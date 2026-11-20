@@ -1,70 +1,87 @@
 # Design system & UX standards
 
-One place describing the shared tokens every screen should use, so the app stays
-consistent and future additions inherit the same feel. When adding UI, reach for
-these before hand-rolling values.
+The tokens and components every screen uses, so the app stays consistent and new
+screens inherit the same feel. The reference mock-ups are in
+`overhaul/design/redesign.html` (local, not committed); the code follows them.
+When adding UI, reach for these before hand-rolling values, and run
+`overhaul/scripts/check-ui-rules.sh` (see "Rules").
 
-## Colour & accent
-- All colours come from the reactive `Ktm` accessor (`ui/theme/DesignTokens.kt`).
-  Never hard-code hex in screens (map/track colours are the only exception and
-  live in `RideTrackMap.kt` / route-preview constants).
-- Brand supplies the **neutrals + wordmark**; the **accent** is chosen
-  independently by the rider (Settings → Appearance → Accent colour) and stored
-  in `AppSettings.accentColorId`. `null` = follow the brand's own accent.
-- Accent presets live in `AccentPalettes` (`DesignTokens.kt`); each carries a
-  contrast-correct `onAccent`. Read the active accent with `Ktm.Orange` /
-  `Ktm.OnAccent` (names are historical; they resolve to the current accent).
-- A **custom** accent is any `#RRGGBB` stored as the `accentColorId`; `accentFor`
-  parses it via `parseHexColor`/`customAccent` (auto-deriving deep + onAccent).
-  The Settings picker offers presets **and** a full HSV colour picker.
-- To show a brand's *own* accent regardless of the override use
-  `identityFor(brand).accent`.
+## Theme (`ui/theme/`)
+- `KtmTheme(darkTheme, accent) { … }` wraps the app (`KtmApp`). Read tokens with
+  `KtmTheme.colors`, `KtmTheme.accent`, `KtmTheme.type`, `KtmTheme.motion`,
+  `KtmTheme.riding`; Material 3 components see the same palette through
+  `ktmColorScheme`.
+- **Colours** (`KtmColors.kt`): neutrals `bg`, `surf`, `surf2`, `surf3`, lines
+  `line`/`line2`, text `fg`/`fg2`/`fg3`, status `ok`/`warn`/`bad`/`info` with
+  containers, inverse `inv`/`onInv` (snackbars), route colours. Dark and light
+  sets: `KtmDarkColors`, `KtmLightColors`.
+- **Accent** (`AccentTones.kt`): presets in `AccentPalettes`, or any `#RRGGBB`
+  (`customAccent`, with the contrast derived and checked). `KtmTheme.accent` has
+  `fill`/`onFill`, `container`/`onContainer`, `text`. Stored as
+  `accentColorId`; `null` is KTM orange.
+- **Riding scope** (`RidingTheme`, `RidingColors.kt`): riding surfaces follow
+  Day/Night independently of the app theme (`NavThemeMode`, sunrise/sunset from
+  `SunTimes`). Inside it `KtmTheme.riding` has `guidance`, `surface`,
+  `overspeed`… and `KtmTheme.colors` resolve to the riding palette.
+- **Type** (`KtmTypography.kt`, `Type.kt`): M3 roles plus `KtmTheme.type` extras
+  (`buttonCompact`, riding roles, `mono` for logs and codes). Families follow
+  `AppFonts.mode` (brand fonts or the phone's). No `.sp` in screens.
+- **Layout** (`KtmLayout.kt`): `KtmSpacing` (4/8/12/16/24/32/48), `KtmShapes`
+  (Badge 8, Control 12, Card 16, Sheet 28, Pill), `KtmElevation` (0/2/6/12),
+  touch targets `targetRest` 48, `targetPrimary` 56, `targetRiding` 64, panel
+  widths (352, 320 below 800 dp), top bar 64.
+- **Icons**: `KtmIcons` only (own vectors, one set). No Material icons dependency.
 
-## Typography (`ui/theme/Type.kt`)
-- Families: `BarlowCondensed` (headings/labels), `Barlow` (body),
-  `JetBrainsMono` (numeric/technical).
-- Prefer the named roles in `AppText` (`CardTitle`, `SectionLabel`, `Body`,
-  `BodySmall`, `StatLabel`, `StatValue`, `ButtonLabel`) over ad-hoc
-  fontFamily/size/weight.
-- **Font mode (Brand vs System).** The public `Barlow`/`BarlowCondensed`/
-  `JetBrainsMono` families are reactive getters that read `AppFonts.mode`
-  (mirroring the `Ktm` colour object): in `FontMode.BRAND` (default) they return
-  the bundled families; in `FontMode.SYSTEM` they collapse to
-  `FontFamily.Default` (the phone font). Because every `fontFamily = Barlow`
-  call site reads that Compose state, flipping the mode re-fonts the whole app
-  live with no per-screen edits. `AppText` roles and `appTypography()` (used by
-  `OpenDashTheme`) resolve the same way.
-- Persisted as `AppSettings.fontMode`, applied at startup in
-  `OpenDashApplication` (no first-frame flash) and switchable in
-  **Settings → Appearance → App font**.
+## Components (`ui/components/`)
+`KtmButton` (Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal; sizes
+Small 48, Rest 56, Riding 64, Tile 72), `KtmIconButton`, `MapControlButton`,
+`KtmFab`, `ListRow`, `KtmSwitchRow`, `KtmSelectionRows`, `KtmCard`, `KtmBadge`,
+`KtmFilterChip`, `KtmSegmented`, `KtmSearchField`, `KtmTextField`, `KtmStepper`,
+`KtmSwitch`, `KtmColorPicker`, `KtmTopBar`, `LargeTitle`, `SectionHeader`,
+`EmptyState`, `InfoBanner`, `FixItBanner`, `Skeleton`/`SkeletonRow`, `StatTile`,
+`ActivityStrip`, `BikeStatusPill`, `DashPreview`, `TurnIconRef`, `KtmDialog`,
+`KtmModalSheet`/`KtmSheetContent`, `KtmSnackbar`, `LandscapePanel`.
+Screens are written as `*ViewModel` (state + actions), a stateless `*Content`
+that previews and tests render, and a thin `*Screen` that wires them.
 
-## Motion (`ui/theme/Motion.kt`)
-- Durations: `Motion.Fast` (160) for exits, `Motion.Medium` (240) for
-  enter/move, `Motion.Slow` (320) for hero transitions.
-- Easing: `Motion.StandardEasing`; springs: `Motion.pressSpring()` (press),
-  `Motion.popSpring()` (select/save "pop").
-- Reuse the transition builders: the shell's NavHost transitions (screen changes),
-  `bottomSheetTransition(rising)` (full-screen panels), `driftTransition()`
-  (card/overlay stage changes). Don't inline new `tween(...)` specs in screens.
+## Motion (`ui/theme/KtmMotion.kt`)
+- Every animation takes its spec from `KtmTheme.motion` (`KtmMotionSpecs`):
+  `spatialFast/Default/Slow` (springs), `effectsFast/Default` (fades),
+  `ridingSpatial(delayMs)`, `ridingQuick()` (160 ms), `ridingFade(delayMs)`,
+  `ridingColor()` (100 ms). Riding surfaces: at most 250 ms, no overshoot,
+  numbers never animate.
+- **Remove animations** (`rememberReducedMotion`, read live): spatial moves become
+  short crossfades with no offset, camera moves jump. Code that slides must zero
+  its offset when `motion.reduced`.
+- Shared elements: `SharedElements`/`rideContainer` (ride card to replay page),
+  `TripBarSheet` (trip bar to trip sheet), `tripStripBounds` (trip bar to the
+  activity strip). The sheets are drawn in the tree (not in a window) so they
+  can share bounds.
+- Tabs fade through with a 0.92 scale; pushed pages share the X axis (30 dp);
+  predictive back previews the page shrinking to 90 %.
 
 ## Haptics (`ui/theme/Haptics.kt`)
-- `val haptics = rememberHaptics()` then `haptics.tap()` / `toggle(on)` /
-  `confirm()` / `warn()` / `longPress()`.
-- Shared components (`KtmComponents.kt`) already fire the right haptic, so most
-  screens get it for free. Bespoke clickables should call the matching one:
-  taps → `tap()`, switches → `toggle()`, primary/positive → `confirm()`,
-  destructive/close → `warn()`, long-press → `longPress()`.
+`val haptics = rememberHaptics()`: `tap()`, `toggle(on)`, `confirm()`, `warn()`,
+`longPress()`. Touches only; never for riding events (gloves and a vibrating
+mount hide them: sound and the dash carry those). Shared components already fire
+the right one.
 
-## Controls & chrome
-- Full-width actions: `KtmPrimaryButton` / `KtmOutlineButton`.
-- Icon chrome: `IconPill` (square 52dp), `CircleBackButton`, `SquareMapControl`
-  (compass/recenter — used on every map screen), `ConnectPill` /
-  `ConnectIconPill`.
-- **Map controls standard location:** recenter/locate + compass live in a
-  bottom-right stack (compass on top, shown only when the map is rotated) on the
-  browse map, active navigation and the ride replay — keep new map screens the
-  same.
-- Radii: `Ktm.RadiusCard` (16), `Ktm.RadiusButton` (12), `Ktm.RadiusRow` (13);
-  control height/size: `Ktm.ControlHeight` (52).
-- Press feedback: use `rememberPressScale(interaction)` + `graphicsLayer` (see
-  existing components) so held controls scale to `Motion.PressedScale`.
+## Feedback
+Snackbars through `LocalFeedback` (`Feedback.snackbar(message, actionLabel, …)`),
+never a Toast; Undo lasts 8 s (`Feedback.ACTION_MS`). While riding the same events
+are chips (`RidingChips`). Confirms use `KtmDialog` (riding variant stacks 64 dp
+buttons with the safe choice on top).
+
+## Accessibility
+Targets 48 dp at rest, 56 for primary actions, 64 riding. Every interactive
+element has a role or label; groups of choices use `selectableGroup`; custom
+controls expose range info and actions (`KtmColorPicker`); sheets are titled
+panes with a Close action; glyphs are decorative unless given a description
+(`TurnIconRef(contentDescription = …)`). Font scale 1.3 and TalkBack are part of
+the QA list.
+
+## Rules (checked by `overhaul/scripts/check-ui-rules.sh`)
+No `Toast`, no raw `AlertDialog` (use `KtmDialog`), no Material icons, no
+`Color(0x…)` or `.sp`/`.em` in screens, no `AppSettings(…)` in `ui/` (use the
+container's `SettingsRepository`), no legacy `Ktm.*` accessor. Strings live in
+`strings.xml` (`<feature>_<element>_<meaning>`), distances are metric.

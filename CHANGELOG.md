@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Redesign (UI and UX, all screens)
+- A new design system across the app: one set of colours, type, shapes and components, light and dark, with your choice of accent colour (any colour, with contrast checked). The riding screens have their own Day/Night mode.
+- New home: a Google map with a Where-to sheet (search, Home and Work, saved and recent places), a bike pill that opens the connection sheet, and a greeting when the bike connects.
+- Riding screen rebuilt for gloves and sunlight: a maneuver card with the next turn and lanes, a trip bar, and a trip sheet (add stop, overview, minimise, beeps, phone messages on the dash, dash status, end trip). The trip bar grows into the trip sheet and shrinks into an activity strip that stays above the tab bar. Landscape has its own panel.
+- Plan a trip step by step: confirm a place, preview routes with alternates and stops, pick a point on the map, search with categories, voice and offline results.
+- Rides: a list with day groups, search, sort, selection, delete with Undo, merge rides (with Undo), a replay with a seek bar and speed, edit and trim, and a new trip-finished screen with the ride's stats.
+- Places tab (Home, Work, saved places) and a Settings tab with pages for the bike and dash, navigation, recording, sounds, permissions, appearance, backup and restore, and About.
+- First run: welcome, engine choice, Google's terms, your name, permissions, pairing with the bike (with clear errors and help), and a ready screen.
+- Notifications rebuilt: a Live Update for guidance (turn glyph, progress with stops, Mute beeps and End trip), a recording notification with Pause and Stop, a quiet bike-connection notification with its likely fix, and a one-time heads-up if it can't connect. Launcher shortcuts: Record a ride, Where to?, Ride home and Ride work.
+- Diagnostics screens rebuilt (logs with filters and search, symbol testing, turn-icon calibration) and a debug overlay for builds.
+- Motion and accessibility: transitions follow Android's "Remove animations" setting live, TalkBack labels and actions on the controls, the colour picker is adjustable by screen readers, and large-font layouts were checked.
+- Husqvarna theming and the brand picker were removed: the app is KTM-only. Distances are shown in kilometres everywhere.
+
 ### Navigation
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
   destination.

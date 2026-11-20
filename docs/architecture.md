@@ -153,6 +153,8 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 
 ---
 
+> The screens described here were rebuilt in the 2026 redesign; §9 is the current UI architecture and wins where they differ.
+
 ## 3. Map home & destination flow (`AppRoute.NAV_HOME` · `NavigateHost`)
 
 The app's primary surface. One persistent Nav SDK `NavigationView` is the map across a small
@@ -335,3 +337,46 @@ billable, so prefer the replay harness for routine testing.
   fixes, and toolchain constraints behind parts of this architecture (roundabout glyph mapping,
   the 16 KB/LiteRT fix, the Nav SDK route-token fix, and more).
 - [`BCCU_BLE_PROTOCOL.md`](BCCU_BLE_PROTOCOL.md) — the wire-level BLE/BCCU protocol reference.
+
+## 9. UI architecture (2026 redesign)
+
+### 9.1 Layers and packages
+- `app/`: `AppContainer` (manual DI, one `DefaultAppContainer` per process: settings, places, rides, trip
+  controller, permissions, pairing/scan, intents, scope) and `AppIntents` (what notifications, shortcuts and
+  shares ask the UI to do: `AppIntent` in, `IntentOutcome` out, consumed once by `KtmApp`).
+- `data/`: repositories behind the UI (`settings` with `SettingsRepository.snapshot` and the
+  `SettingSpecs` table, `places`, `rides` with soft delete, merge and Undo, `mirror`, `permissions`,
+  `connection`). Nothing in `data/` knows Compose.
+- `trip/`: `TripController` (arrival, dwell, minimise, ride-back); `ride/`: recording, `RideStore`, GPX.
+- `notify/`: pure builders (`LiveUpdateBuilder`, `RecordingNotice`, `ConnectionNoticeContent`), channels,
+  actions, large icons; the services only post what these build.
+- `ui/shell/`: `KtmApp` (theme, `NavHost` with type-safe `Route`s, tabs, shared transitions, intents, Quit),
+  `MainShell` (tab bar, activity strip, snackbars), `Feedback`, `ShellChrome` (immersive riding).
+- `ui/feature/<name>/`: one folder per area (`navigate`, `rides`, `replay`, `places`, `settings`, `mirror`,
+  `onboarding`, `pairing`, `permissions`, `record`, `diagnostics`). `ui/components/` and `ui/theme/` are the
+  design system (`docs/design-system.md`).
+
+### 9.2 Screen pattern
+`*ViewModel` holds state as a `StateFlow` of a plain `*Ui` data class and exposes actions; a stateless
+`*Content(ui, actions)` renders it (previewable and testable without Android services); a thin `*Screen`
+creates the ViewModel from the container and wires them. Pure decisions (a policy, a flow of steps, a
+filter) live in their own object with JVM tests. Texts are `UiText`/string resources.
+
+### 9.3 Navigation
+Four tabs (Navigate, Rides, Places, Settings), each keeping its back stack; pages (replay, edit, trim, merge,
+pick-on-map, settings pages, pairing, logs) are pushed over them. Back is normal Android back; Quit is a
+confirm (Settings or the notification). The Navigate tab is one screen with stages
+(browse, search, confirm, preview, navigating, trip finished); `NavFlow` is its pure stage machine. Riding
+screens are immersive (no tab bar) and use the riding theme.
+
+### 9.4 Motion
+All specs come from `KtmMotionSpecs` and honour "Remove animations" live. Shared transitions: the NavHost is
+wrapped in a `SharedTransitionLayout` (ride card to replay page); the Navigate stage has its own
+(trip bar to trip sheet, trip bar to activity strip). The trip sheet is drawn in the tree for that reason.
+
+### 9.5 Testing
+JVM and Robolectric tests, no screenshot framework: pure logic tests, ViewModel tests with fakes,
+Compose content tests (`createComposeRule`, qualifiers such as `w400dp-h900dp`), and
+`@Preview`s in `src/debug`. Run `./gradlew :app:testDebugUnitTest :app:assembleDebug` then
+`./gradlew :app:lintDebug --continue`; lint may only fail on the three baseline `MissingPermission` errors in
+`ui/map/LocationMarker.kt`.

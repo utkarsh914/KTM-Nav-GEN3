@@ -46,12 +46,9 @@ trained on Google Maps' own icons, because Maps puts no maneuver *text* in its n
 **Automatic bike detection.** On connect it reads the dash's model, firmware and capabilities and shows
 what it found in the connection banner. Nothing to configure.
 
-**KTM and Husqvarna.** They share the same dash electronics, and the whole app re-themes to match your
-bike — KTM dark and orange, Husqvarna light and blue. You pick on first run and can switch any time.
+**Made for the KTM Gen-3 dash.** The app is themed for the bike (dark and orange by default, with accent colours of your choice and a Day/Night mode for the riding screens). The riding screens are built for gloves and sunlight: large touch targets, a maneuver card you can read at a glance, and the heavy controls tucked in a trip sheet.
 
-| Brand select (KTM) | Brand select (Husqvarna) |
-|---|---|
-| ![](docs/screenshots/brand-select-ktm.png) | ![](docs/screenshots/brand-select-husqvarna.png) |
+> The screenshots in `docs/screenshots` predate the 2026 redesign and are being refreshed; see `docs/design-system.md` for how the new screens are put together.
 
 **Phone-first map home.** Open the app to a full Google map with your live location, a bike-connection
 pill and a search bar. Find a destination by search (with Recents and Home/Work/Saved shortcuts), by
