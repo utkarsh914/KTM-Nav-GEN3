@@ -1,5 +1,10 @@
 package com.navigator.app.ui.feature.navigate
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
+import com.navigator.app.ui.feature.pairing.HavingTroubleSheet
+import com.navigator.app.ui.shell.LocalOpenLogs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Column
@@ -66,7 +71,9 @@ fun BikeSheet(
     tripRunning: Boolean = state.activity != null,
 ) {
     var confirmRePair by remember { mutableStateOf(false) }
+    var trouble by remember { mutableStateOf(false) }
     val status = state.bikeStatus
+    val openLogs = LocalOpenLogs.current
     val connected = status is BikeStatus.Connected
     val text = BikeSheetMapper.status(status)
     val name = state.bike.labelArg ?: stringResource(R.string.bike_sheet_title)
@@ -97,6 +104,9 @@ fun BikeSheet(
                     stringResource(R.string.bike_sheet_test), { onSendTest(testMessage) }, Modifier.fillMaxWidth(),
                     style = ButtonStyle.Tonal, enabled = connected && !tripRunning,
                 )
+                if (!connected) {
+                    KtmButton(stringResource(R.string.pair_trouble), { trouble = true }, Modifier.fillMaxWidth(), style = ButtonStyle.Text)
+                }
             }
         },
     ) {
@@ -118,6 +128,17 @@ fun BikeSheet(
                 supporting = stringResource(R.string.bike_sheet_messages_hint), leadingIcon = KtmIcons.Message,
             )
         }
+    }
+
+    if (trouble) {
+        val context = LocalContext.current
+        HavingTroubleSheet(
+            onViewLogs = openLogs,
+            onBluetoothSettings = {
+                runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            },
+            onDismiss = { trouble = false },
+        )
     }
 
     if (confirmRePair) {

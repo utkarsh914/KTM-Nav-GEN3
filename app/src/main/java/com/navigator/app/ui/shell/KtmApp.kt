@@ -57,8 +57,9 @@ import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.NavigateHost
-import com.navigator.app.ui.screens.OnboardingScreen
-import com.navigator.app.ui.screens.PairingScreen
+import com.navigator.app.ui.feature.onboarding.OnboardingScreen
+import com.navigator.app.ui.feature.onboarding.ReadyScreen
+import com.navigator.app.ui.feature.pairing.PairingScreen
 import com.navigator.app.ui.feature.rides.RidesScreen
 import kotlinx.coroutines.launch
 import com.navigator.app.ui.feature.rides.merge.MergeScreen
@@ -182,13 +183,16 @@ fun KtmApp(onQuit: () -> Unit) {
     val startRoute = remember {
         when {
             !snap.onboardingComplete -> Route.Onboarding
-            !snap.isPaired -> Route.Pairing(forced = true)
+            // Not paired yet is a state of the home (the Pair your bike pill), never a dead end.
             else -> Route.Navigate
         }
     }
 
     KtmTheme(darkTheme = dark, accent = accent) {
-        CompositionLocalProvider(LocalFeedback provides feedback, LocalShellChrome provides chrome) {
+        CompositionLocalProvider(
+            LocalFeedback provides feedback, LocalShellChrome provides chrome,
+            LocalOpenLogs provides { navController.push(Route.Logs) },
+        ) {
             NavWindowEffects()
             Box(Modifier.fillMaxSize()) {
                 MainShell(
@@ -217,9 +221,8 @@ fun KtmApp(onQuit: () -> Unit) {
                     ) {
                         composable<Route.Onboarding> {
                             OnboardingScreen(
-                                settings = legacy,
-                                onComplete = {
-                                    navController.navigate(Route.Pairing(forced = true)) {
+                                onFinished = {
+                                    navController.navigate(Route.Pairing(forced = true, fromOnboarding = true)) {
                                         popUpTo<Route.Onboarding> { inclusive = true }
                                     }
                                 },
@@ -229,14 +232,24 @@ fun KtmApp(onQuit: () -> Unit) {
                             val route = backStackEntry.toRoute<Route.Pairing>()
                             val back = { navController.popFrom(backStackEntry) }
                             PairingScreen(
-                                settings = legacy,
                                 onPaired = {
-                                    if (route.forced || route.toHome) navController.openRoot(Route.Navigate)
                                     // Not a tap: it fires when the handshake completes, even while the app is paused.
-                                    else navController.popBackStack()
+                                    when {
+                                        route.fromOnboarding -> navController.navigate(Route.Ready) {
+                                            popUpTo<Route.Pairing> { inclusive = true }
+                                        }
+                                        route.forced || route.toHome -> navController.openRoot(Route.Navigate)
+                                        else -> navController.popBackStack()
+                                    }
                                 },
-                                onOpenLogs = { navController.push(Route.Logs) },
                                 onBack = if (route.forced) null else back,
+                                onPairLater = if (route.forced || route.toHome) ({ navController.openRoot(Route.Navigate) }) else null,
+                            )
+                        }
+                        composable<Route.Ready> {
+                            ReadyScreen(
+                                onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
+                                onStart = { navController.openRoot(Route.Navigate) },
                             )
                         }
                         composable<Route.Navigate> {
@@ -439,7 +452,7 @@ class SetupTracker {
     fun inSetup(entry: NavBackStackEntry?): Boolean {
         val d = entry?.destination ?: return setup
         when {
-            d.hasRoute<Route.Onboarding>() -> setup = true
+            d.hasRoute<Route.Onboarding>() || d.hasRoute<Route.Ready>() -> setup = true
             d.hasRoute<Route.Pairing>() -> setup = entry.toRoute<Route.Pairing>().forced
             Tab.entries.any { d.hasRoute(it.route::class) } -> setup = false
         }

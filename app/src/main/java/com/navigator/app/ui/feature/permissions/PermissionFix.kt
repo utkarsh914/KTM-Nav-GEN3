@@ -44,4 +44,7 @@ object PermissionFix {
 
     /** Whether the button reads Open (it leaves the app) or Allow (a system dialog). */
     fun opensSettings(id: PermissionId): Boolean = id == PermissionId.NOTIFICATION_ACCESS || id == PermissionId.BATTERY
+
+    /** The first required permission still missing, in list order: what the primary button on the onboarding step fixes next. */
+    fun nextRequired(state: PermissionsState): PermissionId? = state.requiredMissing.firstOrNull()?.id
 }

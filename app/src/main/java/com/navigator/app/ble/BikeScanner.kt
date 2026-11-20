@@ -56,18 +56,27 @@ object BikeScanning {
     }
 }
 
+/** What the pairing screens need from a scan, so they can be tested without Bluetooth. */
+interface ScanSource {
+    val results: StateFlow<List<ScannedBike>>
+    val scanning: StateFlow<Boolean>
+    val scanError: StateFlow<Int?>
+    fun start()
+    fun stop()
+}
+
 /**
  * The pairing scan: BLE advertisements plus the phone's bonded devices (a bonded dash may be linked
  * over classic Bluetooth and not advertise at all, so it shows as "paired before" without a signal).
  * Main thread. One scan window of [WINDOW_MS], restartable.
  */
 @SuppressLint("MissingPermission") // checked through OpenDashPermissions before every call
-class BikeScanner(private val context: Context, private val settings: () -> AppSettings) {
+class BikeScanner(private val context: Context, private val settings: () -> AppSettings) : ScanSource {
     private val _results = MutableStateFlow<List<ScannedBike>>(emptyList())
-    val results: StateFlow<List<ScannedBike>> = _results.asStateFlow()
+    override val results: StateFlow<List<ScannedBike>> = _results.asStateFlow()
 
     private val _scanning = MutableStateFlow(false)
-    val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
+    override val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
     /** Set when the scan could not start for lack of the Nearby devices permission. */
     private val _permissionMissing = MutableStateFlow(false)
@@ -75,7 +84,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
 
     /** The Bluetooth stack's error code when the scan could not run (for example scanning too often), else null. */
     private val _scanError = MutableStateFlow<Int?>(null)
-    val scanError: StateFlow<Int?> = _scanError.asStateFlow()
+    override val scanError: StateFlow<Int?> = _scanError.asStateFlow()
 
     /** True when the adapter is off, so an empty list means "turn Bluetooth on", not "nothing found". */
     private val _bluetoothOff = MutableStateFlow(false)
@@ -99,7 +108,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
         }
     }
 
-    fun start() {
+    override fun start() {
         if (!OpenDashPermissions.bluetoothGranted(context)) {
             _permissionMissing.value = true
             return
@@ -134,7 +143,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
         handler.postDelayed(stopRunnable, WINDOW_MS)
     }
 
-    fun stop() {
+    override fun stop() {
         handler.removeCallbacks(stopRunnable)
         if (!_scanning.value) return
         _scanning.value = false

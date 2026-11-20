@@ -16,9 +16,12 @@ sealed interface Route {
 
     /**
      * [forced] is first-run pairing (no way back); [toHome] lands on Navigate afterwards instead of
-     * returning to the screen that opened it.
+     * returning to the screen that opened it. [fromOnboarding] ends on the Ready screen first.
      */
-    @Serializable data class Pairing(val forced: Boolean = false, val toHome: Boolean = false) : Route
+    @Serializable data class Pairing(val forced: Boolean = false, val toHome: Boolean = false, val fromOnboarding: Boolean = false) : Route
+
+    /** ON10: the dash works, a summary of the choices, and Start riding. */
+    @Serializable data object Ready : Route
 
     @Serializable data object Navigate : Route
     @Serializable data object Rides : Route

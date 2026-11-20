@@ -84,6 +84,12 @@ class PermissionFixTest {
         assertEquals(listOf(Manifest.permission.POST_NOTIFICATIONS), (PermissionFix.stepFor(PermissionId.NOTIFICATIONS, s) as FixStep.Request).permissions)
     }
 
+    @Test fun theFirstMissingRequiredOneIsFixedNext() {
+        assertEquals(PermissionId.NEARBY_DEVICES, PermissionFix.nextRequired(state(grants(nearby = false, location = false))))
+        assertEquals(PermissionId.LOCATION, PermissionFix.nextRequired(state(grants(location = false, always = false, battery = false))))
+        assertNull(PermissionFix.nextRequired(state(grants(always = false, battery = false))))
+    }
+
     @Test fun onlyTheSettingsOnesSayOpen() {
         assertEquals(setOf(PermissionId.NOTIFICATION_ACCESS, PermissionId.BATTERY), PermissionId.entries.filter(PermissionFix::opensSettings).toSet())
     }
