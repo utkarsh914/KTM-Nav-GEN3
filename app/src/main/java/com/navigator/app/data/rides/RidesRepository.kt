@@ -1,6 +1,9 @@
 package com.navigator.app.data.rides
 
+import android.content.Context
+import android.content.Intent
 import com.navigator.app.ride.Gpx
+import com.navigator.app.ride.GpxShare
 import com.navigator.app.ride.MergeResult
 import com.navigator.app.ride.MergeToken
 import com.navigator.app.ride.RecordedRide
@@ -59,9 +62,16 @@ class RidesRepository(
     suspend fun purge(ids: Collection<String>) = withContext(io) { store.purge(ids) }
     suspend fun get(id: String): RecordedRide? = withContext(io) { store.get(id) }
     suspend fun points(id: String) = withContext(io) { store.points(id) }
-    suspend fun updateMeta(id: String, label: String?, notes: String?) = withContext(io) { store.updateMeta(id, label, notes) }
+    /** Runs to completion even if the caller leaves: an edit the rider typed must not be lost with the screen. */
+    suspend fun updateMeta(id: String, label: String?, notes: String?) = withContext(io + NonCancellable) { store.updateMeta(id, label, notes) }
+
+    /** Keep only fixes [from]..[to]; null when the store refused (see [RideStore.trimRide]). */
+    suspend fun trim(id: String, from: Int, to: Int): RecordedRide? = withContext(io + NonCancellable) { store.trimRide(id, from, to) }
+
+    /** The chooser intent that shares the ride as GPX, or null when it has no readable track. */
+    suspend fun gpxShare(context: Context, ride: RecordedRide): Intent? = withContext(io) { GpxShare.buildIntent(context, ride, store) }
     suspend fun restore(ids: Collection<String>): List<String> = withContext(io) { store.restore(ids) }
-    suspend fun setSaved(id: String, saved: Boolean) = withContext(io) { store.setSaved(id, saved) }
+    suspend fun setSaved(id: String, saved: Boolean) = withContext(io + NonCancellable) { store.setSaved(id, saved) }
     suspend fun merge(ids: Collection<String>): MergeResult = withContext(io) { store.mergeRides(ids) }
     suspend fun undoMerge(token: MergeToken): Boolean = withContext(io) { store.undoMerge(token) }
     suspend fun thumbnail(ride: RecordedRide): List<ThumbPoint> = withContext(io) { thumbnails.get(ride.id, ride.pointCount) }

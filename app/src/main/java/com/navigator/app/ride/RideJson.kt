@@ -62,6 +62,9 @@ object RideJson {
 
     // ---- Index entries (metadata) -----------------------------------------
 
+    /** A merged ride cannot claim more parts than this, whatever a restored file says. */
+    const val MAX_PARTS = 99
+
     fun rideToJson(r: RecordedRide): JSONObject = JSONObject().apply {
         put("id", r.id)
         put("startMs", r.startMs)
@@ -82,6 +85,7 @@ object RideJson {
         r.notes?.let { put("notes", it) }
         r.source?.let { put("src", it) }
         r.deletedAtMs?.let { put("del", it) }
+        if (r.parts > 1) put("parts", r.parts)
     }
 
     fun rideFromJson(o: JSONObject): RecordedRide = RecordedRide(
@@ -104,5 +108,6 @@ object RideJson {
         notes = o.optString("notes").ifBlank { null },
         source = RideSource.clean(o.optString("src")),
         deletedAtMs = if (o.has("del")) o.optLong("del") else null,
+        parts = o.optInt("parts", 1).coerceIn(1, MAX_PARTS),
     )
 }

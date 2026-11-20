@@ -59,6 +59,17 @@ object KtmLayout {
     val row2 = 64.dp
     val row3 = 80.dp
     val rowThumb = 72.dp
+    /** The replay's seek bar: track thickness, thumb, the hatched stop between merged parts, and the chart. */
+    val seekTrack = 6.dp
+    val seekThumb = 24.dp
+    val seekGap = 10.dp
+    val replayChart = 120.dp
+    val chartAxisWidth = 36.dp
+    val chartAxisHeight = 20.dp
+
+    /** The replay sheet may grow to this share of the screen's height when expanded. */
+    const val replaySheetMaxShare = 0.7f
+
     /** The joined-route preview of a merge. */
     val mergeMap = 200.dp
 

@@ -17,6 +17,7 @@ package com.navigator.app.ride
  * @param maxSpeedKmh peak recorded speed
  * @param pointCount number of recorded fixes
  * @param source one of [RideSource]; null only on a ride that was not read through [RideStore] (which infers it for old rides)
+ * @param parts how many rides were merged into this one (1 for any other); the replay badge shows it while the track still has that many segments
  * @param deletedAtMs when the rider deleted it (it waits for an undo until purged); null for a live ride
  * @param saved pinned to keep permanently; excluded from the history-limit prune
  */
@@ -44,6 +45,7 @@ data class RecordedRide(
     val notes: String? = null,
     val source: String? = null,
     val deletedAtMs: Long? = null,
+    val parts: Int = 1,
 ) {
     val isDeleted: Boolean get() = deletedAtMs != null
 }

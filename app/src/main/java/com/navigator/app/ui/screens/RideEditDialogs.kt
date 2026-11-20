@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,57 +32,13 @@ import com.navigator.app.ui.theme.BarlowCondensed
 import com.navigator.app.ui.theme.Ktm
 
 @Composable
-private fun fieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Ktm.SurfaceAlt, unfocusedContainerColor = Ktm.SurfaceAlt,
-    focusedTextColor = Ktm.White, unfocusedTextColor = Ktm.White, cursorColor = Ktm.Orange,
-    focusedIndicatorColor = Ktm.Orange, unfocusedIndicatorColor = Ktm.Border,
-    focusedLabelColor = Ktm.Orange, unfocusedLabelColor = Ktm.Muted2,
-)
-
-@Composable
 private fun DialogAction(text: String, color: androidx.compose.ui.graphics.Color, enabled: Boolean = true, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) {
         Text(text, color = if (enabled) color else Ktm.Dim, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
 
-/** Rename a ride and edit its note; also the way into trimming. */
-@Composable
-internal fun EditRideDialog(
-    name: String,
-    notes: String,
-    onSave: (name: String, notes: String) -> Unit,
-    onTrim: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var n by remember { mutableStateOf(name) }
-    var t by remember { mutableStateOf(notes) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Ktm.Surface,
-        titleContentColor = Ktm.White,
-        title = { Text("Edit ride", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = n, onValueChange = { n = it.take(RideTrim.MAX_NAME) }, singleLine = true,
-                    label = { Text("Name") }, colors = fieldColors(), modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = t, onValueChange = { t = it.take(RideTrim.MAX_NOTES) }, minLines = 2, maxLines = 5,
-                    label = { Text("Notes") }, colors = fieldColors(), modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(6.dp))
-                DialogAction("TRIM RIDE\u2026", Ktm.Orange, onClick = onTrim)
-            }
-        },
-        confirmButton = { DialogAction("SAVE", Ktm.Orange) { onSave(n, t) } },
-        dismissButton = { DialogAction("CANCEL", Ktm.TextPrimary, onClick = onDismiss) },
-    )
-}
-
-/** Choose the part of the ride to keep. Applying rewrites the track and cannot be undone. */
+/** Choose the part of the ride to keep (temporary: the trim page's real view comes with the map preview). Applying rewrites the track and cannot be undone. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrimRideDialog(

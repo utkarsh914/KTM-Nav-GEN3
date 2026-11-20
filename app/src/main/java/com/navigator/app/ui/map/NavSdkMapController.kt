@@ -9,6 +9,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.Polyline
@@ -64,6 +65,9 @@ class NavSdkMapController(
     override val cameraIdle: SharedFlow<MapPoint> = _cameraIdle.asSharedFlow()
     private val _gesturePans = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     override val gesturePans: SharedFlow<Unit> = _gesturePans.asSharedFlow()
+    private val _mapClicks = MutableSharedFlow<MapPoint>(extraBufferCapacity = 4)
+    override val mapClicks: SharedFlow<MapPoint> = _mapClicks.asSharedFlow()
+    private var replayMarker: Marker? = null
 
     /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
     internal fun arm() { detached = false }
@@ -83,6 +87,7 @@ class NavSdkMapController(
         if (idleWanted) setCameraIdleListening(true)
         if (poiWanted) setPoiListening(true)
         if (gesturesWanted) setGestureListening(true)
+        if (clicksWanted) setMapClickListening(true)
         _ready.value = true
     }
 
@@ -94,6 +99,7 @@ class NavSdkMapController(
     internal fun detach() {
         detached = true
         runCatching { userMarker.remove() }
+        replayMarker = null
         val gm = map
         if (gm != null && retained.mapOwner === HomeMapOwner) {
             runCatching {
@@ -104,11 +110,21 @@ class NavSdkMapController(
                 gm.setOnMarkerClickListener(null)
                 gm.setOnPoiClickListener(null)
                 gm.setOnCameraIdleListener(null)
+                gm.setOnMapClickListener(null)
             }
         }
         map = null
         navView = null
         _ready.value = false
+    }
+
+    private var clicksWanted = false
+
+    override fun setMapClickListening(enabled: Boolean) {
+        clicksWanted = enabled
+        val gm = map ?: return
+        if (enabled) gm.setOnMapClickListener { _mapClicks.tryEmit(MapPoint(it.latitude, it.longitude)) }
+        else gm.setOnMapClickListener(null)
     }
 
     private var gesturesWanted = false
@@ -153,6 +169,7 @@ class NavSdkMapController(
         gm.setOnPolylineClickListener(null)
         gm.setOnMarkerClickListener(null)
         gm.clear()
+        replayMarker = null
         // gm.clear() dropped the user marker: forget the stale handle so showUserMarker re-adds it.
         userMarker.remove()
     }
@@ -222,6 +239,27 @@ class NavSdkMapController(
         val gm = map ?: return
         drawRideTrack(gm, points, bands)
         frameRideTrack(gm, points)
+    }
+
+    override fun showReplay(points: List<RidePoint>, bands: RideMetrics.SpeedBands, smoothingMeters: Double, markerAt: MapPoint, markerColor: Int) {
+        val gm = map ?: return
+        // drawRideTrack clears the map, which also drops the user marker: forget its stale handle.
+        userMarker.remove()
+        drawRideTrack(gm, points, bands, simplifyEpsilonM = smoothingMeters)
+        replayMarker = gm.addMarker(
+            MarkerOptions().position(LatLng(markerAt.lat, markerAt.lng)).icon(replayMarkerIcon(appContext, markerColor))
+                .anchor(0.5f, 0.5f).zIndex(2f),
+        )
+    }
+
+    override fun moveReplayMarker(at: MapPoint, follow: Boolean) {
+        val ll = LatLng(at.lat, at.lng)
+        replayMarker?.position = ll
+        if (follow) runCatching { map?.moveCamera(CameraUpdateFactory.newLatLng(ll)) }
+    }
+
+    override fun frameTrack(points: List<RidePoint>) {
+        map?.let { frameRideTrack(it, points) }
     }
 
     override fun showUserMarker(at: MapPoint, headingDegrees: Float?) {

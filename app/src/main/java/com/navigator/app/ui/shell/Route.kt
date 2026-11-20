@@ -28,6 +28,8 @@ sealed interface Route {
     @Serializable data object SymbolTest : Route
     @Serializable data object TurnCalibration : Route
     @Serializable data class RideReplay(val rideId: String) : Route
+    @Serializable data class EditRide(val rideId: String) : Route
+    @Serializable data class TrimRide(val rideId: String) : Route
     @Serializable data class MergeRides(val rideIds: List<String>) : Route
 }
 

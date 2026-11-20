@@ -114,7 +114,7 @@ fun MainShell(
                 content()
                 KtmSnackbarHost(
                     feedback.snackbarHost,
-                    Modifier.align(Alignment.BottomCenter).then(ownInsets).padding(bottom = 8.dp),
+                    Modifier.align(Alignment.BottomCenter).then(ownInsets).padding(bottom = 8.dp + feedback.snackbarLift),
                 )
             }
             if (!immersive) Box(ownInsets) { strip() }

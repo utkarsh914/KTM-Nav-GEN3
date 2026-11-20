@@ -81,6 +81,22 @@ interface MapController {
     /** The speed-coloured track of a ride, framed in the visible map. */
     fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands)
 
+    /** A tap on the map itself (not a place label or a route). Only emits while [setMapClickListening] is on. */
+    val mapClicks: SharedFlow<MapPoint>
+    fun setMapClickListening(enabled: Boolean)
+
+    /**
+     * The replay of a ride: the track (simplified to [smoothingMeters], 0 = as recorded) with its start and end, and the
+     * playback marker at [markerAt] ringed in [markerColor] (ARGB). The camera stays where it is: see [frameTrack].
+     */
+    fun showReplay(points: List<RidePoint>, bands: RideMetrics.SpeedBands, smoothingMeters: Double, markerAt: MapPoint, markerColor: Int)
+
+    /** Move the playback marker; with [follow] the camera keeps it in the middle of the visible map. */
+    fun moveReplayMarker(at: MapPoint, follow: Boolean)
+
+    /** Fit the whole track in the visible map. */
+    fun frameTrack(points: List<RidePoint>)
+
     /** The compass-driven "you are here" marker used while not guiding. */
     fun showUserMarker(at: MapPoint, headingDegrees: Float?)
     fun hideUserMarker()

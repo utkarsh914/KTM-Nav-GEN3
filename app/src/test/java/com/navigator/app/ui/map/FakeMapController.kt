@@ -14,6 +14,7 @@ class FakeMapController : MapController {
     override val polylineClicks = MutableSharedFlow<Int>(extraBufferCapacity = 8)
     override val gesturePans = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
     override val cameraIdle = MutableSharedFlow<MapPoint>(extraBufferCapacity = 8)
+    override val mapClicks = MutableSharedFlow<MapPoint>(extraBufferCapacity = 8)
     var center: MapPoint? = null
     var idleListening = false
 
@@ -44,6 +45,17 @@ class FakeMapController : MapController {
     override fun showPlace(place: MapPoint, title: String?) { calls += "place"; this.place = place }
     override fun showTripPreview(scene: TripPreviewScene) { calls += "preview"; preview = scene }
     override fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands) { calls += "track"; track = points }
+    var clicksOn = false
+    var replay: List<RidePoint>? = null
+    var replaySmoothing: Double? = null
+    var replayMarker: MapPoint? = null
+    var replayFollow = false
+    override fun setMapClickListening(enabled: Boolean) { clicksOn = enabled }
+    override fun showReplay(points: List<RidePoint>, bands: RideMetrics.SpeedBands, smoothingMeters: Double, markerAt: MapPoint, markerColor: Int) {
+        calls += "replay"; replay = points; replaySmoothing = smoothingMeters; replayMarker = markerAt
+    }
+    override fun moveReplayMarker(at: MapPoint, follow: Boolean) { replayMarker = at; replayFollow = follow }
+    override fun frameTrack(points: List<RidePoint>) { calls += "frame" }
     override fun showUserMarker(at: MapPoint, headingDegrees: Float?) { userMarker = at to headingDegrees }
     override fun hideUserMarker() { userMarker = null }
     override fun recenter(at: MapPoint) { calls += "recenter" }

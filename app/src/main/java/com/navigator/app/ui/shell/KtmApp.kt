@@ -63,7 +63,9 @@ import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.feature.rides.RidesScreen
 import kotlinx.coroutines.launch
 import com.navigator.app.ui.feature.rides.merge.MergeScreen
-import com.navigator.app.ui.screens.RideReplayScreen
+import com.navigator.app.ui.feature.replay.ReplayScreen
+import com.navigator.app.ui.feature.replay.edit.EditRideScreen
+import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
 import com.navigator.app.ui.screens.SavedPlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
 import com.navigator.app.ui.screens.SymbolTestScreen
@@ -104,6 +106,12 @@ fun KtmApp(onQuit: () -> Unit) {
     val scope = rememberCoroutineScope()
     val chrome = remember { ShellChrome() }
     val retainedNav = rememberRetainedNavigationView()
+    // A ride deleted from its replay or edit page: those pages are gone by the time the offer ends, so the shell holds it.
+    fun offerUndoDelete(ids: List<String>) = feedback.snackbar(
+        resources.getQuantityString(R.plurals.rides_deleted, ids.size, ids.size), resources.getString(R.string.common_undo),
+        onDismiss = { scope.launch { container.rides.purge(ids) } },
+        onAction = { scope.launch { container.rides.restore(ids) } },
+    )
 
     // Permission state is re-read whenever the app comes back to the front (the rider may have
     // changed it in system settings).
@@ -318,6 +326,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     }
                                     feedback.snackbar(
                                         resources.getString(R.string.merge_done), resources.getString(R.string.common_undo),
+                                        tag = MERGE_OFFER + ride.id,
                                         onDismiss = { scope.launch { container.rides.purge(token.originalIds) } },
                                         onAction = {
                                             scope.launch {
@@ -325,10 +334,6 @@ fun KtmApp(onQuit: () -> Unit) {
                                                     feedback.snackbar(resources.getString(R.string.merge_undo_failed))
                                                     return@launch
                                                 }
-                                                val top = navController.currentBackStackEntry
-                                                if (top?.destination?.hasRoute<Route.RideReplay>() == true &&
-                                                    top.toRoute<Route.RideReplay>().rideId == ride.id
-                                                ) navController.popBackStack()
                                             }
                                         },
                                     )
@@ -336,9 +341,36 @@ fun KtmApp(onQuit: () -> Unit) {
                             )
                         }
                         composable<Route.RideReplay> { backStackEntry ->
-                            RideReplayScreen(
+                            val id = backStackEntry.toRoute<Route.RideReplay>().rideId
+                            ReplayScreen(
+                                rideId = id,
                                 retainedNav = retainedNav,
-                                rideId = backStackEntry.toRoute<Route.RideReplay>().rideId,
+                                onBack = { navController.popFrom(backStackEntry) },
+                                onEdit = { navController.push(Route.EditRide(id)) },
+                                onTrim = { navController.push(Route.TrimRide(id)) },
+                                onDeleted = { ids -> navController.popFrom(backStackEntry); offerUndoDelete(ids) },
+                            )
+                        }
+                        composable<Route.EditRide> { backStackEntry ->
+                            val id = backStackEntry.toRoute<Route.EditRide>().rideId
+                            EditRideScreen(
+                                rideId = id,
+                                onBack = { navController.popFrom(backStackEntry) },
+                                onTrim = { navController.push(Route.TrimRide(id)) },
+                                onDeleted = { ids ->
+                                    // The replay beneath shows a ride that is gone: leave it too.
+                                    navController.popFrom(backStackEntry)
+                                    val below = navController.currentBackStackEntry
+                                    if (below?.destination?.hasRoute<Route.RideReplay>() == true && below.toRoute<Route.RideReplay>().rideId == id) {
+                                        navController.popBackStack()
+                                    }
+                                    offerUndoDelete(ids)
+                                },
+                            )
+                        }
+                        composable<Route.TrimRide> { backStackEntry ->
+                            TrimRideScreen(
+                                rideId = backStackEntry.toRoute<Route.TrimRide>().rideId,
                                 onBack = { navController.popFrom(backStackEntry) },
                             )
                         }
@@ -469,3 +501,6 @@ private fun openInGoogleMaps(context: android.content.Context, sharedText: Strin
     val maps = android.content.Intent(view).setPackage("com.google.android.apps.maps")
     return runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }.isSuccess
 }
+
+/** The tag of a "Rides merged · Undo" offer; a page that edits the merged ride ends it by this tag. */
+const val MERGE_OFFER = "merge:"

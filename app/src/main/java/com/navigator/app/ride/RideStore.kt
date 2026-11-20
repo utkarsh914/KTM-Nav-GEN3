@@ -185,6 +185,7 @@ class RideStore(context: Context) {
                 avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh, pointCount = stats.pointCount,
                 saved = ordered.any { it.saved }, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
                 notes = RideMerge.notes(ordered), source = RideSource.MERGED,
+                parts = ordered.sumOf { it.parts }.coerceAtMost(RideJson.MAX_PARTS),
             )
             synchronized(LOCK) {
                 val now = readIndex()
