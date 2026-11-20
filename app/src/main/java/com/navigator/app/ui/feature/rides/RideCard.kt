@@ -22,9 +22,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -37,14 +34,12 @@ import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RecordedRide
-import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RideSource
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.highlightedText
-import com.navigator.app.ui.map.bandColor
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -155,7 +150,6 @@ private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRi
     val points by produceState<List<ThumbPoint>?>(null, ride.id, ride.pointCount) {
         value = runCatching { thumbnail(ride) }.getOrDefault(emptyList())
     }
-    val bands = RideMetrics.SpeedBands.DEFAULT
     val stroke = KtmLayout.outline
     // Decorative: the card's text already says everything a screen reader needs.
     Box(Modifier.size(KtmLayout.rideThumb).background(c.surf3, KtmShapes.Control).clearAndSetSemantics {}) {
@@ -164,13 +158,7 @@ private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRi
             val neutral = c.fg2
             Canvas(Modifier.size(KtmLayout.rideThumb)) {
                 val px = ThumbnailGeometry.project(pts, size.width, size.height, pad = KtmSpacing.sm.toPx())
-                val width = stroke.toPx()
-                for (i in 1 until px.size) {
-                    val b = px[i]
-                    if (b.gap) continue
-                    val color: Color = if (b.speedKmh == null) neutral else Color(bandColor(bands.bandOf(b.speedKmh), bands.bandCount))
-                    drawLine(color, Offset(px[i - 1].x, px[i - 1].y), Offset(b.x, b.y), strokeWidth = width, cap = StrokeCap.Round)
-                }
+                drawRoute(px, stroke.toPx(), neutral)
             }
         }
     }

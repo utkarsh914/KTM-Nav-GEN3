@@ -59,6 +59,12 @@ object KtmLayout {
     val row2 = 64.dp
     val row3 = 80.dp
     val rowThumb = 72.dp
+    /** The joined-route preview of a merge. */
+    val mergeMap = 200.dp
+
+    /** The route line of the merge preview. */
+    val routeStroke = 3.dp
+
     /** The route preview on a ride card. */
     val rideThumb = 64.dp
 

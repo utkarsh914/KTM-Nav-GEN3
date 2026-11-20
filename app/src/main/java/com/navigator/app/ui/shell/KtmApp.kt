@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.core.net.toUri
@@ -60,6 +61,8 @@ import com.navigator.app.ui.feature.navigate.NavigateHost
 import com.navigator.app.ui.screens.OnboardingScreen
 import com.navigator.app.ui.screens.PairingScreen
 import com.navigator.app.ui.feature.rides.RidesScreen
+import kotlinx.coroutines.launch
+import com.navigator.app.ui.feature.rides.merge.MergeScreen
 import com.navigator.app.ui.screens.RideReplayScreen
 import com.navigator.app.ui.screens.SavedPlacesScreen
 import com.navigator.app.ui.screens.SettingsScreen
@@ -98,6 +101,7 @@ fun KtmApp(onQuit: () -> Unit) {
     LaunchedEffect(dark, snap.accentColorId) { Ktm.apply(dark, accent) }
 
     val feedback = rememberFeedback()
+    val scope = rememberCoroutineScope()
     val chrome = remember { ShellChrome() }
     val retainedNav = rememberRetainedNavigationView()
 
@@ -263,6 +267,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         composable<Route.Rides> {
                             RidesScreen(
                                 onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
+                                onMerge = { ids -> navController.push(Route.MergeRides(ids)) },
                                 onOpenSettings = { navController.openTab(Tab.Settings) },
                             )
                         }
@@ -301,6 +306,35 @@ fun KtmApp(onQuit: () -> Unit) {
                         composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.TurnCalibration> { e -> TurnCalibrationScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.MergeRides> { backStackEntry ->
+                            MergeScreen(
+                                ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
+                                onBack = { navController.popFrom(backStackEntry) },
+                                onMerged = { ride, token ->
+                                    // Land on the merged ride; Undo brings the originals back and leaves it.
+                                    navController.navigate(Route.RideReplay(ride.id)) {
+                                        popUpTo<Route.MergeRides> { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                    feedback.snackbar(
+                                        resources.getString(R.string.merge_done), resources.getString(R.string.common_undo),
+                                        onDismiss = { scope.launch { container.rides.purge(token.originalIds) } },
+                                        onAction = {
+                                            scope.launch {
+                                                if (!container.rides.undoMerge(token)) {
+                                                    feedback.snackbar(resources.getString(R.string.merge_undo_failed))
+                                                    return@launch
+                                                }
+                                                val top = navController.currentBackStackEntry
+                                                if (top?.destination?.hasRoute<Route.RideReplay>() == true &&
+                                                    top.toRoute<Route.RideReplay>().rideId == ride.id
+                                                ) navController.popBackStack()
+                                            }
+                                        },
+                                    )
+                                },
+                            )
+                        }
                         composable<Route.RideReplay> { backStackEntry ->
                             RideReplayScreen(
                                 retainedNav = retainedNav,

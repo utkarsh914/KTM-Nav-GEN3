@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.rides
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -29,7 +30,7 @@ class RidesContentTest {
     private val actions = RidesActions(
         { log += "open:$it" }, { log += "star:$it" }, { log += "search" }, { log += "closeSearch" }, { log += "q:$it" },
         { log += "sort" }, { log += "select:$it" }, { log += "toggle:$it" }, { log += "all:$it" }, { log += "stop" },
-        { log += "starSel" }, { log += "delete" }, { log += "import" }, { log += "recSettings" }, { log += "record" }, { log += "autoOn" },
+        { log += "starSel" }, { log += "merge" }, { log += "delete" }, { log += "import" }, { log += "recSettings" }, { log += "record" }, { log += "autoOn" },
     )
     private val today = LocalDate.of(2026, 11, 20)
     private val zone = ZoneId.systemDefault()
@@ -73,6 +74,17 @@ class RidesContentTest {
         rule.onNodeWithContentDescription("Cancel selection").performClick()
         rule.onAllNodesWithText("Record").assertCountEquals(0)
         assertEquals(listOf("starSel", "delete", "stop"), log)
+    }
+
+    @Test fun mergeAppearsOnlyForTwoOrMoreRides() {
+        show(ui(selecting = true, selected = setOf("a")))
+        rule.onAllNodesWithContentDescription("Merge selected rides").assertCountEquals(0)
+    }
+
+    @Test fun mergeIsOfferedForTwoSelectedRides() {
+        show(ui(selecting = true, selected = setOf("a", "g")))
+        rule.onNodeWithContentDescription("Merge selected rides").performClick()
+        assertEquals(listOf("merge"), log)
     }
 
     @Test fun emptyExplainsAndOffersBothWaysIn() {

@@ -75,8 +75,12 @@ class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
             else -> RidesBody.Items(items)
         }
         // A list that emptied out leaves selection mode for good, not until a ride appears again.
-        if (l.selecting && body !is RidesBody.Items) local.update { it.copy(selecting = false, selected = emptySet()) }
         val ids = RideSelection.visible(l.selected, items)
+        // The list emptied out, or every selected ride is gone (a merge, not a search that hides them): selection ends.
+        val survivors = l.selected.any { id -> all.any { it.id == id } }
+        if (l.selecting && (body !is RidesBody.Items || (l.selected.isNotEmpty() && !survivors))) {
+            local.update { it.copy(selecting = false, selected = emptySet()) }
+        }
         val chosen = all.filter { it.id in ids }
         val visibleCount = items.count { it is RideListItem.Ride }
         RidesUi(

@@ -28,6 +28,7 @@ sealed interface Route {
     @Serializable data object SymbolTest : Route
     @Serializable data object TurnCalibration : Route
     @Serializable data class RideReplay(val rideId: String) : Route
+    @Serializable data class MergeRides(val rideIds: List<String>) : Route
 }
 
 /** The four top-level destinations of the tab bar / rail. */

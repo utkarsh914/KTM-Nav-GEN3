@@ -31,7 +31,7 @@ import com.navigator.app.ui.shell.LocalFeedback
 
 /** The Rides tab: wires [RidesContent] to the repository, the file picker and the snackbars. */
 @Composable
-fun RidesScreen(onOpenRide: (String) -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val container = context.appContainer
@@ -91,6 +91,7 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onOpenSettings: () -> Unit, modifi
         onSelectAll = vm::selectAll,
         onStopSelecting = vm::stopSelecting,
         onStarSelected = vm::starSelected,
+        onMerge = { onMerge(ui?.selected.orEmpty().toList()) },
         onDelete = { if ((ui?.starredSelected ?: 0) > 0) confirmStarred = true else vm.deleteSelected() },
         onImport = { runCatching { picker.launch(arrayOf("*/*")) } },
         onRecordingSettings = onOpenSettings,

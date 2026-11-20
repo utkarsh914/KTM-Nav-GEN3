@@ -69,6 +69,7 @@ class RidesActions(
     val onSelectAll: (Boolean) -> Unit,
     val onStopSelecting: () -> Unit,
     val onStarSelected: () -> Unit,
+    val onMerge: () -> Unit,
     val onDelete: () -> Unit,
     val onImport: () -> Unit,
     val onRecordingSettings: () -> Unit,
@@ -241,6 +242,9 @@ private fun SelectionBar(ui: RidesUi, actions: RidesActions) {
             stringResource(if (ui.starWould) R.string.rides_star_selected else R.string.rides_unstar_selected),
             actions.onStarSelected, enabled = has, tint = if (has) a.onContainer else c.fg3,
         )
+        if (ui.selected.size >= 2) {
+            KtmIconButton(KtmIcons.Merge, stringResource(R.string.rides_merge_selected), actions.onMerge, tint = a.onContainer)
+        }
         KtmIconButton(
             KtmIcons.Delete, stringResource(R.string.rides_delete_selected), actions.onDelete, enabled = has,
             tint = if (has) a.onContainer else c.fg3,

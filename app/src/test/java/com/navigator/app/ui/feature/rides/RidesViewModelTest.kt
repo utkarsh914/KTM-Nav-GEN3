@@ -137,6 +137,25 @@ class RidesViewModelTest {
         assertTrue(ui()!!.selected.isEmpty())
     }
 
+    @Test fun selectionModeEndsWhenTheSelectedRidesAreMerged() = runTest(dispatcher) {
+        val ui = watch()
+        val a = ride(1_000_000L, "A"); val b = ride(2_000_000L, "B"); ride(9_000_000L, "C")
+        vm.startSelecting(a.id); vm.toggle(b.id)
+        store.mergeRides(listOf(a.id, b.id))
+        assertFalse(ui()!!.selecting)
+        assertTrue(ui()!!.selected.isEmpty())
+    }
+
+    @Test fun aSearchThatHidesTheSelectedRidesKeepsSelectionMode() = runTest(dispatcher) {
+        val ui = watch()
+        val a = ride(1_000_000L, "Nandi"); ride(2_000_000L, "Office")
+        vm.startSelecting(a.id)
+        vm.openSearch(); vm.setQuery("office")
+        assertTrue(ui()!!.selecting)
+        vm.setQuery("")
+        assertEquals(setOf(a.id), ui()!!.selected)
+    }
+
     @Test fun importReportsItsOutcome() = runTest(dispatcher) {
         watch()
         val events = mutableListOf<RidesEvent>()
