@@ -98,7 +98,7 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                     // Room under the pill, so the newest lines are never behind it.
                     contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, top = KtmSpacing.sm, bottom = KtmLayout.targetRest + KtmSpacing.xl),
                     modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
-                ) { items(ui.entries) { LogRow(it) } }
+                ) { items(ui.entries, key = { it.key }) { LogRow(it, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsFast(), placementSpec = null)) } }
             }
             FollowPill(
                 following, { following = !following },
@@ -110,7 +110,7 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun LogRow(entry: LogEntry) {
+private fun LogRow(entry: LogEntry, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     val tint = when (entry.level) {
         LogLevel.Warn -> c.warn
@@ -119,7 +119,7 @@ private fun LogRow(entry: LogEntry) {
     }
     val shape = KtmShapes.Badge
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 1.dp)
+        modifier.fillMaxWidth().padding(vertical = 1.dp)
             .then(if (entry.level == LogLevel.Warn) Modifier.background(c.warnContainer, shape) else Modifier)
             .padding(horizontal = KtmSpacing.xs, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),

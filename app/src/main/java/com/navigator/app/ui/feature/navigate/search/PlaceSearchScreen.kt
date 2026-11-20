@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.search
 
+import com.navigator.app.ui.theme.KtmMotionSpecs
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.animation.core.tween
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -228,8 +231,11 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
         state.loading && state.suggestions.isEmpty() -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
         state.suggestions.isEmpty() -> NoMatches()
         else -> LazyColumn(Modifier.alpha(if (state.resolving) 0.5f else 1f)) {
-            items(state.suggestions, key = { it.placeId }) { s ->
-                MatchRow(s, state.query) { if (!state.resolving) actions.onSuggestion(s) }
+            itemsIndexed(state.suggestions, key = { _, s -> s.placeId }) { index, s ->
+                // SE2: results fade in 20 ms after one another.
+                Box(Modifier.animateItem(fadeInSpec = tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS))) {
+                    MatchRow(s, state.query) { if (!state.resolving) actions.onSuggestion(s) }
+                }
             }
         }
     }
@@ -246,8 +252,9 @@ private fun CategoryList(state: PlaceSearchState, actions: PlaceSearchActions) {
         )
         else -> LazyColumn {
             item { SectionHeader(stringResource(if (state.alongRoute) R.string.search_along_route else R.string.search_near_you)) }
-            items(state.categoryResults, key = { "${it.lat},${it.lng},${it.name}" }) { r ->
+            itemsIndexed(state.categoryResults, key = { _, r -> "${r.lat},${r.lng},${r.name}" }) { index, r ->
                 ListRow(
+                    modifier = Modifier.animateItem(fadeInSpec = tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS)),
                     title = r.name, supporting = r.address, leadingIcon = KtmIcons.Pin,
                     onClick = { actions.onCategoryResult(r) },
                     trailing = { r.distanceMeters?.takeIf { state.origin != null }?.let { RowValue(DistanceFormatter.format(it, DistanceUnits.METRIC)) } },
@@ -294,3 +301,6 @@ private fun MatchRow(s: PlaceSuggestion, query: String, onClick: () -> Unit) {
         trailing = { s.distanceMeters?.takeIf { it > 0 }?.let { RowValue(DistanceFormatter.format(it, DistanceUnits.METRIC)) } },
     )
 }
+
+private const val STAGGER_MS = 20
+private const val STAGGER_ROWS = 10

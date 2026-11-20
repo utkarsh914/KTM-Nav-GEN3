@@ -1,5 +1,10 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.remember
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -70,8 +75,16 @@ fun LandscapePanel(
         val leftInset = with(density) { safe.getLeft(density, LayoutDirection.Ltr).toDp() }
         val footprintPx = with(density) { LandscapePanelSpec.footprint(maxWidth.value, leftInset).roundToPx() }
         LaunchedEffect(footprintPx) { report(footprintPx) }
+        // The panel slides in from the cutout side as the map tilts (NL1).
+        val motion = KtmTheme.motion
+        val entered = remember { MutableTransitionState(false).apply { targetState = true } }
+        AnimatedVisibility(
+            visibleState = entered,
+            modifier = Modifier.align(Alignment.CenterStart),
+            enter = fadeIn(motion.effectsDefault()) + slideInHorizontally(motion.spatialDefault()) { if (motion.reduced) 0 else -it },
+        ) {
         Column(
-            Modifier.align(Alignment.CenterStart)
+            Modifier
                 .windowInsetsPadding(safe.only(WindowInsetsSides.Left + WindowInsetsSides.Top + WindowInsetsSides.Bottom))
                 .padding(KtmLayout.panelInset)
                 .width(LandscapePanelSpec.width(maxWidth.value))
@@ -85,5 +98,6 @@ fun LandscapePanel(
             verticalArrangement = Arrangement.spacedBy(gap),
             content = content,
         )
+        }
     }
 }

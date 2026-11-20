@@ -14,6 +14,9 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.performSemanticsAction
 import com.navigator.app.ui.shell.rideContainer
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -95,6 +98,23 @@ class MotionAndSemanticsTest {
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(1_000)
         rule.onNodeWithText("page").assertIsDisplayed()
+    }
+
+    @Test fun theMapCoverShowsTheRouteUntilTheMapIsFramed() {
+        var visible by mutableStateOf(true)
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                androidx.compose.foundation.layout.Box {
+                    androidx.compose.material3.Text("map")
+                    com.navigator.app.ui.feature.replay.MapCover(visible, listOf(com.navigator.app.data.rides.ThumbPoint(0.0, 0.0), com.navigator.app.data.rides.ThumbPoint(1.0, 1.0)), Modifier.testTag("cover"))
+                }
+            }
+        }
+        rule.onNodeWithTag("cover").assertIsDisplayed()
+        visible = false
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithTag("cover").assertDoesNotExist()
+        rule.onNodeWithText("map").assertIsDisplayed()
     }
 
     @Test fun turnIconNamesReadAsWords() {

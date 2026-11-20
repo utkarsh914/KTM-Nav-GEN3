@@ -3,7 +3,7 @@ package com.navigator.app.ui.feature.diagnostics
 enum class LogLevel { Info, Warn, Ok }
 
 /** One log line split into its parts: "[12:30:01.123] [BLE] Connected" becomes time, tag and message. */
-data class LogEntry(val time: String, val tag: String, val message: String, val level: LogLevel)
+data class LogEntry(val time: String, val tag: String, val message: String, val level: LogLevel, val key: String = "")
 
 object LogEntries {
     private val LINE = Regex("""^\[([^\]]*)]\s*\[([^\]]*)]\s?(.*)$""", RegexOption.DOT_MATCHES_ALL)

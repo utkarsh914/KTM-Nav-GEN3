@@ -82,6 +82,15 @@ class DiagnosticsViewModelsTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
+    @Test fun everyLogLineHasItsOwnKeyEvenWhenTextRepeats() = runTest(UnconfinedTestDispatcher()) {
+        val lines = MutableStateFlow(listOf("[t] [BLE] same", "[t] [BLE] same", "[t] [BLE] other"))
+        val vm = LogsViewModel(lines, UnconfinedTestDispatcher()).also { it.ui.launchIn(backgroundScope) }
+        val keys = vm.ui.value.entries.map { it.key }
+        assertEquals(3, keys.toSet().size)
+        lines.value = lines.value + "[t] [BLE] same"
+        assertEquals("earlier lines keep their keys when one is added", keys, vm.ui.value.entries.map { it.key }.take(3))
+    }
+
     @Test fun logsFilterByChipAndQuery() = runTest(UnconfinedTestDispatcher()) {
         val lines = MutableStateFlow(listOf("[t] [BLE] one", "[t] [Nav] two"))
         val vm = LogsViewModel(lines, UnconfinedTestDispatcher()).also { it.ui.launchIn(backgroundScope) }
@@ -219,7 +228,7 @@ class DiagnosticsContentTest {
         var tag: String? = "x"
         var shared = false
         val ui = LogsUi(
-            entries = listOf(LogEntries.parse("[12:30:01.123] [BLE] Scanning"), LogEntries.parse("[12:30:02.000] [BLE] !! write failed")),
+            entries = listOf(LogEntries.parse("[12:30:01.123] [BLE] Scanning").copy(key = "a"), LogEntries.parse("[12:30:02.000] [BLE] !! write failed").copy(key = "b")),
             tags = listOf("BLE", "Nav"),
         )
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, LogsActions({}, { shared = true }, { tag = it }, {})) } }

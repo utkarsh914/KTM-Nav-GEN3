@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,7 @@ fun KtmTextField(
         focusedLeadingIconColor = c.fg2, unfocusedLeadingIconColor = c.fg2,
         focusedSupportingTextColor = c.fg2, unfocusedSupportingTextColor = c.fg2, errorSupportingTextColor = c.bad,
     )
+    val motion = KtmTheme.motion
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -57,7 +59,15 @@ fun KtmTextField(
         label = { Text(label, style = MaterialTheme.typography.labelSmall) },
         placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyLarge) } },
         leadingIcon = leadingIcon?.let { { Icon(it, null) } },
-        supportingText = (error ?: helper)?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
+        supportingText = (error ?: helper)?.let {
+            {
+                // A validation message slides down under the field instead of popping in.
+                androidx.compose.animation.AnimatedVisibility(
+                    visibleState = remember(it) { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } },
+                    enter = androidx.compose.animation.fadeIn(motion.effectsFast()) + androidx.compose.animation.slideInVertically(motion.spatialFast()) { if (motion.reduced) 0 else -it },
+                ) { Text(it, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
         shape = KtmShapes.Control,
         colors = colors,
         keyboardOptions = keyboardOptions,

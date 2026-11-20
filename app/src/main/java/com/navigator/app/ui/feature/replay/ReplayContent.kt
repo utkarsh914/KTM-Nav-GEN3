@@ -173,9 +173,16 @@ private fun Portrait(
             Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
                 .padding(end = KtmSpacing.lg, bottom = with(density) { sheetHeight.toDp() } + KtmSpacing.lg),
         )
+        // RP1: the sheet rises into place once the page is up.
+        val motion = KtmTheme.motion
+        val risen = remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+        androidx.compose.animation.AnimatedVisibility(
+            visibleState = risen, modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.fadeIn(motion.effectsDefault()) + androidx.compose.animation.slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it / 2 },
+        ) {
         ReplaySheet(
             expanded = expanded, onExpandedChange = { expanded = it }, maxHeight = sheetMax,
-            modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged { sheetHeight = it.height; onInsets(MapInsets(bottom = it.height)) },
+            modifier = Modifier.onSizeChanged { sheetHeight = it.height; onInsets(MapInsets(bottom = it.height)) },
             pinned = {
                 Header(ui, actions)
                 Readouts(ui, position)
@@ -184,6 +191,7 @@ private fun Portrait(
             },
             details = { Details(ui, position, avgMode, actions) },
         )
+        }
     }
 }
 

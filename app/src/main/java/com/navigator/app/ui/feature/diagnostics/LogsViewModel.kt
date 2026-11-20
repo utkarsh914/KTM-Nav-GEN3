@@ -30,7 +30,12 @@ class LogsViewModel(lines: Flow<List<String>>, parsing: CoroutineDispatcher = Di
     private val query = MutableStateFlow("")
 
     val ui: StateFlow<LogsUi> = combine(lines, tag, query) { raw, tag, query ->
-        val all = raw.map(LogEntries::parse)
+        // A key per line that outlives the buffer sliding, so a paused reader keeps their place and new lines can fade in.
+        val seen = HashMap<String, Int>()
+        val all = raw.map { line ->
+            val n = seen.merge(line, 1, Int::plus) ?: 1
+            LogEntries.parse(line).copy(key = "$line#$n")
+        }
         val tags = LogEntries.tagsOf(all)
         // A chip whose subsystem fell out of the buffer can no longer be shown.
         val active = tag?.takeIf { it in tags }

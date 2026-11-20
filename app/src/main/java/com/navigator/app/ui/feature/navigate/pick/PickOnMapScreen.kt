@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.pick
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -69,9 +72,16 @@ fun PickOnMapScreen(
             )
         }
         // The pin's tip is the point: lift the icon by half its height.
+        // HM7: the pin drops in and settles; it lifts while the map moves and settles again when it stops.
+        val motion = KtmTheme.motion
+        val pinLift by androidx.compose.animation.core.animateDpAsState(
+            if (state.resolving) PIN_LIFT else 0.dp, motion.spatialFast(), label = "pinLift",
+        )
+        val drop = remember { androidx.compose.animation.core.Animatable(if (motion.reduced) 0f else 1f) }
+        androidx.compose.runtime.LaunchedEffect(Unit) { drop.animateTo(0f, motion.spatialDefault()) }
         Icon(
             KtmIcons.Pin, null, tint = KtmTheme.accent.fill,
-            modifier = Modifier.align(Alignment.Center).size(KtmLayout.mapPin).offset(y = -KtmLayout.mapPin / 2),
+            modifier = Modifier.align(Alignment.Center).size(KtmLayout.mapPin).offset { androidx.compose.ui.unit.IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },
         )
         Column(
             Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).fillMaxWidth().padding(KtmSpacing.lg)
@@ -93,3 +103,6 @@ fun PickOnMapScreen(
         }
     }
 }
+
+/** The pin rises this far while the map is moving. */
+private val PIN_LIFT = 8.dp

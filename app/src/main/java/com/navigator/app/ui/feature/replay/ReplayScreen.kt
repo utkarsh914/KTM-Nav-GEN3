@@ -107,6 +107,17 @@ fun ReplayScreen(
     Box(modifier.fillMaxSize()) {
         MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
 
+        // MO8: the card's thumbnail covers the map until the map has framed the track (or a few seconds have gone).
+        var mapFramed by remember { mutableStateOf(false) }
+        var coverGone by remember { mutableStateOf(false) }
+        LaunchedEffect(mapFramed) { if (mapFramed) { kotlinx.coroutines.delay(COVER_HOLD_MS); coverGone = true } }
+        LaunchedEffect(Unit) { kotlinx.coroutines.delay(COVER_MAX_MS); coverGone = true }
+        val coverPoints by androidx.compose.runtime.produceState<List<com.navigator.app.data.rides.ThumbPoint>?>(null, ready?.ride?.id) {
+            val ride = ready?.ride ?: return@produceState
+            value = runCatching { container.rides.thumbnail(ride) }.getOrNull()
+        }
+        MapCover(visible = !coverGone, points = coverPoints)
+
         // The map's listeners: a tap on the track seeks, panning ends following.
         LaunchedEffect(mapReady) {
             if (!mapReady) return@LaunchedEffect
@@ -149,6 +160,7 @@ fun ReplayScreen(
             if (!mapReady || insets == MapInsets()) return@LaunchedEffect
             map.setPadding(insets.left, insets.top, insets.right, insets.bottom)
             if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
+            mapFramed = true
         }
         DisposableEffect(map) { onDispose { map.setMapClickListening(false); map.setGestureListening(false) } }
 
