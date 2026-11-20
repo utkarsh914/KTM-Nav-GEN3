@@ -22,7 +22,8 @@ sealed interface RestoreState {
     data object Unreadable : RestoreState
 }
 
-data class BackupUi(val busy: Boolean = false, val restore: RestoreState? = null)
+/** [busy] is any work in progress; [restoring] says it is the restore (otherwise the backup). */
+data class BackupUi(val busy: Boolean = false, val restore: RestoreState? = null, val restoring: Boolean = false, val restartPending: Boolean = false)
 
 /** A result the page tells the rider about in a snackbar, with the action that helps. */
 sealed interface BackupEvent {
@@ -52,7 +53,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         _ui.update { it.copy(busy = true) }
         viewModelScope.launch {
             val r = gateway.backup(uri)
-            _ui.update { it.copy(busy = false) }
+            _ui.update { it.copy(busy = false, restoring = false) }
             _events.send(if (r.ok) BackupEvent.BackedUp(r.rides, uri) else BackupEvent.BackupFailed)
         }
     }
@@ -69,10 +70,10 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
     fun dismissRestore() = _ui.update { it.copy(restore = null) }
 
     fun restore(uri: Uri, rides: Boolean, places: Boolean, settings: Boolean) {
-        _ui.update { BackupUi(busy = true, restore = null) }
+        _ui.update { it.copy(busy = true, restore = null, restoring = true) }
         viewModelScope.launch {
             val r = gateway.restore(uri, rides, places, settings)
-            _ui.update { it.copy(busy = false) }
+            _ui.update { it.copy(busy = false, restoring = false, restartPending = it.restartPending || (r.ok && settings)) }
             if (r.ok) onRestored()
             _events.send(
                 if (r.ok) BackupEvent.Restored(restoredParts(r, rides, places, settings), restartNeeded = settings)

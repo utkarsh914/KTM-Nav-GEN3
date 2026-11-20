@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -35,6 +36,8 @@ class BikeDashViewModel(
     private val settings: SettingsRepository,
     private val connection: ConnectionRepository,
     permissions: PermissionsRepository,
+    /** Whether an app is still on the phone: a source that was uninstalled is not counted. */
+    private val installed: (String) -> Boolean = { true },
 ) : ViewModel() {
     private fun build(
         snap: SettingsSnapshot, status: BikeStatus, suggested: Boolean,
@@ -44,7 +47,7 @@ class BikeDashViewModel(
         repairSuggested = suggested && snap.isPaired,
         connected = status is BikeStatus.Connected,
         showOnDash = snap.mirrorEnabled,
-        appCount = snap.notificationSourceApps.size,
+        appCount = snap.notificationSourceApps.count(installed),
         marquee = snap.marqueeEnabled,
         latinOnly = snap.latinDashText,
         userName = snap.userName.orEmpty(),
@@ -74,10 +77,10 @@ class BikeDashViewModel(
     fun rePair() = connection.rePair()
 
     companion object {
-        fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                BikeDashViewModel(container.settings, container.connection, container.permissions) as T
+                BikeDashViewModel(container.settings, container.connection, container.permissions, AndroidAppInstalled(context.applicationContext)) as T
         }
     }
 }

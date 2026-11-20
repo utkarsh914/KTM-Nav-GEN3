@@ -69,6 +69,7 @@ class NavSdkMapController(
     override val mapClicks: SharedFlow<MapPoint> = _mapClicks.asSharedFlow()
     private var replayMarker: Marker? = null
     private val endpointPins by lazy { RideEndpointPins(appContext) }
+    private val trimOverlay by lazy { TrimPreviewOverlay(endpointPins) }
 
     /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
     internal fun arm() { detached = false }
@@ -170,6 +171,7 @@ class NavSdkMapController(
         gm.setOnPolylineClickListener(null)
         gm.setOnMarkerClickListener(null)
         gm.clear()
+        trimOverlay.forget()
         replayMarker = null
         // gm.clear() dropped the user marker: forget the stale handle so showUserMarker re-adds it.
         userMarker.remove()
@@ -238,6 +240,7 @@ class NavSdkMapController(
 
     override fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands) {
         val gm = map ?: return
+        trimOverlay.forget()
         drawRideTrack(gm, points, bands, endpoints = endpointPins)
         frameRideTrack(gm, points)
     }
@@ -246,6 +249,7 @@ class NavSdkMapController(
         val gm = map ?: return
         // drawRideTrack clears the map, which also drops the user marker: forget its stale handle.
         userMarker.remove()
+        trimOverlay.forget()
         drawRideTrack(gm, points, bands, endpoints = endpointPins, simplifyEpsilonM = smoothingMeters)
         replayMarker = gm.addMarker(
             MarkerOptions().position(LatLng(markerAt.lat, markerAt.lng)).icon(replayMarkerIcon(appContext, markerColor))
@@ -257,7 +261,7 @@ class NavSdkMapController(
         val gm = map ?: return
         userMarker.remove()
         replayMarker = null
-        drawTrimPreview(gm, points, from, to, keptColor, removedColor)
+        trimOverlay.update(gm, points, from, to, keptColor, removedColor)
     }
 
     override fun moveReplayMarker(at: MapPoint, follow: Boolean) {

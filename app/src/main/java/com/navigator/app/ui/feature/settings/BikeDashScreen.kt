@@ -26,7 +26,7 @@ fun BikeDashScreen(
 ) {
     val resources = LocalResources.current
     val feedback = LocalFeedback.current
-    val vm: BikeDashViewModel = viewModel(factory = BikeDashViewModel.factory(LocalContext.current.appContainer))
+    val vm: BikeDashViewModel = viewModel(factory = BikeDashViewModel.factory(LocalContext.current.appContainer, LocalContext.current))
     val ui by vm.ui.collectAsState()
     var editName by rememberSaveable { mutableStateOf(false) }
     var confirmRePair by rememberSaveable { mutableStateOf(false) }

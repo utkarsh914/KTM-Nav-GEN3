@@ -16,3 +16,14 @@ class AndroidAppLabels(context: Context) : AppLabels {
         packageName
     }
 }
+
+/** Whether [packageName] is installed; false once it has been removed from the phone. */
+class AndroidAppInstalled(context: Context) : (String) -> Boolean {
+    private val pm = context.packageManager
+
+    override fun invoke(packageName: String): Boolean = try {
+        pm.getApplicationInfo(packageName, 0); true
+    } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+        false
+    }
+}

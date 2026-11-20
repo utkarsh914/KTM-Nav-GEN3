@@ -46,6 +46,8 @@ internal data class NavFlowState(
     /** True when the CONFIRM card was reached from the search list (Back returns there). */
     val confirmFromSearch: Boolean = true,
     val query: String = "",
+    /** False when the preview was opened straight from a quick route (Home/Work, Ride back): Back skips the place sheet. */
+    val viaConfirm: Boolean = true,
 ) {
     fun openSearch(target: SearchTarget): NavFlowState =
         copy(query = "", searchTarget = target, stage = NavStage.SEARCH)
@@ -63,17 +65,17 @@ internal data class NavFlowState(
             )
         } else {
             // Stops belong to the previous destination.
-            copy(selected = p, stops = emptyList(), confirmFromSearch = true, stage = NavStage.CONFIRM)
+            copy(selected = p, stops = emptyList(), confirmFromSearch = true, viaConfirm = true, stage = NavStage.CONFIRM)
         }
 
     /** Pick from somewhere other than the search list (pin drop, link, saved place). */
     fun choose(p: SavedPlace): NavFlowState =
-        copy(selected = p, stops = emptyList(), confirmFromSearch = false, stage = NavStage.CONFIRM)
+        copy(selected = p, stops = emptyList(), confirmFromSearch = false, viaConfirm = true, stage = NavStage.CONFIRM)
 
     fun backToBrowse(): NavFlowState =
         copy(
             stage = NavStage.BROWSE, selected = null, query = "",
-            stops = emptyList(), searchTarget = SearchTarget.DESTINATION,
+            stops = emptyList(), searchTarget = SearchTarget.DESTINATION, viaConfirm = true,
         )
 
     /** End of a trip: keep [selected] (the finished card names it), clear transient planning state. */
@@ -87,11 +89,12 @@ internal data class NavFlowState(
     fun rideBack(origin: SavedPlace, tripStops: List<SavedPlace>): NavFlowState =
         NavFlowState(
             stage = NavStage.PREVIEW, selected = origin,
-            stops = tripStops.asReversed().take(MAX_STOPS), confirmFromSearch = false,
+            stops = tripStops.asReversed().take(MAX_STOPS), confirmFromSearch = false, viaConfirm = false,
         )
 
     fun back(tripLive: Boolean): BackOutcome = when (stage) {
-        NavStage.PREVIEW -> BackOutcome(copy(stage = NavStage.CONFIRM))
+        NavStage.PREVIEW ->
+            if (viaConfirm) BackOutcome(copy(stage = NavStage.CONFIRM)) else BackOutcome(this, BackEffect.BACK_TO_BROWSE)
         // Back goes where the rider came from: the search list if they picked from it,
         // the map if they dropped a pin / opened a link / tapped a saved place.
         NavStage.CONFIRM ->
@@ -152,6 +155,7 @@ internal object NavFlowCodec {
         put("target", s.searchTarget.name)
         put("fromSearch", s.confirmFromSearch)
         put("query", s.query)
+        put("viaConfirm", s.viaConfirm)
     }.toString()
 
     fun decode(raw: String?): NavFlowState {
@@ -166,6 +170,7 @@ internal object NavFlowCodec {
                     .getOrDefault(SearchTarget.DESTINATION),
                 confirmFromSearch = o.optBoolean("fromSearch", true),
                 query = o.optString("query"),
+                viaConfirm = o.optBoolean("viaConfirm", true),
             )
         }.getOrDefault(NavFlowState())
     }

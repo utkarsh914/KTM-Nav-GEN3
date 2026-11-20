@@ -345,8 +345,9 @@ fun NavigateHost(
     val routePreview by routeVm.state.collectAsState()
     // Planning-sheet state: a place picked on the preview map (long press, place label) waiting to be added,
     // and Pick on map for a stop.
-    var stopCandidate by remember { mutableStateOf<SavedPlace?>(null) }
-    var pickingStop by remember { mutableStateOf(false) }
+    // Both survive a rotation (and the process being recreated), like the rest of the plan flow.
+    var stopCandidate by androidx.compose.runtime.saveable.rememberSaveable(stateSaver = SavedPlaceSaver) { mutableStateOf<SavedPlace?>(null) }
+    var pickingStop by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     // How much of the map the plan sheet covers (left, bottom in px), so the camera frames the route in the rest.
     var planInsets by remember { mutableStateOf(0 to 0) }
     // Bumped when the sheet settles at a new height so the camera frames the route again (not for the proposed-stop sheet).
@@ -616,7 +617,7 @@ fun NavigateHost(
     /** DL3 "Add as a stop instead" and PL1 "Add as stop": the place becomes a stop of the running trip. */
     fun addAsStop(p: SavedPlace) {
         // A refusal is announced by the TripController's event.
-        if (trip.addStop(p)) { searchTarget = SearchTarget.DESTINATION; trip.setMinimised(false); stage = NavStage.NAVIGATING }
+        if (trip.addStop(p)) { stops = emptyList(); routeVm.clear(); searchTarget = SearchTarget.DESTINATION; trip.setMinimised(false); stage = NavStage.NAVIGATING }
     }
 
     fun resumeNav() {
@@ -1326,3 +1327,9 @@ private fun rememberLocationReady(): Boolean {
 
 /** DL3: [place] is wanted while a trip runs; [proceed] carries on once the rider says Replace. */
 private class ReplaceRequest(val place: SavedPlace, val cancelFirst: Boolean, val proceed: () -> Unit)
+
+/** A place waiting to be added as a stop, in a form a bundle can hold. */
+private val SavedPlaceSaver = androidx.compose.runtime.saveable.Saver<SavedPlace?, List<Any>>(
+    save = { p -> p?.let { listOf(it.lat, it.lng, it.label, it.address.orEmpty()) } ?: emptyList() },
+    restore = { l -> if (l.size < 4) null else SavedPlace(l[0] as Double, l[1] as Double, l[2] as String, (l[3] as String).ifEmpty { null }) },
+)

@@ -340,32 +340,53 @@ private fun addRideRun(map: GoogleMap, run: List<RidePoint>, bandIndex: Int, ban
     )
 }
 
-/** The trim preview: the part that is kept in [keptColor] over the part that goes, faded, with markers at the cut. */
-internal fun drawTrimPreview(map: GoogleMap, pts: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) {
-    map.clear()
-    if (pts.size < 2) return
-    fun line(range: IntRange, color: Int, z: Float) {
-        if (range.first >= range.last) return
-        val part = strideToBudget(pts.subList(range.first, range.last + 1), MAX_TRACK_VERTICES / 3)
-        // A pause or a merge seam inside the part is a break, not a line across the gap.
-        var start = 0
-        for (i in 1..part.size) {
-            if (i == part.size || part[i].gapBefore) {
-                val seg = part.subList(start, i)
-                if (seg.size >= 2) map.addPolyline(PolylineOptions().addAll(seg.map { LatLng(it.lat, it.lng) }).color(color).width(TRACK_WIDTH).zIndex(z))
-                start = i
+/**
+ * The trim page's map: the part the cut keeps over the parts it removes, with a marker at each cut. Handle moves update
+ * the lines and markers in place (the map is only cleared when another ride is shown), so dragging does not flicker.
+ */
+internal class TrimPreviewOverlay(private val endpoints: RideEndpointPins) {
+    private val lines = Array(3) { ArrayList<com.google.android.gms.maps.model.Polyline>() }
+    private var startMarker: com.google.android.gms.maps.model.Marker? = null
+    private var endMarker: com.google.android.gms.maps.model.Marker? = null
+    private var shownFor: List<RidePoint>? = null
+
+    fun forget() { lines.forEach { it.clear() }; startMarker = null; endMarker = null; shownFor = null }
+
+    fun update(map: GoogleMap, pts: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) {
+        if (shownFor !== pts) { map.clear(); forget(); shownFor = pts }
+        if (pts.size < 2) return
+        draw(map, 0, pts, 0..from, removedColor, 0f)
+        draw(map, 1, pts, to..pts.lastIndex, removedColor, 0f)
+        draw(map, 2, pts, from..to, keptColor, 1f)
+        startMarker = place(map, startMarker, pts[from], endpoints.start)
+        endMarker = place(map, endMarker, pts[to], endpoints.end)
+    }
+
+    private fun place(map: GoogleMap, marker: com.google.android.gms.maps.model.Marker?, at: RidePoint, icon: com.google.android.gms.maps.model.BitmapDescriptor): com.google.android.gms.maps.model.Marker? {
+        val ll = LatLng(at.lat, at.lng)
+        if (marker != null) { marker.position = ll; return marker }
+        return map.addMarker(MarkerOptions().position(ll).anchor(0.5f, 0.5f).icon(icon).zIndex(2f))
+    }
+
+    private fun draw(map: GoogleMap, slot: Int, pts: List<RidePoint>, range: IntRange, color: Int, z: Float) {
+        val segments = ArrayList<List<LatLng>>()
+        if (range.first < range.last) {
+            val part = strideToBudget(pts.subList(range.first, range.last + 1), MAX_TRACK_VERTICES / 3)
+            // A pause or a merge seam inside the part is a break, not a line across the gap.
+            var start = 0
+            for (i in 1..part.size) {
+                if (i == part.size || part[i].gapBefore) {
+                    val seg = part.subList(start, i)
+                    if (seg.size >= 2) segments += seg.map { LatLng(it.lat, it.lng) }
+                    start = i
+                }
             }
         }
+        val have = lines[slot]
+        segments.forEachIndexed { i, seg ->
+            if (i < have.size) { have[i].points = seg; have[i].color = color }
+            else have += map.addPolyline(PolylineOptions().addAll(seg).color(color).width(TRACK_WIDTH).zIndex(z))
+        }
+        while (have.size > segments.size) have.removeAt(have.lastIndex).remove()
     }
-    line(0..from, removedColor, 0f)
-    line(to..pts.lastIndex, removedColor, 0f)
-    line(from..to, keptColor, 1f)
-    map.addMarker(
-        MarkerOptions().position(LatLng(pts[from].lat, pts[from].lng))
-            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
-    )
-    map.addMarker(
-        MarkerOptions().position(LatLng(pts[to].lat, pts[to].lng))
-            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
-    )
 }

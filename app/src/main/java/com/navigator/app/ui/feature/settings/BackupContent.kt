@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,7 +19,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
-class BackupActions(val onBack: () -> Unit, val onBackup: () -> Unit, val onRestore: () -> Unit, val restore: RestoreActions)
+class BackupActions(val onBack: () -> Unit, val onBackup: () -> Unit, val onRestore: () -> Unit, val restore: RestoreActions, val onRestart: () -> Unit = {})
 
 /** ST8: two big actions and a readable list of what a backup holds, with the restore sheet over it. Stateless. */
 @Composable
@@ -26,11 +27,16 @@ fun BackupContent(ui: BackupUi, actions: BackupActions, modifier: Modifier = Mod
     val c = KtmTheme.colors
     SettingsPageScaffold(stringResource(R.string.backup_title), actions.onBack, modifier) {
         Column(Modifier.padding(horizontal = KtmSpacing.edge), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            KtmButton(stringResource(R.string.backup_action_backup), actions.onBackup, Modifier.fillMaxWidth(), icon = KtmIcons.Upload, loading = ui.busy)
+            KtmButton(stringResource(R.string.backup_action_backup), actions.onBackup, Modifier.fillMaxWidth(), icon = KtmIcons.Upload, loading = ui.busy && !ui.restoring, enabled = !ui.restoring)
             KtmButton(
                 stringResource(R.string.backup_action_restore), actions.onRestore, Modifier.fillMaxWidth(),
-                style = ButtonStyle.Tonal, icon = KtmIcons.Download, enabled = !ui.busy,
+                style = ButtonStyle.Tonal, icon = KtmIcons.Download, enabled = !ui.busy, loading = ui.restoring,
             )
+            // The snackbar for this is gone in seconds; the reminder stays until the app has restarted.
+            if (ui.restartPending) {
+                Text(stringResource(R.string.backup_restart_pending), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
+                KtmButton(stringResource(R.string.backup_restart_now), actions.onRestart, Modifier.fillMaxWidth(), style = ButtonStyle.Tonal, icon = KtmIcons.Restart)
+            }
         }
         SectionHeader(stringResource(R.string.backup_included))
         ListRow(title = stringResource(R.string.backup_inc_rides), supporting = stringResource(R.string.backup_inc_rides_hint), leadingIcon = KtmIcons.Route)

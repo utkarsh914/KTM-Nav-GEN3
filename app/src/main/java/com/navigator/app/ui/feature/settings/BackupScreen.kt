@@ -78,7 +78,7 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     BackupContent(
         ui, modifier = modifier,
         actions = BackupActions(
-            onBack = { if (!ui.busy) onBack() }, onBackup = { startBackup() }, onRestore = { chooseFile() },
+            onBack = { if (!ui.busy) onBack() }, onBackup = { startBackup() }, onRestore = { chooseFile() }, onRestart = { AppRestart.now(context) },
             restore = RestoreActions(
                 onConfirm = { choice -> restoreUri?.let { vm.restore(it, choice.rides, choice.places, choice.settings) } },
                 onChooseAnother = { vm.dismissRestore(); chooseFile() },

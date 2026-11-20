@@ -108,18 +108,17 @@ class NavFlowTest {
         assertEquals(listOf(place(3), place(2), place(1)), s.stops)
         assertFalse(s.confirmFromSearch)
         assertEquals(SearchTarget.DESTINATION, s.searchTarget)
-        // Back from the reverse preview goes to CONFIRM like any other preview.
-        assertEquals(NavStage.CONFIRM, s.back(false).state.stage)
+        // B21c: the place sheet was never shown, so Back leaves the plan instead of opening it.
+        assertEquals(BackEffect.BACK_TO_BROWSE, s.back(false).effect)
     }
 
-    @Test fun quickRouteGoesStraightToPreviewAndBackLandsOnConfirm() {
+    @Test fun quickRouteGoesStraightToPreviewAndBackLeavesThePlan() {
         val s = NavFlowState(stage = NavStage.SEARCH, query = "x").quickRoute(place(7))
         assertEquals(NavStage.PREVIEW, s.stage)
         assertEquals(place(7), s.selected)
         assertTrue(s.stops.isEmpty())
         assertEquals("", s.query)
-        assertEquals(NavStage.CONFIRM, s.back(false).state.stage)
-        assertEquals(BackEffect.BACK_TO_BROWSE, s.back(false).state.back(false).effect)
+        assertEquals(BackEffect.BACK_TO_BROWSE, s.back(false).effect)
     }
 
     @Test fun rideBackNeverExceedsTheStopCap() {
@@ -250,5 +249,15 @@ class NavFlowTest {
         val b = NavFlowViewModel(handle) // "new process" with the saved handle
         assertEquals(NavStage.PREVIEW, b.state.stage)
         assertEquals(place(1), b.state.selected)
+    }
+
+    @Test fun backFromAQuickRoutePreviewGoesToTheMapNotAnUnseenPlaceSheet() {
+        val quick = NavFlowState().quickRoute(place(1))
+        assertEquals(NavStage.PREVIEW, quick.stage)
+        assertEquals(BackEffect.BACK_TO_BROWSE, quick.back(false).effect)
+        val chosen = quick.choose(place(2))
+        assertEquals(NavStage.CONFIRM, chosen.stage)
+        assertTrue(chosen.viaConfirm)
+        assertFalse(NavFlowCodec.decode(NavFlowCodec.encode(quick)).viaConfirm)
     }
 }

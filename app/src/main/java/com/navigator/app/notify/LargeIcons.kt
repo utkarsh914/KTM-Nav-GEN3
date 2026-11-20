@@ -17,10 +17,20 @@ import com.navigator.app.ui.components.TurnIconArt
  */
 object LargeIcons {
     private const val SIZE = 128
+    private const val CACHED_TURNS = 24
+    private const val CACHED_SPEEDS = 40
     private val DASH_BG = Color.rgb(0x1F, 0x21, 0x25)
     private val ALERT_BG = Color.rgb(0xC6, 0x28, 0x28)
 
-    fun turn(context: Context, icon: TurnIcon): Bitmap? = runCatching {
+    // The same few glyphs and speeds come round on every notification update: draw each once.
+    private val turns = android.util.LruCache<TurnIcon, Bitmap>(CACHED_TURNS)
+    private val speeds = android.util.LruCache<Int, Bitmap>(CACHED_SPEEDS)
+
+    fun turn(context: Context, icon: TurnIcon): Bitmap? = turns.get(icon) ?: drawTurn(context, icon)?.also { turns.put(icon, it) }
+
+    fun speed(kmh: Int): Bitmap = speeds.get(kmh) ?: drawSpeed(kmh).also { speeds.put(kmh, it) }
+
+    private fun drawTurn(context: Context, icon: TurnIcon): Bitmap? = runCatching {
         val drawable = TurnIconArt.drawableFor(icon)?.let { AppCompatResources.getDrawable(context, it) } ?: return null
         val bitmap = createBitmap(SIZE, SIZE)
         val canvas = Canvas(bitmap)
@@ -32,7 +42,7 @@ object LargeIcons {
         bitmap
     }.getOrNull()
 
-    fun speed(kmh: Int): Bitmap {
+    private fun drawSpeed(kmh: Int): Bitmap {
         val bitmap = createBitmap(SIZE, SIZE)
         val canvas = Canvas(bitmap)
         canvas.drawCircle(SIZE / 2f, SIZE / 2f, SIZE / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ALERT_BG })

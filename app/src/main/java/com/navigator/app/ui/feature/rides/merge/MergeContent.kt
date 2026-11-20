@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.rides.merge
 
+import com.navigator.app.ride.RecordedRide
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.snap
@@ -85,7 +86,7 @@ private fun Ready(ui: MergeUi.Ready, onMerge: () -> Unit) {
             when (val b = plan.block) {
                 is MergeBlock.Overlap -> InfoBanner(
                     title = stringResource(R.string.merge_overlap_title),
-                    message = stringResource(R.string.merge_overlap_body, rideName(b.first.destinationLabel, b.first.source), rideName(b.second.destinationLabel, b.second.source)),
+                    message = stringResource(R.string.merge_overlap_body, rideName(b.first), rideName(b.second)),
                     tone = BannerTone.Warn,
                 )
                 MergeBlock.Active -> InfoBanner(message = stringResource(R.string.merge_active_body), tone = BannerTone.Warn)
@@ -119,6 +120,16 @@ private fun Ready(ui: MergeUi.Ready, onMerge: () -> Unit) {
 @Composable
 private fun rideName(label: String?, source: String?): String =
     label?.takeIf { it.isNotBlank() } ?: stringResource(RideSourceText.title(source))
+
+/** A ride without a name is told apart by when it started ("Recorded ride · 14:05"). */
+@Composable
+private fun rideName(ride: RecordedRide): String {
+    val label = ride.destinationLabel?.takeIf { it.isNotBlank() }
+    if (label != null) return label
+    val time = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+        .format(java.time.Instant.ofEpochMilli(ride.startMs).atZone(java.time.ZoneId.systemDefault()))
+    return stringResource(RideSourceText.title(ride.source)) + " · " + time
+}
 
 @Composable
 private fun RouteMap(plan: MergePlan) {

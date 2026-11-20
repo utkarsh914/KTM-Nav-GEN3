@@ -20,8 +20,11 @@ class AndroidBackupGateway(context: Context) : BackupGateway {
     private val io = Dispatchers.IO + NonCancellable
 
     override suspend fun backup(uri: Uri): BackupManager.Summary = withContext(io) {
-        runCatching { app.contentResolver.openOutputStream(uri)?.use { BackupManager(app).backup(it) } }.getOrNull()
+        val summary = runCatching { app.contentResolver.openOutputStream(uri)?.use { BackupManager(app).backup(it) } }.getOrNull()
             ?: BackupManager.Summary(0, false)
+        // The picker already created the file: a failed backup must not leave an empty one behind.
+        if (!summary.ok) runCatching { android.provider.DocumentsContract.deleteDocument(app.contentResolver, uri) }
+        summary
     }
 
     override suspend fun inspect(uri: Uri): BackupManager.Preview? = withContext(io) {

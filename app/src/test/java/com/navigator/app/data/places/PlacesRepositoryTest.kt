@@ -60,6 +60,14 @@ class PlacesRepositoryTest {
         assertEquals(toit, repo.favorites.value.single { it.slot == FavoriteSlot.HOME }.place)
     }
 
+    @Test fun undoDoesNotOverwriteANewerChangeToTheSameSlot() {
+        val repo = PlacesRepository(ctx)
+        val first = repo.assign(toit, FavoriteSlot.HOME)
+        repo.assign(park, FavoriteSlot.HOME)
+        repo.undoAssign(toit, FavoriteSlot.HOME, first)
+        assertEquals(park, repo.favorites.value.single { it.slot == FavoriteSlot.HOME }.place)
+    }
+
     @Test fun undoingTheFirstHomeLeavesNone() {
         val repo = PlacesRepository(ctx)
         val previous = repo.assign(toit, FavoriteSlot.HOME)

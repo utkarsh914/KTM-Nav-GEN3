@@ -864,6 +864,7 @@
         <item quantity="other">%1$d settings</item>
     </plurals>
     <string name="backup_restart_now">Restart now</string>
+    <string name="backup_restart_pending">Restored settings apply after the app restarts.</string>
     <string name="backup_restore_failed">Couldn\'t restore that file</string>
     <string name="restore_title">Restore from backup</string>
     <string name="restore_reading">Reading the file</string>

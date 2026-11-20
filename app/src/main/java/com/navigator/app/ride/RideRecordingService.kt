@@ -177,7 +177,8 @@ class RideRecordingService : Service() {
                 // System-drawn elapsed timer (excludes earlier paused time).
                 b.setUsesChronometer(true).setShowWhen(true).setWhen(now - session.elapsedMs(now))
             } else b.setShowWhen(false)
-            PromotedOngoing.apply(b)
+            // The Live Updates switch in Settings covers the recording notification too.
+            if (runCatching { AppSettings(this).liveUpdatesEnabled }.getOrDefault(true)) PromotedOngoing.apply(b)
         } else {
             b.setShowWhen(false)
         }
