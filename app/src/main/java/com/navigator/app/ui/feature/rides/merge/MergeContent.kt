@@ -137,15 +137,18 @@ private fun RouteMap(plan: MergePlan) {
 
 @Composable
 private fun Parts(plan: MergePlan) {
+    // The start carries its date (parts can be days apart); the end only when it falls on another day.
     val time = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-    fun at(ms: Long) = time.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+    val dateTime = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+    fun zoned(ms: Long) = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
     Column {
         plan.parts.forEachIndexed { i, part ->
             val r = part.ride
             ListRow(
                 title = stringResource(R.string.merge_part_title, i + 1, rideName(r.destinationLabel, r.source)),
                 supporting = stringResource(
-                    R.string.merge_part_times, at(r.startMs), at(r.endMs), DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
+                    R.string.merge_part_times, dateTime.format(zoned(r.startMs)),
+                    (if (zoned(r.endMs).toLocalDate() == zoned(r.startMs).toLocalDate()) time else dateTime).format(zoned(r.endMs)), DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
                 ),
             )
             plan.gaps.getOrNull(i)?.let { gap ->

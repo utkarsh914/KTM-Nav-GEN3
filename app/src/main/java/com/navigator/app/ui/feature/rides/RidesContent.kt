@@ -119,7 +119,7 @@ fun RidesContent(
             AnimatedContent(targetState = ui, contentKey = { it?.body?.let { b -> b::class } }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
                 when (val body = shown?.body) {
                     null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
-                    RidesBody.Empty -> EmptyRides(autoRecordOn, actions)
+                    RidesBody.Empty -> EmptyRides(autoRecordOn, recording, actions)
                     RidesBody.NoMatch -> EmptyState(
                         KtmIcons.Search, stringResource(R.string.rides_no_match_title, shown?.query.orEmpty().trim()),
                         stringResource(R.string.rides_no_match_message),
@@ -266,12 +266,13 @@ private val DAY: DateTimeFormatter by lazy { dayFormatter("EEEdMMM") }
 private val DAY_YEAR: DateTimeFormatter by lazy { dayFormatter("dMMMyyyy") }
 
 @Composable
-private fun EmptyRides(autoRecordOn: Boolean, actions: RidesActions) {
+private fun EmptyRides(autoRecordOn: Boolean, recording: Boolean, actions: RidesActions) {
     EmptyState(
         icon = KtmIcons.Route,
         title = stringResource(R.string.rides_empty_title),
         message = stringResource(if (autoRecordOn) R.string.rides_empty_message else R.string.rides_empty_message_auto_off),
-        primary = StateAction(stringResource(R.string.rides_record), actions.onRecord),
+        // A ride is already being recorded: the strip above the tabs owns it, so no second Record button.
+        primary = if (recording) null else StateAction(stringResource(R.string.rides_record), actions.onRecord),
         secondary = StateAction(stringResource(R.string.rides_menu_import), actions.onImport),
         tertiary = if (autoRecordOn) null else StateAction(stringResource(R.string.rides_empty_turn_on), actions.onTurnOnAutoRecord),
     )

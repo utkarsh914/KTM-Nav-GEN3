@@ -98,9 +98,18 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
         onRecord = startRecording,
         onTurnOnAutoRecord = { container.settings.update { rideRecordingEnabled = true } },
     )
+    // "Today" and "Yesterday" move on at midnight even if the tab stays open.
+    val today by androidx.compose.runtime.produceState(java.time.LocalDate.now()) {
+        while (true) {
+            val now = java.time.LocalDateTime.now()
+            val untilMidnight = java.time.Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).toMillis()
+            kotlinx.coroutines.delay(untilMidnight + MIDNIGHT_SLACK_MS)
+            value = java.time.LocalDate.now()
+        }
+    }
     RidesContent(
         ui = ui, autoRecordOn = snap.rideRecordingEnabled, recording = session.active,
-        thumbnail = { container.rides.thumbnail(it) }, actions = actions, modifier = modifier,
+        thumbnail = { container.rides.thumbnail(it) }, actions = actions, modifier = modifier, today = today,
     )
 
     if (confirmStarred) {
@@ -114,3 +123,5 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
         )
     }
 }
+
+private const val MIDNIGHT_SLACK_MS = 1_000L

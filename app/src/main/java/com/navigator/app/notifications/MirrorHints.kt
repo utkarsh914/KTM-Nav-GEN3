@@ -36,14 +36,4 @@ object MirrorHints {
         if (!hasNav && !ignoringBatteryOptimizations) out += Kind.BATTERY
         return out
     }
-
-    /** "just now" / "12 s ago" / "3 min ago". */
-    fun ageLabel(ageMs: Long): String {
-        val s = (ageMs / 1000).coerceAtLeast(0)
-        return when {
-            s < 3 -> "just now"
-            s < 60 -> "$s s ago"
-            else -> "${s / 60} min ago"
-        }
-    }
 }

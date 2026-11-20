@@ -54,6 +54,7 @@ private val LANE_CELL_W = KtmLayout.laneCellWidth
 private val LANE_CELL_H = KtmLayout.laneCellHeight
 
 /** The sizes the card is drawn at: the portrait card, the landscape block (NL1) and its narrow form (NL7). */
+@androidx.compose.runtime.Immutable
 class ManeuverMetrics(
     val glyph: Dp,
     val distance: TextStyle,

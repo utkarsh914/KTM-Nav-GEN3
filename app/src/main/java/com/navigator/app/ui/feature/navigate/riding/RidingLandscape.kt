@@ -63,6 +63,7 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberHaptics
 
 /** The values behind the trip controls, shown as the landscape panel's second face (NL4). */
+@androidx.compose.runtime.Immutable
 class TripControlsUi(
     val beeps: Boolean,
     val messages: Boolean,

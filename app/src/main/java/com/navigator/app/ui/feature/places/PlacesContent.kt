@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.places
 
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
@@ -151,7 +152,14 @@ private fun SlotRow(slot: FavoriteSlot, place: SavedPlace?, origin: Pair<Double,
     val home = slot == FavoriteSlot.HOME
     val name = stringResource(if (home) R.string.navigate_tile_home else R.string.navigate_tile_work)
     val icon = if (home) KtmIcons.Home else KtmIcons.Work
-    if (place == null) {
+    val motion = KtmTheme.motion
+    // Setting or clearing a slot crossfades the row rather than swapping it.
+    androidx.compose.animation.AnimatedContent(
+        targetState = place, contentKey = { it != null },
+        transitionSpec = { androidx.compose.animation.fadeIn(motion.effectsDefault()) togetherWith androidx.compose.animation.fadeOut(motion.effectsFast()) },
+        label = "slotRow",
+    ) { shown ->
+    if (shown == null) {
         ListRow(
             title = stringResource(if (home) R.string.places_home_unset else R.string.places_work_unset),
             supporting = stringResource(if (home) R.string.places_home_hint else R.string.places_work_hint),
@@ -160,13 +168,14 @@ private fun SlotRow(slot: FavoriteSlot, place: SavedPlace?, origin: Pair<Double,
         )
     } else {
         ListRow(
-            title = name, supporting = place.address ?: place.label, leadingIcon = icon,
-            onClick = { actions.onOpenSlot(slot, place) },
+            title = name, supporting = shown.address ?: shown.label, leadingIcon = icon,
+            onClick = { actions.onOpenSlot(slot, shown) },
             trailing = {
-                StraightLine.label(origin, place)?.let { RowValue(it) }
-                KtmIconButton(KtmIcons.More, stringResource(R.string.places_row_more, name), { actions.onSlotMore(slot, place) })
+                StraightLine.label(origin, shown)?.let { RowValue(it) }
+                KtmIconButton(KtmIcons.More, stringResource(R.string.places_row_more, name), { actions.onSlotMore(slot, shown) })
             },
         )
+    }
     }
 }
 

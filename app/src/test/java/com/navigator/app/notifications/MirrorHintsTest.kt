@@ -35,11 +35,4 @@ class MirrorHintsTest {
     @Test fun healthyIsQuiet() {
         assertEquals(emptyList<Kind>(), hints(hasNav = true, age = 2_000, battery = true))
     }
-
-    @Test fun ageLabels() {
-        assertEquals("just now", MirrorHints.ageLabel(1_000))
-        assertEquals("12 s ago", MirrorHints.ageLabel(12_400))
-        assertEquals("3 min ago", MirrorHints.ageLabel(185_000))
-        assertEquals("just now", MirrorHints.ageLabel(-5))
-    }
 }
