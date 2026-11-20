@@ -4,7 +4,7 @@
   Sentence case, plain rider language, no developer terms. Notification text and channel names
   live here too. Plurals go in plurals.xml. New or touched UI text always goes in this file.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Permissions: what each is for, in under five words (ON5, ST7) -->
     <string name="permission_nearby_title">Nearby devices</string>
     <string name="permission_nearby_why">Connect to your bike</string>
@@ -1043,4 +1043,60 @@
     <string name="shortcut_home_word">Home</string>
     <string name="shortcut_work_word">Work</string>
     <string name="shortcut_ride_label">Ride %1$s</string>
+
+    <!-- Diagnostics (DG1 to DG4) -->
+    <string name="logs_title">Logs</string>
+    <string name="logs_share">Share log</string>
+    <string name="logs_share_chooser">Share KTM Navigator log</string>
+    <string name="logs_share_failed">Couldn\'t share the log</string>
+    <string name="logs_search">Search the log</string>
+    <string name="logs_all">All</string>
+    <string name="logs_following">Following live</string>
+    <string name="logs_paused">Paused</string>
+    <string name="logs_empty_title">Nothing logged yet</string>
+    <string name="logs_empty">New lines appear here as the app works.</string>
+    <string name="logs_no_match_title">No matching lines</string>
+    <string name="logs_no_match">Try another word, or choose All.</string>
+    <string name="symbols_title">Symbol testing</string>
+    <string name="symbols_info">About symbol testing</string>
+    <string name="symbols_info_title">Roundabout probe</string>
+    <string name="symbols_info_body" tools:ignore="Typos">Send RAB_SECT_1_RH to 16_RH in order and note the clock position of the exit arrow for each N (for example 3 o\'clock). That list of N and angle is what is needed to draw Google\'s roundabout exits correctly.</string>
+    <string name="symbols_intro">Send each symbol, look at the dash, then mark Works or Wrong. The dash shows the symbol\'s name as text, so photos explain themselves.</string>
+    <string name="symbols_turn">Turn icons</string>
+    <string name="symbols_notification">Notification icons</string>
+    <string name="symbols_summary">Works: %1$d \u00b7 Wrong: %2$d \u00b7 Total: %3$d</string>
+    <string name="symbols_send">Send</string>
+    <string name="symbols_works">Works</string>
+    <string name="symbols_wrong">Wrong</string>
+    <string name="symbols_question">Does the dash show this symbol?</string>
+    <string name="calib_title">Turn icon calibration</string>
+    <string name="calib_intro">Pick the dash symbol that matches each icon Google Maps showed. It is saved for good and sent to the dash so you can check it.</string>
+    <string name="calib_legend">\u2605 means confirmed working on your dash.</string>
+    <string name="calib_empty_title">No turn icons yet</string>
+    <string name="calib_empty">Navigate a route with Google Maps so the app captures each turn icon, then come back to label them.</string>
+    <string name="calib_unmatched">Not labelled</string>
+    <plurals name="calib_seen">
+        <item quantity="one">Seen %d time</item>
+        <item quantity="other">Seen %d times</item>
+    </plurals>
+    <string name="calib_seen_before">Seen before counting began</string>
+    <string name="calib_pick">Pick the matching symbol</string>
+    <string name="calib_clear">Clear label</string>
+    <string name="calib_working_named">%1$s, confirmed working</string>
+    <string name="symbols_offline">Connect to the dash first: nothing was sent</string>
+    <string name="symbols_send_named">Send %1$s to the dash</string>
+    <string name="calib_expanded">Expanded</string>
+    <string name="calib_collapsed">Collapsed</string>
+    <string name="calib_captured">Icon captured from Google Maps</string>
+    <string name="overlay_nav" translatable="false">nav: on=%1$s gps=%2$s</string>
+    <string name="overlay_icon" translatable="false">icon: %1$s</string>
+    <string name="overlay_dist" translatable="false">dist: %1$s</string>
+    <string name="overlay_road" translatable="false">road: %1$s</string>
+    <string name="overlay_eta" translatable="false">eta: %1$s  rem: %2$s</string>
+    <string name="overlay_offline" translatable="false">offline banner: %1$s</string>
+    <string name="overlay_last" translatable="false">last: %1$s</string>
+    <string name="overlay_chip">DASH %1$s</string>
+    <string name="overlay_title">DASH PREVIEW (debug, #%1$d)</string>
+    <string name="overlay_pin">Keep on riding screens</string>
+    <string name="overlay_unpin">Hide on riding screens</string>
 </resources>

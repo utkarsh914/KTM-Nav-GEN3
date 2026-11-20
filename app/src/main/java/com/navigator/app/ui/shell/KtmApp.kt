@@ -47,12 +47,15 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
+import com.navigator.app.ui.feature.diagnostics.CalibrationScreen
+import com.navigator.app.ui.feature.diagnostics.DebugOverlay
+import com.navigator.app.ui.feature.diagnostics.LogsScreen
+import com.navigator.app.ui.feature.diagnostics.SymbolTestScreen
 import com.navigator.app.ui.feature.places.PlaceActions
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
-import com.navigator.app.ui.screens.LogsScreen
 import com.navigator.app.ui.feature.mirror.MirrorScreen
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
@@ -82,8 +85,6 @@ import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
 import com.navigator.app.ui.feature.places.PlacesScreen
-import com.navigator.app.ui.screens.SymbolTestScreen
-import com.navigator.app.ui.screens.TurnCalibrationScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
 import com.navigator.app.ui.theme.Ktm
@@ -371,7 +372,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         composable<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
-                        composable<Route.TurnCalibration> { e -> TurnCalibrationScreen(onBack = { navController.popFrom(e) }) }
+                        composable<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
                         composable<Route.MergeRides> { backStackEntry ->
                             MergeScreen(
                                 ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
@@ -442,10 +443,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                     }
                 }
-                if (com.navigator.app.BuildConfig.DEBUG) {
-                    val overlayOn by com.navigator.app.nav.DashPreview.overlayEnabled.collectAsState()
-                    if (overlayOn) com.navigator.app.ui.DashPreviewPanel()
-                }
+                if (com.navigator.app.BuildConfig.DEBUG) DebugOverlay(riding = chrome.immersive)
             }
 
             if (showQuit) {

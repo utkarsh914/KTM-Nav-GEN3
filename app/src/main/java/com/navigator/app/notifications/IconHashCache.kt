@@ -2,6 +2,7 @@ package com.navigator.app.notifications
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.core.content.edit
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
@@ -60,11 +61,30 @@ object IconHashCache {
         // Always keep the latest bitmap on disk for this hash so the calibration
         // screen has something to show (overwrite is fine - same hash, same pixels).
         saveUnknownIcon(bitmap, hash, context)
+        countSighting(hash, context)
         if (seenHashesThisSession.add(hash)) {
             AppLogger.log("IconCache", "Unrecognized icon hash=$hash - saved for calibration")
         }
         return null
     }
+
+    @Volatile private var lastUnknownHash: Int? = null
+
+    /** The same icon is looked up on every notification refresh: only a change from the previous one is a new sighting. */
+    @Synchronized private fun countSighting(hash: Int, context: Context) {
+        if (lastUnknownHash == hash) return
+        lastUnknownHash = hash
+        runCatching {
+            val prefs = context.getSharedPreferences(SEEN_PREFS, Context.MODE_PRIVATE)
+            prefs.edit { putInt(hash.toString(), prefs.getInt(hash.toString(), 0) + 1) }
+        }
+    }
+
+    /** How many times this icon has come up in guidance (shown in calibration); 0 for one captured before counting began. */
+    fun seenCount(context: Context, hash: Int): Int =
+        runCatching { context.getSharedPreferences(SEEN_PREFS, Context.MODE_PRIVATE).getInt(hash.toString(), 0) }.getOrDefault(0)
+
+    private const val SEEN_PREFS = "opendash_icon_seen"
 
     /** Directory holding captured, not-yet-labeled turn-icon bitmaps. */
     fun savedIconsDir(context: Context): File = File(context.getExternalFilesDir(null), "unknown_turn_icons")
@@ -91,7 +111,13 @@ object IconHashCache {
             dir.listFiles { f -> f.name.startsWith("icon_") && f.name.endsWith(".png") }
                 ?.sortedByDescending { it.lastModified() }
                 ?.drop(MAX_SAVED_ICONS)
-                ?.forEach { runCatching { it.delete() } }
+                ?.forEach { f ->
+                    runCatching { f.delete() }
+                    // The counter goes with its picture.
+                    f.name.removePrefix("icon_").removeSuffix(".png").toIntOrNull()?.let { h ->
+                        runCatching { context.getSharedPreferences(SEEN_PREFS, Context.MODE_PRIVATE).edit { remove(h.toString()) } }
+                    }
+                }
         } catch (e: Exception) {
             AppLogger.log("IconCache", "!! Failed to save unknown icon: $e")
         }

@@ -36,6 +36,12 @@ object DashPreview {
 
     fun setOverlayEnabled(enabled: Boolean) { _overlayEnabled.value = enabled }
 
+    /** Kept on riding screens too (they hide the overlay otherwise). Lasts for the session. */
+    private val _overlayPinned = MutableStateFlow(false)
+    val overlayPinned: StateFlow<Boolean> = _overlayPinned
+
+    fun setOverlayPinned(pinned: Boolean) { _overlayPinned.value = pinned }
+
     /** A message went to the dash banner. */
     fun banner(text: String) {
         runCatching { _state.update { it.copy(lastBanner = text) } }
