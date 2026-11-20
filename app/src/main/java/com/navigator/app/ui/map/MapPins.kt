@@ -73,3 +73,34 @@ internal class MapPins(context: Context, private val pin: PreviewPinStyle) {
         }
     }
 }
+
+/**
+ * The two ends of a recorded ride: a white-ringed disc with a play triangle where it began and a stop square where it
+ * ended. Fixed colours (green and near-black) because a ride is drawn in its own speed colours, not the accent.
+ */
+internal class RideEndpointPins(context: Context) {
+    private val density = context.resources.displayMetrics.density
+
+    private fun dp(v: Float) = v * density
+
+    private fun disc(fill: Int, glyph: Canvas.(c: Float, paint: Paint) -> Unit): BitmapDescriptor {
+        val size = dp(30f).toInt()
+        val bmp = createBitmap(size, size)
+        val canvas = Canvas(bmp)
+        val c = size / 2f
+        canvas.drawCircle(c, c, dp(14f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
+        canvas.drawCircle(c, c, dp(11.5f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fill })
+        canvas.glyph(c, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
+        return BitmapDescriptorFactory.fromBitmap(bmp)
+    }
+
+    val start: BitmapDescriptor by lazy {
+        disc(0xFF2E9E5B.toInt()) { c, paint ->
+            drawPath(Path().apply { moveTo(c - dp(3f), c - dp(5f)); lineTo(c + dp(5.5f), c); lineTo(c - dp(3f), c + dp(5f)); close() }, paint)
+        }
+    }
+
+    val end: BitmapDescriptor by lazy {
+        disc(0xFF1B1D21.toInt()) { c, paint -> drawRoundRect(RectF(c - dp(4.5f), c - dp(4.5f), c + dp(4.5f), c + dp(4.5f)), dp(1f), dp(1f), paint) }
+    }
+}

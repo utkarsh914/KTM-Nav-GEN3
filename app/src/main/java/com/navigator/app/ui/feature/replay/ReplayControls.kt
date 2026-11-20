@@ -54,6 +54,7 @@ fun ReplaySeekBar(
     position: State<Int>,
     size: Int,
     seams: List<Float>,
+    mergeSeams: List<Float>,
     onSeek: (Float) -> Unit,
     onScrubStart: () -> Unit,
     modifier: Modifier = Modifier,
@@ -90,13 +91,18 @@ fun ReplaySeekBar(
         val progress = left + width * PlaybackEngine.fractionOf(position.value, size)
         drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
         drawLine(a.fill, Offset(left, y), Offset(progress, y), strokeWidth = track, cap = StrokeCap.Round)
-        seams.forEach { drawStop(left + width * it, y, track, KtmLayout.seekGap.toPx(), c.surf, c.warn) }
+        // A join between merged rides is a wide warning hatch; a pause inside one ride is a narrower, quieter one.
+        seams.forEach {
+            val join = it in mergeSeams
+            drawStop(left + width * it, y, track, KtmLayout.seekGap.toPx() * (if (join) 1f else PAUSE_GAP_SCALE), c.surf, if (join) c.warn else c.fg2)
+        }
         drawCircle(c.surf, radius = thumb / 2, center = Offset(progress, y))
         drawCircle(a.fill, radius = thumb / 2 - track / 2, center = Offset(progress, y))
     }
 }
 
 private const val PERCENT = 100f
+private const val PAUSE_GAP_SCALE = 0.6f
 
 /** The thumb sits inside the track's ends, so a position maps to the track and not to the whole band. */
 internal fun trackFraction(x: Float, widthPx: Float, thumbPx: Float): Float =
@@ -136,7 +142,7 @@ fun MiniStepper(
     val a = KtmTheme.accent
     Row(
         modifier.height(KtmLayout.targetRest)
-            .border(if (highlight) KtmLayout.outline else KtmLayout.hairline, if (highlight) a.fill else c.line2, KtmShapes.Control),
+            .then(if (highlight) Modifier.border(KtmLayout.outline, a.fill, KtmShapes.Control) else Modifier.background(c.surf2, KtmShapes.Control)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         KtmIconButton(KtmIcons.Remove, lessDescription, onLess, enabled = canLess)

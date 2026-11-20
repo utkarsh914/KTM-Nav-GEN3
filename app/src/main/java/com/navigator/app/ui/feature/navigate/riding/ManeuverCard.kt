@@ -68,7 +68,7 @@ class ManeuverMetrics(
     companion object {
         @Composable
         fun portrait() = ManeuverMetrics(
-            KtmLayout.ridingGlyph, MaterialTheme.typography.displayMedium, MaterialTheme.typography.titleMedium, 2, LANE_ARROW, false,
+            KtmLayout.ridingGlyph, MaterialTheme.typography.displayMedium, KtmTheme.type.ridingInstruction, 2, LANE_ARROW, false,
         )
 
         @Composable

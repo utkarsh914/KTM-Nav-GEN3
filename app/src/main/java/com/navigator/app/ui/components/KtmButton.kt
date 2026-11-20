@@ -56,12 +56,16 @@ import com.navigator.app.ui.theme.rememberHaptics
 /** Visual style of a [KtmButton]. One primary action per screen; destructive actions use a danger style, never the accent. */
 enum class ButtonStyle { Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal }
 
-/** Heights are touch targets: 48 at rest, 56 primary at rest, 64 riding, 72 for stacked icon-over-label tiles. */
+/** Heights are touch targets: 48 at rest, 56 primary at rest, 64 riding, 72 for stacked icon-over-label tiles, 84 for the trip sheet's. */
 enum class ButtonSize(val height: Dp) {
     Small(KtmLayout.targetRest),
     Rest(KtmLayout.targetPrimary),
     Riding(KtmLayout.targetRiding),
     Tile(72.dp),
+    /** The trip sheet's big stacked tiles (Add stop, Overview, Minimise). */
+    TileLarge(84.dp);
+
+    val stacked: Boolean get() = this == Tile || this == TileLarge
 }
 
 /** Container, content and outline colours of a button in one state, resolved from the theme tokens. */
@@ -107,14 +111,14 @@ fun KtmButton(
     val haptics = rememberHaptics()
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
-    val shape: Shape = if (size == ButtonSize.Riding || size == ButtonSize.Tile) KtmShapes.Card else KtmShapes.Control
+    val shape: Shape = if (size == ButtonSize.Riding || size.stacked) KtmShapes.Card else KtmShapes.Control
     val label = when (size) {
         ButtonSize.Small -> KtmTheme.type.buttonCompact
-        ButtonSize.Tile -> KtmTheme.type.buttonCompact
+        ButtonSize.Tile, ButtonSize.TileLarge -> KtmTheme.type.buttonCompact
         else -> MaterialTheme.typography.labelLarge
     }
     val active = enabled && !loading
-    val stacked = size == ButtonSize.Tile
+    val stacked = size.stacked
     val pressed by source.collectIsPressedAsState()
     val reduced = KtmTheme.motion.reduced
     val scale by animateFloatAsState(if (pressed && !reduced) 0.97f else 1f, KtmTheme.motion.effectsFast(), label = "press")

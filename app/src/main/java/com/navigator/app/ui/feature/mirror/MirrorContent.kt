@@ -46,7 +46,9 @@ import com.navigator.app.data.mirror.MirrorStatus
 import com.navigator.app.data.mirror.MirrorTurn
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.BannerTone
+import com.navigator.app.ui.components.BikeStatusDot
 import com.navigator.app.ui.components.BikeStatusPill
+import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DashPreview
@@ -97,7 +99,7 @@ fun MirrorContent(
     if (landscape) {
         Row(modifier.fillMaxSize().padding(KtmSpacing.lg), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
-                Header(status, bike, actions)
+                Header(status, bike, actions, dot = isNarrowWindow())
                 Spacer(Modifier.height(KtmSpacing.md))
                 when (status) {
                     is MirrorStatus.Live -> BigTurn(status)
@@ -143,7 +145,7 @@ fun MirrorContent(
 private const val PAUSED_ALPHA = 0.45f
 
 @Composable
-private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions) {
+private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, dot: Boolean = false) {
     val c = KtmTheme.colors
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         Column(Modifier.weight(1f)) {
@@ -154,7 +156,8 @@ private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorAction
                 Text(label, style = MaterialTheme.typography.bodySmall, color = if (status.stale) c.warn else c.fg2)
             }
         }
-        BikeStatusPill(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
+        if (dot) BikeStatusDot(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
+        else BikeStatusPill(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.replay.trim
 
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -243,6 +244,7 @@ fun TrimRangeBar(
         drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
         for (x in listOf(x1, x2)) {
             drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
+            drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
             drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
         }
     }

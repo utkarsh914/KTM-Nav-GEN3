@@ -1,6 +1,7 @@
 package com.navigator.app.ride
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,6 +39,40 @@ class RideSourceTest {
         assertEquals(RideSource.MIRROR, RideJson.parseMeta(line)!!.getString("src"))
         assertNull(RideJson.metaLine(null, null, null))
         assertTrue(RideJson.parseMeta(RideJson.metaLine("Home", 1.0, 2.0)!!)!!.optString("src").isEmpty())
+    }
+}
+
+class RideMergeParts {
+    private fun pt(i: Int, gap: Boolean = false, seam: Boolean = false) = RidePoint(1.0 + i * 0.001, 2.0, i * 1000L, gapBefore = gap || seam, seamBefore = seam)
+
+    @Test fun concatMarksEachJoinAsASeam() {
+        val joined = RideMerge.concat(listOf(listOf(pt(0), pt(1)), listOf(pt(2), pt(3)), listOf(pt(4), pt(5))))
+        assertEquals(listOf(2, 4), joined.indices.filter { joined[it].seamBefore })
+        assertEquals(3, RideMerge.partsIn(joined, 3))
+    }
+
+    @Test fun markedSeamsGiveExactPartsAndPausesDoNotCount() {
+        val pts = listOf(pt(0), pt(1, gap = true), pt(2, seam = true), pt(3))
+        assertEquals(2, RideMerge.partsIn(pts, 5))
+        assertEquals(setOf(2), RideMerge.seamIndices(pts, merged = true))
+        assertEquals(emptySet<Int>(), RideMerge.seamIndices(pts, merged = false))
+    }
+
+    @Test fun anOldMergeIsInferredFromItsGaps() {
+        val pts = listOf(pt(0), pt(1, gap = true), pt(2), pt(3, gap = true))
+        assertEquals(3, RideMerge.partsIn(pts, 1))
+        assertEquals(2, RideMerge.partsIn(pts, 2))
+        assertEquals(setOf(1, 3), RideMerge.seamIndices(pts, merged = true))
+        assertEquals(1, RideMerge.partsIn(listOf(pt(0), pt(1)), 4))
+    }
+
+    @Test fun trimmingAwayAPartLowersTheCountAndTheSeamFlagSurvivesJson() {
+        val joined = RideMerge.concat(listOf(listOf(pt(0), pt(1)), listOf(pt(2), pt(3))))
+        val kept = RideTrim.trim(joined, 2, 3)!!
+        assertFalse(kept[0].seamBefore)
+        assertEquals(1, RideMerge.partsIn(kept, 2))
+        val back = RideJson.parsePoint(RideJson.pointLine(joined[2]))!!
+        assertTrue(back.seamBefore && back.gapBefore)
     }
 }
 

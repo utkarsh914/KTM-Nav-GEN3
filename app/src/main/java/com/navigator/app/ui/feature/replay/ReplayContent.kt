@@ -186,7 +186,7 @@ private fun Portrait(
             pinned = {
                 Header(ui, actions)
                 Readouts(ui, position)
-                ReplaySeekBar(position, ui.points.size, ui.seams, actions.onSeek, actions.onScrubStart)
+                ReplaySeekBar(position, ui.points.size, ui.seams, ui.mergeSeams, actions.onSeek, actions.onScrubStart)
                 ReplayPlayRow(ui.playing, ui.following, ui.speed, actions.onTogglePlay, actions.onRestart, actions.onToggleFollow, actions.onStepSpeed)
             },
             details = { Details(ui, position, avgMode, actions) },
@@ -278,7 +278,7 @@ private fun Landscape(
             }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
                 Readouts(ui, position)
-                ReplaySeekBar(position, ui.points.size, ui.seams, actions.onSeek, actions.onScrubStart)
+                ReplaySeekBar(position, ui.points.size, ui.seams, ui.mergeSeams, actions.onSeek, actions.onScrubStart)
                 ReplayPlayRow(ui.playing, ui.following, ui.speed, actions.onTogglePlay, actions.onRestart, actions.onToggleFollow, actions.onStepSpeed)
                 Column(Modifier.padding(top = KtmSpacing.md), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
                     Details(ui, position, avgMode, actions, chartFirst = true)
@@ -407,7 +407,7 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
 
 @Composable
 private fun Stats(ride: RecordedRide, mode: AvgSpeedMode) {
-    val valueStyle = MaterialTheme.typography.titleLarge
+    val valueStyle = KtmTheme.type.statValue
     val kmh = stringResource(R.string.replay_unit_kmh)
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {

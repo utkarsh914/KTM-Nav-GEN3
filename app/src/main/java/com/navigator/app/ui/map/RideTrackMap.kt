@@ -85,6 +85,7 @@ internal fun drawRideTrack(
     pts: List<RidePoint>,
     bands: RideMetrics.SpeedBands = RideMetrics.SpeedBands.DEFAULT,
     withEndpoints: Boolean = true,
+    endpoints: RideEndpointPins? = null,
     simplifyEpsilonM: Double = SIMPLIFY_EPSILON_M,
 ) {
     map.clear()
@@ -104,12 +105,12 @@ internal fun drawRideTrack(
 
     if (withEndpoints) {
         map.addMarker(
-            MarkerOptions().position(LatLng(pts.first().lat, pts.first().lng)).title("Start")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
+            MarkerOptions().position(LatLng(pts.first().lat, pts.first().lng)).anchor(0.5f, 0.5f)
+                .icon(endpoints?.start ?: BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
         )
         map.addMarker(
-            MarkerOptions().position(LatLng(pts.last().lat, pts.last().lng)).title("End")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
+            MarkerOptions().position(LatLng(pts.last().lat, pts.last().lng)).anchor(0.5f, 0.5f)
+                .icon(endpoints?.end ?: BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
         )
     }
 }

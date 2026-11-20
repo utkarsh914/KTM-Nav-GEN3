@@ -30,7 +30,7 @@ fun StatTile(
         modifier.background(c.surf2, KtmShapes.Control).padding(KtmSpacing.md),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = c.fg2, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = c.fg2, maxLines = 2)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
             Text(value, style = valueStyle, color = c.fg, maxLines = 1)
             if (unit != null) Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.padding(bottom = 3.dp))

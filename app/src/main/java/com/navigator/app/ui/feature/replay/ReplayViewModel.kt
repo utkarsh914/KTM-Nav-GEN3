@@ -11,6 +11,7 @@ import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideChart
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
+import com.navigator.app.ride.RideMerge
 import com.navigator.app.ride.RideSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,8 @@ sealed interface ReplayUi {
         /** The map line's simplification in metres; 0 draws every fix. In-session, not saved. */
         val smoothingMeters: Int = DEFAULT_SMOOTHING_M,
         val showElevation: Boolean = true,
+        /** Which of [seams] are joins between merged rides; the others are pauses. */
+        val mergeSeams: List<Float> = emptyList(),
     ) : ReplayUi {
         val hasElevation: Boolean get() = chart?.alt != null
     }
@@ -103,7 +106,7 @@ class ReplayViewModel(
             val (chart, seams) = withContext(compute) { RideChart.build(points) to PlaybackEngine.seams(points) }
             val previous = _ui.value as? ReplayUi.Ready
             ReplayUi.Ready(
-                ride = ride, points = points, chart = chart, seams = seams, parts = partsOf(ride, seams),
+                ride = ride, points = points, chart = chart, seams = seams, mergeSeams = PlaybackEngine.mergeSeams(points, ride.source == RideSource.MERGED), parts = partsOf(ride, points),
                 speed = previous?.speed ?: PlaybackEngine.DEFAULT_SPEED, following = previous?.following ?: false,
                 smoothingMeters = previous?.smoothingMeters ?: ReplayUi.DEFAULT_SMOOTHING_M,
                 showElevation = previous?.showElevation ?: true,
@@ -124,8 +127,8 @@ class ReplayViewModel(
         }
     }
 
-    private fun partsOf(ride: RecordedRide, seams: List<Float>): Int =
-        if (ride.source == RideSource.MERGED) minOf(ride.parts, seams.size + 1) else 1
+    private fun partsOf(ride: RecordedRide, points: List<RidePoint>): Int =
+        if (ride.source == RideSource.MERGED) RideMerge.partsIn(points, ride.parts) else 1
 
     private inline fun ready(block: (ReplayUi.Ready) -> Unit) {
         (_ui.value as? ReplayUi.Ready)?.let(block)

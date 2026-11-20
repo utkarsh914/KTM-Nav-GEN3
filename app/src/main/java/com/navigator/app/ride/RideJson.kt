@@ -32,6 +32,7 @@ object RideJson {
             .put("t", p.timeMs)
         p.speedKmh?.let { o.put("s", it.toDouble()) }
         if (p.gapBefore) o.put("g", 1)
+        if (p.seamBefore) o.put("m", 1)
         p.altM?.let { o.put("a", Math.round(it * 10f) / 10.0) }
         return o.toString()
     }
@@ -49,6 +50,7 @@ object RideJson {
                 timeMs = o.getLong("t"),
                 speedKmh = if (o.has("s")) o.getDouble("s").toFloat() else null,
                 gapBefore = o.optInt("g", 0) == 1,
+                seamBefore = o.optInt("m", 0) == 1,
                 altM = if (o.has("a")) o.getDouble("a").toFloat().takeIf { it.isFinite() } else null,
             )
         }.getOrNull()

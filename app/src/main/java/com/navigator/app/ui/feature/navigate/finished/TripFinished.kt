@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.finished
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import com.navigator.app.ui.components.isNarrowWindow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +81,8 @@ class TripFinishedActions(
 @Composable
 fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, landscape: Boolean, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
+    // TF4 is the 352 dp panel (874 wide): all four stats. TF5 is the 320 dp one (780 wide): the time moves up beside the title.
+    val compact = landscape && isNarrowWindow()
     // Landscape fills the panel so Done and Replay sit at its foot, where the trip bar was.
     Column(
         modifier.fillMaxWidth().then(if (landscape) Modifier.fillMaxHeight() else Modifier),
@@ -97,7 +102,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
                 )
             }
             // TF5: on the short screen the time moves up here and the stats get one row.
-            if (landscape) {
+            if (compact) {
                 val ride = (model.ui as? FinishUi.Recorded)?.ride
                 Text(
                     timeLeftText(TimeLeft.of(ride?.durationSeconds ?: model.fallbackDurationSec)),
@@ -111,7 +116,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             // One live region around the stats: the swap from skeletons to numbers is announced.
-            Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) { Stats(model, landscape) }
+            Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) { Stats(model, landscape, compact) }
             (model.ui as? FinishUi.NoRecording)?.let { WhyNoRecording(model, it.reason, actions) }
             FollowUps(model, actions, landscape)
         }
@@ -132,7 +137,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
 }
 
 @Composable
-private fun Stats(model: TripFinishedModel, landscape: Boolean) {
+private fun Stats(model: TripFinishedModel, landscape: Boolean, compact: Boolean) {
     val style = if (landscape) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.displaySmall
     val ride: RecordedRide? = (model.ui as? FinishUi.Recorded)?.ride
     val saving = model.ui == FinishUi.Saving
@@ -141,15 +146,15 @@ private fun Stats(model: TripFinishedModel, landscape: Boolean) {
     val unit = stringResource(R.string.riding_speed_unit)
     val avgLabel = stringResource(if (model.avgMode == AvgSpeedMode.OVERALL) R.string.finished_avg_overall else R.string.finished_avg_moving)
     when {
-        landscape && ride != null -> Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            StatTile(stringResource(R.string.finished_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f), valueStyle = style)
-            StatTile(avgLabel, ride.displayAvgKmh(model.avgMode).toInt().toString(), Modifier.weight(1f), unit = unit, valueStyle = style)
-            StatTile(stringResource(R.string.finished_max), ride.maxSpeedKmh.toInt().toString(), Modifier.weight(1f), unit = unit, valueStyle = style)
+        compact && ride != null -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            StatTile(stringResource(R.string.finished_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f).fillMaxHeight(), valueStyle = style)
+            StatTile(avgLabel, ride.displayAvgKmh(model.avgMode).toInt().toString(), Modifier.weight(1f).fillMaxHeight(), unit = unit, valueStyle = style)
+            StatTile(stringResource(R.string.finished_max), ride.maxSpeedKmh.toInt().toString(), Modifier.weight(1f).fillMaxHeight(), unit = unit, valueStyle = style)
         }
-        landscape && saving -> Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        compact && saving -> Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             repeat(3) { StatSkeleton(Modifier.weight(1f)) }
         }
-        landscape -> Unit
+        compact -> Unit
         ride != null -> Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 StatTile(stringResource(R.string.finished_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f), valueStyle = style)

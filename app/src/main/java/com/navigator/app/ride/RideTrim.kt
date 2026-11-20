@@ -11,7 +11,7 @@ object RideTrim {
         if (from < 0 || to > points.lastIndex || to - from < 1) return null
         val kept = points.subList(from, to + 1).toMutableList()
         // The new first fix has no predecessor: a pause flag on it would be meaningless.
-        if (kept[0].gapBefore) kept[0] = kept[0].copy(gapBefore = false)
+        if (kept[0].gapBefore || kept[0].seamBefore) kept[0] = kept[0].copy(gapBefore = false, seamBefore = false)
         return kept
     }
 

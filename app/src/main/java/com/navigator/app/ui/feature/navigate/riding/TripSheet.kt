@@ -65,15 +65,15 @@ fun ColumnScope.TripControlsBody(
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
             stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.PinPlus, enabled = canAddStop,
+            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.PinPlus, enabled = canAddStop,
         )
         KtmButton(
             stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.Route,
+            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.Route,
         )
         KtmButton(
             stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.Tile, icon = KtmIcons.ChevronDown,
+            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.ChevronDown,
         )
     }
     if (!canAddStop) {

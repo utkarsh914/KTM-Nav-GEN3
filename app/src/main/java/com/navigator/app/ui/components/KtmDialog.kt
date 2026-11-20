@@ -1,5 +1,9 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -63,6 +67,10 @@ fun KtmDialog(
     // Fade and settle in from 92 %; a dialog window can't play an exit, it goes with its window.
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // The window's own dim appears at once; the scrim is drawn here so it can fade in with the card.
+        (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        val scrim by animateFloatAsState(if (entered.targetState) KtmScrim.alpha else 0f, motion.effectsDefault(), label = "dialogScrim")
+        Box(Modifier.fillMaxSize().background(KtmScrim.copy(alpha = scrim)))
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,

@@ -436,6 +436,7 @@ class RideStore(context: Context) {
                         avgSpeedKmh = stats.avgSpeedKmh, movingSeconds = stats.movingSeconds,
                         avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh,
                         pointCount = stats.pointCount, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
+                        parts = if (pts.any { p -> p.seamBefore }) RideMerge.partsIn(kept, 1) else r.parts,
                     ).also { updated = it }
                 })
                 AppLogger.log("Ride", "Trimmed ride $id to ${kept.size} of ${pts.size} points")

@@ -237,7 +237,7 @@ class NavSdkMapController(
 
     override fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands) {
         val gm = map ?: return
-        drawRideTrack(gm, points, bands)
+        drawRideTrack(gm, points, bands, endpoints = RideEndpointPins(appContext))
         frameRideTrack(gm, points)
     }
 
@@ -245,7 +245,7 @@ class NavSdkMapController(
         val gm = map ?: return
         // drawRideTrack clears the map, which also drops the user marker: forget its stale handle.
         userMarker.remove()
-        drawRideTrack(gm, points, bands, simplifyEpsilonM = smoothingMeters)
+        drawRideTrack(gm, points, bands, endpoints = RideEndpointPins(appContext), simplifyEpsilonM = smoothingMeters)
         replayMarker = gm.addMarker(
             MarkerOptions().position(LatLng(markerAt.lat, markerAt.lng)).icon(replayMarkerIcon(appContext, markerColor))
                 .anchor(0.5f, 0.5f).zIndex(2f),

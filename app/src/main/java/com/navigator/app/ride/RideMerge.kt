@@ -26,7 +26,30 @@ object RideMerge {
 
     /** The parts joined in order; each later part starts a gap, so the hop between rides is not riding. */
     fun concat(parts: List<List<RidePoint>>): List<RidePoint> =
-        parts.flatMapIndexed { i, pts -> if (i == 0) pts else pts.mapIndexed { j, p -> if (j == 0) p.copy(gapBefore = true) else p } }
+        parts.flatMapIndexed { i, pts -> if (i == 0) pts else pts.mapIndexed { j, p -> if (j == 0) p.copy(gapBefore = true, seamBefore = true) else p } }
+
+    /**
+     * How many parts a merged ride's track still has. Marked seams are exact (so a trim that drops a part lowers it);
+     * a ride merged before seams were marked is inferred: [storedParts] if it was recorded, else every gap counts,
+     * but never more parts than the track has segments.
+     */
+    fun partsIn(points: List<RidePoint>, storedParts: Int): Int {
+        val marked = points.count { it.seamBefore }
+        if (marked > 0) return (marked + 1).coerceAtMost(RideJson.MAX_PARTS)
+        val gaps = points.withIndex().count { (i, p) -> i > 0 && p.gapBefore }
+        return when {
+            gaps == 0 -> 1
+            storedParts > 1 -> minOf(storedParts, gaps + 1)
+            else -> (gaps + 1).coerceAtMost(RideJson.MAX_PARTS)
+        }
+    }
+
+    /** Which gaps (indices into [points]) are merge seams rather than pauses: all of them for a ride merged before seams were marked. */
+    fun seamIndices(points: List<RidePoint>, merged: Boolean): Set<Int> {
+        if (!merged) return emptySet()
+        val marked = points.indices.filter { points[it].seamBefore }.toSet()
+        return marked.ifEmpty { points.indices.filter { it > 0 && points[it].gapBefore }.toSet() }
+    }
 
     fun notes(rides: List<RecordedRide>): String? =
         RideTrim.cleanNotes(rides.mapNotNull { it.notes?.takeIf(String::isNotBlank) }.joinToString("\n\n"))

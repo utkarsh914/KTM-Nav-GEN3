@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.runtime.remember
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.fadeIn
@@ -49,6 +50,13 @@ object LandscapePanelSpec {
         leftInset + KtmLayout.panelInset + width(windowWidthDp) + KtmLayout.panelInset
 
     fun isLandscape(width: Dp, height: Dp): Boolean = width > height
+}
+
+/** The window is narrower than [KtmLayout.panelNarrowBelow]: the 780 dp landscape case, where the 320 dp panel is used. */
+@Composable
+fun isNarrowWindow(): Boolean {
+    val widthPx = LocalWindowInfo.current.containerSize.width
+    return with(LocalDensity.current) { widthPx.toDp() } < KtmLayout.panelNarrowBelow
 }
 
 /**

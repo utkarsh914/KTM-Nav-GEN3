@@ -230,8 +230,12 @@ private fun Overlays(
             val motion = KtmTheme.motion
             val pulse = remember { androidx.compose.animation.core.Animatable(1f) }
             val greeted = state.greeting != null
+            // ...and once more as the greeting shrinks back into it.
+            var wasGreeted by remember { androidx.compose.runtime.mutableStateOf(false) }
             androidx.compose.runtime.LaunchedEffect(greeted) {
-                if (greeted && !motion.reduced) {
+                val pulses = greeted || wasGreeted
+                wasGreeted = greeted
+                if (pulses && !motion.reduced) {
                     pulse.animateTo(PILL_PULSE, motion.spatialFast())
                     pulse.animateTo(1f, motion.spatialDefault())
                 }

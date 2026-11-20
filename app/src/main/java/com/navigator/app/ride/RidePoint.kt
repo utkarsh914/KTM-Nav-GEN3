@@ -10,6 +10,7 @@ package com.navigator.app.ride
  * @param altM GPS altitude in metres, or null when the fix carried none (older rides never do)
  * @param gapBefore true for the first fix after a user pause: the hop from the previous fix is
  *   not riding (no distance, no moving time) and the paused span is excluded from the duration
+ * @param seamBefore true for the first fix of each later part of a merged ride (also a [gapBefore]): tells a merge seam from a pause
  */
 data class RidePoint(
     val lat: Double,
@@ -18,4 +19,5 @@ data class RidePoint(
     val speedKmh: Float? = null,
     val gapBefore: Boolean = false,
     val altM: Float? = null,
+    val seamBefore: Boolean = false,
 )

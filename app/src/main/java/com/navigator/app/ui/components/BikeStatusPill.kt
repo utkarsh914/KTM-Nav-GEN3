@@ -1,5 +1,7 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,5 +69,33 @@ fun BikeStatusPill(
         androidx.compose.foundation.layout.Box(
             Modifier.size(8.dp).background(pillDotColor(tone, c), CircleShape),
         )
+    }
+}
+
+/** MR7: the pill folded down to the bike and its status dot, for the short landscape screen. The label stays for screen readers. */
+@Composable
+fun BikeStatusDot(
+    label: String,
+    tone: PillTone,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    stateDescription: String? = null,
+) {
+    val c = KtmTheme.colors
+    val haptics = rememberHaptics()
+    Box(
+        modifier
+            .size(KtmLayout.targetRest)
+            .clip(CircleShape)
+            .background(c.surf)
+            .semantics(mergeDescendants = true) {
+                contentDescription = label
+                if (stateDescription != null) this.stateDescription = stateDescription
+            }
+            .clickable(role = Role.Button) { haptics.tap(); onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(20.dp))
+        Box(Modifier.align(Alignment.TopEnd).padding(KtmSpacing.sm).size(8.dp).background(pillDotColor(tone, c), CircleShape))
     }
 }
