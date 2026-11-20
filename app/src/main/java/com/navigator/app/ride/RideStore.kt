@@ -154,7 +154,7 @@ class RideStore(context: Context) {
         val picked = all.filter { it.id in ids }
         val (ordered, refusal) = RideMerge.order(picked) { it in ACTIVE_TRACKS }
         if (refusal != null) return MergeResult.Refused(refusal)
-        val parts = ordered.map { points(it.id) }
+        val parts = ordered.map { RideMerge.withSeamsMarked(points(it.id), it.source == RideSource.MERGED, it.parts) }
         // A read that lost lines would silently shorten the merged ride.
         if (ordered.indices.any { parts[it].size < 2 || parts[it].size < ordered[it].pointCount }) {
             return MergeResult.Refused(MergeRefusal.MissingTrack)
@@ -185,7 +185,7 @@ class RideStore(context: Context) {
                 avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh, pointCount = stats.pointCount,
                 saved = ordered.any { it.saved }, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
                 notes = RideMerge.notes(ordered), source = RideSource.MERGED,
-                parts = ordered.sumOf { it.parts }.coerceAtMost(RideJson.MAX_PARTS),
+                parts = ordered.sumOf { it.parts.coerceAtLeast(1) }.coerceAtMost(RideJson.MAX_PARTS),
             )
             synchronized(LOCK) {
                 val now = readIndex()
@@ -436,7 +436,7 @@ class RideStore(context: Context) {
                         avgSpeedKmh = stats.avgSpeedKmh, movingSeconds = stats.movingSeconds,
                         avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh,
                         pointCount = stats.pointCount, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
-                        parts = if (pts.any { p -> p.seamBefore }) RideMerge.partsIn(kept, 1) else r.parts,
+                        parts = if (pts.any { p -> p.seamBefore }) (kept.count { p -> p.seamBefore } + 1).let { n -> if (n == 1) 0 else n } else r.parts,
                     ).also { updated = it }
                 })
                 AppLogger.log("Ride", "Trimmed ride $id to ${kept.size} of ${pts.size} points")

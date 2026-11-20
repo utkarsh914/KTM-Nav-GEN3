@@ -58,8 +58,8 @@ object PlaybackEngine {
         points.indices.filter { it > 0 && points[it].gapBefore }.map { fractionOf(it, points.size) }
 
     /** The subset of [seams] that are merge seams (the rest are pauses), as fractions of the track. */
-    fun mergeSeams(points: List<RidePoint>, merged: Boolean): List<Float> =
-        RideMerge.seamIndices(points, merged).sorted().map { fractionOf(it, points.size) }
+    fun mergeSeams(points: List<RidePoint>, merged: Boolean, storedParts: Int = 1): List<Float> =
+        RideMerge.seamIndices(points, merged, storedParts).sorted().map { fractionOf(it, points.size) }
 
     /** The fix nearest the tapped spot, or null when it is further than [maxM] from the whole track. */
     fun nearest(points: List<RidePoint>, lat: Double, lng: Double, maxM: Double = SEEK_TAP_MAX_M): Int? {

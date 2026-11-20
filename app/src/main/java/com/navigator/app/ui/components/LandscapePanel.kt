@@ -56,7 +56,8 @@ object LandscapePanelSpec {
 @Composable
 fun isNarrowWindow(): Boolean {
     val widthPx = LocalWindowInfo.current.containerSize.width
-    return with(LocalDensity.current) { widthPx.toDp() } < KtmLayout.panelNarrowBelow
+    // No size yet (a preview, a test): the wide layout.
+    return widthPx > 0 && with(LocalDensity.current) { widthPx.toDp() } < KtmLayout.panelNarrowBelow
 }
 
 /**

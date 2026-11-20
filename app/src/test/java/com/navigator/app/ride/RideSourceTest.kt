@@ -76,6 +76,24 @@ class RideMergeParts {
     }
 }
 
+class RideMergeEdges {
+    private fun pt(i: Int, gap: Boolean = false, seam: Boolean = false) = RidePoint(1.0 + i * 0.001, 2.0, i * 1000L, gapBefore = gap || seam, seamBefore = seam)
+
+    @Test fun aMergeTrimmedToOnePartKeepsItsPausesAsPauses() {
+        val kept = listOf(pt(0), pt(1, gap = true), pt(2))
+        assertEquals(1, RideMerge.partsIn(kept, 0))
+        assertEquals(emptySet<Int>(), RideMerge.seamIndices(kept, merged = true, storedParts = 0))
+    }
+
+    @Test fun mergingAnOldMergeAgainKeepsItsSeams() {
+        val old = listOf(pt(0), pt(1, gap = true), pt(2))
+        val marked = RideMerge.withSeamsMarked(old, merged = true, storedParts = 1)
+        val joined = RideMerge.concat(listOf(marked, listOf(pt(3), pt(4))))
+        assertEquals(3, RideMerge.partsIn(joined, 3))
+        assertEquals(old, RideMerge.withSeamsMarked(old, merged = false, storedParts = 1))
+    }
+}
+
 class RideMergeTest {
     private fun ride(id: String, start: Long, end: Long, notes: String? = null) =
         RecordedRide(id, start, end, 100, ((end - start) / 1000).toInt(), notes = notes)

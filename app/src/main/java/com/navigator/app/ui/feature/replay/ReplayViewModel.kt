@@ -106,7 +106,7 @@ class ReplayViewModel(
             val (chart, seams) = withContext(compute) { RideChart.build(points) to PlaybackEngine.seams(points) }
             val previous = _ui.value as? ReplayUi.Ready
             ReplayUi.Ready(
-                ride = ride, points = points, chart = chart, seams = seams, mergeSeams = PlaybackEngine.mergeSeams(points, ride.source == RideSource.MERGED), parts = partsOf(ride, points),
+                ride = ride, points = points, chart = chart, seams = seams, mergeSeams = PlaybackEngine.mergeSeams(points, ride.source == RideSource.MERGED, ride.parts), parts = partsOf(ride, points),
                 speed = previous?.speed ?: PlaybackEngine.DEFAULT_SPEED, following = previous?.following ?: false,
                 smoothingMeters = previous?.smoothingMeters ?: ReplayUi.DEFAULT_SMOOTHING_M,
                 showElevation = previous?.showElevation ?: true,
