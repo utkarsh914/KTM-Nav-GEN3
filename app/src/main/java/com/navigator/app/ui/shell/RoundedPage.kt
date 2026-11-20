@@ -7,9 +7,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -29,10 +28,17 @@ internal inline fun <reified T : Any> NavGraphBuilder.listPage(
 @Composable
 private fun AnimatedContentScope.RoundedWhileLeaving(content: @Composable () -> Unit) {
     val reduced = KtmTheme.motion.reduced
-    val radius by transition.animateDp(transitionSpec = { tween(if (reduced) 0 else LEAVE_MS) }, label = "pageCorner") { state ->
+    val radius = transition.animateDp(transitionSpec = { tween(if (reduced) 0 else LEAVE_MS) }, label = "pageCorner") { state ->
         if (state == EnterExitState.PostExit && !reduced) KtmLayout.pageLeaveCorner else 0.dp
     }
-    Box(Modifier.clip(RoundedCornerShape(radius))) { content() }
+    // Read in the layer, not in composition: no recomposition per frame, and no clip at rest.
+    Box(
+        Modifier.graphicsLayer {
+            val r = radius.value
+            shape = RoundedCornerShape(r)
+            clip = r > 0.dp
+        },
+    ) { content() }
 }
 
 private const val LEAVE_MS = 200

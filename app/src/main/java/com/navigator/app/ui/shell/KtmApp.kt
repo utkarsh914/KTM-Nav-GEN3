@@ -139,9 +139,7 @@ fun KtmApp(onQuit: () -> Unit) {
     // changed it in system settings).
     val permissions = container.permissions
     val permissionState by permissions.state.collectAsState()
-    val bikeStatus by container.connection.status.collectAsState()
-    val bikePill = BikePillMapper.map(bikeStatus)
-    val bikeRail = BikeRailStatus(bikePill.tone, stringResource(bikePill.state))
+    val bikeRail = rememberBikeRailStatus()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) permissions.refresh() }
@@ -230,7 +228,7 @@ fun KtmApp(onQuit: () -> Unit) {
                     currentTab = currentTab,
                     immersive = chrome.immersive,
                     settingsNeedsAttention = permissionState.attentionNeeded,
-                    bike = bikeRail,
+                    bike = { bikeRail.value },
                     onSelectTab = { navController.openTab(it) },
                     feedback = feedback,
                     strip = {
@@ -615,3 +613,16 @@ private fun openInGoogleMaps(context: android.content.Context, sharedText: Strin
 
 /** The tag of a "Rides merged · Undo" offer; a page that edits the merged ride ends it by this tag. */
 const val MERGE_OFFER = "merge:"
+
+/** The bike's state for the rail's dot. A State so only the rail reads it: a change doesn't recompose the whole app. */
+@Composable
+private fun rememberBikeRailStatus(): androidx.compose.runtime.State<BikeRailStatus> {
+    val status = LocalContext.current.appContainer.connection.status.collectAsState()
+    val resources = androidx.compose.ui.platform.LocalResources.current
+    return androidx.compose.runtime.remember(status, resources) {
+        androidx.compose.runtime.derivedStateOf {
+            val pill = BikePillMapper.map(status.value)
+            BikeRailStatus(pill.tone, resources.getString(R.string.bike_rail_state, resources.getString(pill.state)))
+        }
+    }
+}

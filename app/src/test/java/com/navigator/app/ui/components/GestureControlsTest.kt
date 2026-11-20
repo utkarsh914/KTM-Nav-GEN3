@@ -3,11 +3,13 @@ package com.navigator.app.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.feature.replay.trim.TrimRangeBar
 import com.navigator.app.ui.theme.KtmTheme
@@ -184,7 +187,7 @@ class GestureControlsTest {
 
     @Test fun theTrimBarKeepsTheStartOnTheLeftInARightToLeftLanguage() {
         rule.setContent {
-            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 KtmTheme(darkTheme = true) {
                     TrimRangeBar(
                         from = 0.2f, to = 0.8f, onMoveStart = {}, onMoveEnd = {}, onMoveNearest = {}, onNudgeStart = {}, onNudgeEnd = {},

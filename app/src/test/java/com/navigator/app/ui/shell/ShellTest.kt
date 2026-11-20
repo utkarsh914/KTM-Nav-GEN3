@@ -57,7 +57,7 @@ class ShellTest {
         feedback = rememberFeedback()
         KtmTheme(darkTheme = true) {
             MainShell(
-                currentTab = tab, immersive = immersive, settingsNeedsAttention = attention, bike = bike,
+                currentTab = tab, immersive = immersive, settingsNeedsAttention = attention, bike = { bike },
                 onSelectTab = { selected += it }, feedback = feedback, strip = { Text("STRIP") }, content = content,
             )
         }

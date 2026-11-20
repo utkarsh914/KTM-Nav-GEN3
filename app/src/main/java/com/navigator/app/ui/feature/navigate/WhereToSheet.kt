@@ -91,10 +91,12 @@ fun WhereToSheetContent(
     voiceAvailable: Boolean,
     actions: WhereToActions,
     modifier: Modifier = Modifier,
+    /** Left and right; a card that pads itself (the landscape panel) passes 0. */
+    horizontalPadding: androidx.compose.ui.unit.Dp = KtmSpacing.lg,
 ) {
     val saved = state.favorites.filter { it.slot == FavoriteSlot.OTHER }.map { it.place }
     Column(
-        modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.lg),
+        modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = horizontalPadding),
     ) {
         state.activity?.let { card ->
             ActivityStrip(

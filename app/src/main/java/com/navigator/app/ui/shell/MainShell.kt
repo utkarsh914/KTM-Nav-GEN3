@@ -62,7 +62,7 @@ fun MainShell(
     immersive: Boolean,
     settingsNeedsAttention: Boolean,
     /** The bike's state as a dot on the Navigate item, with its words for screen readers; shown in the landscape rail only. */
-    bike: BikeRailStatus?,
+    bike: () -> BikeRailStatus?,
     onSelectTab: (Tab) -> Unit,
     feedback: Feedback,
     strip: @Composable () -> Unit,
@@ -93,7 +93,8 @@ fun MainShell(
         navigationItems = {
             Tab.entries.forEach { tab ->
                 val dot = tab == Tab.Settings && settingsNeedsAttention
-                val bikeDot = if (tab == Tab.Navigate && type != NavigationSuiteType.ShortNavigationBarCompact) bike else null
+                // The landscape rail's dot repeats the bike pill (which Navigate and Mirror keep, as they open the bike sheet).
+                val bikeDot = if (tab == Tab.Navigate && type != NavigationSuiteType.ShortNavigationBarCompact) bike() else null
                 val label = stringResource(tab.label)
                 NavigationSuiteItem(
                     selected = tab == currentTab,

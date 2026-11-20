@@ -58,7 +58,12 @@ that previews and tests render, and a thin `*Screen` that wires them.
   activity strip). The sheets are drawn in the tree (not in a window) so they
   can share bounds.
 - Tabs fade through with a 0.92 scale; pushed pages share the X axis (30 dp);
-  predictive back previews the page shrinking to 90 %.
+  predictive back previews the page shrinking to 90 %. Pages without a map (`listPage`: settings pages, pickers,
+  logs, edit ride) take 28 dp corners while they leave; map pages stay square (a clip over the Nav SDK's map view
+  isn't worth the risk).
+- Landscape: one 352 dp (320 below 800 dp) floating panel on the left, also for the browse sheet; the rail shows the
+  bike's state as a dot on Navigate. The trim bar and its time labels stay left to right in every language, like the
+  chart above them.
 
 ## Haptics (`ui/theme/Haptics.kt`)
 `val haptics = rememberHaptics()`: `tap()`, `toggle(on)`, `confirm()`, `reject()`

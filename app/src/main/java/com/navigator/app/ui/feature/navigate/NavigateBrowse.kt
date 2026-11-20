@@ -67,6 +67,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import com.navigator.app.R
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.BikeStatusPill
@@ -130,8 +131,8 @@ fun NavigateBrowse(
         val landscape = maxWidth > maxHeight
         if (landscape) {
             val panelWidth = KtmLayout.panelWidth(maxWidth.value)
-            // The map is framed by what the panel and its margins cover, measured: the shell's rail and the cutout
-            // inset are part of it without being counted twice.
+            // The map is framed by what the card and its margins cover, measured from the content's own left edge
+            // (the shell's rail sits outside it), so an inset the shell already took is not counted twice.
             var coveredPx by remember { mutableIntStateOf(0) }
             LaunchedEffect(coveredPx, mapReady) {
                 if (mapReady && coveredPx > 0) actions.onMapInsets(coveredPx, 0)
@@ -145,9 +146,12 @@ fun NavigateBrowse(
                         .width(panelWidth).fillMaxHeight()
                         .shadow(KtmElevation.sheet, KtmShapes.Card)
                         .background(KtmTheme.colors.surf, KtmShapes.Card)
-                        .clip(KtmShapes.Card),
+                        .clip(KtmShapes.Card)
+                        // Touches on the card never fall through to the map beneath it.
+                        .pointerInput(Unit) { detectTapGestures { } }
+                        .padding(KtmLayout.panelPadding),
                 ) {
-                    WhereToSheetContent(state, voiceAvailable, actions.sheet)
+                    WhereToSheetContent(state, voiceAvailable, actions.sheet, horizontalPadding = 0.dp)
                 }
                 Overlays(
                     state, location, mapState, mapBearing, actions, recordControls,
