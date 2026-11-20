@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 data class RideSessionState(
     val active: Boolean = false,
     val paused: Boolean = false,
-    /** True when the rider started it with the Record button (not an auto-recorded trip). */
+    /** True when the rider started it with the Record button ([RideSource.MANUAL]); derived from the source. */
     val manual: Boolean = false,
     /** Recorded (unpaused) time accumulated before the current running segment. */
     val elapsedBeforeMs: Long = 0L,

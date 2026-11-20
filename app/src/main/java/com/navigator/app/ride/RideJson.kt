@@ -15,9 +15,10 @@ object RideJson {
     // ---- Track file lines (NDJSON) ----------------------------------------
 
     /** Destination header line, or null when no destination detail is known. */
-    fun metaLine(destLabel: String?, destLat: Double?, destLng: Double?): String? {
-        if (destLabel == null && destLat == null && destLng == null) return null
+    fun metaLine(destLabel: String?, destLat: Double?, destLng: Double?, source: String? = null): String? {
+        if (destLabel == null && destLat == null && destLng == null && source == null) return null
         val o = JSONObject().put("meta", true)
+        source?.let { o.put("src", it) }
         destLabel?.let { o.put("label", it) }
         destLat?.let { o.put("dlat", it) }
         destLng?.let { o.put("dlng", it) }
@@ -79,6 +80,8 @@ object RideJson {
         put("elevGainM", r.elevGainM)
         put("elevLossM", r.elevLossM)
         r.notes?.let { put("notes", it) }
+        r.source?.let { put("src", it) }
+        r.deletedAtMs?.let { put("del", it) }
     }
 
     fun rideFromJson(o: JSONObject): RecordedRide = RecordedRide(
@@ -99,5 +102,7 @@ object RideJson {
         elevGainM = o.optInt("elevGainM", ELEV_UNKNOWN),
         elevLossM = o.optInt("elevLossM", ELEV_UNKNOWN),
         notes = o.optString("notes").ifBlank { null },
+        source = RideSource.clean(o.optString("src")),
+        deletedAtMs = if (o.has("del")) o.optLong("del") else null,
     )
 }

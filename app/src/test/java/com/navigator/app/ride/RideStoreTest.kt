@@ -201,4 +201,156 @@ class RideStoreTest {
         assertNull(store.findDuplicate(pts(60, 9_000_000L)))
         assertNull(store.findDuplicate(pts(60, 7_000_000L, lng0 = 80.0).take(1)))
     }
+
+    // ---- B12: source, soft delete, merge ----
+
+    @Test fun importedRidesAreSourcedGpxAndOldIndexEntriesAreInferred() {
+        val r = importRide()
+        assertEquals(RideSource.GPX, r.source)
+        store.finalizeRide(RecordedRide("1000", 1000, 61_000, 500, 60, destLat = 1.0, destLng = 2.0))
+        assertEquals(RideSource.NAV, store.get("1000")!!.source)
+    }
+
+    @Test fun anOrphanKeepsItsSourceFromTheMetaLine() {
+        val id = "5000000"
+        store.trackFile(id).writeText(
+            RideJson.metaLine(null, null, null, RideSource.MIRROR) + "\n" +
+                pts(60, 5_000_000L).joinToString("\n") { RideJson.pointLine(it) } + "\n",
+        )
+        store.recoverOrphans(10, 10)
+        assertEquals(RideSource.MIRROR, store.get(id)!!.source)
+    }
+
+    @Test fun softDeleteHidesRestoreBringsBackAndPurgeRemoves() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        val before = store.changes.value
+        assertEquals(listOf(a.id), store.softDelete(listOf(a.id), nowMs = 100))
+        assertTrue(store.changes.value > before)
+        assertEquals(listOf(b.id), store.list().map { it.id })
+        assertNull(store.get(a.id))
+        assertTrue("the track waits for the undo", store.trackFile(a.id).exists())
+        assertEquals(listOf(a.id), store.listDeleted().map { it.id })
+        assertEquals(listOf(a.id), store.restore(listOf(a.id)))
+        assertEquals(2, store.list().size)
+        store.softDelete(listOf(a.id), nowMs = 100)
+        assertTrue(store.purgeDeleted(olderThanMs = 100).isEmpty())
+        assertEquals(listOf(a.id), store.purgeDeleted(olderThanMs = 101))
+        assertFalse(store.trackFile(a.id).exists())
+        assertTrue(store.restore(listOf(a.id)).isEmpty())
+    }
+
+    @Test fun aDeletedRideIsNotAnOrphanAndIgnoredByPruneAndDuplicates() {
+        val a = importRide(startMs = 1_000_000L)
+        store.setSaved(a.id, false)
+        store.softDelete(listOf(a.id))
+        store.recoverOrphans(10, 10)
+        assertEquals("not recovered as a second ride", 0, store.list().size)
+        assertEquals(1, store.listDeleted().size)
+        assertNull(store.findDuplicate(pts(60, 1_000_000L)))
+        val b = importRide(startMs = 2_000_000L); store.setSaved(b.id, false)
+        val c = importRide(startMs = 3_000_000L); store.setSaved(c.id, false)
+        assertEquals("only the live unsaved rides count", listOf(b.id), store.pruneToLimit(1))
+        assertEquals(1, store.listDeleted().size)
+    }
+
+    @Test fun aMergeThatDiedBeforeTheIndexIsRolledBack() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        val id = "7000000"
+        store.trackFile(id).writeText(
+            RideJson.metaLine("x", null, null, RideSource.MERGED) + "\n" +
+                (pts(60, 1_000_000L) + pts(60, 2_000_000L)).joinToString("\n") { RideJson.pointLine(it) } + "\n",
+        )
+        store.recoverOrphans(10, 10)
+        assertFalse(store.trackFile(id).exists())
+        assertEquals(setOf(a.id, b.id), store.list().map { it.id }.toSet())
+    }
+
+    @Test fun purgeByIdsOnlyRemovesDeletedRides() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        store.softDelete(listOf(a.id))
+        assertEquals(listOf(a.id), store.purge(listOf(a.id, b.id)))
+        assertFalse(store.trackFile(a.id).exists())
+        assertTrue(store.trackFile(b.id).exists())
+    }
+
+    @Test fun anActiveRideCannotBeSoftDeleted() {
+        val r = importRide()
+        store.setActiveForTest(r.id)
+        assertTrue(store.softDelete(listOf(r.id)).isEmpty())
+    }
+
+    @Test fun backupLeavesDeletedRidesOut() {
+        val a = importRide(startMs = 1_000_000L); importRide(startMs = 2_000_000L)
+        store.softDelete(listOf(a.id))
+        val out = java.io.ByteArrayOutputStream()
+        val summary = com.navigator.app.backup.BackupManager(ctx).backup(out)
+        assertEquals(1, summary.rides)
+    }
+
+    private fun merge(vararg ids: String) = store.mergeRides(ids.toList())
+
+    @Test fun mergeJoinsStatsKeepsTheGapAndSoftDeletesTheOriginals() {
+        val a = store.importRide("First", pts(60, 1_000_000L))!!.also { store.updateMeta(it.id, "First", "n1") }
+        val b = store.importRide("Second", pts(60, 2_000_000L, lng0 = 77.1))!!.also { store.updateMeta(it.id, "Second", "n2"); store.setSaved(it.id, true) }
+        val m = merge(b.id, a.id) as MergeResult.Merged
+        assertEquals("First", m.ride.destinationLabel)
+        assertEquals("n1\n\nn2", m.ride.notes)
+        assertEquals(RideSource.MERGED, m.ride.source)
+        assertTrue("saved when any was", m.ride.saved)
+        assertEquals(120, m.ride.pointCount)
+        val joined = store.points(m.ride.id)
+        assertEquals(listOf(61), joined.withIndex().filter { it.value.gapBefore }.map { it.index }.map { it + 1 })
+        assertTrue("the seam is not riding distance", m.ride.distanceMeters < a.distanceMeters + b.distanceMeters + 100)
+        assertEquals(listOf(m.ride.id), store.list().map { it.id })
+        assertEquals(setOf(a.id, b.id), store.listDeleted().map { it.id }.toSet())
+        assertEquals(RideSource.MERGED, RideJson.parseMeta(store.trackFile(m.ride.id).readLines().first())!!.getString("src"))
+    }
+
+    @Test fun mergeRefusesOverlapActiveAndTooFewAndLeavesEverythingAlone() {
+        val a = importRide(startMs = 1_000_000L)
+        val b = importRide(startMs = 1_030_000L)
+        assertEquals(MergeResult.Refused(MergeRefusal.Overlap), merge(a.id, b.id))
+        assertEquals(MergeResult.Refused(MergeRefusal.TooFew), merge(a.id))
+        val c = importRide(startMs = 9_000_000L)
+        store.setActiveForTest(c.id)
+        assertEquals(MergeResult.Refused(MergeRefusal.Active), merge(a.id, c.id))
+        assertEquals(3, store.list().size)
+    }
+
+    @Test fun undoMergeBringsTheOriginalsBackAndDropsTheMergedRide() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        val m = merge(a.id, b.id) as MergeResult.Merged
+        assertTrue(store.undoMerge(m.token))
+        assertEquals(setOf(a.id, b.id), store.list().map { it.id }.toSet())
+        assertFalse(store.trackFile(m.ride.id).exists())
+        assertTrue("a second undo has nothing to undo", !store.undoMerge(m.token))
+    }
+
+    @Test fun undoMergeFailsOnceAnOriginalIsPurged() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        val m = merge(a.id, b.id) as MergeResult.Merged
+        store.deleteAll(listOf(a.id))
+        assertFalse(store.undoMerge(m.token))
+        assertEquals(listOf(m.ride.id), store.list().map { it.id })
+    }
+
+    @Test fun gpxExportOfAMergedRideHasOneSegmentPerPart() {
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        val m = merge(a.id, b.id) as MergeResult.Merged
+        val xml = Gpx.write(m.ride.destinationLabel, store.points(m.ride.id))
+        assertEquals(2, Regex("<trkseg>").findAll(xml).count())
+    }
+
+    @Test fun thumbnailCacheIsLruAndKeyedByPointCount() {
+        var reads = 0
+        val cache = com.navigator.app.data.rides.RideThumbnailCache(store, capacity = 2, load = { reads++; pts(100) })
+        cache.get("a", 100); cache.get("a", 100)
+        assertEquals(1, reads)
+        cache.get("a", 50)
+        assertEquals("a trimmed ride is read again", 2, reads)
+        cache.get("b", 1)
+        assertEquals(2, cache.size())
+        cache.get("a", 100)
+        assertEquals("the least recently used was evicted", 4, reads)
+    }
 }

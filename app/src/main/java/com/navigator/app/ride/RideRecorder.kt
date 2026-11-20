@@ -36,7 +36,7 @@ class RideRecorder(private val context: Context) {
     @Volatile private var paused = false
     // Set by resume(): the next accepted fix is flagged as the first one after a pause.
     @Volatile private var gapNext = false
-    private var manual = false
+    private var source = RideSource.NAV
 
     // Destination captured at start(), read at finalize.
     private var destLabel: String? = null
@@ -61,9 +61,9 @@ class RideRecorder(private val context: Context) {
 
     /** Begin recording a new ride toward the given (optional) destination. */
     /** @return true when recording is running (also if it already was). */
-    fun start(destLabel: String?, destLat: Double?, destLng: Double?, manual: Boolean = false): Boolean {
+    fun start(destLabel: String?, destLat: Double?, destLng: Double?, source: String = RideSource.NAV): Boolean {
         if (started) return true
-        this.manual = manual
+        this.source = source
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -77,12 +77,12 @@ class RideRecorder(private val context: Context) {
         val ht = HandlerThread("ride-recorder").also { it.start() }
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         try {
-            writer = store.openTrack(id, destLabel, destLat, destLng)
+            writer = store.openTrack(id, destLabel, destLat, destLng, source)
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, ht.looper)
             thread = ht
             activeId = id
             started = true
-            RideSession.started(manual, System.currentTimeMillis())
+            RideSession.started(source == RideSource.MANUAL, System.currentTimeMillis())
             AppLogger.log("Ride", "Recording started ($id) -> ${AppLogger.sensitive(destLabel)}")
             return true
         } catch (e: Exception) {
@@ -187,6 +187,7 @@ class RideRecorder(private val context: Context) {
                     elevLossM = stats.elevLossM,
                     maxSpeedKmh = stats.maxSpeedKmh,
                     pointCount = stats.pointCount,
+                    source = source,
                 )
                 store.finalizeRide(ride)
                 AppLogger.log("Ride", "Saved ride $id: ${stats.distanceMeters}m / ${stats.durationSeconds}s")

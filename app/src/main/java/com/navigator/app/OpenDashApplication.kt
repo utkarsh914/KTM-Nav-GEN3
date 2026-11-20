@@ -65,6 +65,7 @@ class OpenDashApplication : Application() {
                     minDistanceMeters = settings.rideMinDistanceMeters,
                     minDurationSeconds = settings.rideMinDurationSeconds,
                 )
+                store.purgeDeleted(System.currentTimeMillis() - RideStore.UNDO_WINDOW_MS)
                 store.pruneToLimit(settings.rideHistoryLimit)
                 store.backfillMovingStats()
             }.onFailure { AppLogger.log("Ride", "!! orphan recovery failed: $it") }
@@ -104,7 +105,7 @@ class OpenDashApplication : Application() {
             session = { com.navigator.app.ride.RideSession.state.value },
             recordingEnabled = { AppSettings(this).rideRecordingEnabled },
             locationGranted = ::hasLocationPermission,
-            startRecording = { RideRecordingService.start(this, null, null, null) },
+            startRecording = { RideRecordingService.start(this, null, null, null, com.navigator.app.ride.RideSource.MIRROR) },
             stopRecording = { RideRecordingService.stop(this) },
         ).start()
     }

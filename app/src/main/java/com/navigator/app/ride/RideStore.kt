@@ -2,6 +2,9 @@ package com.navigator.app.ride
 
 import android.content.Context
 import com.navigator.app.logging.AppLogger
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -34,8 +37,17 @@ class RideStore(context: Context) {
 
     // ---- Index (metadata) -------------------------------------------------
 
-    /** All rides, newest first. */
-    fun list(): List<RecordedRide> = synchronized(LOCK) { readIndex() }
+    /** Bumps on every index write, in any [RideStore] instance, so screens can reload when rides change. */
+    val changes: StateFlow<Int> get() = CHANGES
+
+    /** All rides the rider can see, newest first (deleted ones waiting for an undo are hidden). */
+    fun list(): List<RecordedRide> = synchronized(LOCK) { readIndex().filterNot { it.isDeleted } }
+
+    /** Ids of every ride in the index, deleted ones included. */
+    fun allIds(): Set<String> = synchronized(LOCK) { readIndex().map { it.id }.toHashSet() }
+
+    /** Rides deleted but not yet purged, newest first. */
+    fun listDeleted(): List<RecordedRide> = synchronized(LOCK) { readIndex().filter { it.isDeleted } }
 
     /**
      * Parse the index entry by entry: one bad entry is skipped (not the whole list). If
@@ -55,7 +67,7 @@ class RideStore(context: Context) {
         for (i in 0 until arr.length()) {
             val ride = runCatching { RideJson.rideFromJson(arr.getJSONObject(i)) }.getOrNull()
             if (ride == null || ride.id.isBlank()) continue // blank ids would also crash LazyColumn keys
-            out += ride
+            out += if (ride.source == null) ride.copy(source = RideSource.infer(ride)) else ride
         }
         return out.distinctBy { it.id }.sortedByDescending { it.startMs }
     }
@@ -66,6 +78,7 @@ class RideStore(context: Context) {
         val arr = JSONArray()
         rides.forEach { arr.put(RideJson.rideToJson(it)) }
         prefs.edit().putString(KEY_INDEX, arr.toString()).apply()
+        CHANGES.update { it + 1 }
     }
 
     // Saved (pinned) ids are mirrored outside the index so crash/corruption recovery
@@ -93,6 +106,124 @@ class RideStore(context: Context) {
             writeSavedIds(savedIds() - set)
             set.forEach { id -> runCatching { trackFile(id).delete() } }
         }
+    }
+
+    /** Hide rides for an undo window; the tracks stay until [purgeDeleted]. Active recordings are left alone. */
+    fun softDelete(ids: Collection<String>, nowMs: Long = System.currentTimeMillis()): List<String> = synchronized(LOCK) {
+        val hit = ArrayList<String>()
+        writeIndex(readIndex().map { r ->
+            if (r.id in ids && !r.isDeleted && r.id !in ACTIVE_TRACKS) { hit += r.id; r.copy(deletedAtMs = nowMs) } else r
+        })
+        hit
+    }
+
+    /** Bring soft-deleted rides back. Returns the ids restored (a purged ride is gone for good). */
+    fun restore(ids: Collection<String>): List<String> = synchronized(LOCK) {
+        val hit = ArrayList<String>()
+        writeIndex(readIndex().map { r ->
+            if (r.id in ids && r.isDeleted && trackFile(r.id).exists()) { hit += r.id; r.copy(deletedAtMs = null) } else r
+        })
+        hit
+    }
+
+    /** Remove for good the rides deleted before [olderThanMs]. Returns their ids. */
+    fun purgeDeleted(olderThanMs: Long): List<String> {
+        return synchronized(LOCK) {
+            val ids = readIndex().filter { (it.deletedAtMs ?: Long.MAX_VALUE) < olderThanMs }.map { it.id }
+            if (ids.isNotEmpty()) {
+                deleteAll(ids)
+                AppLogger.log("Ride", "Purged ${ids.size} deleted ride(s)")
+            }
+            ids
+        }
+    }
+
+    /** Remove for good these rides if (and only if) they are deleted: after the undo snackbar goes away. */
+    fun purge(ids: Collection<String>): List<String> = synchronized(LOCK) {
+        val gone = readIndex().filter { it.isDeleted && it.id in ids }.map { it.id }
+        if (gone.isNotEmpty()) deleteAll(gone)
+        gone
+    }
+
+    /**
+     * Join rides into one new ride (name of the first, notes joined, saved if any was) and soft-delete the originals.
+     * Refused while any is being recorded or when their time ranges overlap. The result carries the undo token.
+     */
+    fun mergeRides(ids: Collection<String>): MergeResult {
+        val all = synchronized(LOCK) { readIndex() }.filterNot { it.isDeleted }
+        val picked = all.filter { it.id in ids }
+        val (ordered, refusal) = RideMerge.order(picked) { it in ACTIVE_TRACKS }
+        if (refusal != null) return MergeResult.Refused(refusal)
+        val parts = ordered.map { points(it.id) }
+        // A read that lost lines would silently shorten the merged ride.
+        if (ordered.indices.any { parts[it].size < 2 || parts[it].size < ordered[it].pointCount }) {
+            return MergeResult.Refused(MergeRefusal.MissingTrack)
+        }
+        val merged = RideMerge.concat(parts)
+        val stats = RideMetrics.summarize(merged)
+        var n = System.currentTimeMillis()
+        while (trackFile(n.toString()).exists()) n++
+        val newId = n.toString()
+        val name = RideTrim.cleanName(ordered.first().destinationLabel)
+        val dest = ordered.lastOrNull { it.destLat != null && it.destLng != null }
+        val tmp = File(ridesDir, "$newId.jsonl.tmp")
+        ACTIVE_TRACKS.add(newId) // keep orphan recovery away until the index entry exists
+        var indexed = false
+        try {
+            FileOutputStream(tmp).use { fos ->
+                BufferedWriter(OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
+                    RideJson.metaLine(name, dest?.destLat, dest?.destLng, RideSource.MERGED)?.let { w.write(it); w.write("\n") }
+                    merged.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
+                    w.flush()
+                }
+                fos.fd.sync()
+            }
+            val ride = RecordedRide(
+                id = newId, startMs = stats.startMs, endMs = stats.endMs, distanceMeters = stats.distanceMeters,
+                durationSeconds = stats.durationSeconds, destinationLabel = name, destLat = dest?.destLat, destLng = dest?.destLng,
+                avgSpeedKmh = stats.avgSpeedKmh, movingSeconds = stats.movingSeconds,
+                avgOverallSpeedKmh = stats.avgOverallSpeedKmh, maxSpeedKmh = stats.maxSpeedKmh, pointCount = stats.pointCount,
+                saved = ordered.any { it.saved }, elevGainM = stats.elevGainM, elevLossM = stats.elevLossM,
+                notes = RideMerge.notes(ordered), source = RideSource.MERGED,
+            )
+            synchronized(LOCK) {
+                val now = readIndex()
+                // Anything changed meanwhile (deleted, trimmed, re-recorded): give up rather than merge stale points.
+                val same = ordered.all { o -> now.any { it.id == o.id && !it.isDeleted && it.pointCount == o.pointCount } }
+                if (!same || ordered.any { it.id in ACTIVE_TRACKS }) {
+                    tmp.delete()
+                    return MergeResult.Refused(MergeRefusal.Failed)
+                }
+                java.nio.file.Files.move(
+                    tmp.toPath(), trackFile(newId).toPath(),
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                )
+                val at = System.currentTimeMillis()
+                val originals = ordered.map { it.id }.toSet()
+                writeIndex(now.map { if (it.id in originals) it.copy(deletedAtMs = at) else it } + ride)
+                indexed = true
+                if (ride.saved) writeSavedIds(savedIds() + newId)
+                AppLogger.log("Ride", "Merged ${ordered.size} rides into $newId")
+                return MergeResult.Merged(ride, MergeToken(newId, ordered.map { it.id }))
+            }
+        } catch (e: Exception) {
+            runCatching { tmp.delete() }
+            if (!indexed) runCatching { trackFile(newId).delete() }
+            AppLogger.log("Ride", "!! merge failed: ${e.javaClass.simpleName}")
+            return MergeResult.Refused(MergeRefusal.Failed)
+        } finally {
+            ACTIVE_TRACKS.remove(newId)
+        }
+    }
+
+    /** Undo a merge: the originals come back and the merged ride goes. False when an original is already purged. */
+    fun undoMerge(token: MergeToken): Boolean = synchronized(LOCK) {
+        val now = readIndex()
+        val back = now.filter { it.id in token.originalIds && it.isDeleted && trackFile(it.id).exists() }
+        if (back.size != token.originalIds.size) return false
+        deleteAll(listOf(token.mergedId))
+        restore(token.originalIds)
+        true
     }
 
     /** Pin/unpin a ride to keep it permanently (excluded from the history prune). */
@@ -169,7 +300,7 @@ class RideStore(context: Context) {
      * header line first when any destination detail is known. Caller owns the
      * returned [Writer] and must [appendPoint] then close it.
      */
-    fun openTrack(id: String, destLabel: String?, destLat: Double?, destLng: Double?): Writer {
+    fun openTrack(id: String, destLabel: String?, destLat: Double?, destLng: Double?, source: String? = null): Writer {
         // Mark active BEFORE the file exists so orphan recovery can never see (and delete) it empty.
         ACTIVE_TRACKS.add(id)
         val w: Writer = try {
@@ -178,7 +309,7 @@ class RideStore(context: Context) {
             ACTIVE_TRACKS.remove(id)
             throw e
         }
-        RideJson.metaLine(destLabel, destLat, destLng)?.let {
+        RideJson.metaLine(destLabel, destLat, destLng, source)?.let {
             w.write(it)
             w.write("\n")
             w.flush()
@@ -234,6 +365,8 @@ class RideStore(context: Context) {
                     elevGainM = st.elevGainM, elevLossM = st.elevLossM,
                     destinationLabel = RideTrim.cleanName(r.destinationLabel),
                     notes = RideTrim.cleanNotes(r.notes),
+                    source = r.source ?: RideSource.infer(r.copy(startMs = st.startMs, endMs = st.endMs)),
+                    deletedAtMs = null,
                 )
             }
             if (added.isNotEmpty()) writeIndex(readIndex() + added)
@@ -248,7 +381,7 @@ class RideStore(context: Context) {
     fun updateMeta(id: String, label: String?, notes: String?): RecordedRide? = synchronized(LOCK) {
         var updated: RecordedRide? = null
         writeIndex(readIndex().map { r ->
-            if (r.id != id) r else r.copy(
+            if (r.id != id || r.isDeleted) r else r.copy(
                 destinationLabel = RideTrim.cleanName(label),
                 notes = RideTrim.cleanNotes(notes),
             ).also { updated = it }
@@ -333,7 +466,7 @@ class RideStore(context: Context) {
         ACTIVE_TRACKS.add(rideId) // keep orphan recovery away until the index entry exists
         try {
             java.io.BufferedWriter(java.io.OutputStreamWriter(FileOutputStream(trackFile(rideId)), Charsets.UTF_8)).use { w ->
-                RideJson.metaLine(label, last.lat, last.lng)?.let { w.write(it); w.write("\n") }
+                RideJson.metaLine(label, last.lat, last.lng, RideSource.GPX)?.let { w.write(it); w.write("\n") }
                 points.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
             }
         } catch (e: Exception) {
@@ -359,6 +492,7 @@ class RideStore(context: Context) {
             maxSpeedKmh = stats.maxSpeedKmh,
             pointCount = stats.pointCount,
             saved = true,
+            source = RideSource.GPX,
         )
         try {
             finalizeRide(ride)
@@ -412,7 +546,8 @@ class RideStore(context: Context) {
      * cleared the keep cutoffs. Safe to call on every launch.
      */
     fun recoverOrphans(minDistanceMeters: Int, minDurationSeconds: Int) {
-        val indexed = list().map { it.id }.toHashSet()
+        // Deleted rides still own their track until purged: they are not orphans.
+        val indexed = synchronized(LOCK) { readIndex() }.map { it.id }.toHashSet()
         // Leftovers of an interrupted trim.
         ridesDir.listFiles { f -> f.name.endsWith(".jsonl.tmp") }?.forEach { runCatching { it.delete() } }
         val files = ridesDir.listFiles { f -> f.name.endsWith(".jsonl") } ?: return
@@ -430,7 +565,16 @@ class RideStore(context: Context) {
                 continue
             }
             val meta = readMeta(id)
-            finalizeRide(
+            // A merge that died between moving its track and writing the index: the originals are still live, so
+            // this track is a duplicate of them. Roll the merge back.
+            if (meta?.optString("src") == RideSource.MERGED &&
+                synchronized(LOCK) { readIndex() }.any { !it.isDeleted && it.startMs < stats.endMs && it.endMs > stats.startMs }
+            ) {
+                runCatching { f.delete() }
+                AppLogger.log("Ride", "Rolled back interrupted merge $id")
+                continue
+            }
+            val recovered =
                 RecordedRide(
                     id = id,
                     startMs = stats.startMs,
@@ -448,7 +592,9 @@ class RideStore(context: Context) {
                     maxSpeedKmh = stats.maxSpeedKmh,
                     pointCount = stats.pointCount,
                     saved = id in savedIds(),
-                ),
+                )
+            finalizeRide(
+                recovered.copy(source = RideSource.clean(meta?.optString("src")) ?: RideSource.infer(recovered)),
             )
             AppLogger.log("Ride", "Recovered orphan ride $id")
         }
@@ -481,14 +627,17 @@ class RideStore(context: Context) {
         }
     }
 
-    private companion object {
-        const val KEY_INDEX = "index"
-        const val KEY_INDEX_CORRUPT = "index_corrupt"
-        const val KEY_SAVED_IDS = "saved_ids"
-        const val SYNC_EVERY_MS = 15_000L
+    companion object {
+        /** A deleted ride can be restored for this long before the launch purge removes it for good. */
+        const val UNDO_WINDOW_MS = 24 * 60 * 60_000L
+        private const val KEY_INDEX = "index"
+        private const val KEY_INDEX_CORRUPT = "index_corrupt"
+        private const val KEY_SAVED_IDS = "saved_ids"
+        private const val SYNC_EVERY_MS = 15_000L
+        private val CHANGES = MutableStateFlow(0)
         /** Process-wide: one lock for every RideStore instance (history, recorder, replay all create their own). */
-        val LOCK = Any()
+        private val LOCK = Any()
         /** Track files currently being written by a live recorder; recovery must not touch them. */
-        val ACTIVE_TRACKS: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        private val ACTIVE_TRACKS: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     }
 }

@@ -16,6 +16,8 @@ package com.navigator.app.ride
  * @param avgSpeedKmh average speed = distance / MOVING time (stops excluded). Rides recorded before this definition used the mean of the fix speeds, stops included
  * @param maxSpeedKmh peak recorded speed
  * @param pointCount number of recorded fixes
+ * @param source one of [RideSource]; null only on a ride that was not read through [RideStore] (which infers it for old rides)
+ * @param deletedAtMs when the rider deleted it (it waits for an undo until purged); null for a live ride
  * @param saved pinned to keep permanently; excluded from the history-limit prune
  */
 data class RecordedRide(
@@ -40,7 +42,11 @@ data class RecordedRide(
     val elevLossM: Int = ELEV_UNKNOWN,
     /** Free-text note the rider added in Replay. */
     val notes: String? = null,
-)
+    val source: String? = null,
+    val deletedAtMs: Long? = null,
+) {
+    val isDeleted: Boolean get() = deletedAtMs != null
+}
 
 const val MOVING_UNKNOWN = -1
 const val ELEV_UNKNOWN = -1

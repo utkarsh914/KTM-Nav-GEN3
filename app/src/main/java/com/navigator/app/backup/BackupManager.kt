@@ -43,7 +43,7 @@ class BackupManager(context: Context) {
         val c = BackupArchive.read(input, File(app.cacheDir, "unused"), withTracks = false)
         if (c == null) null else {
             val usable = c.rides.filter { it.id in c.trackIds }
-            val have = rides.list().map { it.id }.toHashSet()
+            val have = rides.allIds() // a ride waiting in the undo window is not restored over
             var placeCount = 0
             c.placesJson?.let { json ->
                 runCatching {

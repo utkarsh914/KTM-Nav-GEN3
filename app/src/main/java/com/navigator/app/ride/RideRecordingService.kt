@@ -61,7 +61,7 @@ class RideRecordingService : Service() {
                         destLabel = intent?.getStringExtra(EXTRA_LABEL),
                         destLat = intent?.doubleOrNull(EXTRA_LAT),
                         destLng = intent?.doubleOrNull(EXTRA_LNG),
-                        manual = intent?.getBooleanExtra(EXTRA_MANUAL, false) == true,
+                        source = RideSource.clean(intent?.getStringExtra(EXTRA_SOURCE)) ?: RideSource.NAV,
                     )
                     if (ok) {
                         recorder = r
@@ -155,17 +155,17 @@ class RideRecordingService : Service() {
         private const val ACTION_STOP = "com.navigator.app.action.STOP_RIDE_RECORDING"
         private const val ACTION_PAUSE = "com.navigator.app.action.PAUSE_RIDE_RECORDING"
         private const val ACTION_RESUME = "com.navigator.app.action.RESUME_RIDE_RECORDING"
-        private const val EXTRA_MANUAL = "manual"
+        private const val EXTRA_SOURCE = "source"
         private const val EXTRA_LABEL = "label"
         private const val EXTRA_LAT = "lat"
         private const val EXTRA_LNG = "lng"
 
         /** Start recording a trip toward the (optional) destination. */
         fun start(
-            context: Context, destLabel: String?, destLat: Double?, destLng: Double?, manual: Boolean = false,
+            context: Context, destLabel: String?, destLat: Double?, destLng: Double?, source: String = RideSource.NAV,
         ): Boolean {
             val intent = Intent(context, RideRecordingService::class.java).apply {
-                if (manual) putExtra(EXTRA_MANUAL, true)
+                putExtra(EXTRA_SOURCE, source)
                 putExtra(EXTRA_LABEL, destLabel)
                 destLat?.let { putExtra(EXTRA_LAT, it) }
                 destLng?.let { putExtra(EXTRA_LNG, it) }
@@ -176,7 +176,7 @@ class RideRecordingService : Service() {
         }
 
         /** Rider-initiated recording with no destination. */
-        fun startManual(context: Context): Boolean = start(context, null, null, null, manual = true)
+        fun startManual(context: Context): Boolean = start(context, null, null, null, RideSource.MANUAL)
 
         fun pause(context: Context) = send(context, ACTION_PAUSE)
         fun resume(context: Context) = send(context, ACTION_RESUME)
