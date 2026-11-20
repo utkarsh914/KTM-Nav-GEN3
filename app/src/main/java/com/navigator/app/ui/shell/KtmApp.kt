@@ -229,12 +229,18 @@ fun KtmApp(onQuit: () -> Unit) {
                     onSelectTab = { navController.openTab(it) },
                     feedback = feedback,
                     strip = {
-                        RecordingStrip(
-                            feedback = feedback,
-                            onOpenActivity = { navController.openTab(Tab.Navigate) },
-                            onOpenRides = { navController.openTab(Tab.Rides) },
-                            mirrorEngine = !inAppState.value,
-                        )
+                        androidx.compose.foundation.layout.Column {
+                            TripStrip(
+                                onNavigateTab = currentTab == Tab.Navigate,
+                                onOpen = { intents.post(AppIntent.OpenNav); navController.openTab(Tab.Navigate) },
+                            )
+                            RecordingStrip(
+                                feedback = feedback,
+                                onOpenActivity = { navController.openTab(Tab.Navigate) },
+                                onOpenRides = { navController.openTab(Tab.Rides) },
+                                mirrorEngine = !inAppState.value,
+                            )
+                        }
                     },
                 ) {
                     SharedTransitionLayout {

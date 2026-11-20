@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import com.navigator.app.ui.shell.LocalTripShared
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeOut
 import com.navigator.app.ui.components.KtmScrim
 import com.navigator.app.R
@@ -86,9 +89,14 @@ fun RidingScreen(
         // MO1: the card drops in from the top, then the bar rises from the bottom a beat later; no overshoot, at most 250 ms. Reduced motion: a short crossfade.
         val motion = KtmTheme.motion
         val entered = remember { MutableTransitionState(false).apply { targetState = true } }
+        // MO6: minimising slides the card up and out while the bar shrinks into the strip.
+        val stageScope = LocalTripShared.current?.visibility
+        val cardExit = if (stageScope == null || motion.reduced) Modifier else with(stageScope) {
+            Modifier.animateEnterExit(enter = EnterTransition.None, exit = fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { -it })
+        }
         AnimatedVisibility(
             visibleState = entered,
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().then(cardExit),
             enter = fadeIn(motion.ridingFade(CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
         ) {
             Column {

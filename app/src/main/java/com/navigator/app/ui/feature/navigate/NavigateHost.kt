@@ -1,5 +1,10 @@
 package com.navigator.app.ui.feature.navigate
 
+import com.navigator.app.ui.shell.SharedElements
+import com.navigator.app.ui.shell.LocalTripShared
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.setValue
@@ -870,345 +875,349 @@ fun NavigateHost(
 
         // Animated stage chrome (overlays the persistent map above). The map layer
         // stays OUTSIDE this AnimatedContent so it never animates or duplicates.
-        AnimatedContent(
-            targetState = stage,
-            modifier = Modifier.fillMaxSize(),
-            transitionSpec = { stageTransition(initialState, targetState, motionSpecs) },
-            label = "navStage",
-        ) { s ->
-          Box(Modifier.fillMaxSize()) {
-            when (s) {
-            NavStage.BROWSE -> NavigateRoute(
-                map = map,
-                mapState = when {
-                    !available -> MapState.Unavailable
-                    navReady -> MapState.Ready
-                    navError -> MapState.Failed
-                    else -> MapState.Preparing
-                },
-                mapBearing = mapBearing,
-                location = LocationState.of(hasLocationPermission(context), locationReady),
-                padMap = stage == NavStage.BROWSE,
-                onSearch = { q, category -> openSearch(q.orEmpty(), category) },
-                onChoose = ::choose,
-                // (stage guard: the tiles stay tappable during the exit animation)
-                onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
-                onResumeTrip = ::resumeNav,
-                // SE4 from the minimised trip's card: back to the riding screen with the add-a-stop sheet open.
-                onAddStop = { if (stage != NavStage.NAVIGATING) addStopOnResume = true else showTripStops = true; resumeNav() },
-                onOpenPairing = onOpenConnect,
-                onOpenPlaces = onOpenPlaces,
-                onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
-                recordControls = { RecordRidePill() },
-            )
+        SharedTransitionLayout(Modifier.fillMaxSize()) {
+            AnimatedContent(
+                targetState = stage,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { stageTransition(initialState, targetState, motionSpecs) },
+                label = "navStage",
+            ) { s ->
+              CompositionLocalProvider(LocalTripShared provides SharedElements(this@SharedTransitionLayout, this)) {
+              Box(Modifier.fillMaxSize()) {
+                when (s) {
+                NavStage.BROWSE -> NavigateRoute(
+                    map = map,
+                    mapState = when {
+                        !available -> MapState.Unavailable
+                        navReady -> MapState.Ready
+                        navError -> MapState.Failed
+                        else -> MapState.Preparing
+                    },
+                    mapBearing = mapBearing,
+                    location = LocationState.of(hasLocationPermission(context), locationReady),
+                    padMap = stage == NavStage.BROWSE,
+                    onSearch = { q, category -> openSearch(q.orEmpty(), category) },
+                    onChoose = ::choose,
+                    // (stage guard: the tiles stay tappable during the exit animation)
+                    onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
+                    onResumeTrip = ::resumeNav,
+                    // SE4 from the minimised trip's card: back to the riding screen with the add-a-stop sheet open.
+                    onAddStop = { if (stage != NavStage.NAVIGATING) addStopOnResume = true else showTripStops = true; resumeNav() },
+                    onOpenPairing = onOpenConnect,
+                    onOpenPlaces = onOpenPlaces,
+                    onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
+                    recordControls = { RecordRidePill() },
+                )
 
-            NavStage.SEARCH -> PlaceSearchRoute(
-                mode = when (searchTarget) {
-                    SearchTarget.DESTINATION -> SearchMode.Destination
-                    SearchTarget.STOP -> SearchMode.Stop
-                    SearchTarget.TRIP_STOP -> SearchMode.TripStop
-                },
-                initialQuery = flow.query,
-                initialCategory = searchCategory,
-                onQueryChanged = { flow.query = it },
-                onPicked = ::applyPicked,
-                onBack = ::performBack,
-                routeAhead = {
-                    // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
-                    when (searchTarget) {
-                        SearchTarget.TRIP_STOP -> trip.state.value.route?.let { r ->
-                            // Only what is still ahead of the rider.
-                            (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
-                        }
-                        SearchTarget.STOP -> routePreview.selectedRoute?.points?.map { it.latitude to it.longitude }
-                        SearchTarget.DESTINATION -> null
-                    }
-                },
-                activity = if (navState.sessionState.isActiveNav() && leftNavManually && searchTarget != SearchTarget.TRIP_STOP) {
-                    ActivityCard.build(tripState, navState, System.currentTimeMillis())
-                } else null,
-                onResumeTrip = ::resumeNav,
-                onPickOnMap = if (searchTarget == SearchTarget.STOP) {
-                    { flow.update { it.copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.PREVIEW) }; pickingStop = true }
-                } else null,
-            )
-
-            NavStage.CONFIRM -> {
-                // A trip is still running while the rider plans another: one tap back to it.
-                if (navState.sessionState.isActiveNav() && leftNavManually) {
-                    ResumeNavPill(
-                        onClick = ::resumeNav,
-                        modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
-                    )
-                }
-                val sel = selected
-                if (sel != null) {
-                    val removedMessage = resources.getString(R.string.place_removed)
-                    val undoLabel = resources.getString(R.string.common_undo)
-                    val saved = PlaceSaving.isSaved(savedPlaces, sel)
-                    PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                        PlaceSheet(
-                            state = PlaceSheetState(
-                                title = sel.label, address = sel.address,
-                                distance = distanceLabel(origin, sel.lat, sel.lng),
-                                saved = saved, tripRunning = tripRunning(),
-                            ),
-                            actions = PlaceSheetActions(
-                                onBack = ::performBack,
-                                onClose = ::backToBrowse,
-                                onToggleSave = {
-                                    scope.launch(Dispatchers.IO) {
-                                        if (saved) places.removeFavorite(sel) else places.saveFavorite(sel, FavoriteSlot.OTHER)
-                                    }
-                                    if (saved) {
-                                        feedback.snackbar(removedMessage, undoLabel) {
-                                            scope.launch(Dispatchers.IO) { places.saveFavorite(sel, FavoriteSlot.OTHER) }
-                                        }
-                                    }
-                                },
-                                onDirections = {
-                                    if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
-                                        replaceRequest = ReplaceRequest(sel, cancelFirst = true) { stage = NavStage.PREVIEW }
-                                    } else stage = NavStage.PREVIEW
-                                },
-                                onAddAsStop = { addAsStop(sel) },
-                            ),
-                        )
-                    }
-                }
-                // Top-right control: the compass, only when rotated (✕ is in the sheet).
-                if (available && navReady && abs(mapBearing) > 0.5f) {
-                    Column(
-                        modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        MapControlButton(
-                            KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
-                            rotationDegrees = -mapBearing, tinted = false,
-                        )
-                    }
-                }
-            }
-
-            NavStage.PREVIEW -> {
-                // A trip is still running while the rider plans another: one tap back to it.
-                if (navState.sessionState.isActiveNav() && leftNavManually) {
-                    ResumeNavPill(
-                        onClick = ::resumeNav,
-                        modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
-                    )
-                }
-                val dest = selected
-                if (dest != null) {
-                    val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
-                    val undoLabel = resources.getString(R.string.common_undo)
-                    when {
-                        pickingStop -> PickStopOverlay(
-                            map = map, number = StopList.nextNumber(stops), destination = dest.label,
-                            canAdd = StopList.canAdd(stops),
-                            onBack = { pickingStop = false },
-                            onUse = { pickingStop = false; stops = StopList.add(stops, it) },
-                        )
-                        stopCandidate != null -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                            val candidate = stopCandidate
-                            if (candidate != null) {
-                                StopCandidateSheet(
-                                    name = candidate.label, number = StopList.nextNumber(stops), destination = dest.label,
-                                    canAdd = StopList.canAdd(stops),
-                                    onAdd = { stops = StopList.add(stops, candidate); stopCandidate = null },
-                                    onCancel = { stopCandidate = null },
-                                )
+                NavStage.SEARCH -> PlaceSearchRoute(
+                    mode = when (searchTarget) {
+                        SearchTarget.DESTINATION -> SearchMode.Destination
+                        SearchTarget.STOP -> SearchMode.Stop
+                        SearchTarget.TRIP_STOP -> SearchMode.TripStop
+                    },
+                    initialQuery = flow.query,
+                    initialCategory = searchCategory,
+                    onQueryChanged = { flow.query = it },
+                    onPicked = ::applyPicked,
+                    onBack = ::performBack,
+                    routeAhead = {
+                        // Along the route when adding a stop to a live trip or to the previewed trip; else around you.
+                        when (searchTarget) {
+                            SearchTarget.TRIP_STOP -> trip.state.value.route?.let { r ->
+                                // Only what is still ahead of the rider.
+                                (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
                             }
+                            SearchTarget.STOP -> routePreview.selectedRoute?.points?.map { it.latitude to it.longitude }
+                            SearchTarget.DESTINATION -> null
                         }
-                        else -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
-                            RouteSheet(
-                                state = RouteSheetMapper.state(dest, stops, routePreview, System.currentTimeMillis()),
-                                actions = RouteSheetActions(
+                    },
+                    activity = if (navState.sessionState.isActiveNav() && leftNavManually && searchTarget != SearchTarget.TRIP_STOP) {
+                        ActivityCard.build(tripState, navState, System.currentTimeMillis())
+                    } else null,
+                    onResumeTrip = ::resumeNav,
+                    onPickOnMap = if (searchTarget == SearchTarget.STOP) {
+                        { flow.update { it.copy(searchTarget = SearchTarget.DESTINATION, stage = NavStage.PREVIEW) }; pickingStop = true }
+                    } else null,
+                )
+
+                NavStage.CONFIRM -> {
+                    // A trip is still running while the rider plans another: one tap back to it.
+                    if (navState.sessionState.isActiveNav() && leftNavManually) {
+                        ResumeNavPill(
+                            onClick = ::resumeNav,
+                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                        )
+                    }
+                    val sel = selected
+                    if (sel != null) {
+                        val removedMessage = resources.getString(R.string.place_removed)
+                        val undoLabel = resources.getString(R.string.common_undo)
+                        val saved = PlaceSaving.isSaved(savedPlaces, sel)
+                        PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                            PlaceSheet(
+                                state = PlaceSheetState(
+                                    title = sel.label, address = sel.address,
+                                    distance = distanceLabel(origin, sel.lat, sel.lng),
+                                    saved = saved, tripRunning = tripRunning(),
+                                ),
+                                actions = PlaceSheetActions(
                                     onBack = ::performBack,
                                     onClose = ::backToBrowse,
-                                    onSelect = routeVm::select,
-                                    onAddStop = ::openSearchForStop,
-                                    onRemoveStop = { index ->
-                                        stops.getOrNull(index)?.let { removed ->
-                                            stops = StopList.removeAt(stops, index)
-                                            feedback.snackbar(stopRemoved(removed.label), undoLabel) {
-                                                // Only while still planning: after Start or ✕ the stop belongs to a plan that is gone.
-                                                if (stage == NavStage.PREVIEW && selected == dest) stops = StopList.restore(stops, index, removed)
+                                    onToggleSave = {
+                                        scope.launch(Dispatchers.IO) {
+                                            if (saved) places.removeFavorite(sel) else places.saveFavorite(sel, FavoriteSlot.OTHER)
+                                        }
+                                        if (saved) {
+                                            feedback.snackbar(removedMessage, undoLabel) {
+                                                scope.launch(Dispatchers.IO) { places.saveFavorite(sel, FavoriteSlot.OTHER) }
                                             }
                                         }
                                     },
-                                    onMoveStop = { index, delta -> stops = StopList.move(stops, index, delta) },
-                                    onStart = {
-                                        // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
+                                    onDirections = {
                                         if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
-                                            replaceRequest = ReplaceRequest(dest, cancelFirst = false) { startTo(dest) }
-                                        } else startTo(dest)
+                                            replaceRequest = ReplaceRequest(sel, cancelFirst = true) { stage = NavStage.PREVIEW }
+                                        } else stage = NavStage.PREVIEW
                                     },
+                                    onAddAsStop = { addAsStop(sel) },
                                 ),
                             )
                         }
                     }
+                    // Top-right control: the compass, only when rotated (✕ is in the sheet).
+                    if (available && navReady && abs(mapBearing) > 0.5f) {
+                        Column(
+                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            MapControlButton(
+                                KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
+                                rotationDegrees = -mapBearing, tinted = false,
+                            )
+                        }
+                    }
                 }
-                // Top-right control: the compass, only when rotated (✕ is in the sheet).
-                if (available && navReady && abs(mapBearing) > 0.5f && !pickingStop) {
-                    Column(
-                        modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        MapControlButton(
-                            KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
-                            rotationDegrees = -mapBearing, tinted = false,
+
+                NavStage.PREVIEW -> {
+                    // A trip is still running while the rider plans another: one tap back to it.
+                    if (navState.sessionState.isActiveNav() && leftNavManually) {
+                        ResumeNavPill(
+                            onClick = ::resumeNav,
+                            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = 10.dp),
+                        )
+                    }
+                    val dest = selected
+                    if (dest != null) {
+                        val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
+                        val undoLabel = resources.getString(R.string.common_undo)
+                        when {
+                            pickingStop -> PickStopOverlay(
+                                map = map, number = StopList.nextNumber(stops), destination = dest.label,
+                                canAdd = StopList.canAdd(stops),
+                                onBack = { pickingStop = false },
+                                onUse = { pickingStop = false; stops = StopList.add(stops, it) },
+                            )
+                            stopCandidate != null -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                                val candidate = stopCandidate
+                                if (candidate != null) {
+                                    StopCandidateSheet(
+                                        name = candidate.label, number = StopList.nextNumber(stops), destination = dest.label,
+                                        canAdd = StopList.canAdd(stops),
+                                        onAdd = { stops = StopList.add(stops, candidate); stopCandidate = null },
+                                        onCancel = { stopCandidate = null },
+                                    )
+                                }
+                            }
+                            else -> PlanPanel(onInsets = { left, bottom -> planInsets = left to bottom }) {
+                                RouteSheet(
+                                    state = RouteSheetMapper.state(dest, stops, routePreview, System.currentTimeMillis()),
+                                    actions = RouteSheetActions(
+                                        onBack = ::performBack,
+                                        onClose = ::backToBrowse,
+                                        onSelect = routeVm::select,
+                                        onAddStop = ::openSearchForStop,
+                                        onRemoveStop = { index ->
+                                            stops.getOrNull(index)?.let { removed ->
+                                                stops = StopList.removeAt(stops, index)
+                                                feedback.snackbar(stopRemoved(removed.label), undoLabel) {
+                                                    // Only while still planning: after Start or ✕ the stop belongs to a plan that is gone.
+                                                    if (stage == NavStage.PREVIEW && selected == dest) stops = StopList.restore(stops, index, removed)
+                                                }
+                                            }
+                                        },
+                                        onMoveStop = { index, delta -> stops = StopList.move(stops, index, delta) },
+                                        onStart = {
+                                            // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
+                                            if (ReplacePolicy.decide(tripRunning()) == ReplaceDecision.Ask) {
+                                                replaceRequest = ReplaceRequest(dest, cancelFirst = false) { startTo(dest) }
+                                            } else startTo(dest)
+                                        },
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    // Top-right control: the compass, only when rotated (✕ is in the sheet).
+                    if (available && navReady && abs(mapBearing) > 0.5f && !pickingStop) {
+                        Column(
+                            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = 16.dp, top = 16.dp),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            MapControlButton(
+                                KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { map.resetNorth() },
+                                rotationDegrees = -mapBearing, tinted = false,
+                            )
+                        }
+                    }
+                }
+
+                NavStage.NAVIGATING -> RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
+                  BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
+                    val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
+                    // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
+                    BackHandler(enabled = landscape && showTripSheet) { showTripSheet = false }
+                    startFailure?.let { failure ->
+                        StartFailedSheet(
+                            failure = failure,
+                            canRetry = tripState.dest != null,
+                            actions = StartFailedActions(
+                                onRetry = {
+                                    GoogleNavSdkProvider.clearStartFailure()
+                                    retryStart()
+                                },
+                                onBack = {
+                                    GoogleNavSdkProvider.clearStartFailure()
+                                    trip.cancel()
+                                    trip.resetStartDebounce()
+                                    stage = NavStage.PREVIEW
+                                },
+                                onClose = {
+                                    GoogleNavSdkProvider.clearStartFailure()
+                                    trip.cancel()
+                                    backToBrowse()
+                                },
+                                onMirror = {
+                                    GoogleNavSdkProvider.clearStartFailure()
+                                    trip.cancel()
+                                    container.settings.update { googleNavEnabled = false }
+                                    backToBrowse()
+                                },
+                            ),
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
+                    val destinationName = tripState.dest?.label ?: selected?.label
+                    val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
+                    val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
+                    // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
+                    val ridingActions = RidingActions(
+                        onOpenSheet = { showTripSheet = true },
+                        onMapButton = { applyMapButton(MapButtonEvent.Tap) },
+                        onNorthUp = { map.resetNorth() },
+                        onDismissSheet = { showTripSheet = false },
+                    )
+                    val dashText = BikeSheetMapper.status(bikeStatus)
+                    val nextStopTarget = if (showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
+                    val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
+                    val dashStatus = stringResource(dashText.title, dashText.arg ?: 0)
+                    val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
+                    val tripActions = TripSheetActions(
+                        onAddStop = { showTripSheet = false; showTripStops = true },
+                        onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
+                        onMinimise = { showTripSheet = false; moveAwayFromNav() },
+                        onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
+                        onMessages = { on -> container.settings.update { mirrorEnabled = on } },
+                        onDash = { showTripSheet = false; showBike = true },
+                        onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
+                        onEnd = { showTripSheet = false; showEndConfirm = true },
+                        onDismiss = { showTripSheet = false },
+                    )
+                    if (startFailure == null) {
+                        if (landscape) RidingLandscape(
+                            maneuver = ManeuverModel.from(navState),
+                            bar = bar,
+                            chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
+                            recenter = mapButton.recenter,
+                            bearing = mapBearing,
+                            narrow = narrow,
+                            controls = if (showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
+                            actions = ridingActions,
+                            controlActions = tripActions,
+                            onInsets = { ridingInsets = it },
+                        ) else RidingScreen(
+                            maneuver = ManeuverModel.from(navState),
+                            bar = bar,
+                            chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
+                            recenter = mapButton.recenter,
+                            bearing = mapBearing,
+                            actions = ridingActions,
+                            onInsets = { top, bottom -> ridingInsets = MapInsets(top = top, bottom = bottom) },
+                            sheetOpen = showTripSheet,
+                            sheet = {
+                                TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
+                                Spacer(Modifier.height(KtmSpacing.xl))
+                                EndTripButton(tripActions.onEnd)
+                            },
+                        )
+                    }
+                    if (showBike && startFailure == null) {
+                        BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
+                    }
+                    if (showTripStops && startFailure == null) {
+                        TripStopSheetHost(
+                            trip = trip,
+                            onSearchByName = { showTripStops = false; openTripStopSearch() },
+                            onDismiss = { showTripStops = false },
+                        )
+                    }
+                  }
+                }
+
+                NavStage.TRIP_FINISHED -> {
+                    var placeSaved by remember(selected) { mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false) }
+                    val model = TripFinishedModel(
+                        destination = selected?.label,
+                        ui = finishState.ui,
+                        fallbackDurationSec = tripState.finished?.durationSec ?: 0,
+                        avgMode = appSettings.avgSpeedMode,
+                        placeSaved = placeSaved,
+                        canSavePlace = selected != null,
+                        canRideBack = finishState.points?.firstOrNull() != null || tripState.origin != null,
+                        minDistanceM = appSettings.rideMinDistanceMeters,
+                        minDurationS = appSettings.rideMinDurationSeconds,
+                        recordingNowOn = recordingTurnedOn,
+                    )
+                    val ride = (finishState.ui as? FinishUi.Recorded)?.ride
+                    PlanPanel(onInsets = { left, bottom -> finishInsets = left to bottom }) {
+                        TripFinishedContent(
+                            model = model,
+                            landscape = com.navigator.app.ui.feature.navigate.plan.LocalFillPanel.current,
+                            actions = TripFinishedActions(
+                                onDone = ::backToBrowse,
+                                onReplay = { ride?.let { onOpenReplay(it.id) } },
+                                onSavePlace = {
+                                    selected?.let {
+                                        scope.launch(Dispatchers.IO) { store.saveFavorite(it, com.navigator.app.nav.destination.FavoriteSlot.OTHER) }
+                                        placeSaved = true
+                                    }
+                                },
+                                onRideBack = ::rideBack,
+                                onShare = {
+                                    if (ride != null) scope.launch {
+                                        val intent = withContext(Dispatchers.IO) { com.navigator.app.ride.GpxShare.buildIntent(context, ride, rideStore) }
+                                        if (intent != null) runCatching { context.startActivity(intent) }
+                                    }
+                                },
+                                onTurnOnRecording = { appSettings.rideRecordingEnabled = true; recordingTurnedOn = true },
+                                onChangeLimits = onOpenSettings,
+                            ),
                         )
                     }
                 }
-            }
-
-            NavStage.NAVIGATING -> RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
-              BoxWithConstraints(Modifier.fillMaxSize()) {
-                val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
-                val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
-                // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
-                BackHandler(enabled = landscape && showTripSheet) { showTripSheet = false }
-                startFailure?.let { failure ->
-                    StartFailedSheet(
-                        failure = failure,
-                        canRetry = tripState.dest != null,
-                        actions = StartFailedActions(
-                            onRetry = {
-                                GoogleNavSdkProvider.clearStartFailure()
-                                retryStart()
-                            },
-                            onBack = {
-                                GoogleNavSdkProvider.clearStartFailure()
-                                trip.cancel()
-                                trip.resetStartDebounce()
-                                stage = NavStage.PREVIEW
-                            },
-                            onClose = {
-                                GoogleNavSdkProvider.clearStartFailure()
-                                trip.cancel()
-                                backToBrowse()
-                            },
-                            onMirror = {
-                                GoogleNavSdkProvider.clearStartFailure()
-                                trip.cancel()
-                                container.settings.update { googleNavEnabled = false }
-                                backToBrowse()
-                            },
-                        ),
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
-                }
-                val destinationName = tripState.dest?.label ?: selected?.label
-                val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
-                val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
-                // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
-                val ridingActions = RidingActions(
-                    onOpenSheet = { showTripSheet = true },
-                    onMapButton = { applyMapButton(MapButtonEvent.Tap) },
-                    onNorthUp = { map.resetNorth() },
-                    onDismissSheet = { showTripSheet = false },
-                )
-                val dashText = BikeSheetMapper.status(bikeStatus)
-                val nextStopTarget = if (showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
-                val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
-                val dashStatus = stringResource(dashText.title, dashText.arg ?: 0)
-                val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
-                val tripActions = TripSheetActions(
-                    onAddStop = { showTripSheet = false; showTripStops = true },
-                    onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
-                    onMinimise = { showTripSheet = false; moveAwayFromNav() },
-                    onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
-                    onMessages = { on -> container.settings.update { mirrorEnabled = on } },
-                    onDash = { showTripSheet = false; showBike = true },
-                    onRemoveNextStop = { showTripSheet = false; trip.removeNextStop(nextStopTarget) },
-                    onEnd = { showTripSheet = false; showEndConfirm = true },
-                    onDismiss = { showTripSheet = false },
-                )
-                if (startFailure == null) {
-                    if (landscape) RidingLandscape(
-                        maneuver = ManeuverModel.from(navState),
-                        bar = bar,
-                        chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
-                        recenter = mapButton.recenter,
-                        bearing = mapBearing,
-                        narrow = narrow,
-                        controls = if (showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
-                        actions = ridingActions,
-                        controlActions = tripActions,
-                        onInsets = { ridingInsets = it },
-                    ) else RidingScreen(
-                        maneuver = ManeuverModel.from(navState),
-                        bar = bar,
-                        chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
-                        recenter = mapButton.recenter,
-                        bearing = mapBearing,
-                        actions = ridingActions,
-                        onInsets = { top, bottom -> ridingInsets = MapInsets(top = top, bottom = bottom) },
-                        sheetOpen = showTripSheet,
-                        sheet = {
-                            TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
-                            Spacer(Modifier.height(KtmSpacing.xl))
-                            EndTripButton(tripActions.onEnd)
-                        },
-                    )
-                }
-                if (showBike && startFailure == null) {
-                    BikeSheetHost(tripRunning = true, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
-                }
-                if (showTripStops && startFailure == null) {
-                    TripStopSheetHost(
-                        trip = trip,
-                        onSearchByName = { showTripStops = false; openTripStopSearch() },
-                        onDismiss = { showTripStops = false },
-                    )
                 }
               }
+              }
             }
-
-            NavStage.TRIP_FINISHED -> {
-                var placeSaved by remember(selected) { mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false) }
-                val model = TripFinishedModel(
-                    destination = selected?.label,
-                    ui = finishState.ui,
-                    fallbackDurationSec = tripState.finished?.durationSec ?: 0,
-                    avgMode = appSettings.avgSpeedMode,
-                    placeSaved = placeSaved,
-                    canSavePlace = selected != null,
-                    canRideBack = finishState.points?.firstOrNull() != null || tripState.origin != null,
-                    minDistanceM = appSettings.rideMinDistanceMeters,
-                    minDurationS = appSettings.rideMinDurationSeconds,
-                    recordingNowOn = recordingTurnedOn,
-                )
-                val ride = (finishState.ui as? FinishUi.Recorded)?.ride
-                PlanPanel(onInsets = { left, bottom -> finishInsets = left to bottom }) {
-                    TripFinishedContent(
-                        model = model,
-                        landscape = com.navigator.app.ui.feature.navigate.plan.LocalFillPanel.current,
-                        actions = TripFinishedActions(
-                            onDone = ::backToBrowse,
-                            onReplay = { ride?.let { onOpenReplay(it.id) } },
-                            onSavePlace = {
-                                selected?.let {
-                                    scope.launch(Dispatchers.IO) { store.saveFavorite(it, com.navigator.app.nav.destination.FavoriteSlot.OTHER) }
-                                    placeSaved = true
-                                }
-                            },
-                            onRideBack = ::rideBack,
-                            onShare = {
-                                if (ride != null) scope.launch {
-                                    val intent = withContext(Dispatchers.IO) { com.navigator.app.ride.GpxShare.buildIntent(context, ride, rideStore) }
-                                    if (intent != null) runCatching { context.startActivity(intent) }
-                                }
-                            },
-                            onTurnOnRecording = { appSettings.rideRecordingEnabled = true; recordingTurnedOn = true },
-                            onChangeLimits = onOpenSettings,
-                        ),
-                    )
-                }
-            }
-            }
-          }
         }
 
         replaceRequest?.let { r ->

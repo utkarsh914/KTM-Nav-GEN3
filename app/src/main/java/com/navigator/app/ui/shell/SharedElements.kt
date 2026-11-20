@@ -37,3 +37,29 @@ fun Modifier.rideContainer(rideId: String, remeasure: Boolean = true): Modifier 
         )
     }
 }
+
+/** The riding stage of the Navigate screen: the trip bar and the activity strip in the Where-to sheet share bounds through it (MO6). */
+val LocalTripShared = compositionLocalOf<SharedElements?> { null }
+
+/**
+ * MO6: minimising turns the trip bar into the activity strip and resuming turns the strip back into the bar. Marks
+ * whichever of the two is on screen; a no-op without [LocalTripShared] and with "Remove animations".
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.tripStripBounds(): Modifier {
+    val shared = LocalTripShared.current ?: return this
+    val motion = KtmTheme.motion
+    if (motion.reduced) return this
+    return with(shared.scope) {
+        this@tripStripBounds.sharedBounds(
+            sharedContentState = rememberSharedContentState(key = TRIP_STRIP_KEY),
+            animatedVisibilityScope = shared.visibility,
+            boundsTransform = { _, _ -> motion.spatialDefault() },
+            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
+        )
+    }
+}
+
+private const val TRIP_STRIP_KEY = "trip-strip"

@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import com.navigator.app.ui.shell.tripStripBounds
+import com.navigator.app.ui.shell.LocalTripShared
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
@@ -87,10 +89,39 @@ fun TripBarSheet(
         }
     }
     val dismissPx = with(LocalDensity.current) { DISMISS_DRAG.toPx() }
-    SharedTransitionLayout(modifier) {
+    // MO6: inside the riding stage, the whole bar also shares bounds with the activity strip; on its own (tests) it brings its own scope.
+    val stage = LocalTripShared.current
+    if (stage != null) {
+        TripBarSheetBody(stage.scope, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss(); drag = 0f }, modifier.tripStripBounds(), sheet)
+    } else {
+        SharedTransitionLayout(modifier) {
+            TripBarSheetBody(this, bar, open, onOpen, onDismiss, maxSheetHeight, drag, backProgress, dismissPx, { dy -> drag = (drag + dy).coerceAtLeast(0f) }, { if (drag > dismissPx) onDismiss(); drag = 0f }, Modifier, sheet)
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun TripBarSheetBody(
+    scope: SharedTransitionScope,
+    bar: TripBarUi,
+    open: Boolean,
+    onOpen: () -> Unit,
+    onDismiss: () -> Unit,
+    maxSheetHeight: Dp,
+    drag: Float,
+    backProgress: Float,
+    dismissPx: Float,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier,
+    sheet: @Composable ColumnScope.() -> Unit,
+) {
+    val motion = KtmTheme.motion
+    with(scope) {
         AnimatedContent(
             targetState = open,
-            modifier = Modifier.graphicsLayer {
+            modifier = modifier.graphicsLayer {
                 translationY = drag
                 val shrink = 1f - BACK_SHRINK * backProgress
                 scaleX = shrink; scaleY = shrink
@@ -111,8 +142,7 @@ fun TripBarSheet(
             if (isOpen) {
                 SheetPane(
                     onDismiss = onDismiss, maxHeight = maxSheetHeight, modifier = container,
-                    onDrag = { dy -> drag = (drag + dy).coerceAtLeast(0f) },
-                    onDragEnd = { if (drag > dismissPx) onDismiss(); drag = 0f },
+                    onDrag = onDrag, onDragEnd = onDragEnd,
                     content = sheet,
                 )
             } else {

@@ -21,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.RidingTheme
@@ -93,6 +94,40 @@ class TripBarSheetTest {
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(1_000)
         rule.onAllNodesWithText("sheet body").assertCountEquals(0)
+        rule.onNodeWithText("42").assertIsDisplayed()
+    }
+
+    @androidx.compose.animation.ExperimentalSharedTransitionApi
+    @Test fun insideTheRidingStageTheBarAndTheStripShareBoundsAndTheSheetStillOpens() {
+        var stage by mutableStateOf(true)
+        var open by mutableStateOf(false)
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                RidingTheme(night = true) {
+                    androidx.compose.animation.SharedTransitionLayout {
+                        androidx.compose.animation.AnimatedContent(stage, label = "stage") { riding ->
+                            androidx.compose.runtime.CompositionLocalProvider(
+                                com.navigator.app.ui.shell.LocalTripShared provides com.navigator.app.ui.shell.SharedElements(this@SharedTransitionLayout, this),
+                            ) {
+                                if (riding) TripBarSheet(bar, open, { log += "open" }, { log += "dismiss" }, 600.dp) { androidx.compose.material3.Text("sheet body") }
+                                else androidx.compose.foundation.layout.Box(Modifier.tripStripBounds()) { androidx.compose.material3.Text("strip") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("42").assertIsDisplayed()
+        open = true
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithText("sheet body").assertIsDisplayed()
+        open = false
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(1_000)
+        stage = false
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithText("strip").assertIsDisplayed()
+        stage = true
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(1_000)
         rule.onNodeWithText("42").assertIsDisplayed()
     }
 }

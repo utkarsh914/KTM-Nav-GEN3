@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
+import com.navigator.app.ui.shell.tripStripBounds
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -104,6 +105,7 @@ fun WhereToSheetContent(
                 onOpen = actions.onResumeTrip,
                 onResume = actions.onResumeTrip,
                 onAddStop = actions.onAddStop,
+                modifier = Modifier.tripStripBounds(),
             )
             Spacer(Modifier.height(KtmSpacing.md))
         }
