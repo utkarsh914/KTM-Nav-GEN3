@@ -70,6 +70,9 @@ object IconHashCache {
 
     @Volatile private var lastUnknownHash: Int? = null
 
+    /** Test hook: forget which icon was seen last. */
+    internal fun resetForTest() { lastUnknownHash = null }
+
     /** The same icon is looked up on every notification refresh: only a change from the previous one is a new sighting. */
     @Synchronized private fun countSighting(hash: Int, context: Context) {
         if (lastUnknownHash == hash) return

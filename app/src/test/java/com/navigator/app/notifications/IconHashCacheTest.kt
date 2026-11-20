@@ -18,6 +18,7 @@ class IconHashCacheTest {
 
     @Before fun setUp() {
         ctx = RuntimeEnvironment.getApplication()
+        IconHashCache.resetForTest()
         ctx.getSharedPreferences("opendash_icon_seen", Context.MODE_PRIVATE).edit().clear().commit()
     }
 

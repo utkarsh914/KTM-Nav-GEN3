@@ -1,6 +1,5 @@
 package com.navigator.app.ui.shell
 
-import androidx.compose.ui.unit.dp
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.ExperimentalSharedTransitionApi

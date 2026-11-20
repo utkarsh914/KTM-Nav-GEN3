@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.navigate.riding
 
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue

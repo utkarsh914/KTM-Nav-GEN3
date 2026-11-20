@@ -99,11 +99,11 @@ val RainbowHint: List<Color> = listOf(
 /** Preset accents offered in Settings, in display order (the first is the default). */
 val AccentPalettes: List<AccentOption> = listOf(
     AccentOption("orange", "KTM orange", KtmOrange),
-    AccentOption("blue", "Blue", AccentTones.preset(0xFF2C7BE5, 0xFF6AA5F5, 0xFF1F5FBF, OnWhite)),
-    AccentOption("purple", "Purple", AccentTones.preset(0xFF8B5CF6, 0xFFA98BFA, 0xFF6D3FD8, OnWhite)),
+    AccentOption("blue", "Blue", AccentTones.preset(0xFF2570D8, 0xFF6AA5F5, 0xFF1F5FBF, OnWhite)),
+    AccentOption("purple", "Purple", AccentTones.preset(0xFF7C4DEB, 0xFFA98BFA, 0xFF6D3FD8, OnWhite)),
     AccentOption("teal", "Teal", AccentTones.preset(0xFF14B8A6, 0xFF2DD4BF, 0xFF0E7C70, OnBlack)),
     AccentOption("green", "Green", AccentTones.preset(0xFF22C55E, 0xFF4ADE80, 0xFF15803D, OnBlack)),
-    AccentOption("magenta", "Magenta", AccentTones.preset(0xFFEC4899, 0xFFF472B6, 0xFFBE185D, OnWhite)),
+    AccentOption("magenta", "Magenta", AccentTones.preset(0xFFD02E7C, 0xFFF472B6, 0xFFBE185D, OnWhite)),
 )
 
 /**

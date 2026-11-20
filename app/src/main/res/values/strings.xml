@@ -699,8 +699,6 @@
 
     <!-- Pickers (ST11, DL8) -->
     <string name="picker_panel_state">Saturation %1$d%%, brightness %2$d%%</string>
-    <string name="pair_others_expanded">Shown</string>
-    <string name="pair_others_collapsed">Hidden</string>
     <string name="picker_search">Search</string>
     <string name="picker_search_clear">Clear search</string>
     <string name="picker_selected">Selected</string>
@@ -964,6 +962,8 @@
         <item quantity="one">Other device (%1$d)</item>
         <item quantity="other">Other devices (%1$d)</item>
     </plurals>
+    <string name="pair_others_expanded">Expanded</string>
+    <string name="pair_others_collapsed">Collapsed</string>
     <string name="pair_others_hint">Headsets and other Bluetooth devices. Only open this if your dash has an unusual name.</string>
     <string name="pair_unknown_device">Unknown device</string>
     <string name="pair_signal_very_close">Very close</string>

@@ -303,7 +303,7 @@ private fun RouteOptionRow(option: RouteOptionUi, selected: Boolean, onClick: ()
         else -> stringResource(R.string.route_delay, option.delayMinutes)
     }
     val delayColor = when (option.delayTone) {
-        DelayTone.OnTime -> c.ok
+        DelayTone.OnTime -> c.okText
         DelayTone.Minor -> c.warn
         DelayTone.Heavy -> c.bad
     }

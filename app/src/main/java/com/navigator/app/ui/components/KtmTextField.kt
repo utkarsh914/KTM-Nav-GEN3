@@ -45,7 +45,7 @@ fun KtmTextField(
         focusedLabelColor = a.text, unfocusedLabelColor = c.fg2, disabledLabelColor = c.fg3, errorLabelColor = c.bad,
         focusedPlaceholderColor = c.fg3, unfocusedPlaceholderColor = c.fg3,
         focusedLeadingIconColor = c.fg2, unfocusedLeadingIconColor = c.fg2,
-        focusedSupportingTextColor = c.fg2, unfocusedSupportingTextColor = c.fg2, errorSupportingTextColor = c.bad,
+        focusedSupportingTextColor = c.fg2, unfocusedSupportingTextColor = c.fg2, errorSupportingTextColor = c.badText,
     )
     val motion = KtmTheme.motion
     OutlinedTextField(

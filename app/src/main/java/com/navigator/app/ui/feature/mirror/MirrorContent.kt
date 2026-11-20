@@ -246,7 +246,7 @@ private fun ReadyArea(status: MirrorStatus.Ready, time: String, actions: MirrorA
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
             Icon(KtmIcons.DoneCircle, null, tint = c.ok)
-            Text(stringResource(R.string.mirror_ready_line), style = MaterialTheme.typography.bodyMedium, color = c.ok, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.mirror_ready_line), style = MaterialTheme.typography.bodyMedium, color = c.okText, modifier = Modifier.weight(1f))
             Icon(if (details) KtmIcons.ChevronUp else KtmIcons.ChevronDown, null, tint = c.fg2)
         }
         if (details) Checklist(status.rows, actions)
