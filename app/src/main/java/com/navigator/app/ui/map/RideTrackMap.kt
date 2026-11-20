@@ -36,6 +36,9 @@ import kotlin.math.cos
  *     a global **vertex budget** ([MAX_TRACK_VERTICES]) as a hard upper bound.
  */
 
+/** Line width of a drawn ride track. */
+private const val TRACK_WIDTH = 12f
+
 /** Hue (HSV degrees) for the slowest band (green) and fastest band (red). */
 private const val HUE_SLOW = 140f // green
 private const val HUE_FAST = 0f // red
@@ -332,6 +335,36 @@ private fun addRideRun(map: GoogleMap, run: List<RidePoint>, bandIndex: Int, ban
         PolylineOptions()
             .addAll(run.map { LatLng(it.lat, it.lng) })
             .color(bandColor(bandIndex, bandCount))
-            .width(12f),
+            .width(TRACK_WIDTH),
+    )
+}
+
+/** The trim preview: the part that is kept in [keptColor] over the part that goes, faded, with markers at the cut. */
+internal fun drawTrimPreview(map: GoogleMap, pts: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) {
+    map.clear()
+    if (pts.size < 2) return
+    fun line(range: IntRange, color: Int, z: Float) {
+        if (range.first >= range.last) return
+        val part = strideToBudget(pts.subList(range.first, range.last + 1), MAX_TRACK_VERTICES / 3)
+        // A pause or a merge seam inside the part is a break, not a line across the gap.
+        var start = 0
+        for (i in 1..part.size) {
+            if (i == part.size || part[i].gapBefore) {
+                val seg = part.subList(start, i)
+                if (seg.size >= 2) map.addPolyline(PolylineOptions().addAll(seg.map { LatLng(it.lat, it.lng) }).color(color).width(TRACK_WIDTH).zIndex(z))
+                start = i
+            }
+        }
+    }
+    line(0..from, removedColor, 0f)
+    line(to..pts.lastIndex, removedColor, 0f)
+    line(from..to, keptColor, 1f)
+    map.addMarker(
+        MarkerOptions().position(LatLng(pts[from].lat, pts[from].lng))
+            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
+    )
+    map.addMarker(
+        MarkerOptions().position(LatLng(pts[to].lat, pts[to].lng))
+            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
     )
 }

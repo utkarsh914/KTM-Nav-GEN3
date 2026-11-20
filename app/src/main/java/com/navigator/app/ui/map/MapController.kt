@@ -94,6 +94,12 @@ interface MapController {
     /** Move the playback marker; with [follow] the camera keeps it in the middle of the visible map. */
     fun moveReplayMarker(at: MapPoint, follow: Boolean)
 
+    /**
+     * The trim preview: the fixes [from]..[to] that would be kept in [keptColor], the rest faded in [removedColor] (ARGB),
+     * with a start and an end marker at the cut. The camera stays where it is: see [frameTrack].
+     */
+    fun showTrimPreview(points: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int)
+
     /** Fit the whole track in the visible map. */
     fun frameTrack(points: List<RidePoint>)
 

@@ -67,6 +67,9 @@ object KtmLayout {
     val chartAxisWidth = 36.dp
     val chartAxisHeight = 20.dp
 
+    /** The trim range bar: handle size (the touch band is [targetRest]) and the track. */
+    val trimHandle = 28.dp
+
     /** The replay sheet may grow to this share of the screen's height when expanded. */
     const val replaySheetMaxShare = 0.7f
 

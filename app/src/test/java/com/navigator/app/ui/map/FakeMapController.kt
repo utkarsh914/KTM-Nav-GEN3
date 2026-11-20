@@ -55,6 +55,8 @@ class FakeMapController : MapController {
         calls += "replay"; replay = points; replaySmoothing = smoothingMeters; replayMarker = markerAt
     }
     override fun moveReplayMarker(at: MapPoint, follow: Boolean) { replayMarker = at; replayFollow = follow }
+    var trim: Triple<Int, Int, Int>? = null
+    override fun showTrimPreview(points: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) { calls += "trim"; trim = Triple(points.size, from, to) }
     override fun frameTrack(points: List<RidePoint>) { calls += "frame" }
     override fun showUserMarker(at: MapPoint, headingDegrees: Float?) { userMarker = at to headingDegrees }
     override fun hideUserMarker() { userMarker = null }

@@ -252,6 +252,13 @@ class NavSdkMapController(
         )
     }
 
+    override fun showTrimPreview(points: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) {
+        val gm = map ?: return
+        userMarker.remove()
+        replayMarker = null
+        drawTrimPreview(gm, points, from, to, keptColor, removedColor)
+    }
+
     override fun moveReplayMarker(at: MapPoint, follow: Boolean) {
         val ll = LatLng(at.lat, at.lng)
         replayMarker?.position = ll

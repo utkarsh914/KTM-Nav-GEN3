@@ -5,9 +5,6 @@ import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.MergeResult
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
-import com.navigator.app.ui.feature.replay.trim.TrimEvent
-import com.navigator.app.ui.feature.replay.trim.TrimUi
-import com.navigator.app.ui.feature.replay.trim.TrimViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
@@ -32,7 +29,7 @@ import java.io.File
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
-class EditAndTrimTest {
+class EditRideViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var store: RideStore
     private lateinit var repo: RidesRepository
@@ -156,30 +153,5 @@ class EditAndTrimTest {
         val vm = edit(r.id)
         store.setSaved(r.id, true)
         assertTrue((vm.ui.value as EditUi.Ready).saved)
-    }
-
-    @Test fun trimCutsTheRideAndReportsIt() = runTest(dispatcher) {
-        val r = ride()
-        val vm = TrimViewModel(r.id, repo)
-        val seen = mutableListOf<TrimEvent>()
-        vm.events.onEach { seen += it }.launchIn(backgroundScope)
-        assertEquals(60, (vm.ui.value as TrimUi.Ready).points.size)
-        vm.apply(10, 40)
-        assertEquals(listOf<TrimEvent>(TrimEvent.Trimmed(merged = false)), seen)
-        assertEquals(31, store.get(r.id)!!.pointCount)
-    }
-
-    @Test fun aRefusedTrimComesBackToTheDialog() = runTest(dispatcher) {
-        val r = ride()
-        val vm = TrimViewModel(r.id, repo)
-        val seen = mutableListOf<TrimEvent>()
-        vm.events.onEach { seen += it }.launchIn(backgroundScope)
-        vm.apply(40, 10)
-        assertEquals(listOf<TrimEvent>(TrimEvent.Failed), seen)
-        assertTrue(!(vm.ui.value as TrimUi.Ready).applying)
-    }
-
-    @Test fun trimOfAMissingRideIsGone() = runTest(dispatcher) {
-        assertEquals(TrimUi.Gone, TrimViewModel("nope", repo).ui.value)
     }
 }

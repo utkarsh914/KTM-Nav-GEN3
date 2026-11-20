@@ -371,6 +371,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         composable<Route.TrimRide> { backStackEntry ->
                             TrimRideScreen(
                                 rideId = backStackEntry.toRoute<Route.TrimRide>().rideId,
+                                retainedNav = retainedNav,
                                 onBack = { navController.popFrom(backStackEntry) },
                             )
                         }
