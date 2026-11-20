@@ -3,7 +3,14 @@ package com.navigator.app.ui.theme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
+import android.app.Activity
+import android.content.ContextWrapper
+import android.view.View
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -57,20 +64,58 @@ val LocalRidingColors = staticCompositionLocalOf { RidingDay }
 const val RIDING_MAX_FONT_SCALE = 1.15f
 
 /**
- * Wrap riding surfaces only. [night] comes from the Day/Night rule, not from the app theme.
+ * Wrap riding surfaces only. [night] comes from the Day/Night rule, not from the app theme. Everything inside
+ * reads the riding palette: [LocalRidingColors], plus the neutrals, the accent and a Material colour scheme for
+ * [night], so a stock Material control placed on a riding surface can't pick up the app's other theme. The
+ * status-bar icons follow riding night while this is shown and go back to the app's when it leaves.
  * Material components inside use the standard (not expressive) motion scheme, so nothing bounces.
  * The font-scale clamp covers the whole subtree: keep scrolling body content (lists) outside it.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun RidingTheme(night: Boolean, content: @Composable () -> Unit) {
+fun RidingTheme(
+    night: Boolean,
+    accent: AccentOption = accentFor(null),
+    /** False for a surface shown over the riding screen (a dialog): the riding screen owns the status bar. */
+    controlSystemBars: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     val density = LocalDensity.current
     // A linear clamp: with Android 14+ non-linear font scaling it can differ slightly from the system curve.
     val clamped = remember(density) { Density(density.density, minOf(density.fontScale, RIDING_MAX_FONT_SCALE)) }
+    val colors = if (night) KtmDarkColors else KtmLightColors
+    val accentScheme = accent.tones.forTheme(night)
+    val colorScheme = remember(colors, accentScheme) { ktmColorScheme(colors, accentScheme) }
+    val appIsDark = LocalKtmColors.current.isDark
+    val view = LocalView.current
+    if (!view.isInEditMode && controlSystemBars) {
+        DisposableEffect(night, appIsDark) {
+            setStatusBarIcons(view, dark = night)
+            onDispose { setStatusBarIcons(view, dark = appIsDark) }
+        }
+    }
     CompositionLocalProvider(
         LocalRidingColors provides (if (night) RidingNight else RidingDay),
+        LocalKtmColors provides colors,
+        LocalAccentScheme provides accentScheme,
         LocalDensity provides clamped,
     ) {
-        MaterialExpressiveTheme(motionScheme = MotionScheme.standard(), content = content)
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            motionScheme = MotionScheme.standard(),
+            shapes = KtmShapes.material,
+            typography = MaterialTheme.typography,
+            content = content,
+        )
+    }
+}
+
+private fun setStatusBarIcons(view: View, dark: Boolean) {
+    var ctx = view.context
+    while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
+    val window = (ctx as? Activity)?.window ?: return
+    WindowCompat.getInsetsController(window, view).apply {
+        isAppearanceLightStatusBars = !dark
+        isAppearanceLightNavigationBars = !dark
     }
 }

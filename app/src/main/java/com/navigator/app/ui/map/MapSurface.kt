@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
@@ -30,7 +29,8 @@ fun MapSurface(
     retained: RetainedNavigationView,
     controller: NavSdkMapController,
     navUiEnabled: Boolean,
-    fullSdkChrome: Boolean,
+    /** What the riding screen covers while guiding (top, bottom, in px): the camera and Google's logo stay clear of it. */
+    guidanceInsets: Pair<Int, Int>,
     dark: Boolean,
 ) {
     val context = LocalContext.current
@@ -38,10 +38,6 @@ fun MapSurface(
     val density = LocalDensity.current
     val sysTopPx = WindowInsets.systemBars.getTop(density)
     val sysBottomPx = WindowInsets.systemBars.getBottom(density)
-    // Bottom padding while guiding so the SDK's re-center button (which pops up bottom-left on pan)
-    // sits above our custom ETA bar.
-    val navBottomPadPx = sysBottomPx + with(density) { 92.dp.roundToPx() }
-
     AndroidView(
         // The retained view may still be attached to a previous parent when we re-enter; detach
         // before AndroidView re-adds it to avoid an IllegalArgumentException.
@@ -71,20 +67,18 @@ fun MapSurface(
     val ready by controller.ready.collectAsState()
     LaunchedEffect(dark, ready) { if (ready) controller.setNightMode(dark) }
 
-    // Guidance engine + chrome + padding, keyed on the guidance/chrome state. Padding keeps the
-    // SDK's chrome and its tilted follow camera inside the visible area on an edge-to-edge screen:
-    // full-SDK guidance insets by the system bars, custom chrome lifts the bottom above our ETA
-    // bar, browsing has none.
-    LaunchedEffect(navUiEnabled, ready, fullSdkChrome) {
+    // Guidance engine + chrome + padding, keyed on the guidance state. The padding keeps the SDK's tilted follow
+    // camera, its logo and the puck inside the part of the screen our riding surfaces leave open.
+    LaunchedEffect(navUiEnabled, ready) {
         if (!ready) return@LaunchedEffect
-        controller.setGuidanceChrome(guidance = navUiEnabled, stockChrome = fullSdkChrome && navUiEnabled)
-        val (padTop, padBottom) = when {
-            navUiEnabled && fullSdkChrome -> sysTopPx to sysBottomPx
-            navUiEnabled -> 0 to navBottomPadPx
-            else -> 0 to 0
-        }
-        controller.setPadding(0, padTop, 0, padBottom)
+        controller.setGuidanceChrome(guidance = navUiEnabled)
         if (hasLocationPermission(context)) controller.setPuck(navUiEnabled)
+    }
+    // Padding on its own: the surfaces change height (lanes appear, text wraps) without the engine being touched again.
+    LaunchedEffect(navUiEnabled, ready, guidanceInsets) {
+        if (!ready) return@LaunchedEffect
+        val (padTop, padBottom) = if (navUiEnabled) guidanceInsets else 0 to 0
+        controller.setPadding(0, padTop, 0, padBottom)
     }
     DisposableEffect(controller) { onDispose { controller.detach() } }
 }

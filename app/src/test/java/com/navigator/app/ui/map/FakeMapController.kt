@@ -27,11 +27,13 @@ class FakeMapController : MapController {
     var followMode: FollowMode? = null
     var overviewShown = 0
     var dark: Boolean? = null
-    var chrome: Triple<Boolean, Boolean, Boolean>? = null
+    var guiding: Boolean? = null
 
     override fun cameraCenter() = center
     override fun setCameraIdleListening(enabled: Boolean) { idleListening = enabled }
     var poisOn = false
+    var gesturesOn = false
+    override fun setGestureListening(enabled: Boolean) { gesturesOn = enabled }
     override fun setPoiListening(enabled: Boolean) { poisOn = enabled }
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) { padding = listOf(left, top, right, bottom) }
 
@@ -48,8 +50,6 @@ class FakeMapController : MapController {
     override fun resetNorth() { calls += "north"; bearing.value = 0f }
     override fun followMyLocation(mode: FollowMode) { calls += "follow"; followMode = mode }
     override fun showRouteOverview() { overviewShown++ }
-    override fun setGuidanceChrome(guidance: Boolean, stockChrome: Boolean, recenterButton: Boolean) {
-        chrome = Triple(guidance, stockChrome, recenterButton)
-    }
+    override fun setGuidanceChrome(guidance: Boolean) { guiding = guidance }
     override fun setNightMode(dark: Boolean) { this.dark = dark }
 }

@@ -16,10 +16,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class ChipTone { Ok, Warn, Info }
+/** Ok: done. Warn: degraded. Bad: needs the rider. Info: neutral. */
+enum class ChipTone { Ok, Warn, Bad, Info }
 
 /** A short message shown over the map while riding: one at a time, the newest wins. */
-data class RidingChipMessage(val id: Long, val text: String, val tone: ChipTone)
+data class RidingChipMessage(val id: Long, val text: String, val tone: ChipTone, val onTap: (() -> Unit)? = null)
 
 /**
  * The two feedback patterns, one entry point (no toasts):
@@ -48,8 +49,8 @@ class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHost
         }
     }
 
-    fun chip(text: String, tone: ChipTone = ChipTone.Info) {
-        val message = RidingChipMessage(++chipSeq, text, tone)
+    fun chip(text: String, tone: ChipTone = ChipTone.Info, onTap: (() -> Unit)? = null) {
+        val message = RidingChipMessage(++chipSeq, text, tone, onTap)
         chip = message
         chipJob?.cancel()
         chipJob = scope.launch {

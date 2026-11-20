@@ -168,6 +168,13 @@ class BackupTest {
         assertFalse(dir.exists()) // nothing was written
     }
 
+    @Test fun aBackupFromBeforeTheFullGoogleUiWasRetiredStillRestoresTheRest() {
+        assertEquals(
+            mapOf<String, Any>("theme_mode" to "dark"),
+            PrefsBackup.decode("""{"full_sdk_nav_ui":{"t":"b","v":true},"theme_mode":{"t":"s","v":"dark"}}"""),
+        )
+    }
+
     @Test fun retiredBrandKeyIsNeitherBackedUpNorRestored() {
         val all = mapOf("brand" to "husqvarna", "theme_mode" to "dark")
         assertEquals(mapOf<String, Any>("theme_mode" to "dark"), PrefsBackup.decode(PrefsBackup.encode(all)))

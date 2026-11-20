@@ -73,6 +73,13 @@ object KtmLayout {
 
     /** Riding toggle tile (Beeps, Messages). */
     val ridingToggle = 56.dp
+    val ridingGlyph = 60.dp
+    val laneArrow = 28.dp
+    val laneCellWidth = 40.dp
+    val laneCellHeight = 44.dp
+    val progressLine = 4.dp
+    val laneRecommendedMark = 3.dp
+    val iconRiding = 28.dp
 
     /** Sheet anatomy: handle zone is 12 · 4 · 12, the title row 48. */
     val sheetHandleZone = 28.dp

@@ -6,9 +6,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import com.navigator.app.ui.theme.NavThemeMode
-import com.navigator.app.ui.theme.SunTimes
+import com.navigator.app.ui.feature.navigate.riding.DayNightRule
 import com.navigator.app.ui.theme.ThemeMode
-import com.navigator.app.ui.theme.isNightTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -34,10 +33,10 @@ fun resolveSurfaceDark(appDark: Boolean, ridingScreens: NavThemeMode, ridingNow:
 @Composable
 fun rememberNightNow(): State<Boolean> {
     val appContext = LocalContext.current.applicationContext
-    return produceState(initialValue = isNightTime()) {
+    return produceState(initialValue = DayNightRule.isNight(System.currentTimeMillis(), null)) {
         while (true) {
             val here = withContext(Dispatchers.IO) { lastKnownLocation(appContext) }
-            value = if (here != null) SunTimes.isNight(System.currentTimeMillis(), here.first, here.second) else isNightTime()
+            value = DayNightRule.isNight(System.currentTimeMillis(), here)
             delay(60_000)
         }
     }

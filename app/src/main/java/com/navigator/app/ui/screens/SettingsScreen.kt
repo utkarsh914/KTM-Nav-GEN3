@@ -147,7 +147,6 @@ fun SettingsScreen(
     var googleNavOn by remember { mutableStateOf(settings.googleNavEnabled) }
 
     // Advanced settings.
-    var fullSdkNavUi by remember { mutableStateOf(settings.fullSdkNavUi) }
     var liveUpdates by remember { mutableStateOf(settings.liveUpdatesEnabled) }
     var latinDash by remember { mutableStateOf(settings.latinDashText) }
 
@@ -707,21 +706,6 @@ fun SettingsScreen(
                         color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
                     )
-                    // Full Google-SDK nav rendering vs the app's custom overlays.
-                    SettingsRow("Full Google nav UI", showDivider = true) {
-                        KtmToggle(fullSdkNavUi, { fullSdkNavUi = it; settings.fullSdkNavUi = it })
-                    }
-                    Text(
-                        if (fullSdkNavUi) {
-                            "Active navigation shows Google's own maneuver header, ETA card and " +
-                                "speedometer. Applies next time you start navigating."
-                        } else {
-                            "Active navigation uses the app's custom guidance overlays (current look)."
-                        },
-                        color = Ktm.Muted2, fontFamily = Barlow, fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = 10.dp),
-                    )
-
                     // Ride-track speed colour bands.
                     SettingsRow(
                         "Speed colour: green up to", showDivider = true,

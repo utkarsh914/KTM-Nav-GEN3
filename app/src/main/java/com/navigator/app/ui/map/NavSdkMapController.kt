@@ -2,7 +2,6 @@ package com.navigator.app.ui.map
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -84,6 +83,7 @@ class NavSdkMapController(
         // A screen that asked for camera-idle before the map arrived gets it now.
         if (idleWanted) setCameraIdleListening(true)
         if (poiWanted) setPoiListening(true)
+        if (gesturesWanted) setGestureListening(true)
         _ready.value = true
     }
 
@@ -112,15 +112,16 @@ class NavSdkMapController(
         _ready.value = false
     }
 
-    /**
-     * Start emitting [gesturePans]. Not on by default: the listener replaces any other on the shared
-     * map, and until a screen uses it (B7/B9) the SDK's own handling should stay untouched. Check on
-     * a device that Google's re-center button still appears after a pan once this is enabled.
-     */
-    fun listenForGestures() {
-        map?.setOnCameraMoveStartedListener { reason ->
-            if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) _gesturePans.tryEmit(Unit)
-        }
+    private var gesturesWanted = false
+
+    override fun setGestureListening(enabled: Boolean) {
+        gesturesWanted = enabled
+        val gm = map ?: return
+        if (enabled) {
+            gm.setOnCameraMoveStartedListener { reason ->
+                if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) _gesturePans.tryEmit(Unit)
+            }
+        } else gm.setOnCameraMoveStartedListener(null)
     }
 
     private var poiWanted = false
@@ -257,15 +258,15 @@ class NavSdkMapController(
     }
 
     // Each call individually guarded so an API mismatch degrades gracefully.
-    override fun setGuidanceChrome(guidance: Boolean, stockChrome: Boolean, recenterButton: Boolean) {
+    override fun setGuidanceChrome(guidance: Boolean) {
         val view = navView ?: return
         runCatching { view.setNavigationUiEnabled(guidance) }
-        runCatching { view.setHeaderEnabled(stockChrome) }
-        runCatching { view.setEtaCardEnabled(stockChrome) }
-        runCatching { view.setSpeedometerEnabled(stockChrome) }
-        runCatching { view.setRecenterButtonEnabled(recenterButton) }
+        runCatching { view.setHeaderEnabled(false) }
+        runCatching { view.setEtaCardEnabled(false) }
+        runCatching { view.setSpeedometerEnabled(false) }
+        runCatching { view.setRecenterButtonEnabled(false) }
         runCatching { view.setReportIncidentButtonEnabled(false) }
-        runCatching { view.setTrafficIncidentCardsEnabled(stockChrome) }
+        runCatching { view.setTrafficIncidentCardsEnabled(false) }
     }
 
     override fun setNightMode(dark: Boolean) {

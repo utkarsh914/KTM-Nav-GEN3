@@ -91,10 +91,15 @@ interface MapController {
     fun showRouteOverview()
 
     /**
-     * The SDK's own guidance chrome. [guidance] turns the engine and puck on; [stockChrome] shows
-     * Google's header, ETA card, speedometer and incident cards (retired with the full-SDK UI);
-     * [recenterButton] is Google's re-center button (the design replaces it with our own).
+     * Start or stop [gesturePans]. Off by default: the listener replaces any other on the shared map, so only
+     * riding switches it on (to turn the map button into Recenter).
      */
-    fun setGuidanceChrome(guidance: Boolean, stockChrome: Boolean, recenterButton: Boolean = true)
+    fun setGestureListening(enabled: Boolean)
+
+    /**
+     * The guidance engine and puck on or off. Google's own header, ETA card, speedometer, incident cards and
+     * Re-center button are always off: the riding screen draws all of that itself.
+     */
+    fun setGuidanceChrome(guidance: Boolean)
     fun setNightMode(dark: Boolean)
 }

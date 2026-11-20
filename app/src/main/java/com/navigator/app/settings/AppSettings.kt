@@ -285,15 +285,6 @@ class AppSettings(context: Context) {
         set(value) = pairingPrefs.edit().putBoolean(KEY_LIVE_UPDATES, value).apply()
 
     /**
-     * When true, active navigation shows Google's own stock guidance chrome
-     * (maneuver header, ETA card, speedometer) instead of the app's custom
-     * overlays. Default false keeps the app-rendered look. (Advanced setting.)
-     */
-    var fullSdkNavUi: Boolean
-        get() = pairingPrefs.getBoolean(KEY_FULL_SDK_NAV_UI, false)
-        set(value) = pairingPrefs.edit().putBoolean(KEY_FULL_SDK_NAV_UI, value).apply()
-
-    /**
      * Ride-track speed colouring (Advanced): the first band (green) covers speeds
      * up to [speedBandBaseKmh]; each subsequent band spans [speedBandStepKmh] km/h
      * and shifts toward red, for [speedBandCount] bands above the base. Defaults
@@ -437,7 +428,6 @@ class AppSettings(context: Context) {
         const val NAV_PROVIDER_NOTIFICATION = "notification"
         const val NAV_PROVIDER_GOOGLE_NAV_SDK = "google_nav_sdk"
 
-        private const val KEY_FULL_SDK_NAV_UI = "full_sdk_nav_ui"
         private const val KEY_LIVE_UPDATES = "live_updates_enabled"
         private const val KEY_LATIN_DASH_TEXT = "latin_dash_text"
 

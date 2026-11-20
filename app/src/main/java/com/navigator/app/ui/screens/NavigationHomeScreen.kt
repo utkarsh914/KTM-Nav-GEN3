@@ -29,11 +29,9 @@ import androidx.compose.foundation.layout.size
 import com.navigator.app.ui.theme.edgePadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +46,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +79,28 @@ import com.navigator.app.ui.feature.navigate.plan.StopCandidateSheet
 import com.navigator.app.ui.feature.navigate.plan.StopList
 import com.navigator.app.ui.theme.KtmTheme
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
+import com.navigator.app.data.connection.BikeStatus
+import com.navigator.app.ui.feature.navigate.BikeSheetMapper
+import com.navigator.app.ui.feature.navigate.riding.EndTripDialog
+import com.navigator.app.ui.feature.navigate.riding.ManeuverModel
+import com.navigator.app.ui.feature.navigate.riding.MapButtonEffect
+import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
+import com.navigator.app.ui.feature.navigate.riding.MapButtonMachine
+import com.navigator.app.ui.feature.navigate.riding.MapButtonState
+import com.navigator.app.ui.feature.navigate.riding.RidingActions
+import com.navigator.app.ui.feature.navigate.riding.RidingChips
+import com.navigator.app.ui.feature.navigate.riding.RidingScreen
+import com.navigator.app.ui.feature.navigate.riding.TripBarModel
+import com.navigator.app.ui.feature.navigate.riding.TripSheet
+import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
+import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
+import com.navigator.app.ui.map.FollowMode
+import com.navigator.app.ui.shell.ChipTone
+import com.navigator.app.ui.shell.rememberNightNow
+import com.navigator.app.ui.shell.resolveSurfaceDark
+import com.navigator.app.ui.theme.RidingTheme
+import com.navigator.app.ui.theme.accentFor
 import com.navigator.app.location.freshLocation
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
@@ -105,7 +124,6 @@ import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
 import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.CircleBackButton
-import com.navigator.app.ui.components.ConnectIconPill
 import com.navigator.app.ui.components.Eyebrow
 import com.navigator.app.ui.components.KtmOutlineButton
 import com.navigator.app.ui.components.KtmPrimaryButton
@@ -197,8 +215,6 @@ fun NavigationHomeScreen(
             appSettings.speedBandBaseKmh, appSettings.speedBandStepKmh, appSettings.speedBandCount,
         )
     }
-    // When true, active nav shows Google's stock chrome instead of our overlays.
-    val fullSdkNavUi = remember { appSettings.fullSdkNavUi }
 
     val available = remember { GoogleNavSdkController.isAvailable(context) }
     var navReady by remember { mutableStateOf(false) }
@@ -253,6 +269,18 @@ fun NavigationHomeScreen(
     // Live GPS speed (km/h) for the guidance speedometer; null when no recent fix.
     // Sourced independently of the BLE service so it works during standalone nav.
     val navSpeedKmh = rememberSpeedKmh(active = stage == NavStage.NAVIGATING)
+    val container = context.appContainer
+    val settingsSnap by container.settings.snapshot.collectAsState()
+    // Day/Night applies to the riding surfaces and the map while riding; everything else keeps the app's theme.
+    val night by rememberNightNow()
+    val appDark = KtmTheme.colors.isDark
+    val ridingDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = true, night = night)
+    val mapDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = stage == NavStage.NAVIGATING, night = night)
+    // What the riding surfaces cover of the map (top, bottom in px), and whether the map button reads Recenter.
+    var ridingInsets by remember { mutableStateOf(0 to 0) }
+    var mapButton by remember { mutableStateOf(MapButtonState()) }
+    var showTripSheet by remember { mutableStateOf(false) }
+    var initialRemainingM by remember { mutableStateOf<Int?>(null) }
     val locationReady = rememberLocationReady()
 
     // Compass-driven "you are here" marker for the non-navigating map stages
@@ -595,27 +623,25 @@ fun NavigationHomeScreen(
     // Say why the trip refused or undid something (until these become snackbars / riding chips).
     LaunchedEffect(trip) {
         trip.events.collect { e ->
-            val msg = when (e) {
-                is TripEvent.StopAdded -> "Stop added: ${e.label}" to false
-                is TripEvent.StopAddRejected -> when (e.problem) {
-                    StopAddProblem.NOT_NAVIGATING -> "Start navigating first" to false
-                    StopAddProblem.ENDED -> "That trip has already ended" to false
-                    StopAddProblem.OFFLINE -> "Adding a stop needs a connection" to false
-                    StopAddProblem.SETTLING -> "Still updating the route. Try again in a moment" to false
-                    StopAddProblem.UNKNOWN_NEXT -> "Couldn't tell which stop is next. Try again in a moment" to true
-                    StopAddProblem.MAX_STOPS -> "That trip already has the maximum number of stops" to true
-                }
-                TripEvent.StopAddFailed -> "Couldn't add the stop \u2013 continuing your trip" to true
-                is TripEvent.Finished -> return@collect
-                TripEvent.RouteSubstituted -> {
-                    // The riding chip is drawn from B9; until then the same words go out as a snackbar.
-                    feedback.snackbar(resources.getString(R.string.route_using_google))
-                    return@collect
-                }
+            // While riding the message is a chip over the map; at rest it is a snackbar.
+            fun say(res: Int, tone: ChipTone, vararg args: Any) {
+                val text = resources.getString(res, *args)
+                if (stage == NavStage.NAVIGATING) feedback.chip(text, tone) else feedback.snackbar(text)
             }
-            android.widget.Toast.makeText(
-                context, msg.first, if (msg.second) android.widget.Toast.LENGTH_LONG else android.widget.Toast.LENGTH_SHORT,
-            ).show()
+            when (e) {
+                is TripEvent.StopAdded -> say(R.string.riding_chip_stop_added, ChipTone.Ok, e.label)
+                is TripEvent.StopAddRejected -> when (e.problem) {
+                    StopAddProblem.NOT_NAVIGATING -> say(R.string.riding_chip_not_navigating, ChipTone.Warn)
+                    StopAddProblem.ENDED -> say(R.string.riding_chip_ended, ChipTone.Warn)
+                    StopAddProblem.OFFLINE -> say(R.string.riding_chip_needs_connection, ChipTone.Warn)
+                    StopAddProblem.SETTLING -> say(R.string.riding_chip_settling, ChipTone.Warn)
+                    StopAddProblem.UNKNOWN_NEXT -> say(R.string.riding_chip_unknown_next, ChipTone.Warn)
+                    StopAddProblem.MAX_STOPS -> say(R.string.riding_chip_max_stops, ChipTone.Warn)
+                }
+                TripEvent.StopAddFailed -> say(R.string.riding_chip_stop_failed, ChipTone.Warn)
+                is TripEvent.Finished -> {}
+                TripEvent.RouteSubstituted -> say(R.string.route_using_google, ChipTone.Warn)
+            }
         }
     }
 
@@ -744,6 +770,57 @@ fun NavigationHomeScreen(
 
 
 
+    // The riding map button: Overview, or Recenter once the rider moved the map (NV8).
+    fun applyMapButton(event: MapButtonEvent) {
+        val (next, effect) = MapButtonMachine.reduce(mapButton, event)
+        mapButton = next
+        when (effect) {
+            MapButtonEffect.Follow -> map.followMyLocation(FollowMode.TILTED)
+            MapButtonEffect.ShowOverview -> map.showRouteOverview()
+            MapButtonEffect.None -> {}
+        }
+    }
+    LaunchedEffect(stage) {
+        map.setGestureListening(stage == NavStage.NAVIGATING)
+        showTripSheet = false
+        if (stage == NavStage.NAVIGATING) mapButton = MapButtonState()
+    }
+    DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
+    LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }
+    // Checked every second while the map is panned: a steady speed emits no new value to react to.
+    LaunchedEffect(mapButton.panned, stage) {
+        while (mapButton.panned && stage == NavStage.NAVIGATING) {
+            navSpeedKmh?.let { applyMapButton(MapButtonEvent.Speed(it, System.currentTimeMillis())) }
+            delay(1_000)
+        }
+    }
+    // Trip progress is measured against the longest the trip has been (a reroute or added stop can lengthen it).
+    var progressTrip by remember { mutableStateOf(0L) }
+    LaunchedEffect(tripState.startMs, navState.remainingDistanceMeters, navState.sessionState) {
+        if (progressTrip != tripState.startMs) { progressTrip = tripState.startMs; initialRemainingM = null }
+        val rem = navState.remainingDistanceMeters ?: return@LaunchedEffect
+        if (navState.sessionState.isActiveNav() && rem > (initialRemainingM ?: 0)) initialRemainingM = rem
+    }
+    // The dash is the primary display, so losing it matters: a red chip once, then a green one when it is back.
+    val bikeStatus by container.connection.status.collectAsState()
+    val dashUp = bikeStatus is BikeStatus.Connected
+    var dashWasUp by remember { mutableStateOf<Boolean?>(null) }
+    var dashLostShown by remember { mutableStateOf(false) }
+    LaunchedEffect(dashUp, stage) {
+        if (stage != NavStage.NAVIGATING) { dashWasUp = null; dashLostShown = false; return@LaunchedEffect }
+        val was = dashWasUp
+        dashWasUp = dashUp
+        // Red when it drops; green only after a red.
+        if (was == true && !dashUp) {
+            dashLostShown = true
+            feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = onOpenConnect)
+        }
+        if (was == false && dashUp && dashLostShown) {
+            dashLostShown = false
+            feedback.chip(resources.getString(R.string.riding_chip_dash_back), ChipTone.Ok)
+        }
+    }
+
     // One back path for the system Back and the on-screen arrows (they must never disagree).
     fun performBack() {
         val outcome = flow.state.back(tripLive = navState.sessionState.isActiveNav())
@@ -772,8 +849,8 @@ fun NavigationHomeScreen(
                 retained = retainedNav,
                 controller = map,
                 navUiEnabled = stage == NavStage.NAVIGATING,
-                fullSdkChrome = fullSdkNavUi,
-                dark = Ktm.current.isDark,
+                guidanceInsets = ridingInsets,
+                dark = mapDark,
             )
             // Not ready: the Navigate screen says why and offers Try again; behind it is plain ground.
             else -> Box(Modifier.fillMaxSize().background(Ktm.Screen))
@@ -972,18 +1049,7 @@ fun NavigationHomeScreen(
                 }
             }
 
-            NavStage.NAVIGATING -> {
-                // Custom guidance chrome (most SDK chrome disabled in BrowseMap; the
-                // SDK re-center button is kept and pops up on pan, bottom-left). Our
-                // overlays: header + lane row top-centre; ETA bar bottom-centre;
-                // compass bottom-right; speedometer mid-left. Distinct zones.
-                val showLanes = navState.lanes.isNotEmpty() &&
-                    (navState.distanceToManeuverMeters ?: Int.MAX_VALUE) <= LANE_HINT_DISTANCE_M
-
-                // Top: maneuver header, then lane guidance directly beneath it.
-                // In full-SDK mode Google draws its own header/lanes/speedometer/ETA,
-                // so we suppress ours AND keep the top zone clear (the SDK header is
-                // full-width there); the offline banner is relocated below.
+            NavStage.NAVIGATING -> RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
                 startFailure?.let { failure ->
                     RouteFailureCard(
                         failure = failure,
@@ -1006,118 +1072,41 @@ fun NavigationHomeScreen(
                         modifier = Modifier.align(Alignment.Center).edgePadding().padding(24.dp),
                     )
                 }
-                if (!fullSdkNavUi) {
-                    Column(
-                        modifier = Modifier.align(Alignment.TopCenter).edgePadding()
-                            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        if (startFailure != null) {
-                            // The failure card owns the screen.
-                        } else if (navState.sessionState == NavSessionState.IDLE ||
-                            navState.sessionState == NavSessionState.STOPPED
-                        ) {
-                            // Route still being computed (token -> retry -> mode fallback can
-                            // legitimately take a while): say so instead of a blank header.
-                            OfflineBanner(text = "Calculating route…")
-                        } else NavGuidanceHeader(
-                            nav = navState,
-                            // Safeguard: while lanes show, drop the "Then" chip so the
-                            // top cluster can't grow tall enough to crowd other elements.
-                            hideNextHint = showLanes,
-                        )
-                        if (showLanes) {
-                            Spacer(Modifier.height(8.dp))
-                            LaneGuidance(lanes = navState.lanes)
-                        }
-                        if (!isOnline) {
-                            Spacer(Modifier.height(8.dp))
-                            OfflineBanner(
-                                text = if (rerouteOfflinePaused) {
-                                    "Offline · rerouting when back online"
-                                } else {
-                                    "Offline · guidance continues"
-                                },
-                            )
-                        }
-                    }
-                }
-
-                if (!fullSdkNavUi) {
-                    // Mid-left: speedometer (hidden until we have a GPS fix).
-                    navSpeedKmh?.let { kmh ->
-                        Speedometer(
-                            kmh = kmh,
-                            limitKmh = if (appSettings.overspeedEnabled) appSettings.overspeedLimitKmh else null,
-                            modifier = Modifier.align(Alignment.CenterStart).edgePadding()
-                                .padding(start = 16.dp),
-                        )
-                    }
-
-                    // Bottom ETA bar (full width, anchored bottom-centre). END asks to
-                    // confirm; the minimise button steps away to the map (trip continues).
-                    NavGuidanceBottomBar(
-                        nav = navState,
-                        onEnd = { showEndConfirm = true },
-                        onMinimize = ::moveAwayFromNav,
-                        modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                val destinationName = tripState.dest?.label ?: selected?.label
+                val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
+                val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
+                // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
+                if (startFailure == null) RidingScreen(
+                    maneuver = ManeuverModel.from(navState),
+                    bar = bar,
+                    chip = RidingChips.pick(feedback.chip, offline = !isOnline, reroutePaused = rerouteOfflinePaused),
+                    recenter = mapButton.recenter,
+                    bearing = mapBearing,
+                    actions = RidingActions(
+                        onOpenSheet = { showTripSheet = true },
+                        onMapButton = { applyMapButton(MapButtonEvent.Tap) },
+                        onNorthUp = { map.resetNorth() },
+                    ),
+                    onInsets = { top, bottom -> ridingInsets = top to bottom },
+                )
+                if (showTripSheet && startFailure == null) {
+                    val dashText = BikeSheetMapper.status(bikeStatus)
+                    TripSheet(
+                        beeps = settingsSnap.turnBeepEnabled,
+                        messages = settingsSnap.mirrorEnabled,
+                        dashStatus = stringResource(dashText.title, dashText.arg ?: 0),
+                        canAddStop = tripState.dest != null && navState.sessionState.isActiveNav(),
+                        actions = TripSheetActions(
+                            onAddStop = { showTripSheet = false; openTripStopSearch() },
+                            onOverview = { showTripSheet = false; mapButton = MapButtonState(overview = true); map.showRouteOverview() },
+                            onMinimise = { showTripSheet = false; moveAwayFromNav() },
+                            onBeeps = { on -> container.settings.update { turnBeepEnabled = on } },
+                            onMessages = { on -> container.settings.update { mirrorEnabled = on } },
+                            onDash = { showTripSheet = false; onOpenConnect() },
+                            onEnd = { showTripSheet = false; showEndConfirm = true },
+                            onDismiss = { showTripSheet = false },
+                        ),
                     )
-                } else {
-                    // Full-SDK chrome owns the top (header) and bottom (ETA card).
-                    // Keep our minimise/end controls in a compact BOTTOM-LEFT stack
-                    // so they never overlap the SDK's full-width header, and relocate
-                    // the offline banner to bottom-centre above the SDK ETA card.
-                    Column(
-                        modifier = Modifier.align(Alignment.BottomStart).edgePadding()
-                            .padding(start = 16.dp, bottom = 104.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        SquareMapControl(
-                            OpenDashIcons.Close, "End navigation", tint = Ktm.Danger,
-                            cornerRadius = Ktm.RadiusCard,
-                        ) { showEndConfirm = true }
-                        SquareMapControl(
-                            OpenDashIcons.ChevronDown, "Back to map",
-                            cornerRadius = Ktm.RadiusCard,
-                        ) { moveAwayFromNav() }
-                    }
-                    if (!isOnline) {
-                        Box(
-                            modifier = Modifier.align(Alignment.BottomCenter).edgePadding()
-                                .padding(start = 12.dp, end = 12.dp, bottom = 170.dp),
-                        ) {
-                            OfflineBanner(
-                                text = if (rerouteOfflinePaused) {
-                                    "Offline · rerouting when back online"
-                                } else {
-                                    "Offline · guidance continues"
-                                },
-                            )
-                        }
-                    }
-                }
-                // Bottom-right control stack: compass (only when the map is rotated)
-                // above the bike-connection button. In full-SDK mode raise it higher
-                // so it clears the SDK's own ETA card / re-center button.
-                Column(
-                    modifier = Modifier.align(Alignment.BottomEnd).edgePadding()
-                        .padding(end = 16.dp, bottom = if (fullSdkNavUi) 170.dp else 104.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    if (available && navReady && abs(mapBearing) > 0.5f) {
-                        SquareMapControl(
-                            OpenDashIcons.Compass, "Reset orientation to north",
-                            tint = Ktm.Danger, rotation = -mapBearing, cornerRadius = Ktm.RadiusCard,
-                        ) { map.resetNorth() }
-                    }
-                    if (navState.sessionState.isActiveNav() && tripState.dest != null) {
-                        SquareMapControl(
-                            OpenDashIcons.Search, "Add a stop", cornerRadius = Ktm.RadiusCard,
-                        ) { openTripStopSearch() }
-                    }
-                    ConnectIconPill(onClick = onOpenConnect, cornerRadius = Ktm.RadiusCard)
                 }
             }
 
@@ -1190,10 +1179,12 @@ fun NavigationHomeScreen(
         }
 
         if (showEndConfirm) {
-            EndNavConfirmDialog(
-                onConfirm = { showEndConfirm = false; trip.end() },
-                onDismiss = { showEndConfirm = false },
-            )
+            RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false) {
+                EndTripDialog(
+                    onEnd = { showEndConfirm = false; trip.end() },
+                    onKeep = { showEndConfirm = false },
+                )
+            }
         }
 
         if (stage != NavStage.NAVIGATING) SharedLinkCard(
@@ -1361,52 +1352,6 @@ internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 // ============================ Active navigation ========================
 
-/** Dialog button sized for gloved thumbs (used by the dialogs shown while riding). */
-@Composable
-private fun BigDialogButton(text: String, color: Color, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 56.dp)) {
-        Text(text, color = color, fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-    }
-}
-
-/** Confirm before ending an in-progress trip (the END button / dash guidance). */
-@Composable
-private fun EndNavConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Ktm.Surface,
-        titleContentColor = Ktm.White,
-        textContentColor = Ktm.TextSecondary,
-        title = { Text("End navigation?", fontFamily = BarlowCondensed, fontWeight = FontWeight.Bold) },
-        text = { Text("This stops guidance to the dash and finishes the trip.", fontFamily = Barlow) },
-        confirmButton = { BigDialogButton("END", Ktm.Danger, onConfirm) },
-        dismissButton = { BigDialogButton("CANCEL", Ktm.TextPrimary, onDismiss) },
-    )
-}
-
-/** Small pill shown under the guidance header while the device is offline:
- *  guidance keeps running from the already-computed route, but rerouting/traffic
- *  need data. Styled to read as a warning without shouting. */
-@Composable
-private fun OfflineBanner(text: String) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(Ktm.RadiusButton))
-            .background(Ktm.Surface)
-            .border(1.dp, Ktm.Orange, RoundedCornerShape(Ktm.RadiusButton))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(Ktm.Orange))
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text,
-            color = Ktm.White,
-            fontFamily = Barlow,
-            fontSize = 13.sp,
-        )
-    }
-}
 
 /** Shown on the navigation screen when the requested trip could not be started. */
 @Composable
@@ -1453,21 +1398,6 @@ private fun RouteFailureCard(
             "Close", color = Ktm.Muted2, fontFamily = Barlow, fontSize = 14.sp,
             modifier = Modifier.clickable { haptics.tap(); onClose() }.padding(12.dp),
         )
-    }
-}
-
-/** A neutral dark circular icon button (Google-style controls). */
-@Composable
-internal fun CircleIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
-    Box(
-        modifier = Modifier.size(52.dp).clip(CircleShape)
-            .background(Ktm.Surface)
-            .border(2.dp, Ktm.BorderSoft, CircleShape)
-            .clickable { haptics.tap(); onClick() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription, tint = Ktm.White, modifier = Modifier.size(22.dp))
     }
 }
 

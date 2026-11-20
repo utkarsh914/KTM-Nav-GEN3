@@ -47,9 +47,7 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
-import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
-import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
@@ -94,10 +92,8 @@ fun KtmApp(onQuit: () -> Unit) {
     val entry by navController.currentBackStackEntryAsState()
     val currentTab = entry?.destination.tab()
 
-    val navSession by GoogleNavSdkProvider.state.collectAsState()
-    val ridingNow = currentTab == Tab.Navigate && navSession.sessionState.isActiveNav()
-    val night by rememberNightNow()
-    val dark = resolveSurfaceDark(resolveAppDark(snap.themeMode, isSystemInDarkTheme()), snap.ridingScreens, ridingNow, night)
+    // The whole app follows the rider's own light/dark; Day/Night applies to the riding surfaces only (RidingTheme).
+    val dark = resolveAppDark(snap.themeMode, isSystemInDarkTheme())
     val accent = remember(snap.accentColorId) { accentFor(snap.accentColorId) }
     LaunchedEffect(dark, snap.accentColorId) { Ktm.apply(dark, accent) }
 
