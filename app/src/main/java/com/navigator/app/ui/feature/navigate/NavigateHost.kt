@@ -57,9 +57,6 @@ import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideStore
 import com.navigator.app.trip.FinishedTrip
-import com.navigator.app.trip.MAX_STOPS
-import com.navigator.app.trip.StopAddProblem
-import com.navigator.app.trip.TripEvent
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
 import com.navigator.app.ui.feature.navigate.MapState
@@ -68,7 +65,6 @@ import com.navigator.app.ui.feature.navigate.finished.FinishUi
 import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
-import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.plan.NewStop
 import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
 import com.navigator.app.ui.feature.navigate.plan.RoutePreviewViewModel
@@ -600,7 +596,7 @@ fun NavigateHost(
     }
 
     // Say why the trip refused or undid something (until these become snackbars / riding chips).
-    TripEventFeedback(trip, stage, feedback)
+    TripEventFeedback(trip, { flow.stage }, feedback)
 
     // Keep the stage in sync with the real session:
     //  - resume the NAVIGATING view whenever a trip is live but we're not showing
@@ -649,7 +645,7 @@ fun NavigateHost(
     val linkController = remember { context.appContainer.sharedLink }
     val linkState by linkController.state.collectAsState()
     val linkFailure by linkController.failure.collectAsState()
-    SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, feedback, onResolved = ::choose)
+    SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, { flow.stage }, feedback, onResolved = ::choose)
 
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
@@ -775,7 +771,9 @@ fun NavigateHost(
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
-    val planStage = PlanStage(
+    // Built where the CONFIRM and PREVIEW stages compose, so its state reads (bearing, routes, favourites) subscribe
+    // only those stages, not the whole host.
+    fun planStage() = PlanStage(
         selected = selected, savedPlaces = savedPlaces, origin = origin, routePreview = routePreview,
         pickingStop = pickingStop, stopCandidate = stopCandidate,
         showResumePill = navState.sessionState.isActiveNav() && leftNavManually,
@@ -870,9 +868,9 @@ fun NavigateHost(
                     } else null,
                 )
 
-                NavStage.CONFIRM -> ConfirmStage(planStage)
+                NavStage.CONFIRM -> ConfirmStage(planStage())
 
-                NavStage.PREVIEW -> PreviewStage(planStage, flow)
+                NavStage.PREVIEW -> PreviewStage(planStage(), flow)
 
                 NavStage.NAVIGATING -> NavigatingStage(
                     riding = riding, ridingDark = ridingDark, settingsSnap = settingsSnap, startFailure = startFailure,

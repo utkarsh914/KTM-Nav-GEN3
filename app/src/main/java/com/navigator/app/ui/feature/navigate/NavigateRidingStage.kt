@@ -11,8 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
-import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.connection.BikeStatus
+import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NormalizedNavigationState

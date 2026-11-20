@@ -21,15 +21,14 @@ import com.navigator.app.ui.shell.Feedback
  * read when an event arrives, not when this composed.
  */
 @Composable
-internal fun TripEventFeedback(trip: TripController, stage: NavStage, feedback: Feedback) {
+internal fun TripEventFeedback(trip: TripController, stage: () -> NavStage, feedback: Feedback) {
     val resources = LocalResources.current
-    val currentStage by rememberUpdatedState(stage)
     LaunchedEffect(trip) {
         trip.events.collect { e ->
             // While riding the message is a chip over the map; at rest it is a snackbar.
             fun say(res: Int, tone: ChipTone, vararg args: Any) {
                 val text = resources.getString(res, *args)
-                if (currentStage == NavStage.NAVIGATING) feedback.chip(text, tone) else feedback.snackbar(text)
+                if (stage() == NavStage.NAVIGATING) feedback.chip(text, tone) else feedback.snackbar(text)
             }
             when (e) {
                 is TripEvent.StopAdded -> say(R.string.riding_chip_stop_added, ChipTone.Ok, e.label)
@@ -54,7 +53,7 @@ internal fun TripEventFeedback(trip: TripController, stage: NavStage, feedback: 
 /**
  * The shared-Google-Maps-link effects: open a link handed to the app, drop a failure that arrives mid-trip (it would
  * leave a stale card for the next visit to Browse), let Back dismiss the card, and offer a resolved place as CONFIRM
- * unless a trip is running (guidance is never swapped for a place card). [stage] is read live when a link resolves.
+ * unless a trip is running (guidance is never swapped for a place card). [currentStage] is read when a link resolves.
  */
 @Composable
 internal fun SharedLinkEffects(
@@ -63,11 +62,12 @@ internal fun SharedLinkEffects(
     sharedLink: String?,
     onConsumed: () -> Unit,
     stage: NavStage,
+    /** The stage now, for a link that resolves later. */
+    currentStage: () -> NavStage,
     feedback: Feedback,
     onResolved: (SavedPlace) -> Unit,
 ) {
     val resources = LocalResources.current
-    val currentStage by rememberUpdatedState(stage)
     LaunchedEffect(sharedLink) {
         val link = sharedLink ?: return@LaunchedEffect
         onConsumed()
@@ -84,7 +84,7 @@ internal fun SharedLinkEffects(
     val resolved by rememberUpdatedState(onResolved)
     LaunchedEffect(controller) {
         controller.resolved.collect {
-            if (currentStage == NavStage.NAVIGATING) feedback.snackbar(linkDuringTrip) else resolved(it)
+            if (currentStage() == NavStage.NAVIGATING) feedback.snackbar(linkDuringTrip) else resolved(it)
         }
     }
 }

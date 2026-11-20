@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
 import com.navigator.app.data.places.PlacesRepository
@@ -77,7 +78,7 @@ internal class PlanStage(
 /** CONFIRM: the place card, with a way back to a running trip and the compass. */
 @Composable
 internal fun BoxScope.ConfirmStage(plan: PlanStage) {
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     // A trip is still running while the rider plans another: one tap back to it.
     if (plan.showResumePill) {
         ResumeNavPill(
@@ -90,7 +91,7 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
         val removedMessage = resources.getString(R.string.place_removed)
         val undoLabel = resources.getString(R.string.common_undo)
         val saved = PlaceSaving.isSaved(plan.savedPlaces, sel)
-        PlanPanel(onInsets = { left, bottom -> plan.onInsets(left, bottom) }) {
+        PlanPanel(onInsets = plan.onInsets) {
             PlaceSheet(
                 state = PlaceSheetState(
                     title = sel.label, address = sel.address,
@@ -137,7 +138,7 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
 /** PREVIEW: the route sheet, the proposed-stop sheet or Pick on map for a stop. [flow] is read live for the stops. */
 @Composable
 internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     // A trip is still running while the rider plans another: one tap back to it.
     if (plan.showResumePill) {
         ResumeNavPill(
@@ -156,9 +157,8 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                 onBack = { plan.onPickingStop(false) },
                 onUse = { plan.onPickingStop(false); flow.stops = StopList.add(flow.stops, it) },
             )
-            plan.stopCandidate != null -> PlanPanel(onInsets = { left, bottom -> plan.onInsets(left, bottom) }) {
-                val candidate = plan.stopCandidate
-                if (candidate != null) {
+            plan.stopCandidate != null -> PlanPanel(onInsets = plan.onInsets) {
+                plan.stopCandidate?.let { candidate ->
                     StopCandidateSheet(
                         name = candidate.label, number = StopList.nextNumber(flow.stops), destination = dest.label,
                         canAdd = StopList.canAdd(flow.stops),
@@ -167,7 +167,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                     )
                 }
             }
-            else -> PlanPanel(onInsets = { left, bottom -> plan.onInsets(left, bottom) }) {
+            else -> PlanPanel(onInsets = plan.onInsets) {
                 RouteSheet(
                     state = RouteSheetMapper.state(dest, flow.stops, plan.routePreview, System.currentTimeMillis()),
                     actions = RouteSheetActions(
