@@ -698,7 +698,7 @@
     <string name="edit_value_name_label">Name</string>
 
     <!-- Pickers (ST11, DL8) -->
-    <string name="picker_panel_state">Saturation %1$d percent, brightness %2$d percent</string>
+    <string name="picker_panel_state">Saturation %1$d%%, brightness %2$d%%</string>
     <string name="pair_others_expanded">Shown</string>
     <string name="pair_others_collapsed">Hidden</string>
     <string name="picker_search">Search</string>
