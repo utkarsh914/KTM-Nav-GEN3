@@ -205,18 +205,19 @@ class ReplayViewModelTest {
         assertEquals("New", v.ready().ride.destinationLabel)
     }
 
-    @Test fun aSlowFrameDoesNotSlowThePlaybackDown() = runTest(dispatcher) {
+    @Test fun playbackFollowsTheRealClockNotTheFrameCount() = runTest(dispatcher) {
         val id = ride(1_000_000L).id
         var clock = 0L
         val v = ReplayViewModel(id, repo, AvgSpeedMode.MOVING, RideMetrics.SpeedBands.DEFAULT, dispatcher) { clock }
         runCurrent()
         v.togglePlay()
-        // One tick arrives 90 ms late: it still counts the real time that passed (x4 speed = 360 ms of the ride).
-        clock = 90; advanceTimeBy(16); runCurrent()
-        assertEquals(0, v.position.value)
-        clock = 1_000; advanceTimeBy(16); runCurrent()
-        // The late frame is capped at MAX_FRAME_MS, so a stall can't leap the track.
-        assertEquals(0, v.position.value)
+        // Three ticks each arrive 300 ms late: each counts MAX_FRAME_MS (100) at x4 = 1200 ms of ride, so one fix (1 s apart).
+        // A fixed 16 ms step per tick would have gone 3 x 64 = 192 ms and stayed at 0.
+        for (t in listOf(300L, 600L, 900L)) { clock = t; advanceTimeBy(16); runCurrent() }
+        assertEquals(1, v.position.value)
+        // A long stall counts only the cap: 400 ms more of ride, not 40 s.
+        clock = 40_000; advanceTimeBy(16); runCurrent()
+        assertEquals(1, v.position.value)
         v.togglePlay()
     }
 }

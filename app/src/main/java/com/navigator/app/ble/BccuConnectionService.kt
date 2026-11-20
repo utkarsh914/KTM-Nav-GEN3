@@ -879,10 +879,15 @@ class BccuConnectionService : LifecycleService() {
         lifecycleScope.launch {
             while (true) {
                 delay(MIRROR_LINE_MS)
-                if (notice == ConnectionNotice.CONNECTED && mirrorLine(notice) != null) updateForegroundNotification(notice)
+                val line = if (notice == ConnectionNotice.CONNECTED) mirrorLine(notice) else null
+                // Re-post only when the line changed: an identical notification is churn.
+                if (line != null && line != lastMirrorLine) updateForegroundNotification(notice)
+                lastMirrorLine = line
             }
         }
     }
+
+    private var lastMirrorLine: String? = null
 
     /**
      * Every override here runs try/catch-wrapped. BLE stack callbacks are a

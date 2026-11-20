@@ -23,7 +23,8 @@ class RecordRideShortcutActivity : Activity() {
             RecordStartResult.Started -> {}
             RecordStartResult.NeedsLocation, RecordStartResult.Failed -> {
                 // The app opens next; say why, so it doesn't look like the shortcut did nothing.
-                Toast.makeText(this, R.string.shortcut_record_failed, Toast.LENGTH_LONG).show()
+                val reason = if (granted) R.string.shortcut_record_failed else R.string.shortcut_record_needs_location
+                Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, com.navigator.app.ui.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
         }

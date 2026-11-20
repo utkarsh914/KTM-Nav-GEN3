@@ -1046,7 +1046,8 @@
     <string name="conn_action_turn_on">Turn on</string>
     <string name="conn_action_repair">Re-pair</string>
     <string name="conn_action_quit">Quit</string>
-    <string name="shortcut_record_failed">Couldn\'t start recording. Allow location in the app, then try again.</string>
+    <string name="shortcut_record_failed">Couldn\'t start recording. Try again from the app.</string>
+    <string name="shortcut_record_needs_location">Recording needs location. Allow it in the app, then try again.</string>
     <string name="shortcut_record_short">Record</string>
     <string name="shortcut_record_long">Record a ride</string>
     <string name="shortcut_search_short">Where to?</string>
