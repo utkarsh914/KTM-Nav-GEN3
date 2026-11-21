@@ -66,6 +66,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 class PairingActions(
     /** Null while pairing is the only way forward (first run). */
@@ -123,7 +124,7 @@ fun PairingContent(ui: PairingUi, actions: PairingActions, modifier: Modifier = 
 private fun Scanning(ui: PairingUi, actions: PairingActions, onTrouble: () -> Unit) {
     var othersOpen by rememberSaveable { mutableStateOf(false) }
     val c = KtmTheme.colors
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+    Column(Modifier.fillMaxSize().pageInsets()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             LargeTitle(stringResource(R.string.pair_title))
             Column(Modifier.padding(horizontal = KtmSpacing.edge)) {
@@ -253,7 +254,7 @@ private fun signalBadge(bike: ScannedBike): Pair<Int?, BadgeTone> = when {
 private fun Confirming(phase: PairingPhase.Confirming, actions: PairingActions) {
     val bikeName = phase.bike.name ?: stringResource(R.string.pair_unknown_device)
     Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+        Modifier.fillMaxSize().pageInsets()
             .padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.lg),
     ) {
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
@@ -287,7 +288,7 @@ private fun Confirming(phase: PairingPhase.Confirming, actions: PairingActions) 
 private fun Blocked(reason: BlockReason, actions: PairingActions, onTrouble: () -> Unit) {
     val noPermission = reason == BlockReason.NO_PERMISSION
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Box(Modifier.weight(1f).fillMaxWidth()) {
             EmptyState(
                 icon = if (noPermission) KtmIcons.Bluetooth else KtmIcons.BluetoothOff,
                 title = stringResource(if (noPermission) R.string.pair_blocked_permission_title else R.string.pair_blocked_off_title),
@@ -314,7 +315,7 @@ private fun Blocked(reason: BlockReason, actions: PairingActions, onTrouble: () 
 private fun Failed(actions: PairingActions, onRetry: () -> Unit, dimmed: Boolean, onTrouble: () -> Unit) {
     val alpha by animateFloatAsState(if (dimmed) KtmLayout.dimmedContent else 1f, KtmTheme.motion.effectsFast(), label = "failed-dim")
     Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+        Modifier.fillMaxSize().pageInsets()
             .alpha(alpha),
     ) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {

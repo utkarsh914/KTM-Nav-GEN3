@@ -3,13 +3,8 @@ package com.navigator.app.ui.feature.settings.picker
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +28,7 @@ import com.navigator.app.ui.components.KtmRadioRow
 import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -69,7 +65,7 @@ fun NavAppPickerContent(ui: NavAppPickerUi, onBack: () -> Unit, onChoose: (Strin
             stringResource(R.string.picker_nav_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2,
             modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.xs),
         )
-        Column(Modifier.verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+        Column(Modifier.verticalScroll(rememberScrollState()).pageInsets()) {
             ui.apps.forEach { KtmRadioRow(it.label, selected = it.packageName == ui.selected, onSelect = { onChoose(it.packageName) }) }
         }
     }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +34,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 class EditRideActions(
     val onBack: () -> Unit,
@@ -52,7 +52,7 @@ fun EditRideContent(ui: EditUi, actions: EditRideActions, modifier: Modifier = M
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.edit_ride_title), onBack = actions.onBack)
         val motionSpecs = KtmTheme.motion
-        AnimatedContent(targetState = ui, contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
             when (shown) {
                 EditUi.Loading -> Column { repeat(2) { SkeletonRow(announce = it == 0) } }
                 EditUi.Gone -> EmptyState(KtmIcons.Warning, stringResource(R.string.edit_ride_gone_title), stringResource(R.string.edit_ride_gone_message))
@@ -66,7 +66,7 @@ fun EditRideContent(ui: EditUi, actions: EditRideActions, modifier: Modifier = M
 private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
     val c = KtmTheme.colors
     Column(
-        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.edge),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.edge),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         KtmTextField(ui.name, actions.onName, stringResource(R.string.edit_ride_name), Modifier.fillMaxWidth())

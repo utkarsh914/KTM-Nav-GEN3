@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -70,6 +71,9 @@ fun KtmSheetContent(
     // [scrollable] must be false when [content] holds its own scrolling list.
     Column(
         modifier.fillMaxWidth()
+            // The keyboard is the sheet's business, not each caller's: the field stays visible, and the gesture-area
+            // spacer at the foot below is consumed by it, so no extra gap opens above the keyboard.
+            .imePadding()
             .let { if (scrollable) it.verticalScroll(rememberScrollState()) else it }
             .padding(horizontal = KtmSpacing.lg),
     ) {

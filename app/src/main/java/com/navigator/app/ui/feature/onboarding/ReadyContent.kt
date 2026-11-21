@@ -42,6 +42,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 class ReadyActions(val onOpenPage: (SettingsPage) -> Unit, val onStart: () -> Unit)
 
@@ -100,7 +101,7 @@ fun ReadyContent(ui: ReadyUi, actions: ReadyActions, modifier: Modifier = Modifi
         }
         KtmButton(
             stringResource(R.string.ready_start), actions.onStart,
-            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)).padding(KtmSpacing.edge),
+            Modifier.fillMaxWidth().pageInsets().padding(KtmSpacing.edge),
         )
     }
 }

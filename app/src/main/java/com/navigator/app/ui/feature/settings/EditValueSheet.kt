@@ -2,7 +2,6 @@ package com.navigator.app.ui.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -79,7 +78,7 @@ private fun SheetFrame(title: String, onDismiss: () -> Unit, canSave: Boolean, o
     KtmModalSheet(onDismiss = onDismiss, title = title) {
         // Inside the sheet: the field exists only once the sheet's content is composed.
         LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-        Column(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
+        Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             field(focus)
             Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 KtmButton(stringResource(R.string.edit_value_cancel), onDismiss, Modifier.weight(1f), style = ButtonStyle.Outline)

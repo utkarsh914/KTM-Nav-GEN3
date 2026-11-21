@@ -2,9 +2,7 @@ package com.navigator.app.ui.feature.navigate.pick
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +49,7 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.semantics.heading
+import com.navigator.app.ui.theme.pageInsets
 
 /**
  * HM7/PL6: a pin fixed in the middle, a pill on top saying what to do, and a sheet naming the nearest street
@@ -113,7 +112,7 @@ fun PickOnMapScreen(
                 .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
                 .background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
                 .padding(horizontal = KtmSpacing.lg).padding(top = KtmSpacing.lg)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .pageInsets()
                 .padding(bottom = KtmSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {

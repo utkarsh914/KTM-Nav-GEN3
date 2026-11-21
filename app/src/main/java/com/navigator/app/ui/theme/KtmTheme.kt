@@ -1,7 +1,10 @@
 package com.navigator.app.ui.theme
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -98,3 +101,12 @@ object KtmTheme {
 @Composable
 fun Modifier.edgePadding(): Modifier =
     this.windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+
+/**
+ * Keeps the content of a page clear of the display cutout and the gesture area (and the keyboard). Use it below a
+ * [com.navigator.app.ui.components.KtmTopBar], which takes the top itself, on any page that has no tab bar under it;
+ * a tab page's bar already takes the bottom, so it passes only the sides it needs.
+ */
+@Composable
+fun Modifier.pageInsets(sides: WindowInsetsSides = WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom): Modifier =
+    this.windowInsetsPadding(WindowInsets.safeDrawing.only(sides))

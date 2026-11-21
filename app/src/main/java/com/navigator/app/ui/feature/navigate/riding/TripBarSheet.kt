@@ -192,7 +192,7 @@ private fun SheetPane(
     val subtitle = tripSubtitle(bar)
     val close = stringResource(R.string.trip_sheet_close)
     Column(
-        modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.SheetTop).background(r.surface)
+        modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.Sheet).background(r.surface)
             .semantics {
                 paneTitle = title
                 isTraversalGroup = true

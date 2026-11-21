@@ -52,6 +52,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import java.time.Instant
 import java.time.ZoneId
 
@@ -70,7 +71,7 @@ fun MergeContent(ui: MergeUi, onBack: () -> Unit, onMerge: () -> Unit, modifier:
             onBack = onBack,
         )
         val motionSpecs = KtmTheme.motion
-        AnimatedContent(targetState = ui, contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
             when (shown) {
                 MergeUi.Loading -> Column { repeat(3) { SkeletonRow(announce = it == 0) } }
                 MergeUi.Gone -> EmptyState(

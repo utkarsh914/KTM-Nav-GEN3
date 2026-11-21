@@ -2,6 +2,8 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
@@ -43,10 +45,13 @@ fun EmptyState(
     primary: StateAction? = null,
     secondary: StateAction? = null,
     tertiary: StateAction? = null,
+    /** Scrolls when the page is shorter than it (landscape, a large font). False inside a list or another scroll, which already does. */
+    scrollable: Boolean = true,
 ) {
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxWidth().padding(horizontal = KtmSpacing.xl, vertical = KtmSpacing.xxl),
+        modifier.fillMaxWidth().let { if (scrollable) it.verticalScroll(rememberScrollState()) else it }
+            .padding(horizontal = KtmSpacing.xl, vertical = KtmSpacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {

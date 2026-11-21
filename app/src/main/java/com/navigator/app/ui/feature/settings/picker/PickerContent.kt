@@ -3,13 +3,8 @@ package com.navigator.app.ui.feature.settings.picker
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -31,6 +26,7 @@ import com.navigator.app.ui.components.SkeletonRow
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import com.navigator.app.ui.theme.rememberHaptics
 
 class AppPickerActions(val onBack: () -> Unit, val onQuery: (String) -> Unit, val onToggle: (String) -> Unit)
@@ -60,7 +56,7 @@ fun AppPickerContent(ui: AppPickerUi, actions: AppPickerActions, modifier: Modif
                     stringResource(R.string.picker_none_found), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
                     modifier = Modifier.padding(KtmSpacing.edge),
                 )
-                else -> LazyColumn(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+                else -> LazyColumn(Modifier.pageInsets()) {
                     ui.sections.forEachIndexed { index, section ->
                         section.title?.let { title -> item(key = "h$index") { SectionHeader(title.resolve()) } }
                         items(section.apps, key = { "$index-${it.packageName}" }) { app ->
@@ -88,7 +84,7 @@ fun AudioPickerContent(ui: AudioPickerUi, actions: AudioPickerActions, modifier:
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.picker_audio_title), onBack = actions.onBack)
         if (ui.loading) Column { repeat(3) { SkeletonRow(announce = it == 0) } }
-        else Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+        else Column(Modifier.pageInsets()) {
             KtmRadioRow(stringResource(R.string.picker_audio_none), selected = ui.selected == null, onSelect = { actions.onChoose(null) })
             // A saved choice that can't be listed now stays visible and selected: it is still in force.
             if (ui.selectedUnavailable) {

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -75,7 +74,7 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
     val save = { HexInput.parse(hex)?.let { onSave(hexOf(it)) }; Unit }
 
     KtmModalSheet(onDismiss = onDismiss) {
-        Column(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
+        Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.custom_title), style = MaterialTheme.typography.headlineSmall, color = c.fg,

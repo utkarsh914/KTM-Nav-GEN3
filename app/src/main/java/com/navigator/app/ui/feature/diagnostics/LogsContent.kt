@@ -50,6 +50,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 class LogsActions(
     val onBack: () -> Unit,
@@ -136,7 +137,7 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                     state = listState,
                     // Room under the pill, so the newest lines are never behind it.
                     contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, top = KtmSpacing.sm, bottom = KtmLayout.targetRest + KtmSpacing.xl),
-                    modifier = Modifier.fillMaxSize().testTag("logs-list").windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
+                    modifier = Modifier.fillMaxSize().testTag("logs-list").pageInsets(),
                 ) {
                     itemsIndexed(ui.entries, key = { index, e -> e.key.ifEmpty { "#$index" } }) { _, e ->
                         LogRow(e, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsFast(), placementSpec = null))

@@ -6,6 +6,7 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +37,7 @@ import com.navigator.app.ui.feature.navigate.BikeSheetHost
 import com.navigator.app.ui.feature.record.rememberStartRecording
 import com.navigator.app.ui.shell.openGoogleMapsApp
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -109,7 +111,10 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
 
     BoxWithConstraints(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
-        status?.let { MirrorContent(it, bike, time, landscape, actions, recording = recording.active) }
+        // The page has no top bar and no map behind it: clear of the status bar and cutout, and in landscape (no tab bar) the gesture area.
+        val top = WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+        val sides = if (landscape) top + WindowInsetsSides.Bottom else top
+        status?.let { MirrorContent(it, bike, time, landscape, actions, Modifier.pageInsets(sides), recording = recording.active) }
     }
     if (showBike) BikeSheetHost(tripRunning = false, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
 }

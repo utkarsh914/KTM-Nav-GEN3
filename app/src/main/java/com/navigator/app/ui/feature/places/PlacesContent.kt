@@ -89,7 +89,7 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
                     item(key = "work") { ListDivider(); SlotRow(FavoriteSlot.WORK, ui.work, ui.origin, actions) }
                     if (ui.saved.isEmpty()) {
                         item(key = "empty") {
-                            EmptyState(KtmIcons.Bookmark, stringResource(R.string.places_empty_title), stringResource(R.string.places_empty))
+                            EmptyState(KtmIcons.Bookmark, stringResource(R.string.places_empty_title), stringResource(R.string.places_empty), scrollable = false)
                         }
                     } else {
                         item(key = "saved-header") { SectionHeader(stringResource(R.string.places_saved_header, ui.saved.size)) }

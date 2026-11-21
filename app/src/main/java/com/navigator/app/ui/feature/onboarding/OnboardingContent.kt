@@ -70,6 +70,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import com.navigator.app.ui.theme.rememberHaptics
 
 class OnboardingActions(
@@ -152,7 +153,7 @@ private fun StepFrame(
     body: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
+        Modifier.fillMaxSize().pageInsets(),
     ) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             top?.invoke(this)

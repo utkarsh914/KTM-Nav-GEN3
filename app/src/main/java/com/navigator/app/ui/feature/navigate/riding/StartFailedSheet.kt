@@ -5,13 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -39,6 +36,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 class StartFailedActions(
     val onRetry: () -> Unit,
@@ -59,7 +57,7 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
     Column(
         modifier.fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = KtmSpacing.lg).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = KtmSpacing.lg),
+            .padding(horizontal = KtmSpacing.lg).pageInsets().padding(bottom = KtmSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         SheetHandle()
