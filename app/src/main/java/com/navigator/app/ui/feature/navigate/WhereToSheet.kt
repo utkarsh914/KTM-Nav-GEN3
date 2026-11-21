@@ -201,7 +201,7 @@ private fun TileCell(tile: WhereToTile, onTile: (TileAction) -> Unit, modifier: 
     Row(
         modifier.height(WhereToMetrics.tileHeight).clip(KtmShapes.Control)
             .let { if (unset) it.border(KtmLayout.hairline, c.line2, KtmShapes.Control) else it.background(c.surf2) }
-            .alpha(if (enabled) 1f else 0.5f)
+            .alpha(if (enabled) 1f else KtmLayout.disabledAlpha)
             .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onTile(action) }
             .padding(horizontal = KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,

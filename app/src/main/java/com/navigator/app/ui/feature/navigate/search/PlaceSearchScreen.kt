@@ -43,6 +43,7 @@ import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSearchField
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.components.highlightedText
 import com.navigator.app.ui.components.RowValue
 import com.navigator.app.ui.components.SectionHeader
@@ -52,6 +53,7 @@ import com.navigator.app.ui.feature.navigate.StraightLine
 import com.navigator.app.ui.feature.navigate.detailText
 import com.navigator.app.ui.feature.navigate.titleText
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -111,7 +113,7 @@ fun PlaceSearchScreen(
 ) {
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = KtmSpacing.lg),
+        modifier.fillMaxSize().background(c.bg).consumeMapTouches().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = KtmSpacing.lg),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
@@ -231,7 +233,7 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
         }
         state.loading && state.suggestions.isEmpty() -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
         state.suggestions.isEmpty() -> NoMatches()
-        else -> LazyColumn(Modifier.alpha(if (state.resolving) 0.5f else 1f)) {
+        else -> LazyColumn(Modifier.alpha(if (state.resolving) KtmLayout.disabledAlpha else 1f)) {
             itemsIndexed(state.suggestions, key = { _, s -> s.placeId }) { index, s ->
                 // SE2: results fade in 20 ms after one another.
                 Box(Modifier.staggeredFade(this, index, KtmTheme.motion)) {

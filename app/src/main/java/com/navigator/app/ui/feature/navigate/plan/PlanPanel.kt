@@ -6,34 +6,25 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.SheetHandle
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.theme.KtmElevation
-import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -54,9 +45,7 @@ fun PlanPanel(
 ) {
     val c = KtmTheme.colors
     val report by rememberUpdatedState(onInsets)
-    val safe = WindowInsets.systemBars.union(WindowInsets.displayCutout)
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val density = LocalDensity.current
         if (maxWidth > maxHeight) {
             LandscapePanel(onFootprint = { report(it, 0) }) {
                 CompositionLocalProvider(LocalFillPanel provides true) { content() }
@@ -68,6 +57,7 @@ fun PlanPanel(
                     .onSizeChanged { report(0, it.height) }
                     .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
                     .background(c.surf, KtmShapes.SheetTop)
+                    .consumeMapTouches()
                     .padding(horizontal = KtmSpacing.lg),
             ) {
                 SheetHandle()

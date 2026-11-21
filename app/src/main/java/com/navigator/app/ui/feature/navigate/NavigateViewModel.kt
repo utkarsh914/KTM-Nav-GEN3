@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 
 /**
  * State and actions of the Navigate browse screen: tiles, the bike, the running-trip card and the two
- * dash toggles. The planning stages (place, route, riding) are still the old screen's until B8-B10.
+ * dash toggles. The planning and riding stages have their own view models and live in [NavigateHost].
  */
 class NavigateViewModel(
     private val settings: SettingsRepository,

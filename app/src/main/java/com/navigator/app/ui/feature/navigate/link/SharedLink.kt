@@ -24,6 +24,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.Skeleton
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
@@ -137,7 +138,7 @@ fun SharedLinkCard(
     if (state == SharedLinkState.Idle) return
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop)
+        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
             .windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = KtmSpacing.lg)
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {

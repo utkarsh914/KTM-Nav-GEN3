@@ -135,12 +135,10 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
     androidx.compose.runtime.LaunchedEffect(lit) {
         if (lit != null) { kotlinx.coroutines.delay(LIT_MS); lit = null }
     }
-    val moving = remember(actions) {
-        RouteSheetActions(
-            actions.onBack, actions.onClose, actions.onSelect, actions.onAddStop, actions.onRemoveStop,
-            { index, delta -> lit = index + delta; actions.onMoveStop(index, delta) }, actions.onStart,
-        )
-    }
+    val moving = RouteSheetActions(
+        actions.onBack, actions.onClose, actions.onSelect, actions.onAddStop, actions.onRemoveStop,
+        { index, delta -> lit = index + delta; actions.onMoveStop(index, delta) }, actions.onStart,
+    )
     Column {
         StopLine(stringResource(R.string.route_your_location), c.fg2, null, null)
         state.stops.forEachIndexed { i, label ->

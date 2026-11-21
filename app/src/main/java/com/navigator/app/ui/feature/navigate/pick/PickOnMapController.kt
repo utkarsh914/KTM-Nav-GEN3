@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
 
@@ -93,7 +94,8 @@ class PickOnMapController(
         _state.update { it.copy(center = point, street = null, resolving = true) }
         lookup?.cancel()
         lookup = scope.launch {
-            val name = geocoder.streetName(point)
+            // A geocoder that never answers must not leave Use disabled for good.
+            val name = withTimeoutOrNull(GEOCODE_TIMEOUT_MS) { geocoder.streetName(point) }
             _state.update { it.copy(street = name, resolving = false) }
         }
     }
@@ -105,3 +107,5 @@ class PickOnMapController(
         return SavedPlace(c.lat, c.lng, s.street ?: fallbackLabel)
     }
 }
+
+private const val GEOCODE_TIMEOUT_MS = 3_000L

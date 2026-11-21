@@ -77,14 +77,14 @@ internal fun SharedLinkEffects(
     LaunchedEffect(state, stage) {
         if (state == SharedLinkState.Failed && stage == NavStage.NAVIGATING) {
             controller.dismiss()
-            feedback.snackbar(linkDuringTrip)
+            feedback.chip(linkDuringTrip, ChipTone.Warn)
         }
     }
     BackHandler(enabled = state != SharedLinkState.Idle && stage != NavStage.NAVIGATING) { controller.dismiss() }
     val resolved by rememberUpdatedState(onResolved)
     LaunchedEffect(controller) {
         controller.resolved.collect {
-            if (currentStage() == NavStage.NAVIGATING) feedback.snackbar(linkDuringTrip) else resolved(it)
+            if (currentStage() == NavStage.NAVIGATING) feedback.chip(linkDuringTrip, ChipTone.Warn) else resolved(it)
         }
     }
 }

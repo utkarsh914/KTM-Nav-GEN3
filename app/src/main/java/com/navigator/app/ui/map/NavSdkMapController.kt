@@ -16,6 +16,7 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -48,6 +49,14 @@ class NavSdkMapController(
     private val framePaddingPx = (64 * context.resources.displayMetrics.density).toInt()
     private val userMarker = UserLocationMarker(context, markerStyle)
     private var map: GoogleMap? = null
+    @Volatile private var reducedMotion = false
+
+    override fun setReducedMotion(reduced: Boolean) { reducedMotion = reduced }
+
+    /** Camera moves take their length from the motion tokens, and jump under reduced motion. */
+    private fun GoogleMap.glide(update: com.google.android.gms.maps.CameraUpdate, ms: Int) {
+        if (reducedMotion) moveCamera(update) else animateCamera(update, ms, null)
+    }
     private var navView: NavigationView? = null
     private var detached = false
 
@@ -183,7 +192,7 @@ class NavSdkMapController(
         val gm = map ?: return
         val ll = LatLng(place.lat, place.lng)
         gm.addMarker(MarkerOptions().position(ll).title(title))
-        gm.animateCamera(CameraUpdateFactory.newLatLngZoom(ll, 15f))
+        gm.glide(CameraUpdateFactory.newLatLngZoom(ll, 15f), KtmMotionSpecs.CAMERA_FIT_MS)
     }
 
     override fun showTripPreview(scene: TripPreviewScene) {
@@ -201,7 +210,7 @@ class NavSdkMapController(
         if (pins != null) destination.icon(pins.flag()).anchor(8f / 36f, 1f)
         gm.addMarker(destination.zIndex(6f))
         if (scene.routes.isEmpty()) {
-            if (scene.reframe) gm.animateCamera(CameraUpdateFactory.newLatLngZoom(dest, 14f))
+            if (scene.reframe) gm.glide(CameraUpdateFactory.newLatLngZoom(dest, 14f), KtmMotionSpecs.CAMERA_FIT_MS)
             return
         }
         scene.routes.forEachIndexed { i, points ->
@@ -212,7 +221,11 @@ class NavSdkMapController(
             val b = LatLngBounds.builder()
             selected.forEach { b.include(LatLng(it.lat, it.lng)) }
             scene.frameAlso.forEach { b.include(LatLng(it.lat, it.lng)) }
-            if (scene.reframe) runCatching { gm.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), framePaddingPx)) }
+            if (scene.reframe) {
+                // Padding that leaves no room (several stops on a short screen) can't be fitted: centre on the destination instead.
+                runCatching { gm.glide(CameraUpdateFactory.newLatLngBounds(b.build(), framePaddingPx), KtmMotionSpecs.CAMERA_FIT_MS) }
+                    .onFailure { runCatching { gm.glide(CameraUpdateFactory.newLatLngZoom(dest, 13f), KtmMotionSpecs.CAMERA_FIT_MS) } }
+            }
         }
         // A time label on each route; tapping it selects the route, like tapping the line.
         if (pins != null) {
@@ -284,14 +297,14 @@ class NavSdkMapController(
     override fun hideUserMarker() = userMarker.remove()
 
     override fun recenter(at: MapPoint) {
-        map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f))
+        map?.glide(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f), KtmMotionSpecs.CAMERA_RECENTER_MS)
     }
 
     /** Reset the map to north-up (bearing 0, tilt 0), keeping centre and zoom. */
     override fun resetNorth() {
         val gm = map ?: return
         val north = CameraPosition.Builder(gm.cameraPosition).bearing(0f).tilt(0f).build()
-        gm.animateCamera(CameraUpdateFactory.newCameraPosition(north))
+        gm.glide(CameraUpdateFactory.newCameraPosition(north), KtmMotionSpecs.CAMERA_RECENTER_MS)
     }
 
     @android.annotation.SuppressLint("MissingPermission") // only called while guiding, which needs location

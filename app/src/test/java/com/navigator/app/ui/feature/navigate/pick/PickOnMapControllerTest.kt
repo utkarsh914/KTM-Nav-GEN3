@@ -4,6 +4,7 @@ import com.navigator.app.ui.map.FakeMapController
 import com.navigator.app.ui.map.MapPoint
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -47,6 +48,16 @@ class PickOnMapControllerTest {
         assertEquals(there, c.state.value.center)
         assertEquals("New Rd", c.state.value.street)
         assertFalse(c.state.value.resolving)
+    }
+
+    @Test fun aGeocoderThatNeverAnswersDoesNotLeaveUseDisabled() = runTest {
+        val map = FakeMapController().apply { center = here }
+        val c = PickOnMapController(backgroundScope, map, { CompletableDeferred<String?>().await() })
+        c.start(); runCurrent()
+        assertTrue(c.state.value.resolving)
+        advanceTimeBy(3_001); runCurrent()
+        assertFalse(c.state.value.resolving)
+        assertNull(c.state.value.street)
     }
 
     @Test fun usingThePointNamesItByStreetOrFallsBack() = runTest {

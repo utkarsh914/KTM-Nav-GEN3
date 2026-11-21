@@ -20,7 +20,7 @@ object StopLegs {
     }
 
     /**
-     * One line per leg ("12 min · 8.4 km · arrive 14:32"), the arrival being cumulative from
+     * One line per leg ("arrive 14:32 · 12 min · 8.4 km"), the arrival being cumulative from
      * [nowMs]. Empty when the route has no per-leg breakdown for exactly [legCount] legs (a
      * single-destination route, or a stale route that doesn't match the current stops).
      */

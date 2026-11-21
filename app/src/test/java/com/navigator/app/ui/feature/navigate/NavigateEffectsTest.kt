@@ -119,7 +119,8 @@ class NavigateEffectsTest {
         h.link = "https://maps.app.goo.gl/x"
         rule.waitForIdle()
         assertEquals(emptyList<SavedPlace>(), h.chosen)
-        assertNotNull("the rider is told", host.currentSnackbarData)
+        assertNotNull("the rider is told, by a chip while riding", feedback.chip)
+        assertNull(host.currentSnackbarData)
     }
 
     @Test fun aFailureThatArrivesMidTripIsDroppedNotLeftAsAStaleCard() {
@@ -129,7 +130,8 @@ class NavigateEffectsTest {
         h.link = "https://maps.app.goo.gl/x"
         rule.waitForIdle()
         assertEquals(SharedLinkState.Idle, h.controller.state.value)
-        assertNotNull(host.currentSnackbarData)
+        assertNotNull(feedback.chip)
+        assertNull(host.currentSnackbarData)
     }
 
     @Test fun aFailureWhileBrowsingKeepsItsCardForRetry() {

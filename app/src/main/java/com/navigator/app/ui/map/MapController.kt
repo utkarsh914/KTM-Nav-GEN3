@@ -75,6 +75,9 @@ interface MapController {
     fun setPoiListening(enabled: Boolean)
 
     fun setPadding(left: Int, top: Int, right: Int, bottom: Int)
+
+    /** With reduced motion the camera jumps instead of gliding (docs/design-system.md). */
+    fun setReducedMotion(reduced: Boolean) {}
     fun clearOverlays()
 
     /** A pin on the picked place, with the camera zoomed to it. */

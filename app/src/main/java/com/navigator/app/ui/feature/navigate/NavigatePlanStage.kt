@@ -158,7 +158,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                 onUse = { plan.onPickingStop(false); flow.stops = StopList.add(flow.stops, it) },
             )
             plan.stopCandidate != null -> PlanPanel(onInsets = plan.onInsets) {
-                plan.stopCandidate?.let { candidate ->
+                plan.stopCandidate.let { candidate ->
                     StopCandidateSheet(
                         name = candidate.label, number = StopList.nextNumber(flow.stops), destination = dest.label,
                         canAdd = StopList.canAdd(flow.stops),

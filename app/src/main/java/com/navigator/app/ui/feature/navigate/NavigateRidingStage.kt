@@ -22,6 +22,7 @@ import com.navigator.app.nav.providers.StartFailure
 import com.navigator.app.trip.TripController
 import com.navigator.app.trip.TripState
 import com.navigator.app.ui.components.LandscapePanelSpec
+import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.feature.navigate.BikeSheetMapper
 import com.navigator.app.ui.feature.navigate.riding.EndTripButton
 import com.navigator.app.ui.feature.navigate.riding.ManeuverModel
@@ -41,7 +42,6 @@ import com.navigator.app.ui.feature.navigate.riding.TripStopSheetHost
 import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.shell.Feedback
-import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.RidingTheme
 import com.navigator.app.ui.theme.accentFor
@@ -86,7 +86,7 @@ internal fun NavigatingStage(
     RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId)) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
-            val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
+            val narrow = isNarrowWindow()
             // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
             BackHandler(enabled = landscape && riding.showTripSheet) { riding.showTripSheet = false }
             val backFromFailure = {

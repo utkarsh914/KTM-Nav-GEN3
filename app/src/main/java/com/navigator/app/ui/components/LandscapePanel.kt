@@ -29,8 +29,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -54,10 +52,16 @@ object LandscapePanelSpec {
 
 /** The window is narrower than [KtmLayout.panelNarrowBelow]: the 780 dp landscape case, where the 320 dp panel is used. */
 @Composable
-fun isNarrowWindow(): Boolean {
+fun isNarrowWindow(): Boolean = windowWidthDp(fallback = Float.MAX_VALUE) < KtmLayout.panelNarrowBelow.value
+
+/**
+ * The window's width, not the content's: the shell's rail sits outside the content, and the panel width is a rule
+ * about the window (352 dp, 320 where the window is under 800 dp). [fallback] is used before the window has a size.
+ */
+@Composable
+fun windowWidthDp(fallback: Float): Float {
     val widthPx = LocalWindowInfo.current.containerSize.width
-    // No size yet (a preview, a test): the wide layout.
-    return widthPx > 0 && with(LocalDensity.current) { widthPx.toDp() } < KtmLayout.panelNarrowBelow
+    return if (widthPx > 0) with(LocalDensity.current) { widthPx.toDp().value } else fallback
 }
 
 /**
@@ -82,7 +86,8 @@ fun LandscapePanel(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val leftInset = with(density) { safe.getLeft(density, LayoutDirection.Ltr).toDp() }
-        val footprintPx = with(density) { LandscapePanelSpec.footprint(maxWidth.value, leftInset).roundToPx() }
+        val windowWidth = windowWidthDp(fallback = maxWidth.value)
+        val footprintPx = with(density) { LandscapePanelSpec.footprint(windowWidth, leftInset).roundToPx() }
         LaunchedEffect(footprintPx) { report(footprintPx) }
         // The panel slides in from the cutout side as the map tilts (NL1).
         val motion = KtmTheme.motion
@@ -96,12 +101,12 @@ fun LandscapePanel(
             Modifier
                 .windowInsetsPadding(safe.only(WindowInsetsSides.Left + WindowInsetsSides.Top + WindowInsetsSides.Bottom))
                 .padding(KtmLayout.panelInset)
-                .width(LandscapePanelSpec.width(maxWidth.value))
+                .width(LandscapePanelSpec.width(windowWidth))
                 .fillMaxHeight()
                 .shadow(KtmElevation.sheet, KtmShapes.Card)
                 .background(color, KtmShapes.Card)
                 // Touches on the card never fall through to the map beneath it.
-                .pointerInput(Unit) { detectTapGestures { } }
+                .consumeMapTouches()
                 .then(panelModifier)
                 .padding(KtmLayout.panelPadding),
             verticalArrangement = Arrangement.spacedBy(gap),

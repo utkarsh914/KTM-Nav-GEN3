@@ -41,12 +41,6 @@ internal tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-/** Format a route duration (seconds) as "M min" or "H hr M min". */
-internal fun formatDuration(seconds: Int): String {
-    val mins = (seconds + 59) / 60
-    return if (mins < 60) "$mins min" else "${mins / 60} hr ${mins % 60} min"
-}
-
 /** Straight-line distance label from [origin] to a point, or null if unknown. */
 internal fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Double): String? {
     origin ?: return null

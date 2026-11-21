@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
@@ -74,7 +73,6 @@ import com.navigator.app.ui.feature.navigate.riding.EndTripDialog
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEffect
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
 import com.navigator.app.ui.feature.navigate.riding.MapButtonMachine
-import com.navigator.app.ui.feature.navigate.riding.MapButtonState
 import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
 import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
 import com.navigator.app.ui.feature.navigate.search.SearchMode
@@ -128,8 +126,8 @@ private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMoti
  * A single persistent Nav SDK [NavigationView] is the map surface across every
  * stage. [NavStage.BROWSE] shows the map + search bar + Connect pill; tapping
  * search opens [NavStage.SEARCH] (recents, favorites, live autocomplete);
- * picking a place goes to [NavStage.CONFIRM] (red pin + place card → Get
- * Directions / Save). Route preview + on-phone active guidance land in P3/P4.
+ * picking a place goes to [NavStage.CONFIRM] (pin + place card → Directions / Save),
+ * then [NavStage.PREVIEW] (routes and stops), [NavStage.NAVIGATING] and [NavStage.TRIP_FINISHED].
  */
 @Composable
 fun NavigateHost(
@@ -160,7 +158,6 @@ fun NavigateHost(
     val resources = androidx.compose.ui.platform.LocalResources.current
     val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
 
     val appSettings = remember { context.appContainer.settings.legacy }
     // Speed-band colouring scheme for the trip-finished route (Advanced settings).
@@ -388,7 +385,9 @@ fun NavigateHost(
         surface = KtmTheme.colors.surf.toArgb(), onSurface = KtmTheme.colors.fg.toArgb(), outline = KtmTheme.colors.line2.toArgb(),
     )
     LaunchedEffect(planInsets) {
-        if (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) { delay(250); fitKey++ }
+        // The card measures after the stage arrives: frame again once its size is known (the pin goes to the open map's middle).
+        val framed = (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) || stage == NavStage.CONFIRM
+        if (framed) { delay(250); fitKey++ }
     }
     LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate) {
         if (!mapReady) return@LaunchedEffect
@@ -418,7 +417,7 @@ fun NavigateHost(
                         destination = MapPoint(p.lat, p.lng),
                         destinationTitle = p.label,
                         stops = stops.mapIndexed { i, st ->
-                            MapStop(MapPoint(st.lat, st.lng), "Stop ${i + 1}: ${st.label}")
+                            MapStop(MapPoint(st.lat, st.lng), resources.getString(R.string.map_stop_marker, i + 1, st.label))
                         },
                         // With stops there are no alternates (single multi-leg route).
                         routes = routePreview.routes.map { r -> r.points.map { MapPoint(it.latitude, it.longitude) } },
@@ -442,6 +441,7 @@ fun NavigateHost(
     DisposableEffect(map) { onDispose { map.setPoiListening(false) } }
     LaunchedEffect(stage) { if (stage != NavStage.PREVIEW) { stopCandidate = null; pickingStop = false } }
     val newStopLabel = resources.getString(R.string.stop_new)
+    val droppedPinLabel = resources.getString(R.string.pick_dropped_pin)
     LaunchedEffect(map) {
         map.poiClicks.collect { poi ->
             if (stage == NavStage.PREVIEW && !pickingStop) {
@@ -626,7 +626,10 @@ fun NavigateHost(
         if (!searchRequest) return@LaunchedEffect
         onSearchRequestConsumed()
         // A running trip keeps its screen: a shortcut must not pull the rider out of guidance.
-        if (stage == NavStage.BROWSE && !navState.sessionState.isActiveNav()) openSearch()
+        if (navState.sessionState.isActiveNav() || stage == NavStage.SEARCH) return@LaunchedEffect
+        // From a place card, a preview or the finished card the shortcut still means "search": leave it first.
+        if (stage != NavStage.BROWSE) backToBrowse()
+        openSearch()
     }
 
     // The recorder's outcome is resolved while the finished screen is up (FinishResolution, with its 6 s wait).
@@ -643,7 +646,6 @@ fun NavigateHost(
     val linkController = remember { context.appContainer.sharedLink }
     val linkState by linkController.state.collectAsState()
     val linkFailure by linkController.failure.collectAsState()
-    SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, { flow.stage }, feedback, onResolved = ::choose)
 
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
@@ -683,11 +685,12 @@ fun NavigateHost(
     // opens the confirm card, like Google Maps.
     LaunchedEffect(map) {
         map.longClicks.collect { ll ->
-            when {
-                stage == NavStage.NAVIGATING -> {}
+            // Only where the map is the thing being touched; search, the finished card and riding ignore it.
+            when (stage) {
                 // On the route preview a long press proposes a stop, not a new destination (PL6).
-                stage == NavStage.PREVIEW -> if (!pickingStop) stopCandidate = SavedPlace(ll.lat, ll.lng, newStopLabel)
-                else -> choose(SavedPlace(ll.lat, ll.lng, "Dropped pin"))
+                NavStage.PREVIEW -> if (!pickingStop) stopCandidate = SavedPlace(ll.lat, ll.lng, newStopLabel)
+                NavStage.BROWSE, NavStage.CONFIRM -> choose(SavedPlace(ll.lat, ll.lng, droppedPinLabel))
+                else -> {}
             }
         }
     }
@@ -704,12 +707,16 @@ fun NavigateHost(
             MapButtonEffect.None -> {}
         }
     }
+    // A question about the place being looked at is void once the stage moves on (the trip finished meanwhile).
+    LaunchedEffect(stage) { replaceRequest = null }
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
         riding.onStageChanged(stage, openAddStop = addStopOnResume)
         addStopOnResume = false
     }
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
+    val reducedMotion = KtmTheme.motion.reduced
+    LaunchedEffect(map, reducedMotion) { map.setReducedMotion(reducedMotion) }
     LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }
     // Checked every second while the map is panned: a steady speed emits no new value to react to.
     LaunchedEffect(mapButton.panned, stage) {
@@ -763,6 +770,8 @@ fun NavigateHost(
     BackHandler(enabled = pickingStop || stopCandidate != null) {
         if (pickingStop) pickingStop = false else stopCandidate = null
     }
+    // Registered last, so it is first to get Back: a card on screen is dismissed before the flow steps back.
+    SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, { flow.stage }, feedback, onResolved = ::choose)
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
@@ -776,9 +785,9 @@ fun NavigateHost(
         places = places, scope = scope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
         onInsets = { left, bottom -> planInsets = left to bottom },
-        onAskReplace = { replaceRequest = it }, onGoToPreview = { stage = NavStage.PREVIEW }, onAddAsStop = ::addAsStop,
+        onAskReplace = { replaceRequest = it }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
         onPickingStop = { pickingStop = it }, onStopCandidate = { stopCandidate = it },
-        onSelectRoute = routeVm::select, onAddStop = ::openSearchForStop, onStart = ::startTo,
+        onSelectRoute = routeVm::select, onAddStop = { if (stage == NavStage.PREVIEW) openSearchForStop() }, onStart = { if (stage == NavStage.PREVIEW) startTo(it) },
     )
 
     val motionSpecs = KtmTheme.motion
@@ -819,13 +828,13 @@ fun NavigateHost(
                     mapBearing = mapBearing,
                     location = LocationState.of(hasLocationPermission(context), locationReady),
                     padMap = stage == NavStage.BROWSE,
-                    onSearch = { q, category -> openSearch(q.orEmpty(), category) },
-                    onChoose = ::choose,
-                    // (stage guard: the tiles stay tappable during the exit animation)
+                    // (stage guards: the tiles stay tappable during the exit animation)
+                    onSearch = { q, category -> if (stage == NavStage.BROWSE) openSearch(q.orEmpty(), category) },
+                    onChoose = { if (stage == NavStage.BROWSE) choose(it) },
                     onRide = { if (stage == NavStage.BROWSE) rideTo(it) },
                     onResumeTrip = ::resumeNav,
                     // SE4 from the minimised trip's card: back to the riding screen with the add-a-stop sheet open.
-                    onAddStop = { if (stage != NavStage.NAVIGATING) addStopOnResume = true else showTripStops = true; resumeNav() },
+                    onAddStop = { if (stage == NavStage.BROWSE) { addStopOnResume = true; resumeNav() } },
                     onOpenPairing = onOpenConnect,
                     onOpenPlaces = onOpenPlaces,
                     onRetryMap = { navReady = false; navError = false; prepareAttempt++ },
@@ -894,17 +903,23 @@ fun NavigateHost(
         }
 
         replaceRequest?.let { r ->
-            ReplaceTripDialog(
-                destination = r.place.label,
-                riding = stage == NavStage.NAVIGATING,
-                onReplace = {
-                    replaceRequest = null
-                    if (r.cancelFirst) { trip.cancel(); trip.resetStartDebounce() }
-                    r.proceed()
-                },
-                onKeep = { replaceRequest = null },
-                onAddAsStop = { replaceRequest = null; addAsStop(r.place) },
-            )
+            val dialog: @Composable () -> Unit = {
+                ReplaceTripDialog(
+                    destination = r.place.label,
+                    riding = stage == NavStage.NAVIGATING,
+                    onReplace = {
+                        replaceRequest = null
+                        if (r.cancelFirst) { trip.cancel(); trip.resetStartDebounce() }
+                        r.proceed()
+                    },
+                    onKeep = { replaceRequest = null },
+                    onAddAsStop = { replaceRequest = null; addAsStop(r.place) },
+                )
+            }
+            // Over the riding screen it follows the riding Day/Night, like the end-trip confirm.
+            if (stage == NavStage.NAVIGATING) {
+                RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false, content = dialog)
+            } else dialog()
         }
 
         if (showEndConfirm) {

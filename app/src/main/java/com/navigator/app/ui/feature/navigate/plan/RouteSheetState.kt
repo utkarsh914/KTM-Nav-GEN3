@@ -22,7 +22,7 @@ data class RouteSheetState(
     val selected: Int,
     val loading: Boolean,
     val failed: Boolean,
-    /** Per-leg lines ("12 min · 8.4 km · arrive 14:32"), one for each of origin→stop…→destination; empty when unknown. */
+    /** Per-leg lines ("arrive 14:32 · 12 min · 8.4 km"), one for each of origin→stop…→destination; empty when unknown. */
     val legLines: List<String>,
     /** "1 h 05 min · 42 km" for the selected route; shown in the header when stops replace the alternatives. */
     val summary: String?,
@@ -43,7 +43,6 @@ object RouteSheetMapper {
         )
     }
 
-    /** The time label on each route of the map. */
     /** The time label on each route of the map. Only alternatives need telling apart: a single route's time is in the sheet. */
     fun callouts(routes: List<RoutePreview>, stopCount: Int): List<String> =
         if (stopCount > 0 || routes.size < 2) emptyList() else routes.map { StopLegs.duration(it.durationSeconds) }

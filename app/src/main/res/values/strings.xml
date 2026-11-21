@@ -229,6 +229,7 @@
     <!-- Add a stop on the map (PL6) -->
     <string name="stop_pick_title">Add a stop</string>
     <string name="stop_new">New stop</string>
+    <string name="map_stop_marker">Stop %1$d: %2$s</string>
     <string name="stop_goes_before">Stop %1$d · goes before %2$s</string>
     <string name="stop_add_here">Add stop here</string>
     <!-- Riding (NV1–NV8, DL2) -->

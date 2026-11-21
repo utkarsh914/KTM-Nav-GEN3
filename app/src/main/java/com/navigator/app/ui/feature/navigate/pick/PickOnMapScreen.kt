@@ -33,6 +33,7 @@ import com.navigator.app.R
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.Skeleton
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -61,7 +62,7 @@ fun PickOnMapScreen(
     Box(modifier.fillMaxSize()) {
         Row(
             Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing).padding(KtmSpacing.lg).shadow(KtmElevation.onMap, KtmShapes.Pill)
-                .background(c.surf, KtmShapes.Pill),
+                .background(c.surf, KtmShapes.Pill).consumeMapTouches(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
         ) {
@@ -85,7 +86,7 @@ fun PickOnMapScreen(
         )
         Column(
             Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).fillMaxWidth().padding(KtmSpacing.lg)
-                .shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).padding(KtmSpacing.lg),
+                .shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).consumeMapTouches().padding(KtmSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             Box(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {

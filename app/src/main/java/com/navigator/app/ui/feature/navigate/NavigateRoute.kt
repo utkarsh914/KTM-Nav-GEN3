@@ -47,8 +47,8 @@ internal fun voiceAvailable(context: android.content.Context): Boolean =
     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).resolveActivity(context.packageManager) != null
 
 /**
- * Stateful host of the browse screen on the Navigate tab. The old map screen still owns the map and
- * the later stages and calls this for BROWSE; what the rider picks goes back through [onSearch] and [onRide].
+ * Stateful host of the browse screen on the Navigate tab. [NavigateHost] owns the map and the other
+ * stages and calls this for BROWSE; what the rider picks goes back through [onSearch] and [onRide].
  */
 @Composable
 fun NavigateRoute(

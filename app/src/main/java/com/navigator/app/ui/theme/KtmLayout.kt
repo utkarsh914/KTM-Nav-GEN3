@@ -107,6 +107,9 @@ object KtmLayout {
 
     /** Dividers inset to the text. */
     val dividerInset = 72.dp
+
+    /** Opacity of a control or list that is inert for now (no location, loading). */
+    const val disabledAlpha = 0.5f
     val topBar = 64.dp
 
     // Landscape panel: 352 dp at 874 dp wide, 320 dp below 800 dp (content = portrait sheet width)

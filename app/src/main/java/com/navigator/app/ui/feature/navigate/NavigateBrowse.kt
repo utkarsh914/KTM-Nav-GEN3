@@ -77,6 +77,8 @@ import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.SheetHandle
+import com.navigator.app.ui.components.consumeMapTouches
+import com.navigator.app.ui.components.windowWidthDp
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -130,12 +132,13 @@ fun NavigateBrowse(
         val density = LocalDensity.current
         val landscape = maxWidth > maxHeight
         if (landscape) {
-            val panelWidth = KtmLayout.panelWidth(maxWidth.value)
+            val panelWidth = KtmLayout.panelWidth(windowWidthDp(fallback = maxWidth.value))
             // The map is framed by what the card and its margins cover, measured from the content's own left edge
             // (the shell's rail sits outside it), so an inset the shell already took is not counted twice.
             var coveredPx by remember { mutableIntStateOf(0) }
+            val latestActions by rememberUpdatedState(actions)
             LaunchedEffect(coveredPx, mapReady) {
-                if (mapReady && coveredPx > 0) actions.onMapInsets(coveredPx, 0)
+                if (mapReady && coveredPx > 0) latestActions.onMapInsets(coveredPx, 0)
             }
             Row(Modifier.fillMaxSize()) {
                 // HM10: the Where-to panel is the same floating card as every other landscape panel.
@@ -148,7 +151,7 @@ fun NavigateBrowse(
                         .background(KtmTheme.colors.surf, KtmShapes.Card)
                         .clip(KtmShapes.Card)
                         // Touches on the card never fall through to the map beneath it.
-                        .pointerInput(Unit) { detectTapGestures { } }
+                        .consumeMapTouches()
                         .padding(KtmLayout.panelPadding),
                 ) {
                     WhereToSheetContent(state, voiceAvailable, actions.sheet, horizontalPadding = 0.dp)
@@ -282,13 +285,13 @@ private fun Overlays(
 
         // Riding the sheet's top edge: lifted by how much of the map it covers, gone once the sheet takes over.
         AnimatedVisibility(
-            visible = controlsVisible, enter = fadeIn(), exit = fadeOut(),
+            visible = controlsVisible, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast()),
             modifier = Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -sheetLiftPx) }.padding(edge),
         ) {
             Dimmed(!locationOk) { recordControls() }
         }
         AnimatedVisibility(
-            visible = controlsVisible, enter = fadeIn(), exit = fadeOut(),
+            visible = controlsVisible, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast()),
             modifier = Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -sheetLiftPx) }.padding(edge),
         ) {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
@@ -323,10 +326,10 @@ private fun Dimmed(dimmed: Boolean, label: String? = null, content: @Composable 
     val semantics = if (label != null) {
         Modifier.clearAndSetSemantics { role = Role.Button; contentDescription = label; disabled(); stateDescription = reason }
     } else {
-        // A group of legacy controls (until B11): announced as one disabled item.
+        // A group of controls: announced as one disabled item.
         Modifier.semantics(mergeDescendants = true) { disabled(); stateDescription = reason }
     }
-    Box(Modifier.alpha(0.4f).then(semantics)) {
+    Box(Modifier.alpha(KtmLayout.disabledAlpha).then(semantics)) {
         content()
         // Swallows the touch.
         Box(Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { } })
