@@ -73,6 +73,7 @@ fun TripBar(
     /** Fixed to the foot of the landscape panel: square corners (the panel clips them) and its own height. */
     flush: Boolean = false,
     minHeight: Dp = KtmLayout.tripBarHeight,
+    speedWidth: Dp = KtmLayout.tripBarSpeed,
 ) {
     val r = KtmTheme.riding
     val haptics = rememberHaptics()
@@ -92,7 +93,7 @@ fun TripBar(
     ) {
         Row(Modifier.heightIn(min = minHeight).height(IntrinsicSize.Min).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.fillMaxHeight().width(KtmLayout.tripBarSpeed).background(speedBg)
+                Modifier.fillMaxHeight().width(speedWidth).background(speedBg)
                     // A 1 px divider, drawn only while the block has no fill of its own.
                     .drawBehind { if (!ui.overspeed) drawRect(r.line, Offset(size.width - 1f, 0f), Size(1f, size.height)) }
                     .padding(vertical = KtmSpacing.sm)

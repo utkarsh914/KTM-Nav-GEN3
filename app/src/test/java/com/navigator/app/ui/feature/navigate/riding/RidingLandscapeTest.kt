@@ -107,6 +107,12 @@ class RidingLandscapeTest {
         rule.onNodeWithText("Rerouting…").assertIsDisplayed()
     }
 
+    @Test fun theCompactRowIsOneLineWithTheRoadAndTheTripIsSummarisedUnderIt() {
+        show(controls)
+        rule.onNodeWithText("Dr Rajkumar Rd").assertIsDisplayed()
+        rule.onNodeWithText("Toit · Arrive 17:42 · 1 h 12 min · 38 km").assertIsDisplayed()
+    }
+
     @Test fun theMapIsToldHowMuchOfItsLeftThePanelCovers() {
         show(null)
         rule.waitForIdle()

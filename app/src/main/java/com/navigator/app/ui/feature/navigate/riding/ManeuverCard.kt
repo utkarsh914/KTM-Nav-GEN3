@@ -76,6 +76,10 @@ class ManeuverMetrics(
      * (the panel clips them), puts the instruction under the glyph and distance, and shrinks "km" next to the number.
      */
     val fill: Boolean,
+    /** Space above the glyph row and between the glyph and the distance (tighter on the narrow panel, NL7). */
+    val top: Dp = KtmSpacing.lg,
+    val gap: Dp = KtmSpacing.md,
+    val lanesHeight: Dp = KtmLayout.lanesHeightLand,
 ) {
     companion object {
         @Composable
@@ -86,6 +90,7 @@ class ManeuverMetrics(
         @Composable
         fun landscape(narrow: Boolean): ManeuverMetrics = if (narrow) ManeuverMetrics(
             KtmLayout.ridingGlyphLand, KtmTheme.type.ridingDistanceNarrow, KtmTheme.type.ridingInstructionNarrow, 3, LANE_ARROW, true,
+            top = KtmSpacing.md, gap = KtmSpacing.sm, lanesHeight = KtmLayout.lanesHeightLandNarrow,
         ) else ManeuverMetrics(
             KtmLayout.ridingGlyphLand, MaterialTheme.typography.displayLarge, KtmTheme.type.ridingInstructionLand, 3, KtmLayout.laneArrowLand, true,
         )
@@ -166,9 +171,9 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
         if (m.fill) {
             Column(
                 Modifier.fillMaxWidth().weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
-                    .padding(start = KtmSpacing.md, top = KtmSpacing.lg, end = KtmSpacing.lg),
+                    .padding(start = KtmSpacing.md, top = m.top, end = KtmSpacing.lg),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.gap)) {
                     ManeuverGlyph(ui, m, on)
                     DistanceLine(ui, m, on, dim, Modifier.weight(1f, fill = false))
                 }
@@ -199,7 +204,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
                 TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on, contentDescription = TurnIconNames.human(footer.icon))
             }
             is ManeuverFooter.Lanes -> Box(
-                Modifier.fillMaxWidth().background(band).then(if (m.fill) Modifier.height(KtmLayout.lanesHeightLand) else Modifier)
+                Modifier.fillMaxWidth().background(band).then(if (m.fill) Modifier.height(m.lanesHeight) else Modifier)
                     .padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs),
                 contentAlignment = Alignment.Center,
             ) {

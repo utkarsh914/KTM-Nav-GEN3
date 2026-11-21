@@ -147,6 +147,9 @@ object KtmLayout {
     /** The band under the landscape guidance: Then, and the lanes (NL1, NL2). */
     val bandHeightLand = 48.dp
     val lanesHeightLand = 60.dp
+    val lanesHeightLandNarrow = 52.dp
+    /** The speed block of the trip bar on the 320 dp panel (NL7). */
+    val tripBarSpeedNarrow = 78.dp
     /** One promise line on the welcome (ON1). */
     val promiseRow = 40.dp
     /** The disc of a checklist step (ON6, ON7). */

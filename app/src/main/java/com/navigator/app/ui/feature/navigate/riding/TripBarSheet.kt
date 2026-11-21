@@ -189,9 +189,7 @@ private fun SheetPane(
     // NV7: the header is the trip itself, destination first, then when and how far.
     val title = stringResource(R.string.trip_sheet_title)
     val destination = bar.destination?.takeIf { it.isNotBlank() }
-    val subtitle = listOfNotNull(
-        bar.arrival?.let { stringResource(R.string.trip_sheet_arrive, it) }, bar.timeLeft?.let { timeLeftText(it) }, bar.distance,
-    ).joinToString(" · ")
+    val subtitle = tripSubtitle(bar)
     val close = stringResource(R.string.trip_sheet_close)
     Column(
         modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.SheetTop).background(r.surface)
@@ -235,3 +233,9 @@ private val DISMISS_DRAG = KtmSpacing.xxxl + KtmSpacing.xxxl
 
 /** The sheet shrinks this much (at most) as the back gesture is dragged. */
 private const val BACK_SHRINK = 0.08f
+
+/** "Arrive 6:29 pm · 17 min · 5.9 km": when and how far, under the destination in the trip sheet and the landscape controls. */
+@Composable
+internal fun tripSubtitle(bar: TripBarUi): String = listOfNotNull(
+    bar.arrival?.let { stringResource(R.string.trip_sheet_arrive, it) }, bar.timeLeft?.let { timeLeftText(it) }, bar.distance,
+).joinToString(" · ")
