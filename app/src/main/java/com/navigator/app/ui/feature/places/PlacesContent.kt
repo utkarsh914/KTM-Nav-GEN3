@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
@@ -40,6 +41,7 @@ import com.navigator.app.ui.components.KtmMenuItem
 import com.navigator.app.ui.components.KtmSelectionBar
 import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.LargeTitle
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.OutlinedIconBadge
 import com.navigator.app.ui.components.RowValue
@@ -84,7 +86,7 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
                 if (!ui.selecting) {
                     item(key = "slots-header") { SectionHeader(stringResource(R.string.places_slots_header), Modifier.padding(top = KtmSpacing.xs)) }
                     item(key = "home") { SlotRow(FavoriteSlot.HOME, ui.home, ui.origin, actions) }
-                    item(key = "work") { SlotRow(FavoriteSlot.WORK, ui.work, ui.origin, actions) }
+                    item(key = "work") { ListDivider(); SlotRow(FavoriteSlot.WORK, ui.work, ui.origin, actions) }
                     if (ui.saved.isEmpty()) {
                         item(key = "empty") {
                             EmptyState(KtmIcons.Bookmark, stringResource(R.string.places_empty_title), stringResource(R.string.places_empty))
@@ -93,8 +95,9 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
                         item(key = "saved-header") { SectionHeader(stringResource(R.string.places_saved_header, ui.saved.size)) }
                     }
                 }
-                items(ui.saved, key = { PlacesRepository.key(it) }) { place ->
+                itemsIndexed(ui.saved, key = { _, it -> PlacesRepository.key(it) }) { index, place ->
                     val key = PlacesRepository.key(place)
+                    if (index > 0) ListDivider()
                     SavedRow(place, ui, selected = key in ui.selected, actions, Modifier.animateItem(fadeInSpec = KtmTheme.motion.effectsDefault(), placementSpec = KtmTheme.motion.spatialDefault(), fadeOutSpec = KtmTheme.motion.effectsFast()))
                 }
             }

@@ -38,9 +38,11 @@ import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmTopBar
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.SkeletonRow
 import com.navigator.app.ui.components.StatTile
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.feature.rides.ThumbnailGeometry
@@ -106,6 +108,7 @@ private fun Ready(ui: MergeUi.Ready, onMerge: () -> Unit) {
                     StatTile(stringResource(R.string.merge_stat_total), rideDuration(plan.totalSeconds), Modifier.weight(1f))
                 }
                 ListRow(
+                    modifier = Modifier.fullBleed(),
                     title = stringResource(R.string.merge_name_title),
                     supporting = stringResource(if (plan.anyStarred) R.string.merge_notes_joined_starred else R.string.merge_notes_joined),
                     supportingLines = 2,
@@ -161,7 +164,9 @@ private fun Parts(plan: MergePlan) {
     Column {
         plan.parts.forEachIndexed { i, part ->
             val r = part.ride
+            if (i > 0 && plan.gaps.getOrNull(i - 1) == null) ListDivider()
             ListRow(
+                modifier = Modifier.fullBleed(),
                 title = stringResource(R.string.merge_part_title, i + 1, rideName(r.destinationLabel, r.source)),
                 supporting = stringResource(
                     R.string.merge_part_times, dateTime.format(zoned(r.startMs)),
@@ -171,7 +176,7 @@ private fun Parts(plan: MergePlan) {
             plan.gaps.getOrNull(i)?.let { gap ->
                 Text(
                     gapText(gap), style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.warn,
-                    modifier = Modifier.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.xs),
+                    modifier = Modifier.padding(vertical = KtmSpacing.xs),
                 )
             }
         }

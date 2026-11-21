@@ -33,6 +33,7 @@ import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSwitch
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.fullBleed
@@ -119,6 +120,7 @@ fun ColumnScope.TripControlsBody(
             },
         )
     }
+    if (nextStop != null) ListDivider(Modifier.fullBleed())
     ListRow(
         modifier = Modifier.fullBleed(),
         title = dashStatus ?: stringResource(R.string.trip_dash),

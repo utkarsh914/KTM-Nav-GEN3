@@ -25,8 +25,10 @@ import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.KtmTextField
 import com.navigator.app.ui.components.KtmTopBar
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.SkeletonRow
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
@@ -72,18 +74,22 @@ private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
         )
         Text(stringResource(R.string.edit_ride_saved_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         ListRow(
+            modifier = Modifier.fullBleed(),
             title = stringResource(R.string.edit_ride_trim), supporting = stringResource(R.string.edit_ride_trim_supporting),
             leadingIcon = KtmIcons.Trim, onClick = actions.onTrim,
             trailing = { androidx.compose.material3.Icon(KtmIcons.ChevronRight, null, tint = c.fg2) },
         )
+        ListDivider(Modifier.fullBleed())
         KtmSwitchRow(
+            modifier = Modifier.fullBleed(),
             title = stringResource(R.string.edit_ride_star), checked = ui.saved, onCheckedChange = actions.onToggleStar,
             supporting = stringResource(R.string.edit_ride_star_supporting), supportingLines = 3, leadingIcon = KtmIcons.Star,
         )
         // RP4: Delete is the last row of the list, in the danger colour.
+        ListDivider(Modifier.fullBleed())
         ListRow(
             title = stringResource(R.string.edit_ride_delete), leadingIcon = KtmIcons.Delete, onClick = actions.onDelete, destructive = true,
-            modifier = Modifier.padding(bottom = KtmSpacing.lg),
+            modifier = Modifier.fullBleed().padding(bottom = KtmSpacing.lg),
         )
     }
 }

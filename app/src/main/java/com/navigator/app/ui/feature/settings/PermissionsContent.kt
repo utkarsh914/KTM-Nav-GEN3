@@ -9,6 +9,7 @@ import com.navigator.app.R
 import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.InfoBanner
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.feature.permissions.PermissionRow
 import com.navigator.app.ui.theme.KtmSpacing
 
@@ -28,6 +29,9 @@ fun PermissionsContent(ui: PermissionsUi, actions: PermissionsActions, modifier:
             ui.optionalMissing.isNotEmpty() -> InfoBanner(consequences, bannerModifier, title = title, tone = BannerTone.Warn)
             else -> InfoBanner(stringResource(R.string.perm_banner_ok), bannerModifier, tone = BannerTone.Info)
         }
-        ui.items.forEach { PermissionRow(it, onFix = { actions.onFix(it.id) }) }
+        ui.items.forEachIndexed { i, it ->
+            if (i > 0) ListDivider()
+            PermissionRow(it, onFix = { actions.onFix(it.id) })
+        }
     }
 }

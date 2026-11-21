@@ -20,6 +20,7 @@ import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSwitchRow
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.RowChevron
 import com.navigator.app.ui.components.SectionHeader
@@ -72,6 +73,7 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             stringResource(R.string.bikedash_latin), ui.latinOnly, actions.onLatinOnly,
             supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3, leadingIcon = KtmIcons.TextSize,
         )
+        ListDivider()
         KtmSwitchRow(
             stringResource(R.string.bikedash_marquee), ui.marquee, actions.onMarquee,
             supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2, leadingIcon = KtmIcons.Dash,
@@ -82,12 +84,14 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             stringResource(R.string.bikedash_show), ui.showOnDash, actions.onShowOnDash,
             supporting = stringResource(R.string.bikedash_show_hint), supportingLines = 2, leadingIcon = KtmIcons.Message,
         )
+        ListDivider()
         ListRow(
             title = stringResource(R.string.bikedash_apps),
             supporting = if (ui.appCount == 0) stringResource(R.string.bikedash_apps_none)
             else pluralStringResource(R.plurals.bikedash_apps_count, ui.appCount, ui.appCount),
             leadingIcon = KtmIcons.List, onClick = actions.onOpenApps, trailing = { RowChevron() },
         )
+        ListDivider()
         ListRow(
             title = stringResource(R.string.bikedash_access),
             // Granted: the badge says it, once.

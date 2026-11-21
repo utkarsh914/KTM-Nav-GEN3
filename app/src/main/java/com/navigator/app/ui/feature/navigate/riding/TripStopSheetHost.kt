@@ -34,6 +34,8 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
     // Read when the sheet opens: stops left to add as it was then (an add closes the sheet).
     val left = remember { TripStopRules.left(trip.stopsAhead()?.size, trip.state.value.allStops.size) }
 
+    val destination = remember { trip.state.value.dest?.label }
+
     // A second tap before the sheet closes must not re-plan again (and replace "Stop added" with "Still updating").
     var adding by remember { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
@@ -47,7 +49,7 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
     }
 
     TripStopSheet(
-        ui = TripStopUi(left, online, category, loading, failed, results, trip.state.value.dest?.label),
+        ui = TripStopUi(left, online, category, loading, failed, results, destination),
         actions = TripStopActions(
             onCategory = { category = if (category == it) null else it },
             onAdd = { r ->

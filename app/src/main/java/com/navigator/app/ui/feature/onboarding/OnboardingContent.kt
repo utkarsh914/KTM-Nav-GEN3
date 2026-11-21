@@ -59,6 +59,7 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmRadio
 import com.navigator.app.ui.components.KtmStepHeader
 import com.navigator.app.ui.components.KtmTextField
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.permissions.PermissionRow
@@ -325,6 +326,9 @@ private fun Permissions(ui: OnboardingUi, actions: OnboardingActions) {
             }
         },
     ) {
-        ui.permissions.items.forEach { PermissionRow(it, onFix = { actions.onFix(it.id) }) }
+        ui.permissions.items.forEachIndexed { i, it ->
+            if (i > 0) ListDivider()
+            PermissionRow(it, onFix = { actions.onFix(it.id) })
+        }
     }
 }
