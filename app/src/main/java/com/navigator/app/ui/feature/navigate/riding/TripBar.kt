@@ -110,7 +110,7 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
                         Text(timeLeftText(it), style = MaterialTheme.typography.headlineMedium, color = r.onSurface, maxLines = 1)
                     }
                     // Too narrow (a small phone, a large font): the arrival is what the rider needs, so the distance goes first.
-                    var arrivalOnly by remember(ui.distance, ui.arrival) { mutableStateOf(false) }
+                    var arrivalOnly by remember(ui.arrival) { mutableStateOf(false) }
                     val line = listOfNotNull(ui.distance.takeUnless { arrivalOnly && ui.arrival != null }, ui.arrival).joinToString(" · ")
                     if (line.isNotEmpty()) Text(
                         line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,

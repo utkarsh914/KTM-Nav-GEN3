@@ -93,6 +93,12 @@ class RidingUiTest {
         rule.onNodeWithText("Starting…").assertIsDisplayed()
     }
 
+    @Test fun theStartingCardNamesTheRoute() {
+        riding { ManeuverCard(ManeuverUi.Starting, destination = "Toit") }
+        rule.onNodeWithText("Starting navigation").assertIsDisplayed()
+        rule.onNodeWithText("Getting your route to Toit").assertIsDisplayed()
+    }
+
     @Test fun reroutingKeepsTheLastInstructionWithItsPrefix() {
         riding { ManeuverCard(active(rerouting = true)) }
         rule.onNodeWithText("Last: Turn right onto").assertIsDisplayed()

@@ -112,6 +112,7 @@ class MirrorContentTest {
         show(MirrorStatus.Live(turn, Freshness.Seconds(45), paused = false, stale = true))
         rule.onNodeWithText("Google Maps went quiet").assertIsDisplayed()
         rule.onNodeWithText("No update · 45 s").assertIsDisplayed()
+        rule.onNodeWithText("On your dash now").assertIsDisplayed()
         rule.onNodeWithText("400 m").assertIsDisplayed() // the last turn stays
     }
 

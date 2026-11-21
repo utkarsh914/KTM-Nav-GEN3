@@ -125,19 +125,12 @@ fun MirrorContent(
                 is MirrorStatus.Setup -> Checklist(status.rows, actions)
                 is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = false)
                 is MirrorStatus.Live -> {
+                    DashPreview(
+                        turnPreview(status.turn, time),
+                        Modifier.alpha(if (status.paused) PAUSED_ALPHA else 1f),
+                    )
+                    // Under the preview (MR5): the preview keeps its place when the banner appears.
                     if (status.stale) StaleBanner(status.freshness)
-                    Box {
-                        DashPreview(
-                            turnPreview(status.turn, time),
-                            Modifier.alpha(if (status.paused) PAUSED_ALPHA else 1f),
-                        )
-                        if (status.paused) {
-                            KtmBadge(
-                                stringResource(R.string.mirror_paused_badge), Modifier.align(Alignment.TopEnd).padding(KtmSpacing.md),
-                                tone = BadgeTone.Warn,
-                            )
-                        }
-                    }
                 }
             }
             Controls(status, actions, landscape = false, recording)
@@ -155,25 +148,30 @@ private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorAction
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             if (dot) BikeStatusDot(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
             else BikeStatusPill(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
-            KtmBadge(stringResource(R.string.mirror_title), Modifier.semantics { heading() })
+            KtmBadge(stringResource(R.string.mirror_title))
         }
         when (status) {
             is MirrorStatus.Setup -> Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                Text(stringResource(R.string.mirror_setup_title), style = MaterialTheme.typography.headlineLarge, color = c.fg)
+                Text(stringResource(R.string.mirror_setup_title), style = MaterialTheme.typography.headlineLarge, color = c.fg, modifier = Modifier.semantics { heading() })
                 Text(stringResource(R.string.mirror_setup_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
             }
             // MR3/MR5: what the dash shows, and how fresh it is (amber with the gap when it has gone quiet).
             is MirrorStatus.Live -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 Text(
                     stringResource(R.string.mirror_on_dash), style = MaterialTheme.typography.labelMedium, color = c.fg2,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
-                // Not a live region: it changes every second. The stale banner announces itself instead.
-                Text(
-                    freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall,
-                    color = if (status.stale) c.warn else c.fg2,
-                )
+                if (status.paused) {
+                    // MR4: paused says so here; there is nothing live to report.
+                    KtmBadge(stringResource(R.string.mirror_paused_badge), tone = BadgeTone.Warn)
+                } else {
+                    Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
+                    // Not a live region: it changes every second. The stale banner announces itself instead.
+                    Text(
+                        freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall,
+                        color = if (status.stale) c.warn else c.fg2,
+                    )
+                }
             }
             is MirrorStatus.Ready -> {}
         }
@@ -181,7 +179,7 @@ private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorAction
 }
 
 @Composable
-private fun freshnessLabel(f: Freshness, stale: Boolean): String = if (stale) stringResource(R.string.mirror_stale_label, ageText(f)) else when (f) {
+private fun freshnessLabel(f: Freshness, stale: Boolean): String = if (stale && f != Freshness.JustNow) stringResource(R.string.mirror_stale_label, ageText(f)) else when (f) {
     Freshness.JustNow -> stringResource(R.string.mirror_live_now)
     is Freshness.Seconds -> stringResource(R.string.mirror_live_seconds, f.n)
     is Freshness.Minutes -> pluralStringResource(R.plurals.mirror_live_minutes, f.n, f.n)
@@ -344,6 +342,5 @@ private fun BigTurn(live: MirrorStatus.Live) {
         t.road?.let { Text(it, style = MaterialTheme.typography.headlineMedium, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis) }
         val line = listOfNotNull(t.eta, t.remaining).joinToString(" · ")
         if (line.isNotEmpty()) Text(line, style = MaterialTheme.typography.bodyLarge, color = c.fg2, textAlign = TextAlign.Start)
-        if (live.paused) KtmBadge(stringResource(R.string.mirror_paused_badge), tone = BadgeTone.Warn)
     }
 }
