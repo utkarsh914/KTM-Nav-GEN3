@@ -136,6 +136,12 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The marker column of the stop list (PL3), and the numbered badge in it. */
+    val stopMarker = 28.dp
+    val timelineStroke = 2.dp
+    val pinRing = 2.dp
+    /** Save beside Directions on the place sheet (PL1). */
+    val placeSaveWidth = 116.dp
     /** The start-failed sheet scrolls beyond this (a short landscape screen, a large font). */
     val startFailedMax = 360.dp
     val laneRecommendedMark = 3.dp

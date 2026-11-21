@@ -1,11 +1,18 @@
 package com.navigator.app.ui.feature.navigate.plan
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -14,6 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -33,14 +42,21 @@ fun StopCandidateSheet(
 ) {
     val c = KtmTheme.colors
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+            Box(
+                Modifier.size(KtmLayout.stopMarker).background(KtmTheme.accent.fill, KtmShapes.Pill),
+                contentAlignment = Alignment.Center,
+            ) { Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.onFill) }
+            Text(
+                name, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+        }
         Text(
-            name, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() },
+            stringResource(R.string.stop_goes_in_before, destination), style = MaterialTheme.typography.bodyMedium,
+            color = c.fg2,
         )
-        Text(
-            stringResource(R.string.stop_goes_before, number, destination), style = MaterialTheme.typography.bodyMedium,
-            color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+        Spacer(Modifier.height(KtmSpacing.sm))
         KtmButton(
             stringResource(if (canAdd) R.string.stop_add_here else R.string.route_stop_limit), onAdd,
             Modifier.fillMaxWidth(), enabled = canAdd,

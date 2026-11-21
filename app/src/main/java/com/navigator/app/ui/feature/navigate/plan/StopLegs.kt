@@ -17,7 +17,7 @@ object StopLegs {
     }
 
     /**
-     * One line per leg ("arrive 14:32 · 12 min · 8.4 km"), the arrival being cumulative from
+     * One line per leg ("12 min · 8.4 km · arrive 14:32"), the arrival being cumulative from
      * [nowMs]. Empty when the route has no per-leg breakdown for exactly [legCount] legs (a
      * single-destination route, or a stale route that doesn't match the current stops).
      */
@@ -32,8 +32,8 @@ object StopLegs {
         return legs.map { leg ->
             elapsed += leg.durationSeconds * 1000L
             val arrive = ClockFormat.local(nowMs + elapsed, zone)
-            "arrive $arrive \u00b7 " + duration(leg.durationSeconds) + " \u00b7 " +
-                DistanceFormatter.format(leg.distanceMeters, DistanceUnits.METRIC)
+            duration(leg.durationSeconds) + " \u00b7 " + DistanceFormatter.format(leg.distanceMeters, DistanceUnits.METRIC) +
+                " \u00b7 arrive $arrive"
         }
     }
 

@@ -2,6 +2,8 @@ package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RouteLeg
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneOffset
 
@@ -17,13 +19,22 @@ class StopLegsTest {
         assertEquals("2 h 00 min", StopLegs.duration(7_200))
     }
 
+    @Test fun theSummaryHasTimeDistanceArrivalAndTrafficOnlyWhenThereIsSome() {
+        val slow = RouteOptionUi("20 min", "6.8 km", RouteBadge.Only, 1, DelayTone.Minor, 2)
+        val clear = slow.copy(delayTone = DelayTone.OnTime, delayMinutes = 0)
+        val withTraffic = RouteSheetMapper.summary(slow, 1_200, now)
+        assertTrue(withTraffic, withTraffic.startsWith("20 min \u00b7 6.8 km \u00b7 arrive "))
+        assertTrue(withTraffic, withTraffic.endsWith(" \u00b7 +2 min traffic"))
+        assertFalse(RouteSheetMapper.summary(clear, 1_200, now).contains("traffic"))
+    }
+
     @Test fun legLinesAccumulateArrivalTimes() {
         val legs = listOf(RouteLeg(600, 5_000, emptyList()), RouteLeg(1_200, 12_400, emptyList()), RouteLeg(300, 800, emptyList()))
         val lines = StopLegs.lines(legs, 3, now, utc)
         assertEquals(3, lines.size)
-        assertEquals("arrive 22:23 \u00b7 10 min \u00b7 5.0 km", lines[0])
-        assertEquals("arrive 22:43 \u00b7 20 min \u00b7 12 km", lines[1])
-        assertEquals("arrive 22:48 \u00b7 5 min \u00b7 800 m", lines[2])
+        assertEquals("10 min \u00b7 5.0 km \u00b7 arrive 22:23", lines[0])
+        assertEquals("20 min \u00b7 12 km \u00b7 arrive 22:43", lines[1])
+        assertEquals("5 min \u00b7 800 m \u00b7 arrive 22:48", lines[2])
     }
 
     @Test fun noLinesWhenLegsDontMatchTheStops() {

@@ -40,8 +40,8 @@ fun PickStopOverlay(
     }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
-        title = stringResource(R.string.stop_pick_title),
-        subtitle = stringResource(R.string.stop_goes_before, number, destination),
+        hint = stringResource(R.string.stop_pick_title), title = fallback, stopNumber = number,
+        subtitle = stringResource(R.string.stop_goes_in_before, destination),
         useLabel = stringResource(if (canAdd) R.string.stop_add_here else R.string.route_stop_limit),
         useEnabled = canAdd,
     )

@@ -73,6 +73,7 @@ internal class PlanStage(
     val onSelectRoute: (Int) -> Unit,
     val onAddStop: () -> Unit,
     val onStart: (SavedPlace) -> Unit,
+    val onRetryRoutes: () -> Unit,
 )
 
 /** CONFIRM: the place card, with a way back to a running trip and the compass. */
@@ -88,6 +89,11 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     }
     val sel = plan.selected
     if (sel != null) {
+        // PL1: Back is a map control above the sheet, the way to the search or the map it came from.
+        MapControlButton(
+            KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
+            Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
+        )
         val removedMessage = resources.getString(R.string.place_removed)
         val undoLabel = resources.getString(R.string.common_undo)
         val saved = PlaceSaving.isSaved(plan.savedPlaces, sel)
@@ -99,7 +105,6 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
                     saved = saved, tripRunning = plan.tripRunning(),
                 ),
                 actions = PlaceSheetActions(
-                    onBack = plan.onBack,
                     onClose = plan.onClose,
                     onToggleSave = {
                         plan.scope.launch(Dispatchers.IO) {
@@ -172,7 +177,6 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                     state = RouteSheetMapper.state(dest, flow.stops, plan.routePreview, System.currentTimeMillis()),
                     actions = RouteSheetActions(
                         onBack = plan.onBack,
-                        onClose = plan.onClose,
                         onSelect = plan.onSelectRoute,
                         onAddStop = plan.onAddStop,
                         onRemoveStop = { index ->
@@ -185,6 +189,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                             }
                         },
                         onMoveStop = { index, delta -> flow.stops = StopList.move(flow.stops, index, delta) },
+                        onRetry = plan.onRetryRoutes,
                         onStart = {
                             // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
                             if (ReplacePolicy.decide(plan.tripRunning()) == ReplaceDecision.Ask) {

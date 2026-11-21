@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate.plan
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -52,11 +55,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import com.navigator.app.R
 import com.navigator.app.ui.components.BadgeTone
+import com.navigator.app.ui.components.BannerTone
+import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmRadio
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.theme.KtmIcons
@@ -68,12 +74,12 @@ import com.navigator.app.ui.theme.rememberHaptics
 
 class RouteSheetActions(
     val onBack: () -> Unit,
-    val onClose: () -> Unit,
     val onSelect: (Int) -> Unit,
     val onAddStop: () -> Unit,
     val onRemoveStop: (Int) -> Unit,
     val onMoveStop: (index: Int, delta: Int) -> Unit,
     val onStart: () -> Unit,
+    val onRetry: () -> Unit,
 )
 
 /**
@@ -87,40 +93,63 @@ fun RouteSheet(state: RouteSheetState, actions: RouteSheetActions, modifier: Mod
     val c = KtmTheme.colors
     val fill = LocalFillPanel.current
     Column(modifier.fillMaxWidth().then(if (fill) Modifier.fillMaxHeight() else Modifier)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+        ) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
-            Column(Modifier.weight(1f).padding(horizontal = KtmSpacing.xs)) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     state.destination, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
                 )
-                if (state.stops.isNotEmpty() && state.summary != null) {
+                val withStops = state.stops.isNotEmpty()
+                val sub = if (withStops) state.summary else stringResource(R.string.route_from_location)
+                if (sub != null) {
                     Text(
-                        state.summary, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = if (withStops) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier,
                     )
                 }
             }
-            KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), actions.onClose)
-        }
-        Column(
-            Modifier.weight(1f, fill = fill).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
-        ) {
-            StopsList(state, actions)
-            when {
-                state.loading -> if (state.stops.isEmpty()) RouteSkeleton()
-                state.options.isNotEmpty() && state.stops.isEmpty() -> RouteOptions(state, actions.onSelect)
-                state.failed -> Text(
-                    stringResource(R.string.route_failed), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                    modifier = Modifier.padding(horizontal = KtmSpacing.sm),
+            // PL2: a labelled tonal button; with stops, adding one is a row in the list (PL3).
+            if (state.stops.isEmpty()) {
+                KtmButton(
+                    stringResource(R.string.route_add_stop_button), actions.onAddStop, style = ButtonStyle.Tonal,
+                    size = ButtonSize.Small, icon = KtmIcons.Add,
                 )
             }
         }
-        Spacer(Modifier.height(KtmSpacing.md))
+        Column(
+            Modifier.weight(1f, fill = fill).verticalScroll(rememberScrollState()).padding(top = KtmSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+        ) {
+            if (state.stops.isNotEmpty()) StopsList(state, actions)
+            when {
+                state.loading -> if (state.stops.isEmpty()) RouteSkeleton()
+                state.failed -> RouteFailed(actions.onRetry)
+                state.options.isNotEmpty() && state.stops.isEmpty() -> RouteOptions(state, actions.onSelect)
+            }
+        }
+        Spacer(Modifier.height(KtmSpacing.lg))
         KtmButton(
             stringResource(if (state.failed && !state.loading) R.string.route_start_anyway else R.string.route_start),
             actions.onStart, Modifier.fillMaxWidth(), size = ButtonSize.Riding, icon = KtmIcons.Navigation,
+        )
+    }
+}
+
+/** PL4: what went wrong and what still works, with a way to try again. */
+@Composable
+private fun RouteFailed(onRetry: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md), horizontalAlignment = Alignment.Start) {
+        InfoBanner(
+            message = stringResource(R.string.route_failed), title = stringResource(R.string.route_failed_title),
+            tone = BannerTone.Bad,
+        )
+        KtmButton(
+            stringResource(R.string.route_try_again), onRetry, style = ButtonStyle.Outline, size = ButtonSize.Small,
+            icon = KtmIcons.Refresh,
         )
     }
 }
@@ -136,11 +165,23 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
         if (lit != null) { kotlinx.coroutines.delay(LIT_MS); lit = null }
     }
     val moving = RouteSheetActions(
-        actions.onBack, actions.onClose, actions.onSelect, actions.onAddStop, actions.onRemoveStop,
-        { index, delta -> lit = index + delta; actions.onMoveStop(index, delta) }, actions.onStart,
+        actions.onBack, actions.onSelect, actions.onAddStop, actions.onRemoveStop,
+        { index, delta -> lit = index + delta; actions.onMoveStop(index, delta) }, actions.onStart, actions.onRetry,
     )
-    Column {
-        StopLine(stringResource(R.string.route_your_location), c.fg2, null, null)
+    val line = c.line2
+    Column(
+        Modifier.drawBehind {
+            // The timeline joins the markers: from the middle of the first to the middle of the last.
+            val x = KtmLayout.stopMarker.toPx() / 2
+            val inset = KtmLayout.row1.toPx() / 2
+            drawLine(line, Offset(x, inset), Offset(x, size.height - inset), strokeWidth = KtmLayout.timelineStroke.toPx())
+        },
+    ) {
+        StopLine(stringResource(R.string.route_your_location), null, MaterialTheme.typography.bodyMedium, c.fg2) {
+            Box(Modifier.size(KtmSpacing.xl).background(c.surf, KtmShapes.Pill), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(KtmSpacing.md).background(c.fg3, KtmShapes.Pill))
+            }
+        }
         state.stops.forEachIndexed { i, label ->
             androidx.compose.runtime.key(i) {
                 StopSlot(
@@ -149,39 +190,71 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
                 )
             }
         }
-        StopLine(state.destination, KtmTheme.accent.text, KtmIcons.Flag, state.legLines.getOrNull(state.stops.size))
-    }
-    if (state.stops.isEmpty()) {
-        // PL2: a labelled tonal button, so adding a stop is findable before any stop exists.
-        KtmButton(
-            stringResource(R.string.route_add_stop_button), actions.onAddStop, style = ButtonStyle.Tonal, icon = KtmIcons.Add,
-        )
-    } else {
-        ListRow(
-            title = if (state.canAddStop) pluralStringResource(R.plurals.route_add_stop_row, state.stopsLeft, state.stopsLeft)
-            else stringResource(R.string.route_stop_limit),
-            leadingIcon = KtmIcons.PinPlus,
-            onClick = if (state.canAddStop) actions.onAddStop else null,
-        )
+        AddStopRow(state, actions.onAddStop)
+        StopLine(state.destination, state.legLines.getOrNull(state.stops.size), MaterialTheme.typography.titleMedium, c.fg) {
+            Icon(KtmIcons.Flag, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmSpacing.xl))
+        }
     }
 }
 
+/** PL3: where a new stop goes, on the same rhythm as the stops. States the limit up front. */
 @Composable
-private fun StopLine(text: String, color: Color, icon: androidx.compose.ui.graphics.vector.ImageVector?, legLine: String?) {
-    Row(Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(KtmLayout.targetRest / 2), contentAlignment = Alignment.Center) {
-            if (icon != null) Icon(icon, null, tint = color, modifier = Modifier.size(KtmSpacing.xl))
-            else Box(Modifier.size(KtmSpacing.md).background(color, KtmShapes.Pill))
+private fun AddStopRow(state: RouteSheetState, onAdd: () -> Unit) {
+    val a = KtmTheme.accent
+    val c = KtmTheme.colors
+    val enabled = state.canAddStop
+    val tint = if (enabled) a.text else c.fg3
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = KtmLayout.row1).clip(KtmShapes.Control)
+            .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onAdd) else Modifier),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        Box(
+            Modifier.size(KtmLayout.stopMarker).background(c.surf, KtmShapes.Pill).border(KtmLayout.outline, tint, KtmShapes.Pill),
+            contentAlignment = Alignment.Center,
+        ) { Icon(KtmIcons.Add, null, tint = tint, modifier = Modifier.size(KtmSpacing.lg)) }
+        Text(
+            if (enabled) stringResource(R.string.route_add_stop_row) else stringResource(R.string.route_stop_limit),
+            style = MaterialTheme.typography.titleMedium, color = tint, modifier = Modifier.weight(1f),
+        )
+        if (enabled) {
+            Text(
+                pluralStringResource(R.plurals.route_stops_left, state.stopsLeft, state.stopsLeft),
+                style = MaterialTheme.typography.bodySmall, color = c.fg2,
+            )
         }
-        NameAndLeg(text, color, legLine, Modifier.weight(1f))
+    }
+}
+
+/** One fixed point of the trip: its marker (28 dp column), its name and, under it, the leg that ends there. */
+@Composable
+private fun StopLine(
+    text: String,
+    legLine: String?,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    marker: @Composable () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = KtmLayout.row1), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        Box(Modifier.size(KtmLayout.stopMarker), contentAlignment = Alignment.Center) { marker() }
+        NameAndLeg(text, style, color, legLine, Modifier.weight(1f))
     }
 }
 
 /** The place's name with, under it, the leg that ends there: arrival, time and distance from the previous point. */
 @Composable
-private fun NameAndLeg(name: String, color: Color, legLine: String?, modifier: Modifier = Modifier) {
+private fun NameAndLeg(
+    name: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    legLine: String?,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier) {
-        Text(name, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(name, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (legLine != null) {
             Text(
                 legLine, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
@@ -192,6 +265,15 @@ private fun NameAndLeg(name: String, color: Color, legLine: String?, modifier: M
 }
 
 private const val LIT_MS = 900L
+
+/** The stop's number as on the map: a white disc with a dark ring and number, whatever the theme. */
+@Composable
+internal fun StopNumberBadge(number: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier.background(Color.White, KtmShapes.Pill).border(KtmLayout.pinRing, Color.Black, KtmShapes.Pill),
+        contentAlignment = Alignment.Center,
+    ) { Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = Color.Black) }
+}
 
 /** One editable stop (row + leg line) as a draggable unit; the grip's drag distance becomes whole-row moves. */
 @Composable
@@ -232,11 +314,12 @@ private fun StopSlot(
                 },
             ),
     ) {
-        Row(Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(KtmLayout.targetRest / 2), contentAlignment = Alignment.Center) {
-                Text(number.toString(), style = MaterialTheme.typography.labelMedium, color = KtmTheme.accent.text)
-            }
-            NameAndLeg(label, c.fg, legLine, Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = KtmLayout.row1), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+        ) {
+            StopNumberBadge(number, Modifier.size(KtmLayout.stopMarker))
+            NameAndLeg(label, MaterialTheme.typography.titleMedium, c.fg, legLine, Modifier.weight(1f))
             if (count > 1) {
                 Box {
                     Box(
@@ -306,25 +389,30 @@ private fun RouteOptionRow(option: RouteOptionUi, selected: Boolean, onClick: ()
         DelayTone.Heavy -> c.bad
     }
     val description = stringResource(R.string.route_option_description, badge, option.time, option.distance, delay)
-    Column(
+    // PL2: a radio, the time with "Fastest" at the end of the line, then distance · road · delay in words and colour.
+    Row(
         Modifier.fillMaxWidth().heightIn(min = KtmLayout.row2).clip(KtmShapes.Control)
-            .background(if (selected) a.container else Color.Transparent, KtmShapes.Control)
+            .background(if (selected) a.container else c.surf2, KtmShapes.Control)
+            .then(if (selected) Modifier.border(KtmLayout.outline, a.fill, KtmShapes.Control) else Modifier)
             .selectable(selected = selected, role = Role.RadioButton) { haptics.tap(); onClick() }
             .semantics(mergeDescendants = true) { contentDescription = description }
-            .padding(horizontal = KtmSpacing.md, vertical = KtmSpacing.sm),
+            .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            Text(
-                option.time, style = MaterialTheme.typography.headlineSmall,
-                color = if (selected) a.onContainer else c.fg,
-            )
-            if (option.badge == RouteBadge.Fastest) KtmBadge(badge, tone = BadgeTone.Accent)
-            else if (option.badge == RouteBadge.Alternative) KtmBadge(badge)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
-            Text(option.distance, style = MaterialTheme.typography.bodySmall, color = c.fg2)
-            // Words as well as colour: the delay reads without telling the colours apart.
-            Text(delay, style = MaterialTheme.typography.labelMedium, color = delayColor)
+        KtmRadio(selected)
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                Text(
+                    option.time, style = MaterialTheme.typography.headlineSmall, color = if (selected) a.onContainer else c.fg,
+                    modifier = Modifier.weight(1f),
+                )
+                if (option.badge == RouteBadge.Fastest) KtmBadge(badge, tone = BadgeTone.Accent)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                Text(option.distance, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1)
+                // Words as well as colour: the delay reads without telling the colours apart.
+                Text(delay, style = MaterialTheme.typography.labelMedium, color = delayColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

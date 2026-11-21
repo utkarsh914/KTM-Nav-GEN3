@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -36,7 +38,6 @@ data class PlaceSheetState(
 )
 
 class PlaceSheetActions(
-    val onBack: () -> Unit,
     val onClose: () -> Unit,
     val onToggleSave: () -> Unit,
     val onDirections: () -> Unit,
@@ -44,54 +45,54 @@ class PlaceSheetActions(
 )
 
 /**
- * PL1: the chosen place. Back returns to the search or the map, ✕ clears to the map, so there is always a
- * way out. Save is a labelled button that reads "Saved" once saved; tapping it again removes the place.
- * Stateless: the panel it sits in is [PlanPanel].
+ * PL1: the chosen place. ✕ clears to the map (Back, a map button above the sheet, returns to the search), so
+ * there is always a way out. Directions and Save sit side by side; Save reads "Saved" once saved and tapping
+ * it again removes the place. Stateless: the panel it sits in is [PlanPanel].
  */
 @Composable
 fun PlaceSheet(state: PlaceSheetState, actions: PlaceSheetActions, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     Column(modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
-            Text(
-                state.title, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = KtmSpacing.xs).semantics { heading() },
-            )
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            Column(Modifier.weight(1f).padding(start = KtmSpacing.sm, top = KtmSpacing.xs)) {
+                Text(
+                    state.title, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
+                )
+                if (state.address != null) {
+                    Text(
+                        state.address, style = MaterialTheme.typography.bodyMedium, color = c.fg2, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (state.distance != null) {
+                    Text(
+                        stringResource(R.string.place_away, state.distance), style = MaterialTheme.typography.bodySmall,
+                        color = c.fg2, modifier = Modifier.padding(top = KtmSpacing.xs),
+                    )
+                }
+            }
             KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), actions.onClose)
         }
-        if (state.address != null) {
-            Text(
-                state.address, style = MaterialTheme.typography.bodyMedium, color = c.fg2, maxLines = 2,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = KtmSpacing.sm),
-            )
-        }
-        if (state.distance != null) {
-            Text(
-                stringResource(R.string.place_away, state.distance), style = MaterialTheme.typography.labelMedium,
-                color = KtmTheme.accent.text, modifier = Modifier.padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs),
-            )
-        }
         Spacer(Modifier.height(KtmSpacing.lg))
-        KtmButton(
-            stringResource(if (state.tripRunning) R.string.place_replace_trip else R.string.place_directions),
-            actions.onDirections, Modifier.fillMaxWidth(), icon = KtmIcons.Navigation,
-        )
-        Spacer(Modifier.height(KtmSpacing.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            KtmButton(
+                stringResource(if (state.tripRunning) R.string.place_replace_trip else R.string.place_directions),
+                actions.onDirections, Modifier.weight(1f), icon = KtmIcons.Navigation,
+            )
             val savedText = stringResource(R.string.place_saved_description)
             KtmButton(
                 stringResource(if (state.saved) R.string.place_saved else R.string.place_save), actions.onToggleSave,
-                Modifier.weight(1f).semantics { if (state.saved) stateDescription = savedText },
+                Modifier.width(KtmLayout.placeSaveWidth).semantics { if (state.saved) stateDescription = savedText },
                 style = ButtonStyle.Tonal, icon = if (state.saved) KtmIcons.BookmarkFilled else KtmIcons.Bookmark,
             )
-            if (state.tripRunning) {
-                KtmButton(
-                    stringResource(R.string.place_add_as_stop), actions.onAddAsStop, Modifier.weight(1f),
-                    style = ButtonStyle.Tonal, icon = KtmIcons.PinPlus,
-                )
-            }
+        }
+        if (state.tripRunning) {
+            Spacer(Modifier.height(KtmSpacing.sm))
+            KtmButton(
+                stringResource(R.string.place_add_as_stop), actions.onAddAsStop, Modifier.fillMaxWidth(),
+                style = ButtonStyle.Tonal, icon = KtmIcons.PinPlus,
+            )
         }
     }
 }

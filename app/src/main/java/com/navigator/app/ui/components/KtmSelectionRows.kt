@@ -62,8 +62,6 @@ fun KtmRadioRow(
     supportingLines: Int = if (supporting == null) 0 else 1,
     enabled: Boolean = true,
 ) {
-    val c = KtmTheme.colors
-    val a = KtmTheme.accent
     val haptics = rememberHaptics()
     ListRow(
         title = title,
@@ -73,13 +71,19 @@ fun KtmRadioRow(
             selected = selected, enabled = enabled, role = Role.RadioButton,
             onClick = { haptics.toggle(true); onSelect() },
         ),
-        trailing = {
-            RadioButton(
-                selected = selected, onClick = null, enabled = enabled,
-                colors = RadioButtonDefaults.colors(
-                    selectedColor = a.fill, unselectedColor = c.line2, disabledSelectedColor = c.surf3, disabledUnselectedColor = c.line,
-                ),
-            )
-        },
+        trailing = { KtmRadio(selected, enabled) },
+    )
+}
+
+/** The radio mark on its own, for a row that is selectable as a whole. */
+@Composable
+fun KtmRadio(selected: Boolean, enabled: Boolean = true) {
+    val c = KtmTheme.colors
+    val a = KtmTheme.accent
+    RadioButton(
+        selected = selected, onClick = null, enabled = enabled,
+        colors = RadioButtonDefaults.colors(
+            selectedColor = a.fill, unselectedColor = c.line2, disabledSelectedColor = c.surf3, disabledUnselectedColor = c.line,
+        ),
     )
 }

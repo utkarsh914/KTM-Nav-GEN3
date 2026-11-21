@@ -797,6 +797,7 @@ fun NavigateHost(
         onAskReplace = { replaceRequest = it }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
         onPickingStop = { pickingStop = it }, onStopCandidate = { stopCandidate = it },
         onSelectRoute = routeVm::select, onAddStop = { if (stage == NavStage.PREVIEW) openSearchForStop() }, onStart = { if (stage == NavStage.PREVIEW) startTo(it) },
+        onRetryRoutes = { selected?.let { routeVm.load(it, stops) } },
     )
 
     val motionSpecs = KtmTheme.motion
@@ -915,6 +916,7 @@ fun NavigateHost(
             val dialog: @Composable () -> Unit = {
                 ReplaceTripDialog(
                     destination = r.place.label,
+                    current = tripState.dest?.label,
                     riding = stage == NavStage.NAVIGATING,
                     onReplace = {
                         replaceRequest = null

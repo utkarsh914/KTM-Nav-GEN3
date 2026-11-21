@@ -2,8 +2,10 @@ package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RoutePreview
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
+import java.time.ZoneId
 
 /** One route in the list (PL2): its time, distance, which it is and how much traffic it carries. */
 data class RouteOptionUi(
@@ -24,7 +26,7 @@ data class RouteSheetState(
     val failed: Boolean,
     /** Per-leg lines ("arrive 14:32 · 12 min · 8.4 km"), one for each of origin→stop…→destination; empty when unknown. */
     val legLines: List<String>,
-    /** "1 h 05 min · 42 km" for the selected route; shown in the header when stops replace the alternatives. */
+    /** "1 h 05 min · 42 km · arrive 6:36 pm" for the selected route; shown in the header when stops replace the alternatives. */
     val summary: String?,
 ) {
     val canAddStop: Boolean get() = stops.size < StopList.MAX
@@ -61,6 +63,14 @@ object RouteSheetMapper {
         }
     }
 
+    /** "20 min · 6.8 km · arrive 6:36 pm · +2 min traffic" (PL3); the traffic part only when there is some. */
+    fun summary(o: RouteOptionUi, durationSeconds: Int, nowMs: Long): String = buildList {
+        add(o.time)
+        add(o.distance)
+        add("arrive " + ClockFormat.local(nowMs + durationSeconds * 1000L, ZoneId.systemDefault()))
+        if (o.delayTone != DelayTone.OnTime) add("+${o.delayMinutes} min traffic")
+    }.joinToString(" \u00b7 ")
+
     fun state(
         destination: SavedPlace,
         stops: List<SavedPlace>,
@@ -81,7 +91,7 @@ object RouteSheetMapper {
             loading = preview.loading,
             failed = preview.failed,
             legLines = legLines,
-            summary = selected?.let { options.getOrNull(preview.selected)?.let { o -> "${o.time} · ${o.distance}" } },
+            summary = selected?.let { r -> options.getOrNull(preview.selected)?.let { o -> summary(o, r.durationSeconds, nowMs) } },
         )
     }
 }

@@ -12,8 +12,9 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmDialog
 
 /**
- * DL3: a trip is running and another is being started. Keeping the current one is the safe choice (back and
- * outside taps do it); "Add as a stop instead" turns the new place into a stop of the running trip.
+ * DL3: a trip is running and another is being started. Keeping the current one is the safe choice (first, and
+ * what Back and outside taps do); "Add as a stop instead" turns the new place into a stop of the running trip.
+ * [current] names the running trip's destination, when known.
  */
 @Composable
 fun ReplaceTripDialog(
@@ -21,19 +22,23 @@ fun ReplaceTripDialog(
     onReplace: () -> Unit,
     onKeep: () -> Unit,
     onAddAsStop: () -> Unit,
+    current: String? = null,
     riding: Boolean = false,
 ) {
     KtmDialog(
         title = stringResource(R.string.replace_title),
-        message = if (destination != null) stringResource(R.string.replace_message, destination) else stringResource(R.string.replace_message_generic),
+        message = if (current != null && destination != null) stringResource(R.string.replace_message, current, destination)
+        else stringResource(R.string.replace_message_generic),
         onDismiss = onKeep,
-        confirm = DialogAction(stringResource(R.string.replace_confirm), onReplace, ButtonStyle.Danger),
+        confirm = DialogAction(stringResource(R.string.replace_confirm), onReplace, ButtonStyle.Primary),
         dismiss = DialogAction(stringResource(R.string.replace_keep), onKeep, ButtonStyle.Neutral),
         riding = riding,
-    ) {
-        KtmButton(
-            stringResource(R.string.replace_add_stop), onAddAsStop, Modifier.fillMaxWidth(),
-            style = ButtonStyle.Outline, size = if (riding) ButtonSize.Riding else ButtonSize.Rest,
-        )
-    }
+        stacked = true,
+        footer = {
+            KtmButton(
+                stringResource(R.string.replace_add_stop), onAddAsStop, Modifier.fillMaxWidth(),
+                style = ButtonStyle.Text, size = ButtonSize.Small,
+            )
+        },
+    )
 }

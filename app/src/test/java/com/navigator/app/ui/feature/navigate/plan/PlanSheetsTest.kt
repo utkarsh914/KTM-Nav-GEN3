@@ -3,11 +3,13 @@ package com.navigator.app.ui.feature.navigate.plan
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.hasText
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,21 +32,24 @@ class PlanSheetsTest {
     private val log = mutableListOf<String>()
 
     private fun placeActions() = PlaceSheetActions(
-        onBack = { log += "back" }, onClose = { log += "close" }, onToggleSave = { log += "save" },
+        onClose = { log += "close" }, onToggleSave = { log += "save" },
         onDirections = { log += "directions" }, onAddAsStop = { log += "stop" },
     )
 
     private fun place(saved: Boolean = false, trip: Boolean = false) =
         PlaceSheetState("Toit Brewpub", "Indiranagar", "3.2 km", saved, trip)
 
-    @Test fun thePlaceSheetAlwaysHasAWayBack() {
+    @Test fun thePlaceSheetClosesToTheMapOrGoesToDirectionsSideBySideWithSave() {
         rule.setContent { KtmTheme(darkTheme = true) { PlaceSheet(place(), placeActions()) } }
         rule.onNodeWithText("Toit Brewpub").assertIsDisplayed()
         rule.onNodeWithText("3.2 km away (straight line)").assertIsDisplayed()
-        rule.onNodeWithContentDescription("Back").performClick()
+        rule.onAllNodesWithContentDescription("Back").assertCountEquals(0) // PL1: Back is a map control above the sheet
         rule.onNodeWithContentDescription("Close").performClick()
         rule.onNodeWithText("Directions").performClick()
-        assertEquals(listOf("back", "close", "directions"), log)
+        assertEquals(listOf("close", "directions"), log)
+        val directions = rule.onNodeWithText("Directions").fetchSemanticsNode().boundsInRoot
+        val save = rule.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot
+        assertTrue("Directions and Save share a row", kotlin.math.abs(directions.center.y - save.center.y) < 2f)
     }
 
     @Test fun saveReadsSavedOnceSavedAndOffersNoAddAsStopWithoutATrip() {
@@ -66,9 +72,9 @@ class PlanSheetsTest {
         RouteOptionUi(time, "12 km", badge, alt, tone, delay)
 
     private fun routeActions() = RouteSheetActions(
-        onBack = { log += "back" }, onClose = { log += "close" }, onSelect = { log += "select$it" },
+        onBack = { log += "back" }, onSelect = { log += "select$it" },
         onAddStop = { log += "addStop" }, onRemoveStop = { log += "remove$it" }, onMoveStop = { i, d -> log += "move$i,$d" },
-        onStart = { log += "start" },
+        onStart = { log += "start" }, onRetry = { log += "retry" },
     )
 
     private fun routeState(
@@ -81,9 +87,9 @@ class PlanSheetsTest {
         rule.setContent { KtmTheme(darkTheme = true) { RouteSheet(routeState(), routeActions()) } }
         rule.onNodeWithText("30 min").assertIsDisplayed()
         rule.onNodeWithText("Fastest").assertIsDisplayed()
-        rule.onNodeWithText("Alternative 1").assertIsDisplayed()
-        rule.onNodeWithText("On time").assertIsDisplayed()
-        rule.onNodeWithText("+6 min").assertIsDisplayed()
+        rule.onAllNodesWithText("Alternative 1").assertCountEquals(0) // only the screen reader hears which alternative it is
+        rule.onNodeWithText("no delays").assertIsDisplayed()
+        rule.onNodeWithText("+6 min traffic").assertIsDisplayed()
     }
 
     @Test fun tappingARowSelectsItAndTheSelectedRowReadsSelected() {
@@ -91,20 +97,22 @@ class PlanSheetsTest {
         rule.setContent {
             KtmTheme(darkTheme = true) {
                 RouteSheet(routeState(selected = selected), RouteSheetActions(
-                    {}, {}, { selected = it }, {}, {}, { _, _ -> }, {},
+                    {}, { selected = it }, {}, {}, { _, _ -> }, {}, {},
                 ))
             }
         }
-        rule.onNode(androidx.compose.ui.test.hasContentDescription("Fastest, 30 min, 12 km, On time")).assertIsSelected()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Fastest, 30 min, 12 km, no delays")).assertIsSelected()
         rule.onNodeWithText("35 min").performClick()
         assertEquals(1, selected)
     }
 
     @Test fun startIsOfferedAndAFailureRelabelsItStartAnyway() {
         rule.setContent { KtmTheme(darkTheme = true) { RouteSheet(routeState(options = emptyList(), failed = true), routeActions()) } }
-        rule.onNodeWithText("Couldn't load a route preview. You can still start navigation.").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't load route options").assertIsDisplayed()
+        rule.onNodeWithText("You can still start. Google will pick the route.").assertIsDisplayed()
+        rule.onNodeWithText("Try again").performClick()
         rule.onNodeWithText("Start anyway").performClick()
-        assertEquals(listOf("start"), log)
+        assertEquals(listOf("retry", "start"), log)
     }
 
     @Test fun loadingShowsPlaceholdersInsteadOfRoutes() {
@@ -121,8 +129,9 @@ class PlanSheetsTest {
         assertEquals(listOf("addStop"), log)
         state = routeState(stops = listOf("Fuel", "Cafe"), options = listOf(option("40 min", RouteBadge.Only)))
         rule.waitForIdle()
-        rule.onNodeWithText("Add a stop · 2 left").assertIsDisplayed()
-        rule.onNodeWithText("Add a stop · 2 left").performClick()
+        rule.onNodeWithText("Add a stop").assertIsDisplayed()
+        rule.onNodeWithText("2 left").assertIsDisplayed()
+        rule.onNodeWithText("Add a stop").performClick()
         assertEquals(listOf("addStop", "addStop"), log)
         // With stops there is one route: no list of alternatives, the summary sits in the header.
         rule.onAllNodesWithText("Fastest").assertCountEquals(0)
@@ -146,15 +155,15 @@ class PlanSheetsTest {
                 RouteSheet(
                     routeState(
                         stops = listOf("Fuel", "Cafe"), options = listOf(option("40 min", RouteBadge.Only)),
-                        legLines = listOf("arrive 10:10 · 10 min · 5 km", "arrive 10:22 · 12 min · 6 km", "arrive 10:31 · 9 min · 4 km"),
+                        legLines = listOf("10 min · 5 km · arrive 10:10", "12 min · 6 km · arrive 10:22", "9 min · 4 km · arrive 10:31"),
                     ),
                     routeActions(),
                 )
             }
         }
         rule.onNodeWithText("Fuel").assertIsDisplayed()
-        rule.onNodeWithText("arrive 10:10 · 10 min · 5 km").assertIsDisplayed()
-        rule.onNodeWithText("arrive 10:31 · 9 min · 4 km").assertIsDisplayed()
+        rule.onNodeWithText("10 min · 5 km · arrive 10:10").assertIsDisplayed()
+        rule.onNodeWithText("9 min · 4 km · arrive 10:31").assertIsDisplayed()
         rule.onNodeWithContentDescription("Remove stop 2").performClick()
         assertEquals(listOf("remove1"), log)
         rule.onNodeWithContentDescription("Reorder stop 1").performClick()
@@ -167,14 +176,17 @@ class PlanSheetsTest {
         var shown by mutableStateOf(true)
         rule.setContent {
             KtmTheme(darkTheme = true) {
-                if (shown) ReplaceTripDialog("Toit", onReplace = { log += "replace" }, onKeep = { log += "keep"; shown = false }, onAddAsStop = { log += "stop" })
+                if (shown) ReplaceTripDialog("Toit", current = "Brewpub", onReplace = { log += "replace" }, onKeep = { log += "keep"; shown = false }, onAddAsStop = { log += "stop" })
             }
         }
-        rule.onNodeWithText("Replace current trip?").assertIsDisplayed()
-        rule.onNode(hasText("Your current navigation will stop and a new trip to Toit will start.")).assertIsDisplayed()
+        rule.onNodeWithText("Replace your trip?").assertIsDisplayed()
+        rule.onNode(hasText("You're riding to Brewpub. Start a new trip to Toit instead?")).assertIsDisplayed()
+        val keep = rule.onNodeWithText("Keep current trip").fetchSemanticsNode().boundsInRoot
+        val replace = rule.onNodeWithText("Replace trip").fetchSemanticsNode().boundsInRoot
+        assertTrue("the safe choice comes first", keep.top < replace.top)
         rule.onNodeWithText("Add as a stop instead").performClick()
-        rule.onNodeWithText("Replace").performClick()
-        rule.onNodeWithText("Keep current").performClick()
+        rule.onNodeWithText("Replace trip").performClick()
+        rule.onNodeWithText("Keep current trip").performClick()
         assertEquals(listOf("stop", "replace", "keep"), log)
     }
 
@@ -185,7 +197,8 @@ class PlanSheetsTest {
             }
         }
         rule.onNodeWithText("Indian Oil").assertIsDisplayed()
-        rule.onNodeWithText("Stop 2 · goes before Toit").assertIsDisplayed()
+        rule.onNodeWithText("2").assertIsDisplayed()
+        rule.onNodeWithText("Goes in before Toit. You can reorder it in the stop list.").assertIsDisplayed()
         rule.onNodeWithText("Add stop here").performClick()
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(listOf("add", "cancel"), log)

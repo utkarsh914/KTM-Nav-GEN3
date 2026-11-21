@@ -61,6 +61,10 @@ fun KtmDialog(
     message: String? = null,
     dismiss: DialogAction? = null,
     riding: Boolean = false,
+    /** Full-width 64 dp buttons one under another (a choice with a safe option first), also off the riding screen. */
+    stacked: Boolean = riding,
+    /** A quiet extra choice under the buttons. */
+    footer: (@Composable () -> Unit)? = null,
     content: (@Composable () -> Unit)? = null,
 ) {
     val c = KtmTheme.colors
@@ -99,11 +103,12 @@ fun KtmDialog(
                 Text(title, style = MaterialTheme.typography.headlineSmall, color = c.fg, modifier = Modifier.semantics { heading() })
                 if (message != null) Text(message, style = MaterialTheme.typography.bodyMedium, color = c.fg2)
                 content?.invoke()
-                if (riding) {
+                if (stacked) {
                     Column(Modifier.padding(top = KtmSpacing.sm), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                         // Safe choice first.
                         dismiss?.let { DialogButton(it, ButtonSize.Riding, ButtonStyle.Neutral, Modifier.fillMaxWidth()) }
                         DialogButton(confirm, ButtonSize.Riding, confirm.style, Modifier.fillMaxWidth())
+                        footer?.invoke()
                     }
                 } else {
                     Row(
