@@ -85,17 +85,19 @@ fun KtmStepper(
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md, Alignment.CenterHorizontally),
         ) {
             StepButton(KtmIcons.Remove, decreaseDescription, enabled && current > spec.min) { change(spec.stepDown(current)) }
-            Row(
+            Box(
                 // Wide enough for the largest value, so − and + stay put while the digits change.
                 Modifier.widthIn(min = (spec.max.toString().length * 14 + 40).dp)
                     .heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Control)
                     .clickable(enabled = enabled, role = Role.Button, onClickLabel = editDescription, onClick = onEditValue)
                     .padding(horizontal = KtmSpacing.md),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs, Alignment.CenterHorizontally),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(value.toString(), style = MaterialTheme.typography.headlineSmall, color = if (enabled) c.fg else c.fg3, textAlign = TextAlign.Center)
-                Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.padding(bottom = 3.dp))
+                // The number and its unit share a baseline, and the pair is centred on the − and + buttons.
+                Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
+                    Text(value.toString(), style = MaterialTheme.typography.headlineSmall, color = if (enabled) c.fg else c.fg3, textAlign = TextAlign.Center, modifier = Modifier.alignByBaseline())
+                    Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.alignByBaseline())
+                }
             }
             StepButton(KtmIcons.Add, increaseDescription, enabled && current < spec.max) { change(spec.stepUp(current)) }
             trailing?.invoke()

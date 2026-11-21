@@ -6,6 +6,7 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -58,6 +59,9 @@ val RidingNight = RidingColors(
 
 val LocalRidingColors = staticCompositionLocalOf { RidingDay }
 
+/** The font scale before [RidingTheme] clamped it, for a sheet that scrolls body text and should follow the rider's setting. */
+private val LocalUnclampedDensity = compositionLocalOf<Density?> { null }
+
 /** Riding text stops growing past this font scale, so the maneuver card and trip bar can't overflow. */
 const val RIDING_MAX_FONT_SCALE = 1.15f
 
@@ -67,7 +71,8 @@ const val RIDING_MAX_FONT_SCALE = 1.15f
  * [night], so a stock Material control placed on a riding surface can't pick up the app's other theme. The
  * status-bar icons follow riding night while this is shown and go back to the app's when it leaves.
  * Material components inside use the standard (not expressive) motion scheme, so nothing bounces.
- * The font-scale clamp covers the whole subtree: keep scrolling body content (lists) outside it.
+ * The font-scale clamp covers the whole subtree: a sheet with scrolling body content (a list) is wrapped in a second
+ * [RidingTheme] with `clampFont = false`, which keeps the riding palette and gives the rider's own font scale back.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -76,11 +81,13 @@ fun RidingTheme(
     accent: AccentOption = accentFor(null),
     /** False for a surface shown over the riding screen (a dialog): the riding screen owns the status bar. */
     controlSystemBars: Boolean = true,
+    /** False for a surface with scrolling body text (the add-a-stop and bike sheets): text follows the rider's font setting. */
+    clampFont: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val density = LocalDensity.current
+    val density = LocalUnclampedDensity.current ?: LocalDensity.current
     // A linear clamp: with Android 14+ non-linear font scaling it can differ slightly from the system curve.
-    val clamped = remember(density) { Density(density.density, minOf(density.fontScale, RIDING_MAX_FONT_SCALE)) }
+    val clamped = remember(density, clampFont) { if (clampFont) Density(density.density, minOf(density.fontScale, RIDING_MAX_FONT_SCALE)) else density }
     val colors = if (night) KtmDarkColors else KtmLightColors
     val accentScheme = accent.tones.forTheme(night)
     val colorScheme = remember(colors, accentScheme) { ktmColorScheme(colors, accentScheme) }
@@ -103,6 +110,7 @@ fun RidingTheme(
         LocalKtmColors provides colors,
         LocalAccentScheme provides accentScheme,
         LocalDensity provides clamped,
+        LocalUnclampedDensity provides density,
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

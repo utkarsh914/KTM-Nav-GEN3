@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -46,6 +47,14 @@ class ComponentInteractionTest {
                 KtmStepper(value, SettingSpecs.overspeedLimit, { value = it }, "km/h", "30–200 km/h", "Decrease", "Increase", "Edit value", edits, enabled = enabled)
             }
         }
+    }
+
+    @Test fun theNumberIsCentredOnTheStepButtonsNotSunkToTheirFoot() {
+        stepper()
+        val button = rule.onNodeWithContentDescription("Decrease").getUnclippedBoundsInRoot()
+        val number = rule.onNodeWithText("80").getUnclippedBoundsInRoot()
+        val gap = ((button.top + button.bottom) / 2 - (number.top + number.bottom) / 2).value
+        assertTrue("the number's centre is $gap dp off the buttons'", kotlin.math.abs(gap) < 6f)
     }
 
     @Test fun aTapStepsOnceOnTheGrid() {

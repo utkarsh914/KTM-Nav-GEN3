@@ -55,6 +55,9 @@ object KtmLayout {
     /** The numbered stop pin in the trip sheet's Next stop row. */
     val stopPin = 32.dp
     val targetPrimary = 56.dp
+    /** Stacked icon-over-label buttons: the trip sheet's (large) and the finished screen's. */
+    val targetTile = 72.dp
+    val targetTileLarge = 84.dp
     val targetRiding = 64.dp
 
     // Row heights: one line, two lines, three lines, thumbnail or large leading

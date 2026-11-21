@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,7 +87,7 @@ fun PlaceSheet(state: PlaceSheetState, actions: PlaceSheetActions, modifier: Mod
             val savedText = stringResource(R.string.place_saved_description)
             KtmButton(
                 stringResource(if (state.saved) R.string.place_saved else R.string.place_save), actions.onToggleSave,
-                Modifier.width(KtmLayout.placeSaveWidth).semantics { if (state.saved) stateDescription = savedText },
+                Modifier.widthIn(min = KtmLayout.placeSaveWidth).semantics { if (state.saved) stateDescription = savedText },
                 style = ButtonStyle.Tonal, icon = if (state.saved) KtmIcons.BookmarkFilled else KtmIcons.Bookmark,
             )
         }

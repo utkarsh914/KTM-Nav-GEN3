@@ -198,7 +198,10 @@ internal fun NavigatingStage(
                 )
             }
             if (riding.showBike && startFailure == null) {
-                BikeSheetHost(tripRunning = true, onOpenPairing = actions.onOpenConnect, onDismiss = { riding.showBike = false })
+                // Sheets with body text that scrolls follow the rider's font setting, in the riding palette.
+                RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false, clampFont = false) {
+                    BikeSheetHost(tripRunning = true, onOpenPairing = actions.onOpenConnect, onDismiss = { riding.showBike = false })
+                }
             }
             if (riding.pickingStop && startFailure == null) {
                 val online by ConnectivityMonitor.isOnline.collectAsState()
@@ -221,18 +224,20 @@ internal fun NavigatingStage(
                 )
             }
             if (riding.showTripStops && startFailure == null) {
-                TripStopSheetHost(
-                    trip = trip,
-                    onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch(it) },
-                    onPickOnMap = {
-                        // Free camera over the whole route (as Overview), then the pin: the trip keeps guiding underneath.
-                        riding.showTripStops = false
-                        riding.mapButton = MapButtonState(overview = true)
-                        map.showRouteOverview()
-                        riding.pickingStop = true
-                    },
-                    onDismiss = { riding.showTripStops = false },
-                )
+                RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false, clampFont = false) {
+                    TripStopSheetHost(
+                        trip = trip,
+                        onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch(it) },
+                        onPickOnMap = {
+                            // Free camera over the whole route (as Overview), then the pin: the trip keeps guiding underneath.
+                            riding.showTripStops = false
+                            riding.mapButton = MapButtonState(overview = true)
+                            map.showRouteOverview()
+                            riding.pickingStop = true
+                        },
+                        onDismiss = { riding.showTripStops = false },
+                    )
+                }
             }
         }
     }

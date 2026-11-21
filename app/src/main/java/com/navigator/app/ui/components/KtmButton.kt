@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -61,9 +62,9 @@ enum class ButtonSize(val height: Dp) {
     Small(KtmLayout.targetRest),
     Rest(KtmLayout.targetPrimary),
     Riding(KtmLayout.targetRiding),
-    Tile(72.dp),
+    Tile(KtmLayout.targetTile),
     /** The trip sheet's big stacked tiles (Add stop, Overview, Minimise). */
-    TileLarge(84.dp);
+    TileLarge(KtmLayout.targetTileLarge);
 
     val stacked: Boolean get() = this == Tile || this == TileLarge
 }
@@ -127,7 +128,8 @@ fun KtmButton(
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = size.height)
-            .height(size.height)
+            // A stacked tile grows with its label (a two-line label at a large font); the others are one line, a fixed target.
+            .then(if (size.stacked) Modifier.heightIn(min = size.height) else Modifier.height(size.height))
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .drawBehind {
                 // Focus ring: 3 dp, 3 dp outside the button.
@@ -175,7 +177,7 @@ fun KtmButton(
         val pad = PaddingValues(horizontal = if (style == ButtonStyle.Text) KtmSpacing.md else if (size == ButtonSize.Small) KtmSpacing.lg else 20.dp)
         if (stacked) {
             Column(
-                Modifier.padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                Modifier.padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.sm), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm, Alignment.CenterVertically),
             ) { content() }
         } else {

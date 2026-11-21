@@ -1,6 +1,9 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.navigator.app.ui.shell.tripStripBounds
 import androidx.compose.foundation.background
@@ -187,8 +190,9 @@ private fun SearchField(onClick: () -> Unit, modifier: Modifier = Modifier) {
 private fun TileGrid(tiles: List<WhereToTile>, mapUsable: Boolean, onTile: (TileAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         tiles.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                pair.forEach { tile -> TileCell(tile, mapUsable, onTile, Modifier.weight(1f)) }
+            // The two tiles of a row are as tall as the taller one (a long label at a large font).
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                pair.forEach { tile -> TileCell(tile, mapUsable, onTile, Modifier.weight(1f).fillMaxHeight()) }
             }
         }
     }
@@ -205,7 +209,7 @@ private fun TileCell(tile: WhereToTile, mapUsable: Boolean, onTile: (TileAction)
     val caption = if (needsMap) stringResource(R.string.navigate_tile_pick_needs_map) else shownCaption
     val enabled = action != TileAction.None && !needsMap
     Row(
-        modifier.height(WhereToMetrics.tileHeight).clip(KtmShapes.Card)
+        modifier.heightIn(min = WhereToMetrics.tileHeight).clip(KtmShapes.Card)
             .let { if (unset) it.border(KtmLayout.outlineThin, c.line2, KtmShapes.Card) else it.background(c.surf2) }
             .alpha(if (enabled) 1f else KtmLayout.disabledAlpha)
             .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onTile(action) }
