@@ -29,7 +29,7 @@ enum class StepState { Done, Active, Busy, Pending }
 
 /** One checklist line: a disc (a tick, its number or a spinner) and what to do, wrapped over as many lines as it needs. */
 @Composable
-fun KtmStep(number: Int, text: String, state: StepState, modifier: Modifier = Modifier) {
+fun KtmStep(number: Int, text: String, state: StepState, modifier: Modifier = Modifier, badge: String? = null) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val stateText = when (state) {
@@ -61,6 +61,8 @@ fun KtmStep(number: Int, text: String, state: StepState, modifier: Modifier = Mo
                 )
             }
         }
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = if (state == StepState.Pending) c.fg3 else c.fg)
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = if (state == StepState.Pending) c.fg3 else c.fg, modifier = Modifier.weight(1f))
+        // The answer already known ("Yes"): said in a badge at the end of the line.
+        if (badge != null) KtmBadge(badge, tone = BadgeTone.Ok)
     }
 }

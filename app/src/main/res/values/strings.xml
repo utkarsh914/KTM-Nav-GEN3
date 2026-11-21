@@ -26,6 +26,7 @@
     <string name="permission_battery_cost">Android may stop the dash link in the background.</string>
 
     <!-- Shared components -->
+    <string name="common_yes">Yes</string>
     <string name="common_back">Back</string>
     <string name="common_loading">Loading</string>
     <string name="activity_strip_resume">Resume</string>

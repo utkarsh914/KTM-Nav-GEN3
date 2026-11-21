@@ -3,6 +3,7 @@ package com.navigator.app.settings
 import android.content.Context
 import android.content.SharedPreferences
 import android.telephony.TelephonyManager
+import androidx.core.content.edit
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.DrivingSide
 import com.navigator.app.nav.model.TravelMode
@@ -52,7 +53,7 @@ class AppSettings(context: Context) {
      */
     var bondedLastSeenMs: Long
         get() = pairingPrefs.getLong(KEY_BONDED_LAST_SEEN, 0L)
-        set(value) { pairingPrefs.edit().putLong(KEY_BONDED_LAST_SEEN, value).apply() }
+        set(value) { pairingPrefs.edit { putLong(KEY_BONDED_LAST_SEEN, value) } }
 
     /**
      * One-time clean-up of the retired brand choice: a rider who had picked Husqvarna and never set

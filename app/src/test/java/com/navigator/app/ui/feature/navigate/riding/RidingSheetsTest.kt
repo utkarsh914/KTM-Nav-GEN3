@@ -134,9 +134,12 @@ class RidingSheetsTest {
         assertEquals(listOf("pick"), log)
     }
 
-    @Test fun pickOnMapIsNotOfferedWhenAStopCannotBeAdded() {
+    @Test fun pickOnMapIsDimmedWhenAStopCannotBeAdded() {
         riding { TripStopSheet(stopUi(left = 0), stopActions()) }
-        rule.onAllNodesWithText("Pick on map").assertCountEquals(0)
+        rule.onNodeWithText("Pick on map").assertIsNotEnabled()
+        rule.onNodeWithText("Stop limit reached").assertIsDisplayed()
+        rule.onNodeWithText("Pick on map").performClick()
+        assertEquals(emptyList<String>(), log)
     }
 
     @Test fun offlineDisablesAddAndSaysWhy() {

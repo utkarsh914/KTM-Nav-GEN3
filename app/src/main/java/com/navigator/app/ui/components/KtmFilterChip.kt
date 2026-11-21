@@ -37,14 +37,16 @@ fun KtmFilterChip(
     leadingIcon: ImageVector? = null,
     /** A riding surface: a 56 dp target for a glove. */
     riding: Boolean = false,
+    /** Dimmed and inert (the reason is said elsewhere on the screen). */
+    enabled: Boolean = true,
 ) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val haptics = rememberHaptics()
-    val content = if (selected) a.onContainer else c.fg
+    val content = if (!enabled) c.fg3 else if (selected) a.onContainer else c.fg
     Box(
         modifier.heightIn(min = if (riding) KtmLayout.targetPrimary else KtmLayout.targetRest)
-            .toggleable(value = selected, role = Role.Checkbox) { haptics.toggle(it); onClick() },
+            .toggleable(value = selected, enabled = enabled, role = Role.Checkbox) { haptics.toggle(it); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Row(

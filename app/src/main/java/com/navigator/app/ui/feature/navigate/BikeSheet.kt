@@ -189,7 +189,7 @@ fun BikeSheet(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
                     KtmStep(1, stringResource(R.string.bike_check_ignition), StepState.Active)
-                    KtmStep(2, stringResource(R.string.bike_check_bluetooth), StepState.Active)
+                    KtmStep(2, stringResource(R.string.bike_check_bluetooth), StepState.Active, badge = stringResource(R.string.common_yes))
                     KtmStep(3, stringResource(R.string.bike_check_retry), StepState.Active)
                 }
             }

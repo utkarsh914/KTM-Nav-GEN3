@@ -57,6 +57,7 @@ class BikeSheetTest {
         show(BikeStatus.Reconnecting("KTM 7F21", 3))
         rule.onNodeWithText("Reconnecting · attempt 3").assertIsDisplayed()
         rule.onNodeWithText("Is the ignition on?").assertIsDisplayed()
+        rule.onNodeWithText("Yes").assertIsDisplayed()
         rule.onAllNodesWithText("Turn beeps").assertCountEquals(0)
         rule.onNodeWithText("Re-pair…").performClick()
         assertEquals("a confirmation comes first", emptyList<String>(), log)
