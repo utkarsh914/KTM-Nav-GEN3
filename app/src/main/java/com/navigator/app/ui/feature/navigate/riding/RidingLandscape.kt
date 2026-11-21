@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.components.PillTone
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +81,7 @@ class TripControlsUi(
     val dashStatus: String?,
     val canAddStop: Boolean,
     val nextStop: String?,
+    val dashTone: PillTone = PillTone.Connected,
 )
 
 /**
@@ -192,7 +194,7 @@ private fun ColumnScope.TripControlsPanelBody(maneuver: ManeuverUi, ui: TripCont
         Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
     ) {
-        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions)
+        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone)
     }
     EndTripButton(actions.onEnd)
 }

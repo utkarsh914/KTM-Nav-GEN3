@@ -297,6 +297,7 @@
     <string name="trip_messages">Messages</string>
     <string name="trip_messages_description">Phone messages on the dash</string>
     <string name="trip_dash">Dash</string>
+    <string name="trip_dash_line">%1$s · %2$s</string>
     <string name="trip_end">End trip</string>
     <string name="end_title">End this trip?</string>
     <string name="end_message">Guidance to the dash stops and the ride is finished.</string>
@@ -315,6 +316,7 @@
     <string name="start_failed_mirror">Switch to mirror mode</string>
     <!-- Add a stop while riding (SE4) -->
     <string name="trip_stop_title">Add a stop</string>
+    <string name="trip_stop_subtitle">Along your route to %1$s · %2$s</string>
     <plurals name="trip_stop_left">
         <item quantity="one">%1$d of %2$d stop left</item>
         <item quantity="other">%1$d of %2$d stops left</item>
@@ -326,7 +328,7 @@
     <string name="trip_stop_pick_category">Pick a category to see places along your route</string>
     <string name="trip_stop_none">Nothing found along the route</string>
     <string name="trip_stop_failed">Couldn\'t load places. Try again.</string>
-    <string name="trip_stop_search_name">Search by name</string>
+    <string name="trip_stop_search_name">Search for a stop</string>
     <string name="trip_next_stop">Next stop</string>
     <string name="trip_remove_next_stop">Remove next stop</string>
     <!-- Trip finished (TF1-TF5) -->

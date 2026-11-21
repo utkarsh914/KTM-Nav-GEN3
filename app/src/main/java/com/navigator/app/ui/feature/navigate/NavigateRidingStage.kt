@@ -135,7 +135,10 @@ internal fun NavigatingStage(
             val dashText = BikeSheetMapper.status(bikeStatus)
             val nextStopTarget = if (riding.showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
             val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
-            val dashStatus = stringResource(dashText.title, dashText.arg ?: 0)
+            val dashPill = BikePillMapper.map(bikeStatus)
+            val dashState = stringResource(dashText.title, dashText.arg ?: 0)
+            // NV7: one line, the bike's name then its state, with a dot in the pill's tone.
+            val dashStatus = dashPill.labelArg?.let { stringResource(R.string.trip_dash_line, it, dashState) } ?: dashState
             val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
             val tripActions = TripSheetActions(
                 onAddStop = { riding.showTripSheet = false; riding.showTripStops = true },
@@ -157,7 +160,7 @@ internal fun NavigatingStage(
                     recenter = riding.mapButton.recenter,
                     bearing = mapBearing,
                     narrow = narrow,
-                    controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop) else null,
+                    controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, dashPill.tone) else null,
                     actions = ridingActions,
                     controlActions = tripActions,
                     onInsets = { actions.onRidingInsets(it) },
@@ -171,7 +174,7 @@ internal fun NavigatingStage(
                     onInsets = { top, bottom -> actions.onRidingInsets(MapInsets(top = top, bottom = bottom)) },
                     sheetOpen = riding.showTripSheet,
                     sheet = {
-                        TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions)
+                        TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions, dashPill.tone)
                         Spacer(Modifier.height(KtmSpacing.xl))
                         EndTripButton(tripActions.onEnd)
                     },

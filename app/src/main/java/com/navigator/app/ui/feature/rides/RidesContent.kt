@@ -201,7 +201,7 @@ private fun SortSheet(current: RideSort, onDismiss: () -> Unit, onShow: (RideSor
     )
     val directions = listOf(true, false)
     val labels = directions.associateWith { stringResource(RideSort(draft.field, it).label) }
-    KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.rides_sort_title)) {
+    KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.rides_sort_title), onClose = onDismiss) {
         fields.forEach { (field, label) ->
             KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) }, Modifier.fullBleed())
         }

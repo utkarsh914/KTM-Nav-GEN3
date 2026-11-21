@@ -2,11 +2,16 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.navigator.app.R
+import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmShapes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -55,6 +60,8 @@ fun KtmSheetContent(
     modifier: Modifier = Modifier,
     title: String? = null,
     scrollable: Boolean = true,
+    /** A ✕ at the end of the title row, for a sheet that is a task rather than a menu. */
+    onClose: (() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -65,11 +72,12 @@ fun KtmSheetContent(
             .padding(horizontal = KtmSpacing.lg),
     ) {
         if (title != null) {
-            Box(Modifier.fillMaxWidth().height(KtmLayout.sheetTitleRow), contentAlignment = Alignment.CenterStart) {
+            Row(Modifier.fillMaxWidth().height(KtmLayout.sheetTitleRow), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     title, style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() },
                 )
+                if (onClose != null) KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onClose, modifier = Modifier.offset(x = KtmSpacing.sm))
             }
             Spacer(Modifier.height(KtmSpacing.md))
         }
@@ -90,6 +98,7 @@ fun KtmModalSheet(
     title: String? = null,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     scrollable: Boolean = true,
+    onClose: (() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -103,6 +112,6 @@ fun KtmModalSheet(
         dragHandle = { SheetHandle() },
         contentWindowInsets = { WindowInsets(0) },
     ) {
-        KtmSheetContent(title = title, scrollable = scrollable, actions = actions, content = content)
+        KtmSheetContent(title = title, scrollable = scrollable, onClose = onClose, actions = actions, content = content)
     }
 }

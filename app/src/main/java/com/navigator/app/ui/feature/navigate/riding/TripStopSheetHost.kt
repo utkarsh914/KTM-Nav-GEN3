@@ -47,7 +47,7 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
     }
 
     TripStopSheet(
-        ui = TripStopUi(left, online, category, loading, failed, results),
+        ui = TripStopUi(left, online, category, loading, failed, results, trip.state.value.dest?.label),
         actions = TripStopActions(
             onCategory = { category = if (category == it) null else it },
             onAdd = { r ->

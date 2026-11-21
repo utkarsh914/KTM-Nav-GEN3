@@ -94,7 +94,7 @@ class RidingSheetsTest {
         assertEquals(emptyList<String>(), log)
         rule.onNodeWithContentDescription("Add Indian Oil as a stop").performClick()
         rule.onNodeWithText("Fuel").performClick()
-        rule.onNodeWithText("Search by name").performClick()
+        rule.onNodeWithText("Search for a stop").performClick()
         assertEquals(listOf("add:Indian Oil", "cat:FUEL", "search"), log)
     }
 

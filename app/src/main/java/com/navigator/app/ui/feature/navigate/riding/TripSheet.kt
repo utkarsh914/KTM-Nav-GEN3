@@ -1,9 +1,12 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +34,9 @@ import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSwitch
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.fullBleed
+import com.navigator.app.ui.components.pillDotColor
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -73,6 +78,7 @@ fun ColumnScope.TripControlsBody(
     canAddStop: Boolean,
     nextStop: String?,
     actions: TripSheetActions,
+    dashTone: PillTone = PillTone.Connected,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
@@ -115,7 +121,8 @@ fun ColumnScope.TripControlsBody(
     }
     ListRow(
         modifier = Modifier.fullBleed(),
-        title = stringResource(R.string.trip_dash), supporting = dashStatus, leadingIcon = KtmIcons.Bike,
+        title = dashStatus ?: stringResource(R.string.trip_dash),
+        leading = { Box(Modifier.size(KtmSpacing.md).background(pillDotColor(dashTone, KtmTheme.colors), CircleShape)) },
         onClick = actions.onDash,
         trailing = { Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg2) },
     )
