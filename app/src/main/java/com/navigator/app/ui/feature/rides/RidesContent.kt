@@ -203,7 +203,7 @@ private fun SortSheet(current: RideSort, onDismiss: () -> Unit, onShow: (RideSor
     val labels = directions.associateWith { stringResource(RideSort(draft.field, it).label) }
     KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.rides_sort_title), onClose = onDismiss) {
         fields.forEach { (field, label) ->
-            KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) }, Modifier.fullBleed())
+            KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) }, Modifier.fullBleed(), radioAtStart = true)
         }
         KtmSegmented(
             directions, draft.desc, { draft = draft.copy(desc = it) }, { labels.getValue(it) },

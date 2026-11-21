@@ -10,6 +10,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.ui.components.KtmChoiceCard
+import androidx.compose.foundation.layout.Arrangement
 import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.settings.DrivingSidePreference
@@ -63,14 +65,16 @@ fun NavigationContent(ui: NavigationUi, actions: NavigationActions, modifier: Mo
     SettingsPageScaffold(stringResource(R.string.nav_title), actions.onBack, modifier) {
         if (ui.engineAvailable) {
             SectionHeader(stringResource(R.string.nav_section_engine))
-            KtmRadioRow(
-                stringResource(R.string.nav_engine_in_app), ui.engine == NavEngine.IN_APP, { actions.onEngine(NavEngine.IN_APP) },
-                supporting = stringResource(R.string.nav_engine_in_app_hint), supportingLines = 3,
-            )
-            KtmRadioRow(
-                stringResource(R.string.nav_engine_mirror), ui.engine == NavEngine.MIRROR, { actions.onEngine(NavEngine.MIRROR) },
-                supporting = stringResource(R.string.nav_engine_mirror_hint), supportingLines = 3,
-            )
+            Column(Modifier.padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                KtmChoiceCard(
+                    stringResource(R.string.nav_engine_in_app), stringResource(R.string.nav_engine_in_app_hint),
+                    ui.engine == NavEngine.IN_APP, { actions.onEngine(NavEngine.IN_APP) },
+                )
+                KtmChoiceCard(
+                    stringResource(R.string.nav_engine_mirror), stringResource(R.string.nav_engine_mirror_hint),
+                    ui.engine == NavEngine.MIRROR, { actions.onEngine(NavEngine.MIRROR) },
+                )
+            }
         }
 
         SectionHeader(stringResource(R.string.nav_section_route))

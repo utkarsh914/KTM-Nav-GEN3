@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,49 +55,54 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             )
         }
         BikeCardView(ui.bike, onClick = null)
-        KtmButton(
-            stringResource(R.string.bikedash_repair), actions.onRePair,
-            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge),
-            style = if (ui.repairSuggested) ButtonStyle.Danger else ButtonStyle.Tonal,
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge, vertical = KtmSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+        ) {
+            KtmButton(
+                stringResource(R.string.bikedash_repair), actions.onRePair,
+                style = if (ui.repairSuggested) ButtonStyle.Danger else ButtonStyle.Outline, size = ButtonSize.Small,
+            )
+            Text(stringResource(R.string.bikedash_repair_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2, modifier = Modifier.weight(1f))
+        }
 
         // ST2: who the dash greets, what it spells out, which phone notifications it shows, then the test sends.
         SectionHeader(stringResource(R.string.bikedash_section_greeting))
         ListRow(
             title = stringResource(R.string.bikedash_name),
             supporting = ui.userName.ifBlank { stringResource(R.string.bikedash_name_unset) },
-            leadingIcon = KtmIcons.User, onClick = actions.onEditName, trailing = { RowChevron() },
+            onClick = actions.onEditName, trailing = { RowChevron() },
         )
 
         SectionHeader(stringResource(R.string.bikedash_section_text))
         KtmSwitchRow(
             stringResource(R.string.bikedash_latin), ui.latinOnly, actions.onLatinOnly,
-            supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3, leadingIcon = KtmIcons.TextSize,
+            supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3,
         )
         ListDivider()
         KtmSwitchRow(
             stringResource(R.string.bikedash_marquee), ui.marquee, actions.onMarquee,
-            supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2, leadingIcon = KtmIcons.Dash,
+            supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2,
         )
 
         SectionHeader(stringResource(R.string.bikedash_section_dash))
         KtmSwitchRow(
             stringResource(R.string.bikedash_show), ui.showOnDash, actions.onShowOnDash,
-            supporting = stringResource(R.string.bikedash_show_hint), supportingLines = 2, leadingIcon = KtmIcons.Message,
+            supporting = stringResource(R.string.bikedash_show_hint), supportingLines = 2,
         )
         ListDivider()
         ListRow(
             title = stringResource(R.string.bikedash_apps),
             supporting = if (ui.appCount == 0) stringResource(R.string.bikedash_apps_none)
             else pluralStringResource(R.plurals.bikedash_apps_count, ui.appCount, ui.appCount),
-            leadingIcon = KtmIcons.List, onClick = actions.onOpenApps, trailing = { RowChevron() },
+            onClick = actions.onOpenApps, trailing = { RowChevron() },
         )
         ListDivider()
         ListRow(
             title = stringResource(R.string.bikedash_access),
             // Granted: the badge says it, once.
             supporting = if (ui.accessGranted) null else stringResource(R.string.bikedash_access_off),
-            supportingLines = if (ui.accessGranted) 0 else 2, leadingIcon = KtmIcons.Permission, attention = !ui.accessGranted,
+            supportingLines = if (ui.accessGranted) 0 else 2, attention = !ui.accessGranted,
             onClick = if (ui.accessGranted) null else actions.onOpenPermissions,
             trailing = { if (ui.accessGranted) KtmBadge(stringResource(R.string.bikedash_access_on), tone = BadgeTone.Ok) else RowChevron() },
         )

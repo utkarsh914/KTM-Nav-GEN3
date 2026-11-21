@@ -1,6 +1,20 @@
 package com.navigator.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import com.navigator.app.ui.theme.KtmSpacing
+import com.navigator.app.ui.theme.KtmShapes
+import com.navigator.app.ui.theme.KtmLayout
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
@@ -61,6 +75,8 @@ fun KtmRadioRow(
     supporting: String? = null,
     supportingLines: Int = if (supporting == null) 0 else 1,
     enabled: Boolean = true,
+    /** The radio leads the row (a sheet of choices) instead of trailing it (a setting). */
+    radioAtStart: Boolean = false,
 ) {
     val haptics = rememberHaptics()
     ListRow(
@@ -71,8 +87,37 @@ fun KtmRadioRow(
             selected = selected, enabled = enabled, role = Role.RadioButton,
             onClick = { haptics.toggle(true); onSelect() },
         ),
-        trailing = { KtmRadio(selected, enabled) },
+        leading = if (radioAtStart) ({ KtmRadio(selected, enabled) }) else null,
+        trailing = if (radioAtStart) null else ({ KtmRadio(selected, enabled) }),
     )
+}
+
+/** One of a few big choices as a card (ST3 engine): the radio leads, the chosen card is tinted and outlined in the accent. */
+@Composable
+fun KtmChoiceCard(
+    title: String,
+    supporting: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberHaptics()
+    val a = KtmTheme.accent
+    Row(
+        modifier.fillMaxWidth().clip(KtmShapes.Card)
+            .background(if (selected) a.container else KtmTheme.colors.surf)
+            .border(if (selected) KtmLayout.outline else KtmLayout.hairline, if (selected) a.fill else KtmTheme.colors.line, KtmShapes.Card)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = { haptics.toggle(true); onSelect() })
+            .heightIn(min = KtmLayout.targetPrimary).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        KtmRadio(selected)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg)
+            Text(supporting, style = MaterialTheme.typography.bodySmall, color = if (selected) a.onContainer else KtmTheme.colors.fg2)
+        }
+    }
 }
 
 /** The radio mark on its own, for a row that is selectable as a whole. */

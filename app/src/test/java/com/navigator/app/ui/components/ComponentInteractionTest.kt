@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsDisplayed
@@ -178,5 +180,26 @@ class ComponentInteractionTest {
         val delete = rule.onNodeWithText("Delete ride").fetchSemanticsNode().boundsInRoot
         assertTrue("one under the other", keep.bottom <= delete.top)
         assertEquals("same width", keep.width, delete.width, 1f)
+    }
+
+    @Test fun aChoiceCardSelectsAsARadioAndShowsItsState() {
+        var picked = ""
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                KtmChoiceCard("Plan in this app", "Needs internet", selected = true, onSelect = { picked = "app" })
+                KtmChoiceCard("Mirror Google Maps", "Works offline", selected = false, onSelect = { picked = "mirror" })
+            }
+        }
+        rule.onNodeWithText("Plan in this app").assertIsSelected()
+        rule.onNodeWithText("Mirror Google Maps").assertIsNotSelected()
+        rule.onNodeWithText("Mirror Google Maps").performClick()
+        assertEquals("mirror", picked)
+    }
+
+    @Test fun aLeadingRadioComesBeforeTheTitle() {
+        rule.setContent { KtmTheme(darkTheme = true) { KtmRadioRow("Newest first", true, {}, radioAtStart = true) } }
+        val radio = rule.onNode(androidx.compose.ui.test.isSelectable()).fetchSemanticsNode().boundsInRoot
+        val title = rule.onNodeWithText("Newest first").fetchSemanticsNode().boundsInRoot
+        assertTrue(radio.left <= title.left)
     }
 }
