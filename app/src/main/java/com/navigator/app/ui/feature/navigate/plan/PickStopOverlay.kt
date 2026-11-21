@@ -48,6 +48,6 @@ fun PickStopOverlay(
         useEnabled = canAdd,
         guidance = guidance,
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
-        onFootprint = { map.setPadding(it, 0, 0, 0) },
+        onFootprint = { map.setPadding(it, 0, 0, 0); controller.refresh() },
     )
 }

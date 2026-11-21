@@ -215,6 +215,6 @@ internal fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (Saved
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
-        onFootprint = { map.setPadding(it, 0, 0, 0) },
+        onFootprint = { map.setPadding(it, 0, 0, 0); controller.refresh() },
     )
 }

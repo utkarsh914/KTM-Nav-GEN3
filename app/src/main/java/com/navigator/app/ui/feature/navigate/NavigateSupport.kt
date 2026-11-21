@@ -25,8 +25,10 @@ import com.navigator.app.ui.theme.KtmIcons
 
 /** Pill shown while planning another trip (confirm, preview) when one keeps running in the background. */
 @Composable
-internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    KtmButton(stringResource(R.string.navigate_resume), onClick, modifier, icon = KtmIcons.Navigation)
+internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
+    // [compact]: the room beside Back and the compass is short, so the label is one word.
+    val label = stringResource(if (compact) R.string.navigate_resume_short else R.string.navigate_resume)
+    KtmButton(label, onClick, modifier, icon = KtmIcons.Navigation)
 }
 
 /** Location permission granted AND the system location switch on; re-checked whenever the screen resumes. */

@@ -971,7 +971,6 @@ fun NavigateHost(
                 onSearchInstead = { linkController.dismiss(); openSearch() },
                 onDismiss = linkController::dismiss,
             ),
-            Modifier.align(Alignment.BottomCenter),
             failure = linkFailure,
         )
     }

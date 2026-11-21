@@ -133,8 +133,11 @@ val LocalSnackbarCover = staticCompositionLocalOf<SnackbarCover> { NoCover }
 fun SnackbarClearance(bottom: Dp = 0.dp, start: Dp = 0.dp) {
     val cover = LocalSnackbarCover.current
     val owner = remember { Any() }
-    LaunchedEffect(cover, bottom, start) { cover.cover(owner, bottom, start) }
-    DisposableEffect(cover) { onDispose { cover.uncover(owner) } }
+    // Not a LaunchedEffect: the clearance must be in place in the frame the sheet appears, or a snackbar flashes over it.
+    DisposableEffect(cover, bottom, start) {
+        cover.cover(owner, bottom, start)
+        onDispose { cover.uncover(owner) }
+    }
 }
 
 val LocalFeedback = staticCompositionLocalOf<Feedback> { error("No Feedback provided: wrap the UI in KtmApp") }

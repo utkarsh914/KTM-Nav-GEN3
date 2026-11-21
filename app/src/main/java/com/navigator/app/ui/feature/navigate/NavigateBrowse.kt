@@ -189,7 +189,7 @@ fun NavigateBrowse(
             }
             val pad = SheetPadding.mapBottomPx(visiblePx, containerPx)
             // A snackbar (a removed recent, Undo) sits above the sheet as it stands, not over its tiles.
-            SnackbarClearance(bottom = with(density) { visiblePx.toDp() })
+            SnackbarClearance(bottom = with(density) { minOf(visiblePx, containerPx / 2).toDp() })
             // The latest actions: a tile tapped while the sheet settles changes the stage, and the old
             // callback must not then put the sheet's padding on the next stage's map.
             val currentActions by rememberUpdatedState(actions)
@@ -290,7 +290,7 @@ private fun Overlays(
                     slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
             ) {
                 val hello = state.greeting
-                if (hello != null) ConnectGreeting(hello, Modifier.padding(top = KtmSpacing.lg))
+                if (hello != null) Box(Modifier.fillMaxWidth().padding(top = KtmSpacing.lg), contentAlignment = Alignment.Center) { ConnectGreeting(hello) }
             }
             if (!locationOk) LocationBanner(location, actions.onFixLocation, Modifier.padding(top = KtmSpacing.lg))
         }
@@ -314,7 +314,9 @@ private fun Overlays(
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
                 // The compass gives way when, with the sheet this high, the stack would reach up into the banner or greeting.
                 val stackPx = with(LocalDensity.current) { (KtmLayout.targetPrimary * 2 + KtmSpacing.md + edge).roundToPx() }
-                val roomForCompass = containerPx - sheetLiftPx - stackPx >= topPx
+                // Only a full-width banner or greeting can be reached; the pill is at the other side.
+                val hanging = if (!locationOk || state.greeting != null) topPx else 0
+                val roomForCompass = containerPx - sheetLiftPx - stackPx >= hanging
                 if (mapState == MapState.Ready && abs(mapBearing) > 0.5f && roomForCompass) {
                     MapControlButton(
                         KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), actions.onResetNorth,

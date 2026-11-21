@@ -338,7 +338,6 @@ fun KtmApp(onQuit: () -> Unit) {
                                                         { container.settings.update { googleNavEnabled = true } }
                                                     } else null,
                                                 ),
-                                                Modifier.align(Alignment.BottomCenter),
                                             )
                                         }
                                     }

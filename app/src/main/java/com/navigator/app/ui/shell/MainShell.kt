@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import com.navigator.app.R
@@ -141,10 +142,11 @@ fun MainShell(
                 val cleared = feedback.cleared
                 val density = LocalDensity.current
                 val applied = if (ownsBottom) with(density) { WindowInsets.safeDrawing.getBottom(density).toDp() } else 0.dp
+                val appliedStart = if (ownsBottom) with(density) { WindowInsets.safeDrawing.getLeft(density, LayoutDirection.Ltr).toDp() } else 0.dp
                 KtmSnackbarHost(
                     feedback.snackbarHost,
                     Modifier.align(Alignment.BottomCenter).then(ownInsets)
-                        .padding(start = cleared.start, bottom = (if (drawn && !immersive) 0.dp else KtmSpacing.sm) + (cleared.bottom - applied).coerceAtLeast(0.dp)),
+                        .padding(start = (cleared.start - appliedStart).coerceAtLeast(0.dp), bottom = (if (drawn && !immersive) 0.dp else KtmSpacing.sm) + (cleared.bottom - applied).coerceAtLeast(0.dp)),
                 )
             }
             if (!immersive) {

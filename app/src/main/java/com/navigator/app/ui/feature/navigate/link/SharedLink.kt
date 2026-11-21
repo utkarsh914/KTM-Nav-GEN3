@@ -2,15 +2,24 @@ package com.navigator.app.ui.feature.navigate.link
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -21,11 +30,11 @@ import com.navigator.app.nav.destination.LinkFailure
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.components.consumeMapTouches
-import com.navigator.app.ui.components.windowHeightDp
-import com.navigator.app.ui.components.windowWidthDp
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -140,10 +149,17 @@ fun SharedLinkCard(
 ) {
     if (state == SharedLinkState.Idle) return
     val c = KtmTheme.colors
-    // A short, wide window (landscape): the card keeps a panel's width instead of running across the map.
-    val landscape = windowWidthDp(fallback = 0f) > windowHeightDp(fallback = Float.MAX_VALUE)
+    // Landscape: the card keeps a panel's width at the end of the screen, clear of the Where-to / plan panel at the start.
+    BoxWithConstraints(modifier.fillMaxSize()) {
+    val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
+    var heightPx by remember { mutableIntStateOf(0) }
+    // A snackbar (the retry, the unreadable link) sits above the card, not under it.
+    SnackbarClearance(bottom = with(LocalDensity.current) { heightPx.toDp() })
     Column(
-        modifier.widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
+        Modifier.align(if (landscape) Alignment.BottomEnd else Alignment.BottomCenter)
+            .widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth()
+            .onSizeChanged { heightPx = it.height }
+            .shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
             .padding(horizontal = KtmSpacing.lg).pageInsets()
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
@@ -183,6 +199,7 @@ fun SharedLinkCard(
             }
             SharedLinkState.Idle -> Unit
         }
+    }
     }
 }
 

@@ -225,6 +225,7 @@ private fun BoxScope.PlanTopRow(plan: PlanStage, showBack: Boolean) {
     // Judged by the same box as the panel (split-screen is portrait by configuration but wide by space).
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val portrait = maxWidth <= maxHeight
+        val narrow = maxWidth < KtmLayout.resumeFullLabelMinWidth
         val back = showBack && portrait
         if (!back && !plan.showResumePill) return@BoxWithConstraints
         val compass = plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f
@@ -237,7 +238,7 @@ private fun BoxScope.PlanTopRow(plan: PlanStage, showBack: Boolean) {
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             if (back) MapControlButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack)
-            if (plan.showResumePill) ResumeNavPill(onClick = plan.onResume, modifier = Modifier.weight(1f, fill = false))
+            if (plan.showResumePill) ResumeNavPill(onClick = plan.onResume, modifier = Modifier.weight(1f, fill = false), compact = compass || narrow)
         }
     }
 }

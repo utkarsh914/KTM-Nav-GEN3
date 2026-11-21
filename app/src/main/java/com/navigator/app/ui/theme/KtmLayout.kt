@@ -215,6 +215,12 @@ object KtmLayout {
     /** How far the pin on the pick-on-map screen is lifted so its foot marks the centre. */
     val pinLift = 8.dp
 
+    /** Below this window width (or with the compass up) the Resume pill says "Resume" instead of "Resume navigation". */
+    val resumeFullLabelMinWidth = 400.dp
+
+    /** The next-turn card stays above Pick on map only on a portrait window at least this tall (below it, the pin would be crowded). */
+    val pickGuidanceMinHeight = 600.dp
+
     /** How far a pushed page slides in from the right. */
     val pushOffset = 30.dp
 

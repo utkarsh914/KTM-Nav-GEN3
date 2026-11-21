@@ -92,15 +92,16 @@ fun PickOnMapScreen(
     // The pin sits in the un-inset box so its tip is the map's centre, which is where the point is read.
     BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = LandscapePanelSpec.isLandscape(maxWidth, maxHeight)
-        if (!landscape) LaunchedEffect(Unit) { footprintPx = 0; report(0) }
-        // The pin's tip is the point: lift the icon by half its height.
-        // HM7: the pin drops in and settles; it lifts while the map moves and settles again when it stops.
+        val tallEnough = maxHeight >= KtmLayout.pickGuidanceMinHeight
+        // Portrait covers no side of the map; landscape reports its panel once it is laid out.
+        LaunchedEffect(landscape) { if (!landscape) { footprintPx = 0; report(0) } }
         if (!landscape) {
             Column(
                 Modifier.align(Alignment.TopStart).fillMaxWidth().mapCornerPadding().consumeMapTouches(),
                 verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
             ) {
-                guidance?.invoke()
+                // On a short screen the guidance would crowd the pin and the sheet: the hint alone stays.
+                if (tallEnough) guidance?.invoke()
                 HintRow(onBack, hint, pill = true)
             }
         }
@@ -152,6 +153,7 @@ private fun HintRow(onBack: () -> Unit, hint: String, pill: Boolean) {
     }
 }
 
+/** The pin's tip is the point: the icon is lifted by half its height. HM7: it drops in and settles, lifts while the map moves and settles again. */
 @Composable
 private fun Pin(state: PickOnMapState, stopNumber: Int?, modifier: Modifier) {
     val motion = KtmTheme.motion

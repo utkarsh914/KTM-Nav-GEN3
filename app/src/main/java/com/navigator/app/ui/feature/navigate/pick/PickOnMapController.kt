@@ -83,6 +83,11 @@ class PickOnMapController(
         collector = scope.launch { map.cameraIdle.collect(::moved) }
     }
 
+    /** Reads the point under the pin again: the camera's target moves when the map's padding does. */
+    fun refresh() {
+        map.cameraCenter()?.let(::moved)
+    }
+
     fun stop() {
         collector?.cancel()
         lookup?.cancel()

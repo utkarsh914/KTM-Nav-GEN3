@@ -37,6 +37,16 @@ class PickOnMapControllerTest {
         assertFalse(map.idleListening)
     }
 
+    @Test fun refreshingReadsThePointAgainAfterTheMapIsPadded() = runTest {
+        val map = FakeMapController().apply { center = here }
+        val c = PickOnMapController(backgroundScope, map, { "Main Rd" })
+        c.start(); runCurrent()
+        // Padding the map moves the camera's target without the camera moving: the old point is stale until it is read again.
+        map.center = there
+        c.refresh(); runCurrent()
+        assertEquals(there, c.state.value.center)
+    }
+
     @Test fun eachSettledCameraLooksUpTheStreetUnderThePinAndKeepsTheLatest() = runTest {
         val map = FakeMapController().apply { center = here }
         val gates = mutableMapOf<MapPoint, CompletableDeferred<String?>>()

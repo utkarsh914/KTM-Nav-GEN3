@@ -99,6 +99,7 @@ class PickOnMapLandscapeTest {
         assertEquals(listOf("use", "back"), log)
         // Everything stays inside the left panel: nothing runs across the open map.
         val use = rule.onNodeWithText("Use this point").getUnclippedBoundsInRoot()
-        assertTrue("action ends at ${use.right}", use.right.value < 400f)
+        val footprintDp = footprints.last() / rule.density.density
+        assertTrue("action ends at ${use.right}, the panel's footprint is $footprintDp", use.right.value <= footprintDp)
     }
 }
