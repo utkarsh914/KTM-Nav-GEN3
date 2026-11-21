@@ -15,6 +15,9 @@ internal class RidingOverlayState {
     var showTripStops by mutableStateOf(false)
     var showBike by mutableStateOf(false)
     var showEndConfirm by mutableStateOf(false)
+
+    /** Picking the next stop on the map (SE4): the riding screen steps aside, guidance carries on underneath. */
+    var pickingStop by mutableStateOf(false)
     var mapButton by mutableStateOf(MapButtonState())
 
     /**
@@ -26,6 +29,7 @@ internal class RidingOverlayState {
         showTripSheet = false
         showTripStops = openAddStop && stage == NavStage.NAVIGATING
         showBike = false
+        pickingStop = false
         if (stage == NavStage.NAVIGATING) mapButton = MapButtonState() else showEndConfirm = false
     }
 }

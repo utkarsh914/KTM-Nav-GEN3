@@ -340,6 +340,7 @@
     <string name="trip_stop_pick_category">Pick a category to see places along your route</string>
     <string name="trip_stop_none">Nothing found along the route</string>
     <string name="trip_stop_failed">Couldn\'t load places. Try again.</string>
+    <string name="trip_stop_pick_on_map">Pick on map</string>
     <string name="trip_stop_search_name">Search for a stop</string>
     <string name="trip_next_stop">Next stop</string>
     <string name="trip_remove_next_stop">Remove next stop</string>

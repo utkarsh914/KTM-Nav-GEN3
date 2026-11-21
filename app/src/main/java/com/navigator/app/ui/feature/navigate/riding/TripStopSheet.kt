@@ -3,16 +3,16 @@ package com.navigator.app.ui.feature.navigate.riding
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +39,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmFilterChip
+import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.Skeleton
@@ -59,6 +60,8 @@ data class TripStopUi(
     val failed: Boolean,
     val results: List<CategoryResult>,
     val destination: String? = null,
+    /** The phone has a speech recogniser: the mic shows beside the search field. */
+    val voiceAvailable: Boolean = false,
 )
 
 class TripStopActions(
@@ -67,6 +70,8 @@ class TripStopActions(
     val onSearchByName: () -> Unit,
     val onRetry: () -> Unit,
     val onDismiss: () -> Unit,
+    val onVoice: () -> Unit = {},
+    val onPickOnMap: () -> Unit = {},
 )
 
 /**
@@ -75,7 +80,7 @@ class TripStopActions(
  * with "Needs internet". Free-text search is one tap away (the full search). On success the host closes the sheet
  * and a riding chip confirms.
  */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
     val c = KtmTheme.colors
@@ -93,9 +98,18 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
             Text(stringResource(R.string.trip_stop_offline), style = MaterialTheme.typography.labelMedium, color = c.warn)
         }
         Spacer(Modifier.height(KtmSpacing.md))
-        SearchPill(actions.onSearchByName)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            SearchPill(actions.onSearchByName, Modifier.weight(1f))
+            if (ui.voiceAvailable) {
+                KtmIconButton(KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice, size = IconButtonSize.Map)
+            }
+        }
         Spacer(Modifier.height(KtmSpacing.md))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        // One row that scrolls sideways: Pick on map leads it, then the categories.
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            if (canAdd) {
+                KtmFilterChip(stringResource(R.string.trip_stop_pick_on_map), selected = false, onClick = actions.onPickOnMap, leadingIcon = KtmIcons.PinPlus, riding = true)
+            }
             PlaceCategory.entries.forEach { category ->
                 KtmFilterChip(stringResource(category.labelRes()), selected = ui.category == category, onClick = { actions.onCategory(category) }, riding = true)
             }
@@ -116,11 +130,11 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
 
 /** SE4: the field that opens the full search (free text, voice), 56 dp for a glove. */
 @Composable
-private fun SearchPill(onClick: () -> Unit) {
+private fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
     Row(
-        Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(c.surf2)
+        modifier.fillMaxWidth().heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(c.surf2)
             .clickable(role = Role.Button) { haptics.tap(); onClick() }.padding(horizontal = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),

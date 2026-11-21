@@ -509,14 +509,14 @@ fun NavigateHost(
     }
 
     /** Search for a stop while navigating (guidance keeps running underneath). */
-    fun openTripStopSearch() {
+    fun openTripStopSearch(initialQuery: String = "") {
         // A refusal is announced by the TripController's event, not here.
         if (!trip.canSearchForStop()) return
         origin = lastKnownLocation(context) ?: origin
         searchCategory = null
         // Stepping into search must not be treated as the app taking over / ending the trip.
         trip.setMinimised(true)
-        flow.update { it.openSearch(SearchTarget.TRIP_STOP) }
+        flow.update { it.openSearch(SearchTarget.TRIP_STOP).copy(query = initialQuery) }
     }
 
     /** Apply a picked place as the destination, an appended preview stop, or a live-trip stop. */
@@ -916,7 +916,7 @@ fun NavigateHost(
                     actions = NavigatingStageActions(
                         onRidingInsets = { ridingInsets = it }, onApplyMapButton = ::applyMapButton,
                         onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = { stage = NavStage.PREVIEW },
-                        onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = ::openTripStopSearch, onOpenConnect = onOpenConnect,
+                        onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = { openTripStopSearch(it) }, onOpenConnect = onOpenConnect,
                     ),
                 )
 

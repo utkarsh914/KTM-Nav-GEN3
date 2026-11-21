@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,11 +24,13 @@ import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.StartFailure
+import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.trip.TripController
 import com.navigator.app.trip.TripState
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.feature.navigate.BikeSheetMapper
+import com.navigator.app.ui.feature.navigate.plan.PickStopOverlay
 import com.navigator.app.ui.feature.navigate.riding.EndTripButton
 import com.navigator.app.ui.feature.navigate.riding.ManeuverModel
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
@@ -57,7 +62,8 @@ internal class NavigatingStageActions(
     val onBackToBrowse: () -> Unit,
     val onBackToPreview: () -> Unit,
     val onMoveAway: () -> Unit,
-    val onOpenTripStopSearch: () -> Unit,
+    /** Opens the full search for a stop with [String] typed in (what was said; empty for none). */
+    val onOpenTripStopSearch: (String) -> Unit,
     val onOpenConnect: () -> Unit,
 )
 
@@ -159,7 +165,7 @@ internal fun NavigatingStage(
                 onEnd = { riding.showTripSheet = false; riding.showEndConfirm = true },
                 onDismiss = { riding.showTripSheet = false },
             )
-            if (startFailure == null) {
+            if (startFailure == null && !riding.pickingStop) {
                 val maneuver = remember(navState) { ManeuverModel.from(navState) }
                 if (landscape) RidingLandscape(
                     maneuver = maneuver,
@@ -191,10 +197,34 @@ internal fun NavigatingStage(
             if (riding.showBike && startFailure == null) {
                 BikeSheetHost(tripRunning = true, onOpenPairing = actions.onOpenConnect, onDismiss = { riding.showBike = false })
             }
+            if (riding.pickingStop && startFailure == null) {
+                val online by ConnectivityMonitor.isOnline.collectAsState()
+                val left = remember { TripStopRules.left(trip.stopsAhead()?.size, tripState.allStops.size) }
+                // Back to the Add a stop sheet, and the map follows the rider again.
+                val leave = {
+                    riding.pickingStop = false
+                    actions.onApplyMapButton(MapButtonEvent.Tap)
+                }
+                LaunchedEffect(Unit) { actions.onRidingInsets(MapInsets()) }
+                BackHandler { leave(); riding.showTripStops = true }
+                PickStopOverlay(
+                    map = map, number = tripState.allStops.size + 1, destination = tripState.dest?.label.orEmpty(),
+                    canAdd = TripStopRules.canAdd(left, online),
+                    onBack = { leave(); riding.showTripStops = true },
+                    onUse = { place -> leave(); trip.addStop(place) },
+                )
+            }
             if (riding.showTripStops && startFailure == null) {
                 TripStopSheetHost(
                     trip = trip,
-                    onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch() },
+                    onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch(it) },
+                    onPickOnMap = {
+                        // Free camera over the whole route (as Overview), then the pin: the trip keeps guiding underneath.
+                        riding.showTripStops = false
+                        riding.mapButton = MapButtonState(overview = true)
+                        map.showRouteOverview()
+                        riding.pickingStop = true
+                    },
                     onDismiss = { riding.showTripStops = false },
                 )
             }

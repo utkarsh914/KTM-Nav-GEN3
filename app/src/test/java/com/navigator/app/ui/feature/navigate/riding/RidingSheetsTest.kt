@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.navigate.riding
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -94,10 +95,10 @@ class RidingSheetsTest {
     private val fuel = CategoryResult("Indian Oil", "NH 48", 77.0, 12.0, 1_200)
 
     private fun stopUi(left: Int = 2, online: Boolean = true, category: PlaceCategory? = PlaceCategory.FUEL, loading: Boolean = false,
-                       failed: Boolean = false, results: List<CategoryResult> = listOf(fuel)) =
-        TripStopUi(left, online, category, loading, failed, results)
+                       failed: Boolean = false, results: List<CategoryResult> = listOf(fuel), voice: Boolean = false) =
+        TripStopUi(left, online, category, loading, failed, results, voiceAvailable = voice)
 
-    private fun stopActions() = TripStopActions({ log += "cat:${it.name}" }, { log += "add:${it.name}" }, { log += "search" }, { log += "retry" }, { log += "dismiss" })
+    private fun stopActions() = TripStopActions({ log += "cat:${it.name}" }, { log += "add:${it.name}" }, { log += "search" }, { log += "retry" }, { log += "dismiss" }, { log += "voice" }, { log += "pick" })
 
     @Test fun theStopSheetSaysHowManyAreLeftAndAddsFromItsOwnButton() {
         riding { TripStopSheet(stopUi(), stopActions()) }
@@ -109,6 +110,33 @@ class RidingSheetsTest {
         rule.onNodeWithText("Fuel").performClick()
         rule.onNodeWithText("Search for a stop").performClick()
         assertEquals(listOf("add:Indian Oil", "cat:FUEL", "search"), log)
+    }
+
+    @Test fun theMicShowsOnlyWhereThereIsASpeechRecogniserAndSpeaks() {
+        riding { TripStopSheet(stopUi(), stopActions()) }
+        rule.onAllNodes(hasContentDescription("Search by voice")).assertCountEquals(0)
+    }
+
+    @Test fun theMicIsThereWithVoiceAndOpensIt() {
+        riding { TripStopSheet(stopUi(voice = true), stopActions()) }
+        rule.onNodeWithContentDescription("Search by voice").performClick()
+        assertEquals(listOf("voice"), log)
+    }
+
+    @Test fun pickOnMapLeadsTheOneScrollingChipRow() {
+        riding { TripStopSheet(stopUi(), stopActions()) }
+        val pick = rule.onNodeWithText("Pick on map").getUnclippedBoundsInRoot()
+        val fuelChip = rule.onNodeWithText("Fuel").getUnclippedBoundsInRoot()
+        val last = rule.onNodeWithText("EV charging").getUnclippedBoundsInRoot()
+        assertTrue("first in the row", pick.left < fuelChip.left)
+        assertEquals("one row, not wrapped", pick.top, last.top)
+        rule.onNodeWithText("Pick on map").performClick()
+        assertEquals(listOf("pick"), log)
+    }
+
+    @Test fun pickOnMapIsNotOfferedWhenAStopCannotBeAdded() {
+        riding { TripStopSheet(stopUi(left = 0), stopActions()) }
+        rule.onAllNodesWithText("Pick on map").assertCountEquals(0)
     }
 
     @Test fun offlineDisablesAddAndSaysWhy() {

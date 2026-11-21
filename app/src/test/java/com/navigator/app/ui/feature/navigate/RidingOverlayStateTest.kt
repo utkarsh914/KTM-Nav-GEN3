@@ -21,6 +21,13 @@ class RidingOverlayStateTest {
         assertFalse(s.showTripSheet)
     }
 
+    @Test fun pickingAStopOnTheMapEndsWithTheStage() {
+        val s = RidingOverlayState()
+        s.pickingStop = true
+        s.onStageChanged(NavStage.TRIP_FINISHED, openAddStop = false)
+        assertFalse(s.pickingStop)
+    }
+
     @Test fun addAStopOnlyOpensWhenRiding() {
         val s = RidingOverlayState()
         s.onStageChanged(NavStage.BROWSE, openAddStop = true)
