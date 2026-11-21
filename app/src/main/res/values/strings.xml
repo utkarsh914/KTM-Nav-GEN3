@@ -75,6 +75,7 @@
     <string name="navigate_tile_last_none">No trips yet</string>
     <string name="navigate_tile_pick">Pick on map</string>
     <string name="navigate_tile_pick_caption">Drop a pin</string>
+    <string name="navigate_tile_pick_needs_map">Needs map</string>
     <string name="navigate_saved_header">Saved</string>
     <string name="navigate_recent_header">Recent</string>
     <string name="navigate_empty_hint">Search, or say where you\'re going.</string>
@@ -94,8 +95,8 @@
     <string name="navigate_resume">Resume navigation</string>
     <string name="navigate_reset_north">Reset orientation to north</string>
     <string name="navigate_map_loading">Loading map…</string>
-    <string name="navigate_map_failed_title">Couldn\'t start the map</string>
-    <string name="navigate_map_failed_message">Search and your saved places still work. Check your connection and try again.</string>
+    <string name="navigate_map_failed_title">The map didn\'t load</string>
+    <string name="navigate_map_failed_message">Check your connection. Search and saved places still work below.</string>
     <string name="navigate_map_retry">Try again</string>
     <string name="navigate_map_unavailable_title">Maps aren\'t available</string>
     <string name="navigate_map_unavailable_message">Google\'s map can\'t run on this phone or in this build. You can still mirror Google Maps guidance to your dash.</string>

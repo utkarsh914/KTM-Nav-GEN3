@@ -127,3 +127,9 @@ fun ktmColorScheme(c: KtmColors, a: AccentScheme): ColorScheme {
         )
     }
 }
+
+/** The numbered stop pin: white with a near-black ring and number, in both themes, here and on the map. */
+object KtmPinColors {
+    val paper = Color(0xFFFFFFFF)
+    val ink = Color(0xFF111111)
+}

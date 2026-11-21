@@ -104,6 +104,8 @@ object KtmLayout {
 
     /** Border of a flat card. */
     val hairline = 1.dp
+    /** The outline of an unset tile (HM3). */
+    val outlineThin = 1.5.dp
 
     /** Dividers inset to the text. */
     val dividerInset = 72.dp
@@ -136,6 +138,9 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The glyph in a destination tile's badge (HM1), and the alert tile of the map error card (HM4). */
+    val tileIcon = 20.dp
+    val errorTile = 64.dp
     /** The marker column of the stop list (PL3), and the numbered badge in it. */
     val stopMarker = 28.dp
     val timelineStroke = 2.dp

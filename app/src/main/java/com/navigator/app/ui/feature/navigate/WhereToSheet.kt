@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.foundation.layout.Box
 import com.navigator.app.ui.shell.tripStripBounds
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,6 +94,8 @@ fun WhereToSheetContent(
     modifier: Modifier = Modifier,
     /** Left and right; a card that pads itself (the landscape panel) passes 0. */
     horizontalPadding: androidx.compose.ui.unit.Dp = KtmSpacing.lg,
+    /** False while the map failed or is not available: Pick on map says so and dims (HM4). */
+    mapUsable: Boolean = true,
 ) {
     val saved = state.favorites.filter { it.slot == FavoriteSlot.OTHER }.map { it.place }
     Column(
@@ -121,7 +124,7 @@ fun WhereToSheetContent(
             }
         }
         Spacer(Modifier.height(KtmSpacing.md))
-        TileGrid(state.tiles, actions.onTile)
+        TileGrid(state.tiles, mapUsable, actions.onTile)
         Spacer(Modifier.height(KtmSpacing.lg))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
@@ -180,38 +183,49 @@ private fun SearchField(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TileGrid(tiles: List<WhereToTile>, onTile: (TileAction) -> Unit) {
+private fun TileGrid(tiles: List<WhereToTile>, mapUsable: Boolean, onTile: (TileAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         tiles.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                pair.forEach { tile -> TileCell(tile, onTile, Modifier.weight(1f)) }
+                pair.forEach { tile -> TileCell(tile, mapUsable, onTile, Modifier.weight(1f)) }
             }
         }
     }
 }
 
 @Composable
-private fun TileCell(tile: WhereToTile, onTile: (TileAction) -> Unit, modifier: Modifier = Modifier) {
+private fun TileCell(tile: WhereToTile, mapUsable: Boolean, onTile: (TileAction) -> Unit, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
     val action = tile.action
     val unset = tile.place == null && tile.kind != TileKind.PickOnMap
-    val (name, caption) = tileText(tile)
-    val enabled = action != TileAction.None
+    val needsMap = tile.kind == TileKind.PickOnMap && !mapUsable
+    val (name, shownCaption) = tileText(tile)
+    val caption = if (needsMap) stringResource(R.string.navigate_tile_pick_needs_map) else shownCaption
+    val enabled = action != TileAction.None && !needsMap
     Row(
-        modifier.height(WhereToMetrics.tileHeight).clip(KtmShapes.Control)
-            .let { if (unset) it.border(KtmLayout.hairline, c.line2, KtmShapes.Control) else it.background(c.surf2) }
+        modifier.height(WhereToMetrics.tileHeight).clip(KtmShapes.Card)
+            .let { if (unset) it.border(KtmLayout.outlineThin, c.line2, KtmShapes.Card) else it.background(c.surf2) }
             .alpha(if (enabled) 1f else KtmLayout.disabledAlpha)
             .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onTile(action) }
             .padding(horizontal = KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        TonalIconBadge(tileIcon(tile.kind))
+        TileBadge(tileIcon(tile.kind))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleLarge, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(caption, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+/** HM1: an accent-container circle with a 20 dp glyph. */
+@Composable
+private fun TileBadge(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    val a = KtmTheme.accent
+    Box(Modifier.size(KtmLayout.appIcon).background(a.container, KtmShapes.Pill), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(icon, null, tint = a.onContainer, modifier = Modifier.size(KtmLayout.tileIcon))
     }
 }
 

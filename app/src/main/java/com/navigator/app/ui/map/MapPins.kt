@@ -6,17 +6,38 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.createBitmap
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.navigator.app.ui.theme.KtmPinColors
 
 /** Colours (ARGB) for what the planning map draws itself: pins, flag and route time labels. */
-data class PreviewPinStyle(val accent: Int, val onAccent: Int, val surface: Int, val onSurface: Int, val outline: Int)
+data class PreviewPinStyle(
+    val accent: Int,
+    val onAccent: Int,
+    val surface: Int,
+    val onSurface: Int,
+    val outline: Int,
+    /** The selected route's blue (and the fill of its time label) and the muted blue of the alternatives; they differ by map theme. */
+    val route: Int = ROUTE_LIGHT,
+    val routeAlt: Int = ROUTE_ALT_LIGHT,
+) {
+    companion object {
+        const val ROUTE_LIGHT = 0xFF1A73E8.toInt()
+        const val ROUTE_ALT_LIGHT = 0xFF8FA4BF.toInt()
+        const val ROUTE_NIGHT = 0xFF4C8DF6.toInt()
+        const val ROUTE_ALT_NIGHT = 0xFF5E7591.toInt()
+    }
+}
 
 /**
  * The map's own markers, drawn as bitmaps so they match the app's colours (PL3): numbered stop pins, the
  * destination flag and the time label of each route (PL2).
  */
+private val NUMBER_PAPER = KtmPinColors.paper.toArgb()
+private val NUMBER_INK = KtmPinColors.ink.toArgb()
+
 internal class MapPins(context: Context, private val pin: PreviewPinStyle) {
     private val density = context.resources.displayMetrics.density
 
@@ -34,13 +55,13 @@ internal class MapPins(context: Context, private val pin: PreviewPinStyle) {
         strokeWidth = stroke
     }
 
-    /** A filled circle with the stop's number, ringed in the surface colour so it reads on any map. */
+    /** A white disc with a black ring and number: it reads on any map, and is the same in both themes (PL3). */
     fun numbered(number: Int): BitmapDescriptor = bitmap(32f, 32f) {
         val c = dp(16f)
-        drawCircle(c, c, dp(15f), paint(pin.surface))
-        drawCircle(c, c, dp(12.5f), paint(pin.accent))
+        drawCircle(c, c, dp(15f), paint(NUMBER_INK))
+        drawCircle(c, c, dp(12.5f), paint(NUMBER_PAPER))
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = pin.onAccent; textSize = dp(14f); typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER
+            color = NUMBER_INK; textSize = dp(14f); typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER
         }
         drawText(number.toString(), c, c - (text.descent() + text.ascent()) / 2f, text)
     }
@@ -57,17 +78,17 @@ internal class MapPins(context: Context, private val pin: PreviewPinStyle) {
         drawPath(cloth, paint(pin.accent))
     }
 
-    /** A rounded label ("42 min") sitting on a route; the selected route's is filled with the accent. */
+    /** A rounded label ("42 min") sitting on a route; the selected route's is filled with the route blue. */
     fun callout(text: String, selected: Boolean): BitmapDescriptor {
         val t = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (selected) pin.onAccent else pin.onSurface
+            color = if (selected) NUMBER_PAPER else pin.onSurface
             textSize = dp(14f); typeface = Typeface.DEFAULT_BOLD
         }
         val w = t.measureText(text) + dp(20f)
         val h = dp(30f)
         return bitmap(w / density, h / density) {
             val r = RectF(dp(1f), dp(1f), w - dp(1f), h - dp(1f))
-            drawRoundRect(r, h / 2, h / 2, paint(if (selected) pin.accent else pin.surface))
+            drawRoundRect(r, h / 2, h / 2, paint(if (selected) pin.route else pin.surface))
             drawRoundRect(r, h / 2, h / 2, paint(pin.outline, fill = false, stroke = dp(1.5f)))
             drawText(text, dp(10f), h / 2 - (t.descent() + t.ascent()) / 2f, t)
         }

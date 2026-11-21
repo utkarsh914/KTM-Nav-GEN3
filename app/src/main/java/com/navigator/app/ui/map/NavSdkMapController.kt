@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 private const val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
-private const val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
+private const val ROUTE_ALT = 0xFF8FA4BF.toInt()      // desaturated blue alternate
 
 /**
  * [MapController] on the Navigation SDK's `NavigationView`/`GoogleMap`. One per map screen; it is
@@ -224,10 +224,10 @@ class NavSdkMapController(
             return
         }
         scene.routes.forEachIndexed { i, points ->
-            if (i != scene.selectedRoute) gm.addRoute(points, ROUTE_ALT, 9f, i)
+            if (i != scene.selectedRoute) gm.addRoute(points, scene.style?.routeAlt ?: ROUTE_ALT, 9f, i)
         }
         scene.routes.getOrNull(scene.selectedRoute)?.let { selected ->
-            gm.addRoute(selected, ROUTE_SELECTED, 14f, scene.selectedRoute)
+            gm.addRoute(selected, scene.style?.route ?: ROUTE_SELECTED, 14f, scene.selectedRoute)
             val b = LatLngBounds.builder()
             selected.forEach { b.include(LatLng(it.lat, it.lng)) }
             scene.frameAlso.forEach { b.include(LatLng(it.lat, it.lng)) }

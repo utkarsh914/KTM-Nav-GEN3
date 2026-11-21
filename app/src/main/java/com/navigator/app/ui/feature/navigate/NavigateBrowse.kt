@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
@@ -59,6 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.disabled
@@ -126,6 +128,7 @@ fun NavigateBrowse(
     val scaffoldState = rememberBottomSheetScaffoldState()
     val scope = rememberCoroutineScope()
     val mapReady = mapState == MapState.Ready
+    val mapUsable = mapState == MapState.Ready || mapState == MapState.Preparing
     val safe = WindowInsets.systemBars.union(WindowInsets.displayCutout)
 
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -154,7 +157,7 @@ fun NavigateBrowse(
                         .consumeMapTouches()
                         .padding(KtmLayout.panelPadding),
                 ) {
-                    WhereToSheetContent(state, voiceAvailable, actions.sheet, horizontalPadding = 0.dp)
+                    WhereToSheetContent(state, voiceAvailable, actions.sheet, horizontalPadding = 0.dp, mapUsable = mapUsable)
                 }
                 Overlays(
                     state, location, mapState, mapBearing, actions, recordControls,
@@ -208,7 +211,7 @@ fun NavigateBrowse(
                     // A long list stops below the status bar instead of running under it.
                     WhereToSheetContent(
                         state, voiceAvailable, actions.sheet,
-                        Modifier.heightIn(max = sheetMaxHeight),
+                        Modifier.heightIn(max = sheetMaxHeight), mapUsable = mapUsable,
                     )
                 },
             ) {
@@ -240,8 +243,8 @@ private fun Overlays(
     val locationOk = location == LocationState.Ok
     Box(modifier.windowInsetsPadding(insets)) {
         Column(
-            Modifier.align(Alignment.TopStart).padding(edge),
-            verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+            Modifier.align(Alignment.TopStart).fillMaxWidth().padding(edge),
+            verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg),
         ) {
             // MO7: the pill pulses once as the greeting grows out of it.
             val motion = KtmTheme.motion
@@ -264,10 +267,13 @@ private fun Overlays(
                 onClick = actions.onBike,
                 stateDescription = stringResource(state.bike.state),
             )
-            if (!locationOk) LocationBanner(location, actions.onFixLocation, Modifier.fillMaxWidth(0.9f))
+            if (!locationOk) LocationBanner(location, actions.onFixLocation)
         }
 
-        MapStateCard(mapState, actions, Modifier.align(Alignment.Center).padding(edge))
+        MapStateCard(
+            mapState, actions,
+            Modifier.align(Alignment.Center).padding(edge).padding(bottom = with(LocalDensity.current) { sheetLiftPx.toDp() }),
+        )
 
         // HM8: grows out of the bike pill (top-left), settles lower in the open map, then shrinks back.
         val motionSpecs = KtmTheme.motion
@@ -358,19 +364,39 @@ private fun MapStateCard(mapState: MapState, actions: NavigateBrowseActions, mod
     when (mapState) {
         MapState.Ready -> Unit
         MapState.Preparing -> InfoBanner(stringResource(R.string.navigate_map_loading), modifier)
-        MapState.Failed -> InfoBanner(
-            title = stringResource(R.string.navigate_map_failed_title),
-            message = stringResource(R.string.navigate_map_failed_message),
-            tone = BannerTone.Bad,
-            modifier = modifier,
-            action = { KtmButton(stringResource(R.string.navigate_map_retry), actions.onRetryMap, style = ButtonStyle.Tonal, size = ButtonSize.Small) },
+        MapState.Failed -> MapErrorCard(
+            stringResource(R.string.navigate_map_failed_title), stringResource(R.string.navigate_map_failed_message),
+            stringResource(R.string.navigate_map_retry), KtmIcons.Refresh, actions.onRetryMap, modifier,
         )
-        MapState.Unavailable -> InfoBanner(
-            title = stringResource(R.string.navigate_map_unavailable_title),
-            message = stringResource(R.string.navigate_map_unavailable_message),
-            modifier = modifier,
-            action = { KtmButton(stringResource(R.string.navigate_map_unavailable_action), actions.onUseMirror, style = ButtonStyle.Tonal, size = ButtonSize.Small) },
+        MapState.Unavailable -> MapErrorCard(
+            stringResource(R.string.navigate_map_unavailable_title), stringResource(R.string.navigate_map_unavailable_message),
+            stringResource(R.string.navigate_map_unavailable_action), KtmIcons.Map, actions.onUseMirror, modifier,
         )
+    }
+}
+
+/** HM4: the cause, what still works and one way on, centred in the part of the map the sheet leaves open. */
+@Composable
+private fun MapErrorCard(title: String, message: String, action: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onAction: () -> Unit, modifier: Modifier) {
+    val c = KtmTheme.colors
+    Column(
+        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).padding(KtmSpacing.xl)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.size(KtmLayout.errorTile).background(c.warnContainer, KtmShapes.Card), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(KtmIcons.Warning, null, tint = c.warn)
+        }
+        androidx.compose.material3.Text(
+            title, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.padding(top = KtmSpacing.md).semantics { heading() },
+        )
+        androidx.compose.material3.Text(
+            message, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = c.fg2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = KtmSpacing.sm),
+        )
+        KtmButton(action, onAction, Modifier.fillMaxWidth().padding(top = KtmSpacing.lg), style = ButtonStyle.Outline, icon = icon)
     }
 }
 

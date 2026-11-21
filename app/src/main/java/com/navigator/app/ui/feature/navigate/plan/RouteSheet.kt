@@ -67,6 +67,7 @@ import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmPinColors
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -270,9 +271,9 @@ private const val LIT_MS = 900L
 @Composable
 internal fun StopNumberBadge(number: Int, modifier: Modifier = Modifier) {
     Box(
-        modifier.background(Color.White, KtmShapes.Pill).border(KtmLayout.pinRing, Color.Black, KtmShapes.Pill),
+        modifier.background(KtmPinColors.paper, KtmShapes.Pill).border(KtmLayout.pinRing, KtmPinColors.ink, KtmShapes.Pill),
         contentAlignment = Alignment.Center,
-    ) { Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = Color.Black) }
+    ) { Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = KtmPinColors.ink) }
 }
 
 /** One editable stop (row + leg line) as a draggable unit; the grip's drag distance becomes whole-row moves. */
