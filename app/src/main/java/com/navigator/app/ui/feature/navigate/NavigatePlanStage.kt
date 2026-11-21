@@ -1,13 +1,13 @@
 package com.navigator.app.ui.feature.navigate
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
@@ -93,11 +93,14 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     if (sel != null) {
         // PL1: Back is a map control above the sheet, the way to the search or the map it came from.
         // The landscape panel covers that corner and carries its own Back.
-        if (LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            MapControlButton(
-                KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
-                Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
-            )
+        // Judged by the same box as the panel (split-screen is portrait by configuration but wide by space).
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            if (maxWidth <= maxHeight) {
+                MapControlButton(
+                    KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
+                    Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
+                )
+            }
         }
         val removedMessage = resources.getString(R.string.place_removed)
         val undoLabel = resources.getString(R.string.common_undo)

@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmLayout
@@ -49,7 +51,8 @@ fun EmptyState(
     ) {
         // An 88 dp tile with a soft corner, the same on every empty page (RD4, PC4).
         // A short screen (landscape) gets a smaller tile so the page and its buttons fit without scrolling.
-        val short = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < SHORT_SCREEN_DP
+        val heightPx = LocalWindowInfo.current.containerSize.height
+        val short = heightPx > 0 && with(LocalDensity.current) { heightPx.toDp() } < SHORT_SCREEN_DP.dp
         Box(Modifier.size(if (short) KtmLayout.emptyTileShort else KtmLayout.emptyTile).background(c.surf3, KtmShapes.Sheet), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = c.fg3, modifier = Modifier.size(if (short) KtmLayout.emptyGlyphShort else KtmLayout.emptyGlyph))
         }

@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,6 +70,8 @@ fun KtmDialog(
 ) {
     val c = KtmTheme.colors
     val motion = KtmTheme.motion
+    // Side by side labels do not fit at a large font: stack them, as on the riding screen.
+    val bigText = LocalDensity.current.fontScale >= BIG_TEXT_SCALE
     // Fade and settle in from 92 %; a dialog window can't play an exit, it goes with its window.
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -103,7 +106,7 @@ fun KtmDialog(
                 Text(title, style = MaterialTheme.typography.headlineSmall, color = c.fg, modifier = Modifier.semantics { heading() })
                 if (message != null) Text(message, style = MaterialTheme.typography.bodyMedium, color = c.fg2)
                 content?.invoke()
-                if (stacked) {
+                if (stacked || bigText) {
                     Column(Modifier.padding(top = KtmSpacing.sm), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                         // Safe choice first.
                         dismiss?.let { DialogButton(it, ButtonSize.Riding, ButtonStyle.Neutral, Modifier.fillMaxWidth()) }
@@ -126,6 +129,7 @@ fun KtmDialog(
 }
 
 private const val DIALOG_SCALE = 0.92f
+private const val BIG_TEXT_SCALE = 1.3f
 
 @Composable
 private fun DialogButton(action: DialogAction, size: ButtonSize, style: ButtonStyle, modifier: Modifier) {

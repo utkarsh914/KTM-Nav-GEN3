@@ -346,8 +346,9 @@ private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
         modifier.alpha(if (live.paused) PAUSED_ALPHA else 1f).clip(KtmShapes.Card).background(DashPalette.bg)
             .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md)
             .semantics(mergeDescendants = true) {},
-        verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
+        // The turn scrolls when the font is large; ETA and distance left stay at the foot.
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         OnDashLine(live, DashPalette.subtle, if (live.stale) KtmTheme.colors.warn else DashPalette.subtle)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             // With no instruction text the glyph is the only thing that says which way to turn.
@@ -363,7 +364,7 @@ private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
             }
         }
         t.road?.let { Text(it, style = MaterialTheme.typography.headlineMedium, color = DashPalette.text, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        Spacer(Modifier.weight(1f))
+        }
         if (t.eta != null || t.remaining != null) {
             Row(
                 Modifier.fillMaxWidth().drawBehind { drawLine(DashPalette.ring, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1f) }.padding(top = KtmSpacing.sm),

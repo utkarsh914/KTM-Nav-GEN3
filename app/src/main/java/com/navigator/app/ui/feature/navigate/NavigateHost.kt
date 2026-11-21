@@ -387,11 +387,15 @@ fun NavigateHost(
         route = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_LIGHT,
         routeAlt = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_LIGHT,
     )
-    LaunchedEffect(planInsets, stage) {
-        // The card measures after the stage arrives: frame again once its size is known (the pin goes to the open map's middle).
+    // One frame per change of what is shown: the card measures after it arrives, so frame again once its size is known.
+    // A later resize of the card (the rider panned the map meanwhile) must not pull the camera back.
+    var fitPending by remember { mutableStateOf(false) }
+    LaunchedEffect(stage, selected, routePreview.routes, stops) { fitPending = true }
+    LaunchedEffect(planInsets, stage, fitPending) {
         val framed = (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) || stage == NavStage.CONFIRM
-        if (framed) {
+        if (framed && fitPending) {
             delay(250)
+            fitPending = false
             if (stage == NavStage.CONFIRM || stage == NavStage.PREVIEW) fitKey++
         }
     }

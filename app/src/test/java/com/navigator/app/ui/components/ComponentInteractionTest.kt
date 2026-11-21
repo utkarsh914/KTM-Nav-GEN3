@@ -1,9 +1,11 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.up
+import androidx.compose.ui.unit.Density
 import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
@@ -141,5 +144,24 @@ class ComponentInteractionTest {
         val end = rule.onNodeWithText("End trip").fetchSemanticsNode().boundsInRoot
         assertTrue("safe choice above the destructive one", keep.top < end.top)
         assertEquals("riding buttons are 64 dp (1 px = 1 dp at the default density)", 64f, keep.height, 1f)
+    }
+
+    @Test fun aDialogStacksItsButtonsAtALargeFont() {
+        rule.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 1.5f)) {
+                KtmTheme(darkTheme = true) {
+                    KtmDialog(
+                        title = "Delete this ride?", onDismiss = {},
+                        confirm = DialogAction("Delete ride", {}, ButtonStyle.Danger),
+                        dismiss = DialogAction("Keep it", {}),
+                    )
+                }
+            }
+        }
+        val keep = rule.onNodeWithText("Keep it").fetchSemanticsNode().boundsInRoot
+        val delete = rule.onNodeWithText("Delete ride").fetchSemanticsNode().boundsInRoot
+        assertTrue("one under the other", keep.bottom <= delete.top)
+        assertEquals("same width", keep.width, delete.width, 1f)
     }
 }
