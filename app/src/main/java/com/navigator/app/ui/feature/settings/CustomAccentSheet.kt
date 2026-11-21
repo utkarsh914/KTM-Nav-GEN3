@@ -74,7 +74,7 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
     val save = { HexInput.parse(hex)?.let { onSave(hexOf(it)) }; Unit }
 
     KtmModalSheet(onDismiss = onDismiss) {
-        Column(Modifier.imePadding().padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
+        Column(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.custom_title), style = MaterialTheme.typography.headlineSmall, color = c.fg,

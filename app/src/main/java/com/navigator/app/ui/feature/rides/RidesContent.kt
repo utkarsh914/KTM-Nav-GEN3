@@ -5,6 +5,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSegmented
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.shell.rideContainer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -138,7 +139,7 @@ fun RidesContent(
                     )
                     is RidesBody.Items -> LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                         contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
                         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
                     ) {
@@ -202,7 +203,7 @@ private fun SortSheet(current: RideSort, onDismiss: () -> Unit, onShow: (RideSor
     val labels = directions.associateWith { stringResource(RideSort(draft.field, it).label) }
     KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.rides_sort_title)) {
         fields.forEach { (field, label) ->
-            KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) })
+            KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) }, Modifier.fullBleed())
         }
         KtmSegmented(
             directions, draft.desc, { draft = draft.copy(desc = it) }, { labels.getValue(it) },

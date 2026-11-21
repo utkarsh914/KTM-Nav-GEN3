@@ -47,13 +47,13 @@ class BikeDashViewModel(
 ) : ViewModel() {
     private fun build(
         snap: SettingsSnapshot, status: BikeStatus, suggested: Boolean,
-        access: Boolean,
+        access: Boolean, lookUp: Boolean = true,
     ) = BikeDashUi(
         bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired),
         repairSuggested = suggested && snap.isPaired,
         connected = status is BikeStatus.Connected,
         showOnDash = snap.mirrorEnabled,
-        appCount = snap.notificationSourceApps.count(installed),
+        appCount = if (lookUp) snap.notificationSourceApps.count(installed) else snap.notificationSourceApps.size,
         marquee = snap.marqueeEnabled,
         latinOnly = snap.latinDashText,
         userName = snap.userName.orEmpty(),
@@ -64,7 +64,8 @@ class BikeDashViewModel(
         build(snap, status, detail.repairSuggested, perms[PermissionId.NOTIFICATION_ACCESS].granted)
     }.flowOn(io).stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
-        build(settings.snapshot.value, connection.status.value, connection.detail.value.repairSuggested, permissions.state.value[PermissionId.NOTIFICATION_ACCESS].granted),
+        // The package lookups run off the main thread; until they have, the count is unknown, not wrong.
+        build(settings.snapshot.value, connection.status.value, connection.detail.value.repairSuggested, permissions.state.value[PermissionId.NOTIFICATION_ACCESS].granted, lookUp = false),
     )
 
     fun setShowOnDash(on: Boolean) = settings.update { mirrorEnabled = on }

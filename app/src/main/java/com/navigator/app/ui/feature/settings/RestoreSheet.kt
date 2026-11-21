@@ -23,6 +23,7 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmCheckboxRow
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.SkeletonRow
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -69,15 +70,15 @@ private fun Choices(p: BackupManager.Preview, fileName: String?, actions: Restor
     if (!fileName.isNullOrBlank()) Text(fileName, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 2)
     Text(stringResource(R.string.restore_intro), style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg2)
     KtmCheckboxRow(
-        stringResource(R.string.restore_rides), rides && p.newRides > 0, { rides = it }, enabled = p.newRides > 0,
+        stringResource(R.string.restore_rides), rides && p.newRides > 0, { rides = it }, enabled = p.newRides > 0, modifier = Modifier.fullBleed(),
         supporting = if (p.ridesInFile == 0) none else stringResource(R.string.restore_rides_detail, p.newRides, (p.ridesInFile - p.newRides).coerceAtLeast(0)),
     )
     KtmCheckboxRow(
-        stringResource(R.string.restore_places), places && p.places > 0, { places = it }, enabled = p.places > 0,
+        stringResource(R.string.restore_places), places && p.places > 0, { places = it }, enabled = p.places > 0, modifier = Modifier.fullBleed(),
         supporting = if (p.places == 0) none else stringResource(R.string.restore_places_detail, p.places),
     )
     KtmCheckboxRow(
-        stringResource(R.string.restore_settings), settings && p.settings > 0, { settings = it }, enabled = p.settings > 0,
+        stringResource(R.string.restore_settings), settings && p.settings > 0, { settings = it }, enabled = p.settings > 0, modifier = Modifier.fullBleed(),
         supporting = if (p.settings == 0) none else stringResource(R.string.restore_settings_detail),
     )
     Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {

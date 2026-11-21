@@ -51,7 +51,7 @@ fun KtmTopBar(
         }
         Text(
             title, style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }.weight(1f).padding(start = if (onBack != null) KtmSpacing.sm else 0.dp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.then(if (title.isNotEmpty()) Modifier.semantics { heading() } else Modifier).weight(1f).padding(start = if (onBack != null) KtmSpacing.sm else 0.dp),
         )
         actions()
     }

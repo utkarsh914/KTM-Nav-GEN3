@@ -34,18 +34,20 @@ fun KtmFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
+    /** A riding surface: a 56 dp target for a glove. */
+    riding: Boolean = false,
 ) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val haptics = rememberHaptics()
     val content = if (selected) a.onContainer else c.fg
     Box(
-        modifier.heightIn(min = KtmLayout.targetRest)
+        modifier.heightIn(min = if (riding) KtmLayout.targetPrimary else KtmLayout.targetRest)
             .toggleable(value = selected, role = Role.Checkbox) { haptics.toggle(it); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier.height(44.dp)
+            Modifier.height(if (riding) KtmLayout.targetPrimary - 4.dp else 44.dp)
                 .clip(KtmShapes.Control)
                 .background(if (selected) a.container else androidx.compose.ui.graphics.Color.Transparent, KtmShapes.Control)
                 .let { if (selected) it else it.border(1.dp, c.line2, KtmShapes.Control) }

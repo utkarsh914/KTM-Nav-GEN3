@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.ui.platform.LocalContext
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.feature.pairing.HavingTroubleSheet
 import com.navigator.app.ui.shell.LocalOpenLogs
@@ -111,6 +112,7 @@ fun BikeSheet(
         },
     ) {
         ListRow(
+            modifier = Modifier.fullBleed(),
             title = title,
             supporting = text.hint?.let { stringResource(it) },
             leading = { TonalIconBadge(text.icon) },
@@ -121,11 +123,11 @@ fun BikeSheet(
         Column {
             KtmSwitchRow(
                 stringResource(R.string.bike_sheet_beeps), state.beepsOn, onBeeps,
-                supporting = stringResource(R.string.bike_sheet_beeps_hint), leadingIcon = KtmIcons.Sound,
+                supporting = stringResource(R.string.bike_sheet_beeps_hint), leadingIcon = KtmIcons.Sound, modifier = Modifier.fullBleed(),
             )
             KtmSwitchRow(
                 stringResource(R.string.bike_sheet_messages), state.messagesOn, onMessages,
-                supporting = stringResource(R.string.bike_sheet_messages_hint), leadingIcon = KtmIcons.Message,
+                supporting = stringResource(R.string.bike_sheet_messages_hint), leadingIcon = KtmIcons.Message, modifier = Modifier.fullBleed(),
             )
         }
     }

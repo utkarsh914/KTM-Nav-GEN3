@@ -893,7 +893,6 @@
     <string name="perm_background_body">Android asks for this on a separate screen:</string>
     <string name="step_done">Done</string>
     <string name="step_busy">In progress</string>
-    <string name="perm_step_cd">Step %1$d: %2$s</string>
     <string name="perm_background_step1">Tap Open settings</string>
     <string name="perm_background_step2">Permissions › Location</string>
     <string name="perm_background_step3">Choose Allow all the time</string>
@@ -1038,7 +1037,6 @@
     <string name="pair_step_close">Keep the phone near the dash</string>
     <string name="pair_bikes">Nearby bikes</string>
     <string name="pair_action">Pair</string>
-    <string name="pair_open_bluetooth_short">Open Bluetooth settings</string>
     <string name="pair_action_cd">Pair with %1$s</string>
     <string name="pair_none">No bike found yet. Scan again with the ignition on.</string>
     <plurals name="pair_others">

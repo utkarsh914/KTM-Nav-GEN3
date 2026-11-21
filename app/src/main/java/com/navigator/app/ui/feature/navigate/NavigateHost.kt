@@ -718,7 +718,12 @@ fun NavigateHost(
     }
     // A question about the place being looked at is void once the stage moves on (the trip finished meanwhile).
     // (A Replace confirmed from CONFIRM calls trip.cancel() and goes to PREVIEW at once, before any stage change.)
-    LaunchedEffect(stage) { replaceRequest = null }
+    var replaceStage by remember { mutableStateOf(stage) }
+    LaunchedEffect(stage) {
+        // Only a real move on: the first composition must not wipe a request a shortcut has just made.
+        if (replaceStage != stage) replaceRequest = null
+        replaceStage = stage
+    }
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
         riding.onStageChanged(stage, openAddStop = addStopOnResume)

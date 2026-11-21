@@ -11,6 +11,7 @@ import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.data.permissions.PermissionItem
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.ButtonSize
+import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.ListRow
@@ -46,7 +47,7 @@ fun PermissionRow(item: PermissionItem, onFix: () -> Unit, modifier: Modifier = 
             } else {
                 val label = stringResource(if (PermissionFix.opensSettings(item.id)) R.string.perm_open else R.string.perm_allow)
                 val description = stringResource(if (PermissionFix.opensSettings(item.id)) R.string.perm_open_cd else R.string.perm_allow_cd, title)
-                KtmButton(label, onFix, Modifier.semantics { contentDescription = description }, size = ButtonSize.Small)
+                KtmButton(label, onFix, Modifier.semantics { contentDescription = description }, style = ButtonStyle.Tonal, size = ButtonSize.Small)
             }
         },
     )

@@ -77,7 +77,10 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
         Column(Modifier.fillMaxSize()) {
             if (ui.selecting) SelectionBar(ui, actions) else PlacesBar(hasSaved = ui.saved.isNotEmpty(), actions)
             if (!ui.selecting) LargeTitle(stringResource(R.string.places_title))
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = FAB_CLEARANCE)) {
+            LazyColumn(
+                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+            ) {
                 if (!ui.selecting) {
                     item(key = "slots-header") { SectionHeader(stringResource(R.string.places_slots_header), Modifier.padding(top = KtmSpacing.xs)) }
                     item(key = "home") { SlotRow(FavoriteSlot.HOME, ui.home, ui.origin, actions) }

@@ -24,6 +24,7 @@ import com.navigator.app.data.rides.ImportResult
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RideSession
+import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.feature.record.rememberStartRecording
@@ -125,7 +126,7 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
             title = pluralStringResource(R.plurals.rides_delete_starred_title, n, n),
             message = stringResource(R.string.rides_delete_starred_message),
             onDismiss = { confirmStarred = false },
-            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmStarred = false; vm.deleteSelected() }),
+            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmStarred = false; vm.deleteSelected() }, ButtonStyle.Danger),
             dismiss = DialogAction(stringResource(R.string.rides_delete_cancel), { confirmStarred = false }),
         )
     }

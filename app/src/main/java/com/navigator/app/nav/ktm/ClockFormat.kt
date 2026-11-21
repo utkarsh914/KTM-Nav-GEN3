@@ -25,8 +25,12 @@ object ClockFormat {
             ?: ((if (date != null) "yyyy-MM-dd " else "") + if (h24) "HH:mm" + (if (seconds) ":ss" else "") else "h:mm" + (if (seconds) ":ss" else "") + " a")
     }
 
+    private data class Key(val locale: Locale, val h24: Boolean, val seconds: Boolean, val date: String?)
+    private val formatters = java.util.concurrent.ConcurrentHashMap<Key, DateTimeFormatter>()
+
+    /** Cached: a list of rides asks for the same one on every row and every recomposition. */
     fun formatter(locale: Locale = Locale.getDefault(), seconds: Boolean = false, date: String? = null): DateTimeFormatter =
-        DateTimeFormatter.ofPattern(pattern(locale, seconds, date), locale)
+        formatters.getOrPut(Key(locale, use24h(), seconds, date)) { DateTimeFormatter.ofPattern(pattern(locale, seconds, date), locale) }
 
     fun local(epochMs: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         if (use24h()) EtaFormatter.format(epochMs, zone)

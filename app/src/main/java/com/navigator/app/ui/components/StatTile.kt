@@ -33,8 +33,8 @@ fun StatTile(
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.fg2, maxLines = 2)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
-            Text(value, style = valueStyle, color = c.fg, maxLines = 1, modifier = Modifier.alignByBaseline())
-            if (unit != null) Text(unit, style = MaterialTheme.typography.titleLarge, color = c.fg2, modifier = Modifier.alignByBaseline())
+            Text(value, style = valueStyle, color = c.fg, maxLines = 1, modifier = Modifier.weight(1f, fill = false).alignByBaseline())
+            if (unit != null) Text(unit, style = MaterialTheme.typography.titleLarge, color = c.fg2, maxLines = 1, softWrap = false, modifier = Modifier.alignByBaseline())
         }
     }
 }

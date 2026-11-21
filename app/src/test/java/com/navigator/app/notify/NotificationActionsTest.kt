@@ -56,4 +56,12 @@ class NotificationActionsTest {
         NotificationActionReceiver().onReceive(ctx, Intent("something.else"))
         assertTrue(AppSettings(ctx).turnBeepEnabled)
     }
+
+    @Test fun everyRequestCodeIsDistinct() {
+        val codes = NotificationRequestCodes::class.java.declaredFields
+            .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) && it.type == Int::class.javaPrimitiveType && !it.name.startsWith("$") }
+            .onEach { it.isAccessible = true }.map { it.getInt(null) }
+        assertTrue(codes.size >= 10)
+        assertEquals("two buttons with one code would replace each other's intent", codes.size, codes.toSet().size)
+    }
 }

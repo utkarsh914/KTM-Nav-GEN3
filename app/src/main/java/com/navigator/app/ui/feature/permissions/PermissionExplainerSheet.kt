@@ -22,7 +22,9 @@ import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmModalSheet
+import com.navigator.app.ui.components.KtmStep
 import com.navigator.app.ui.components.KtmSwitch
+import com.navigator.app.ui.components.StepState
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -35,9 +37,9 @@ import com.navigator.app.ui.theme.KtmTheme
 fun PermissionExplainerSheet(explainer: Explainer, onGo: () -> Unit, onDismiss: () -> Unit) {
     val c = KtmTheme.colors
     KtmModalSheet(onDismiss = onDismiss, title = stringResource(explainer.title)) {
-        Column(Modifier.padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             Text(stringResource(explainer.body), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
-            explainer.steps.forEachIndexed { i, step -> Step(i + 1, stringResource(step)) }
+            explainer.steps.forEachIndexed { i, step -> KtmStep(i + 1, stringResource(step), StepState.Active) }
             if (explainer.appRow) AppRow()
             explainer.note?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = c.fg2) }
             Row(Modifier.padding(top = KtmSpacing.sm), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
@@ -45,21 +47,6 @@ fun PermissionExplainerSheet(explainer: Explainer, onGo: () -> Unit, onDismiss: 
                 KtmButton(stringResource(explainer.go), onGo, Modifier.weight(1f))
             }
         }
-    }
-}
-
-/** A numbered step: an accent disc and what to do. */
-@Composable
-private fun Step(number: Int, text: String) {
-    val spoken = stringResource(R.string.perm_step_cd, number, text)
-    Row(
-        Modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-    ) {
-        Box(Modifier.size(KtmSpacing.xl).background(KtmTheme.accent.container, KtmShapes.Pill), contentAlignment = Alignment.Center) {
-            Text(number.toString(), style = MaterialTheme.typography.labelMedium, color = KtmTheme.accent.onContainer)
-        }
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg)
     }
 }
 

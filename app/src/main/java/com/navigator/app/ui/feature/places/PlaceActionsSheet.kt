@@ -19,6 +19,7 @@ import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.TonalIconBadge
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -33,7 +34,7 @@ fun PlaceActionsSheet(target: PlaceTarget, inApp: Boolean, onAction: (PlaceActio
     KtmModalSheet(onDismiss = onDismiss) {
         // PC5: which place this is: its icon, its name, and where it is and how far.
         Row(
-            Modifier.padding(horizontal = KtmSpacing.lg).padding(bottom = KtmSpacing.sm),
+            Modifier.padding(bottom = KtmSpacing.sm),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             TonalIconBadge(
@@ -54,6 +55,7 @@ fun PlaceActionsSheet(target: PlaceTarget, inApp: Boolean, onAction: (PlaceActio
         }
         PlaceActions.forTarget(target, inApp).forEach { action ->
             ListRow(
+                modifier = Modifier.fullBleed(),
                 title = stringResource(action.label()), leadingIcon = action.icon(),
                 supporting = if (action == PlaceAction.OpenInMaps) stringResource(R.string.places_action_maps_hint) else null,
                 destructive = action == PlaceAction.Remove, onClick = { onAction(action) },

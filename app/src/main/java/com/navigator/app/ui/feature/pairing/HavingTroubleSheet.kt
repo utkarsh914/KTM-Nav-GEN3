@@ -43,7 +43,7 @@ fun HavingTroubleSheet(
     KtmModalSheet(
         onDismiss = onDismiss,
         actions = {
-            Column(Modifier.padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 if (onTryAgain != null) KtmButton(stringResource(R.string.pair_try_again), { onDismiss(); onTryAgain() }, Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                     KtmButton(
@@ -58,7 +58,7 @@ fun HavingTroubleSheet(
             }
         },
     ) {
-        Column(Modifier.padding(horizontal = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.pair_trouble), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg,

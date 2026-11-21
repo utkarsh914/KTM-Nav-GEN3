@@ -31,6 +31,7 @@ import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSwitch
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -102,6 +103,7 @@ fun ColumnScope.TripControlsBody(
     Spacer(Modifier.height(KtmSpacing.sm))
     if (nextStop != null) {
         ListRow(
+            modifier = Modifier.fullBleed(),
             title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
             trailing = {
                 KtmIconButton(
@@ -112,6 +114,7 @@ fun ColumnScope.TripControlsBody(
         )
     }
     ListRow(
+        modifier = Modifier.fullBleed(),
         title = stringResource(R.string.trip_dash), supporting = dashStatus, leadingIcon = KtmIcons.Bike,
         onClick = actions.onDash,
         trailing = { Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg2) },

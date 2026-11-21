@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.pairing
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -102,6 +103,13 @@ class PairingContentTest {
         rule.onNodeWithText("Headset").assertIsDisplayed()
     }
 
+    @Test fun theHelpIsReachableWhenPairingIsBlocked() {
+        show(PairingUi(PairingPhase.Blocked(BlockReason.NO_PERMISSION)))
+        rule.onNode(hasText("Having trouble?") and hasClickAction()).performClick()
+        rule.onNode(hasText("Share log") and hasClickAction()).performClick()
+        assertEquals(listOf("share"), log)
+    }
+
     @Test fun bluetoothOffAlsoOffersTheSystemSettings() {
         show(PairingUi(PairingPhase.Blocked(BlockReason.BLUETOOTH_OFF)))
         rule.onNode(hasText("Open Bluetooth settings") and hasClickAction()).performClick()
@@ -120,6 +128,7 @@ class PairingContentTest {
         rule.onNodeWithText("Found KTM 1290").assertIsDisplayed()
         rule.onNodeWithText("Waiting for you on the dash · 1:05").assertIsDisplayed()
         rule.onNodeWithContentDescription("Back").assertDoesNotExist()
+        rule.onAllNodes(hasText("Having trouble?")).assertCountEquals(0)
         rule.onNode(hasText("Cancel") and hasClickAction()).performClick()
         assertEquals(listOf("cancel"), log)
     }

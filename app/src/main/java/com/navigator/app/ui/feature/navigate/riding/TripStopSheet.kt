@@ -81,7 +81,7 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
         Spacer(Modifier.height(KtmSpacing.sm))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             PlaceCategory.entries.forEach { category ->
-                KtmFilterChip(stringResource(category.labelRes()), selected = ui.category == category, onClick = { actions.onCategory(category) })
+                KtmFilterChip(stringResource(category.labelRes()), selected = ui.category == category, onClick = { actions.onCategory(category) }, riding = true)
             }
         }
         Spacer(Modifier.height(KtmSpacing.sm))

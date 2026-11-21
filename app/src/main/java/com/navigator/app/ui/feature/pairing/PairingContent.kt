@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -102,7 +103,7 @@ fun PairingContent(ui: PairingUi, actions: PairingActions, modifier: Modifier = 
         val back = actions.onBack.takeUnless { confirming }
         if (progress != null) KtmStepHeader(progress.first, progress.second, back) else KtmTopBar(onBack = back)
         when (val phase = ui.phase) {
-            is PairingPhase.Blocked -> Blocked(phase.reason, actions)
+            is PairingPhase.Blocked -> Blocked(phase.reason, actions) { troubleOpen = true }
             PairingPhase.Scanning -> Scanning(ui, actions) { troubleOpen = true }
             is PairingPhase.Confirming -> Confirming(phase, actions)
             PairingPhase.Failed -> Failed(actions, retry, dimmed = helpOpen) { troubleOpen = true }
@@ -282,19 +283,29 @@ private fun Confirming(phase: PairingPhase.Confirming, actions: PairingActions) 
 }
 
 @Composable
-private fun Blocked(reason: BlockReason, actions: PairingActions) {
+private fun Blocked(reason: BlockReason, actions: PairingActions, onTrouble: () -> Unit) {
     val noPermission = reason == BlockReason.NO_PERMISSION
-    EmptyState(
-        icon = if (noPermission) KtmIcons.Bluetooth else KtmIcons.BluetoothOff,
-        title = stringResource(if (noPermission) R.string.pair_blocked_permission_title else R.string.pair_blocked_off_title),
-        message = stringResource(if (noPermission) R.string.pair_blocked_permission else R.string.pair_blocked_off),
-        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
-        primary = StateAction(stringResource(if (noPermission) R.string.pair_allow_nearby else R.string.pair_turn_on)) { actions.onFixBlock(reason) },
-        // If the system's "turn on" dialog was refused, the rider needs another way to Bluetooth.
-        secondary = if (noPermission) actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) }
-        else StateAction(stringResource(R.string.pair_open_bluetooth_short), actions.onBluetoothSettings),
-        tertiary = if (noPermission) null else actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) },
-    )
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+            EmptyState(
+                icon = if (noPermission) KtmIcons.Bluetooth else KtmIcons.BluetoothOff,
+                title = stringResource(if (noPermission) R.string.pair_blocked_permission_title else R.string.pair_blocked_off_title),
+                message = stringResource(if (noPermission) R.string.pair_blocked_permission else R.string.pair_blocked_off),
+                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                primary = StateAction(stringResource(if (noPermission) R.string.pair_allow_nearby else R.string.pair_turn_on)) { actions.onFixBlock(reason) },
+                // If the system's "turn on" dialog was refused, the rider needs another way to Bluetooth.
+                secondary = if (noPermission) actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) }
+                else StateAction(stringResource(R.string.pair_open_bluetooth), actions.onBluetoothSettings),
+                tertiary = if (noPermission) null else actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) },
+            )
+        }
+        // The help stays reachable here too: logs and Share log matter most when pairing cannot even start.
+        KtmButton(
+            stringResource(R.string.pair_trouble), onTrouble,
+            Modifier.align(Alignment.CenterHorizontally).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)).padding(vertical = KtmSpacing.sm),
+            style = ButtonStyle.Text, icon = KtmIcons.Help,
+        )
+    }
 }
 
 /** ON9: the page behind the help sheet (dimmed while it is open), with Try again once the sheet is closed. */
