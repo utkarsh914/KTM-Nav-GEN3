@@ -12,7 +12,8 @@ object ReplayFormat {
     private class Formats(val locale: Locale, val h24: Boolean) {
         val clock: DateTimeFormatter = ClockFormat.formatter(locale, seconds = true)
         val clockShort: DateTimeFormatter = ClockFormat.formatter(locale)
-        val dateTime: DateTimeFormatter = ClockFormat.formatter(locale, date = "yMMMd")
+        val dateTime: DateTimeFormatter = ClockFormat.formatter(locale, date = "EEEdMMM")
+        val day: DateTimeFormatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale)
     }
 
     @Volatile private var formats = Formats(Locale.getDefault(), ClockFormat.use24h())
@@ -31,5 +32,9 @@ object ReplayFormat {
     /** The time of day for an axis label (14:32). */
     fun axisTime(ms: Long): String = current().clockShort.format(at(ms))
 
+    /** "Thu 19 Nov". */
+    fun rideDay(ms: Long): String = if (ms <= 0L) "" else current().day.format(at(ms))
+
+    /** "Thu 19 Nov · 5:51 pm" (the date and the time the ride began). */
     fun rideDate(ms: Long): String = if (ms <= 0L) "" else current().dateTime.format(at(ms))
 }

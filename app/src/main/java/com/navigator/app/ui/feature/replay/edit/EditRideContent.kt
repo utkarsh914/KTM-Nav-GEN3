@@ -21,10 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
-import com.navigator.app.ui.components.ButtonSize
-import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.EmptyState
-import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.KtmTextField
 import com.navigator.app.ui.components.KtmTopBar
@@ -71,7 +68,7 @@ private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
         KtmTextField(ui.name, actions.onName, stringResource(R.string.edit_ride_name), Modifier.fillMaxWidth())
         KtmTextField(
             ui.notes, actions.onNotes, stringResource(R.string.edit_ride_notes),
-            Modifier.fillMaxWidth().heightIn(min = KtmLayout.row3 * 2), singleLine = false,
+            Modifier.fillMaxWidth().heightIn(min = KtmLayout.notesMin), singleLine = false,
         )
         Text(stringResource(R.string.edit_ride_saved_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         ListRow(
@@ -83,9 +80,10 @@ private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
             title = stringResource(R.string.edit_ride_star), checked = ui.saved, onCheckedChange = actions.onToggleStar,
             supporting = stringResource(R.string.edit_ride_star_supporting), supportingLines = 3, leadingIcon = KtmIcons.Star,
         )
-        KtmButton(
-            stringResource(R.string.edit_ride_delete), actions.onDelete, Modifier.fillMaxWidth().padding(vertical = KtmSpacing.lg),
-            style = ButtonStyle.DangerTonal, size = ButtonSize.Rest, icon = KtmIcons.Delete,
+        // RP4: Delete is the last row of the list, in the danger colour.
+        ListRow(
+            title = stringResource(R.string.edit_ride_delete), leadingIcon = KtmIcons.Delete, onClick = actions.onDelete, destructive = true,
+            modifier = Modifier.padding(bottom = KtmSpacing.lg),
         )
     }
 }

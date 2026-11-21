@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -136,11 +137,12 @@ fun MiniStepper(
     modifier: Modifier = Modifier,
     highlight: Boolean = false,
     valueWidth: Dp = KtmLayout.targetRest,
+    height: Dp = KtmLayout.targetRest,
 ) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     Row(
-        modifier.height(KtmLayout.targetRest)
+        modifier.height(height)
             .then(if (highlight) Modifier.border(KtmLayout.outline, a.fill, KtmShapes.Control) else Modifier.background(c.surf2, KtmShapes.Control)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -166,28 +168,34 @@ fun ReplayPlayRow(
     modifier: Modifier = Modifier,
 ) {
     val c = KtmTheme.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        KtmIconButton(
-            if (playing) KtmIcons.Pause else KtmIcons.Play,
-            stringResource(if (playing) R.string.replay_pause else R.string.replay_play),
-            onTogglePlay, style = IconButtonStyle.Accent, size = IconButtonSize.Map, circular = true,
-        )
-        KtmIconButton(KtmIcons.Restart, stringResource(R.string.replay_restart), onRestart, style = IconButtonStyle.Tonal)
-        val a = KtmTheme.accent
-        KtmIconButton(
-            KtmIcons.Navigation, stringResource(if (following) R.string.replay_follow_stop else R.string.replay_follow), onToggleFollow,
-            modifier = Modifier.background(if (following) a.container else Color.Transparent, KtmShapes.Control),
-            tint = if (following) a.onContainer else c.fg,
-            style = if (following) IconButtonStyle.Plain else IconButtonStyle.Tonal,
-        )
-        MiniStepper(
-            valueText = stringResource(R.string.replay_speed_value, speed),
-            valueDescription = stringResource(R.string.replay_speed_description, speed),
-            onLess = { onStepSpeed(-1) }, onMore = { onStepSpeed(1) },
-            lessDescription = stringResource(R.string.replay_speed_slower), moreDescription = stringResource(R.string.replay_speed_faster),
-            canLess = speed > PlaybackEngine.SPEEDS.first(), canMore = speed < PlaybackEngine.SPEEDS.last(),
-            highlight = speed != 1,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+    // RP1: every control in the row is 56 dp. A narrow screen (or a big font) keeps the buttons at 48 so the stepper fits.
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val roomy = maxWidth >= KtmLayout.playRowRoomy
+        val size = if (roomy) IconButtonSize.Map else IconButtonSize.Rest
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            KtmIconButton(
+                if (playing) KtmIcons.Pause else KtmIcons.Play,
+                stringResource(if (playing) R.string.replay_pause else R.string.replay_play),
+                onTogglePlay, style = IconButtonStyle.Accent, size = IconButtonSize.Map,
+            )
+            KtmIconButton(KtmIcons.Restart, stringResource(R.string.replay_restart), onRestart, style = IconButtonStyle.Tonal, size = size)
+            val a = KtmTheme.accent
+            KtmIconButton(
+                KtmIcons.Navigation, stringResource(if (following) R.string.replay_follow_stop else R.string.replay_follow), onToggleFollow,
+                modifier = Modifier.background(if (following) a.container else Color.Transparent, KtmShapes.Card),
+                tint = if (following) a.onContainer else c.fg,
+                style = if (following) IconButtonStyle.Plain else IconButtonStyle.Tonal, size = size,
+            )
+            MiniStepper(
+                valueText = stringResource(R.string.replay_speed_value, speed),
+                valueDescription = stringResource(R.string.replay_speed_description, speed),
+                onLess = { onStepSpeed(-1) }, onMore = { onStepSpeed(1) },
+                lessDescription = stringResource(R.string.replay_speed_slower), moreDescription = stringResource(R.string.replay_speed_faster),
+                canLess = speed > PlaybackEngine.SPEEDS.first(), canMore = speed < PlaybackEngine.SPEEDS.last(),
+                highlight = speed != 1,
+                modifier = Modifier.weight(1f, fill = false),
+                height = if (roomy) KtmLayout.targetPrimary else KtmLayout.targetRest,
+            )
+        }
     }
 }

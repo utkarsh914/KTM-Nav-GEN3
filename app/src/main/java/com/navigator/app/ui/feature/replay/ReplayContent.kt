@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.replay
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedVisibility
@@ -278,14 +279,13 @@ private fun Landscape(
                 KtmIconButton(KtmIcons.Share, stringResource(R.string.replay_share), actions.onShare)
                 OverflowMenu(actions, IconButtonSize.Rest)
             }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
-                Readouts(ui, position)
-                ReplaySeekBar(position, ui.points.size, ui.seams, ui.mergeSeams, actions.onSeek, actions.onScrubStart)
-                ReplayPlayRow(ui.playing, ui.following, ui.speed, actions.onTogglePlay, actions.onRestart, actions.onToggleFollow, actions.onStepSpeed)
-                Column(Modifier.padding(top = KtmSpacing.md), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-                    Details(ui, position, avgMode, actions, chartFirst = true)
-                }
+            // RP6: the chart (and, scrolling, the stats) above; the readout, seek bar and play row stay at the foot.
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+                Details(ui, position, avgMode, actions, chartFirst = true)
             }
+            Readouts(ui, position)
+            ReplaySeekBar(position, ui.points.size, ui.seams, ui.mergeSeams, actions.onSeek, actions.onScrubStart)
+            ReplayPlayRow(ui.playing, ui.following, ui.speed, actions.onTogglePlay, actions.onRestart, actions.onToggleFollow, actions.onStepSpeed)
         }
     }
 }
@@ -348,9 +348,13 @@ private fun Title(ride: RecordedRide, parts: Int, onEdit: () -> Unit, compact: B
                 name, style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall, color = c.fg,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
-            if (parts > 1) KtmBadge(pluralStringResource(R.plurals.replay_parts, parts, parts), tone = BadgeTone.Accent)
+            if (parts > 1) KtmBadge(pluralStringResource(R.plurals.replay_parts, parts, parts), tone = BadgeTone.Neutral)
         }
-        if (!compact) Text(ReplayFormat.rideDate(ride.startMs), style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1)
+        val distance = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC)
+        // RP1: "Thu 19 Nov · 5:51 pm · 6.3 km"; the narrow side panel (RP6) says the day, the distance and the time taken.
+        val sub = if (compact) stringResource(R.string.replay_subtitle_compact, ReplayFormat.rideDay(ride.startMs), distance, rideDuration(ride.durationSeconds))
+        else stringResource(R.string.replay_subtitle, ReplayFormat.rideDate(ride.startMs), distance)
+        Text(sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -376,22 +380,32 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
     val c = KtmTheme.colors
     val ride = ui.ride
     ride.notes?.takeIf { it.isNotBlank() }?.let {
-        Text(it, style = MaterialTheme.typography.bodyMedium, color = c.fg2, modifier = Modifier.fillMaxWidth().padding(top = KtmSpacing.xs))
+        Text(
+            "\u201c$it\u201d", style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+            color = c.fg2, modifier = Modifier.fillMaxWidth().padding(top = KtmSpacing.xs),
+        )
     }
     // The side panel is short: the chart (RP6) comes before the stats there.
     if (!chartFirst) Stats(ride, avgMode)
     if (ui.chart != null) {
+        // RP2: what the chart shows, with the elevation switch on the same line; climb, descent and the hint under it.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.replay_chart_title), style = MaterialTheme.typography.titleSmall, color = c.fg2, modifier = Modifier.weight(1f))
+            if (ui.hasElevation) {
+                KtmFilterChip(stringResource(R.string.replay_elevation), ui.showElevation, actions.onToggleElevation, leadingIcon = KtmIcons.Elevation)
+            }
+        }
         ReplayChart(
             ui.chart, ui.seams, ui.mergeSeams, position, ui.points.size, ui.points.first().timeMs, ui.points.last().timeMs,
             ui.showElevation, actions.onSeek, actions.onScrubStart,
         )
-        if (ui.hasElevation) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-                KtmFilterChip(stringResource(R.string.replay_elevation), ui.showElevation, actions.onToggleElevation, leadingIcon = KtmIcons.Elevation)
-                if (ride.elevGainM != ELEV_UNKNOWN && ride.elevLossM != ELEV_UNKNOWN) {
-                    Text(stringResource(R.string.replay_elevation_totals, ride.elevGainM, ride.elevLossM), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+            if (ui.hasElevation && ride.elevGainM != ELEV_UNKNOWN && ride.elevLossM != ELEV_UNKNOWN) {
+                Text(stringResource(R.string.replay_climb, ride.elevGainM), style = MaterialTheme.typography.bodySmall, color = c.fg2)
+                Text(stringResource(R.string.replay_descent, ride.elevLossM), style = MaterialTheme.typography.bodySmall, color = c.fg2)
             }
+            Spacer(Modifier.weight(1f))
+            Text(stringResource(R.string.replay_chart_tap), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         }
     }
     if (chartFirst) Stats(ride, avgMode)
@@ -402,10 +416,15 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
 private fun Stats(ride: RecordedRide, mode: AvgSpeedMode) {
     val valueStyle = KtmTheme.type.statValue
     val kmh = stringResource(R.string.replay_unit_kmh)
+    // "Riding time" is the time spent moving; a ride from before that was stored has only the elapsed time.
+    val moving = ride.movingSeconds >= 0
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             StatTile(stringResource(R.string.replay_stat_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f), valueStyle = valueStyle)
-            StatTile(stringResource(R.string.replay_stat_time), rideDuration(ride.durationSeconds), Modifier.weight(1f), valueStyle = valueStyle)
+            StatTile(
+                stringResource(if (moving) R.string.replay_stat_riding else R.string.replay_stat_time),
+                rideDuration(if (moving) ride.movingSeconds else ride.durationSeconds), Modifier.weight(1f), valueStyle = valueStyle,
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             StatTile(
@@ -422,17 +441,17 @@ private fun Smoothing(meters: Int, onStep: (Int) -> Unit) {
     val c = KtmTheme.colors
     val steps = ReplayUi.SMOOTHING_STEPS
     val text = if (meters == 0) stringResource(R.string.replay_smoothing_off) else stringResource(R.string.replay_smoothing_value, meters)
-    Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.replay_smoothing_title), style = MaterialTheme.typography.titleSmall, color = c.fg)
-            MiniStepper(
-                text, text, { onStep(-1) }, { onStep(1) },
-                stringResource(R.string.replay_smoothing_less), stringResource(R.string.replay_smoothing_more),
-                canLess = meters > steps.first(), canMore = meters < steps.last(),
-                valueWidth = KtmLayout.targetRest + KtmSpacing.md,
-            )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.replay_smoothing_title), style = MaterialTheme.typography.titleMedium, color = c.fg)
+            Text(stringResource(R.string.replay_smoothing_explain), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         }
-        Text(stringResource(R.string.replay_smoothing_explain), style = MaterialTheme.typography.bodySmall, color = c.fg2)
+        MiniStepper(
+            text, text, { onStep(-1) }, { onStep(1) },
+            stringResource(R.string.replay_smoothing_less), stringResource(R.string.replay_smoothing_more),
+            canLess = meters > steps.first(), canMore = meters < steps.last(),
+            valueWidth = KtmLayout.targetRest + KtmSpacing.md,
+        )
     }
 }
 

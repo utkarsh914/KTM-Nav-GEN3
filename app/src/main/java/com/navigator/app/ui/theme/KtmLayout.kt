@@ -141,6 +141,9 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The replay play row uses 56 dp buttons from this width (RP1); narrower, 48 so the speed stepper still fits. */
+    val playRowRoomy = 340.dp
+    val notesMin = 104.dp
     /** The glyph in a destination tile's badge (HM1), and the alert tile of the map error card (HM4). */
     val tileIcon = 20.dp
     val errorTile = 64.dp

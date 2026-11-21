@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
+import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
@@ -196,10 +198,13 @@ fun ReplayScreen(
     if (confirmDelete) {
         KtmDialog(
             title = stringResource(R.string.replay_delete_starred_title),
-            message = stringResource(R.string.replay_delete_starred_message),
+            message = stringResource(
+                R.string.replay_delete_starred_message,
+                ready?.ride?.destinationLabel?.takeIf { it.isNotBlank() } ?: stringResource(RideSourceText.title(ready?.ride?.source)),
+            ),
             onDismiss = { confirmDelete = false },
-            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmDelete = false; vm.delete() }),
-            dismiss = DialogAction(stringResource(R.string.replay_delete_keep), { confirmDelete = false }),
+            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmDelete = false; vm.delete() }, ButtonStyle.Danger),
+            dismiss = DialogAction(stringResource(R.string.replay_delete_keep), { confirmDelete = false }, ButtonStyle.Text),
         )
     }
 }

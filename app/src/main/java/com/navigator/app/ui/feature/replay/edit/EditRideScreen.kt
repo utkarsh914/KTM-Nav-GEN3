@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.shell.LocalFeedback
@@ -67,10 +68,13 @@ fun EditRideScreen(
     if (confirmDelete) {
         KtmDialog(
             title = stringResource(R.string.replay_delete_starred_title),
-            message = stringResource(R.string.replay_delete_starred_message),
+            message = stringResource(
+                R.string.replay_delete_starred_message,
+                (ui as? EditUi.Ready)?.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.replay_delete_unnamed),
+            ),
             onDismiss = { confirmDelete = false },
-            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmDelete = false; vm.delete() }),
-            dismiss = DialogAction(stringResource(R.string.replay_delete_keep), { confirmDelete = false }),
+            confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmDelete = false; vm.delete() }, ButtonStyle.Danger),
+            dismiss = DialogAction(stringResource(R.string.replay_delete_keep), { confirmDelete = false }, ButtonStyle.Text),
         )
     }
 }

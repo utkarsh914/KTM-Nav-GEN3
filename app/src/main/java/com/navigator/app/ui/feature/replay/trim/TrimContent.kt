@@ -3,7 +3,8 @@ package com.navigator.app.ui.feature.replay.trim
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -48,7 +49,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
@@ -151,17 +151,17 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
         startText = timeAt(ui, ui.range.from), endText = timeAt(ui, ui.range.to),
         enabled = !ui.applying,
     )
-    // Under the bar, so on the same sides as its handles.
+    // Under the bar, so on the same sides as its handles (the handles name themselves for a screen reader).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.trim_start_label, timeAt(ui, ui.range.from)), style = MaterialTheme.typography.labelMedium, color = c.fg)
-            Text(stringResource(R.string.trim_end_label, timeAt(ui, ui.range.to)), style = MaterialTheme.typography.labelMedium, color = c.fg)
+            Text(timeAt(ui, ui.range.from), style = MaterialTheme.typography.bodySmall, color = c.fg2)
+            Text(timeAt(ui, ui.range.to), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         }
     }
     ui.kept?.let {
         Text(
             stringResource(R.string.trim_keeps, DistanceFormatter.format(it.distanceMeters, DistanceUnits.METRIC), rideDuration(it.durationSeconds)),
-            style = MaterialTheme.typography.titleSmall, color = c.fg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.titleLarge, color = c.fg, modifier = Modifier.fillMaxWidth(),
         )
     }
     if (ui.failed) InfoBanner(message = stringResource(R.string.trim_failed), tone = BannerTone.Bad)
@@ -258,10 +258,14 @@ fun TrimRangeBar(
                 val x2 = left + width * to
                 drawLine(c.surf3, Offset(left, y), Offset(left + width, y), strokeWidth = track, cap = StrokeCap.Round)
                 drawLine(a.fill, Offset(x1, y), Offset(x2, y), strokeWidth = track, cap = StrokeCap.Round)
+                // RP5: accent rounded squares with a grip of two bars.
+                val corner = CornerRadius(KtmShapes.Badge.topStart.toPx(Size(handle, handle), this))
+                val bar = KtmLayout.hairline.toPx() * 2
                 for (x in listOf(x1, x2)) {
-                    drawCircle(c.surf, radius = handle / 2, center = Offset(x, y))
-                    drawCircle(c.line2, radius = handle / 2, center = Offset(x, y), style = Stroke(KtmLayout.hairline.toPx()))
-                    drawCircle(a.fill, radius = handle / 2 - track / 2, center = Offset(x, y))
+                    drawRoundRect(a.fill, Offset(x - handle / 2, y - handle / 2), Size(handle, handle), corner)
+                    for (dx in listOf(-handle / 8, handle / 8)) {
+                        drawLine(a.onFill, Offset(x + dx, y - handle / 5), Offset(x + dx, y + handle / 5), strokeWidth = bar, cap = StrokeCap.Round)
+                    }
                 }
             }
         }

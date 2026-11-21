@@ -132,12 +132,32 @@ class ReplayContentTest {
         rule.onAllNodesWithText("Distance").assertCountEquals(0)
     }
 
+    @Test fun theSubtitleSaysWhenAndHowFarAndTheNoteIsQuotedWithTheRidingTime() {
+        val noted = ride.copy(notes = "Evening ride", movingSeconds = 2_000)
+        show(ui().copy(ride = noted))
+        rule.onNodeWithText("12 km", substring = true).assertIsDisplayed()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Details hidden")).performClick()
+        rule.onNodeWithText("\u201cEvening ride\u201d").assertIsDisplayed()
+        rule.onNodeWithText("Riding time").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Average (moving)").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun aRideFromBeforeMovingTimeWasStoredSaysTimeNotRidingTime() {
+        show(ui())
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Details hidden")).performClick()
+        rule.onNodeWithText("Time").performScrollTo().assertIsDisplayed()
+        rule.onAllNodesWithText("Riding time").assertCountEquals(0)
+    }
+
     @Test fun theDetailsHaveTheChartElevationAndSmoothingStepper() {
         show(ui())
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Details hidden")).performClick()
         rule.onNodeWithContentDescription("Speed chart, top 59 km/h, elevation 900 to 939 m").assertExists()
         rule.onNodeWithText("Elevation").performScrollTo().performClick()
-        rule.onNodeWithText("Climb 120 m · Descent 98 m").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("↑ 120 m climb").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("↓ 98 m descent").assertIsDisplayed()
+        rule.onNodeWithText("Speed · km/h").assertIsDisplayed()
+        rule.onNodeWithText("Tap chart to jump").assertIsDisplayed()
         rule.onNodeWithContentDescription("More smoothing").performScrollTo().performClick()
         rule.onNodeWithContentDescription("Less smoothing").performScrollTo().performClick()
         assertEquals(listOf("elev", "smooth1", "smooth-1"), log)

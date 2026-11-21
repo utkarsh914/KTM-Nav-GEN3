@@ -50,7 +50,6 @@ import com.navigator.app.R
 import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ui.components.EmptyState
-import com.navigator.app.ui.components.KtmCheckboxRow
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmMenuItem
 import com.navigator.app.ui.components.KtmModalSheet
