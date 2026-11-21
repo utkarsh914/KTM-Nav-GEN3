@@ -18,7 +18,7 @@ object SettingsSummary {
             SettingsPage.BIKE_DASH -> CategorySummary(
                 listOf(
                     // The link state is on the card above; here, what the page holds.
-                    UiText.Res(R.string.settings_sum_name_unset).takeIf { snap.userName.isNullOrBlank() } ?: UiText.Raw(snap.userName.orEmpty().trim()),
+                    if (snap.userName.isNullOrBlank()) UiText.Res(R.string.settings_sum_name_unset) else UiText.Raw(snap.userName.trim().take(NAME_IN_SUMMARY)),
                     UiText.Res(if (snap.mirrorEnabled) R.string.settings_sum_messages_on else R.string.settings_sum_messages_off),
                 ),
             )
@@ -64,3 +64,6 @@ object SettingsSummary {
             SettingsPage.ABOUT -> CategorySummary(listOf(UiText.Res(R.string.settings_sum_about, listOf(version))))
         }
 }
+
+/** A long name would push the rest of the line off the row. */
+private const val NAME_IN_SUMMARY = 16

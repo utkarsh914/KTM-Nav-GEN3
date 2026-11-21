@@ -55,6 +55,7 @@ import com.navigator.app.ui.theme.hexOf
 @Composable
 fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     val c = KtmTheme.colors
+    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     val start = Hsv.of(initial)
     var hue by rememberSaveable { mutableFloatStateOf(start.hue) }
     var sat by rememberSaveable { mutableFloatStateOf(start.sat) }
@@ -67,7 +68,8 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
     val onLight = AccentCheck.of(color, KtmLightColors.bg, false)
     val scheme = customAccent(color).tones.forTheme(dark)
     val textTone = scheme.text
-    val ratio = "%.1f".format(check.textContrast)
+    // The lowest of the three: the one that matters when a colour is adjusted for only one theme.
+    val ratio = "%.1f".format(minOf(check.textContrast, onDark.textContrast, onLight.textContrast))
     // What was typed is saved as typed: the HSV round trip can land one step off.
     val save = { HexInput.parse(hex)?.let { onSave(hexOf(it)) }; Unit }
 
@@ -116,7 +118,7 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
                 Box(
                     Modifier.weight(1f).height(KtmLayout.targetPrimary)
                         .background(if (valid) scheme.fill else c.surf3, KtmShapes.Control)
-                        .clickable(enabled = valid, role = Role.Button, onClick = save),
+                        .clickable(enabled = valid, role = Role.Button) { haptics.tap(); save() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(stringResource(R.string.custom_save), style = MaterialTheme.typography.titleMedium, color = if (valid) scheme.onFill else c.fg3)

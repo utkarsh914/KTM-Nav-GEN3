@@ -73,7 +73,7 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
             stringResource(R.string.sounds_swap), ui.swapChannels, actions.onSwap,
             supporting = stringResource(R.string.sounds_swap_hint), enabled = ui.beeps,
         )
-        val hearBeeps = stringResource(R.string.sounds_hear_beeps)
+        val hearBeeps = stringResource(R.string.sounds_play_beeps_cd)
         KtmButton(
             stringResource(R.string.sounds_play_beeps), actions.onHearBeeps,
             Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm).semantics { contentDescription = hearBeeps },
@@ -96,7 +96,7 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
             editDescription = stringResource(R.string.sounds_edit_alert), onEditValue = actions.onEditAlertAt, enabled = ui.speedAlert,
             modifier = Modifier.padding(horizontal = KtmSpacing.edge),
             trailing = {
-                val hearAlert = stringResource(R.string.sounds_hear_alert)
+                val hearAlert = stringResource(R.string.sounds_play_cd)
                 KtmButton(
                     stringResource(R.string.sounds_play), actions.onHearAlert, Modifier.semantics { contentDescription = hearAlert },
                     style = ButtonStyle.Tonal, size = ButtonSize.Small, icon = KtmIcons.Play,

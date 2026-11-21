@@ -678,7 +678,7 @@
     <string name="settings_sum_mirror">Mirror mode</string>
     <string name="settings_sum_vehicle_bike">Bike</string>
     <string name="settings_sum_vehicle_car">Car</string>
-    <string name="settings_sum_beeps_at">Beeps %1$d %%</string>
+    <string name="settings_sum_beeps_at">Beeps %1$d %%</string>
     <string name="settings_sum_name_unset">Name not set</string>
     <string name="settings_sum_beeps_off">Beeps off</string>
     <string name="settings_sum_alert_at">Alert at %1$d km/h</string>
@@ -739,9 +739,9 @@
     <string name="sounds_swap">Swap left and right</string>
     <string name="sounds_swap_hint">If your headset sides are reversed.</string>
     <string name="sounds_play_beeps">Play L · R · L</string>
+    <string name="sounds_play_beeps_cd">Play L · R · L, hear turn beeps</string>
+    <string name="sounds_play_cd">Play, hear speed alert</string>
     <string name="sounds_play">Play</string>
-    <string name="sounds_hear_beeps">Hear turn beeps</string>
-    <string name="sounds_hear_alert">Hear speed alert</string>
     <string name="sounds_section_speed">Speed alert</string>
     <string name="sounds_alert">Speed alert</string>
     <string name="sounds_alert_hint">A tone when you go over the limit you set.</string>
@@ -891,6 +891,7 @@
     <string name="perm_open_cd">Open settings for %1$s</string>
     <string name="perm_background_title">Allow location all the time</string>
     <string name="perm_background_body">Android asks for this on a separate screen:</string>
+    <string name="perm_step_cd">Step %1$d: %2$s</string>
     <string name="perm_background_step1">Tap Open settings</string>
     <string name="perm_background_step2">Permissions › Location</string>
     <string name="perm_background_step3">Choose Allow all the time</string>
@@ -914,7 +915,7 @@
     <string name="backup_inc_places">Saved places, Home and Work</string>
     <string name="backup_inc_settings">All settings</string>
     <string name="backup_inc_pairing">Bike pairing. Pair again on a new phone</string>
-    <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones.</string>
+    <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones, and any setting not in the file goes back to its default.</string>
     <plurals name="backup_done">
         <item quantity="one">Backed up %1$d ride, your places and settings</item>
         <item quantity="other">Backed up %1$d rides, your places and settings</item>
@@ -951,7 +952,7 @@
     <string name="restore_none">None in this file</string>
     <string name="restore_rides_detail">%1$d new · %2$d already here</string>
     <string name="restore_places_detail">%1$d · merged with yours</string>
-    <string name="restore_settings_detail">Replaces yours · app restarts</string>
+    <string name="restore_settings_detail">Replaces yours · restart to apply</string>
     <string name="restore_close">Close</string>
     <string name="restore_confirm">Restore</string>
 

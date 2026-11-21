@@ -29,6 +29,7 @@ import com.navigator.app.ui.theme.KtmTheme
 fun PlaceActionsSheet(target: PlaceTarget, inApp: Boolean, onAction: (PlaceAction) -> Unit, onDismiss: () -> Unit, distance: String? = null) {
     val c = KtmTheme.colors
     val place = target.place
+    val shownName = place.label.ifBlank { place.address.orEmpty() }
     KtmModalSheet(onDismiss = onDismiss) {
         // PC5: which place this is: its icon, its name, and where it is and how far.
         Row(
@@ -44,10 +45,10 @@ fun PlaceActionsSheet(target: PlaceTarget, inApp: Boolean, onAction: (PlaceActio
             )
             Column(Modifier.weight(1f)) {
                 Text(
-                    place.label.ifBlank { place.address.orEmpty() }, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 1,
+                    shownName, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
                 )
-                val sub = listOfNotNull(place.address?.takeIf { it.isNotBlank() && it != place.label }, distance).joinToString(" \u00b7 ")
+                val sub = listOfNotNull(place.address?.takeIf { it.isNotBlank() && it != shownName }, distance).joinToString(" \u00b7 ")
                 if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

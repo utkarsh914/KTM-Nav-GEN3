@@ -286,6 +286,17 @@ class PlacesContentTest {
         assertEquals(listOf(PlaceAction.SetWork), chosen)
     }
 
+    @Test fun theSheetNamesThePlaceWithItsAddressAndDistanceAndHintsAtMirrorMode() {
+        rule.setContent {
+            KtmTheme(darkTheme = false) {
+                PlaceActionsSheet(PlaceTarget.Saved(toit), inApp = false, onAction = {}, onDismiss = {}, distance = "3.4 km away")
+            }
+        }
+        rule.onNodeWithText("Toit").assertIsDisplayed()
+        rule.onNodeWithText("Indiranagar · 3.4 km away").assertIsDisplayed()
+        rule.onNodeWithText("Mirror mode: we copy the turns").assertIsDisplayed()
+    }
+
     @Test fun thePlaceActionsTargetSurvivesTheProcessBeingKilled() {
         val place = SavedPlace(12.5, 77.5, "Toit", "Indiranagar")
         val saver = PlaceTarget.Saver

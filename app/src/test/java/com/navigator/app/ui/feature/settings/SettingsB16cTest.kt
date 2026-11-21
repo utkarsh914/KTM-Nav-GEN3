@@ -286,6 +286,27 @@ class SettingsB16cContentTest {
         assertEquals("settings start unticked", listOf("gotruefalsefalse"), log)
     }
 
+    @Test fun theSheetNamesTheFileAndCountsWhatIsAlreadyHere() {
+        backup(BackupUi(restore = RestoreState.Ready(BackupManager.Preview(5, 5, 1, 0), "ktm-backup.zip")))
+        rule.onNodeWithText("ktm-backup.zip").assertIsDisplayed()
+        rule.onNodeWithText("5 new · 0 already here").assertIsDisplayed()
+    }
+
+    @Test fun theExplainerShowsNumberedStepsAndTwoButtonsSideBySide() {
+        val gone = mutableListOf<String>()
+        rule.setContent {
+            KtmTheme(darkTheme = false) {
+                com.navigator.app.ui.feature.permissions.PermissionExplainerSheet(Explainer.BACKGROUND_LOCATION, { gone += "go" }, { gone += "no" })
+            }
+        }
+        rule.onNodeWithText("Tap Open settings").assertIsDisplayed()
+        rule.onNodeWithText("Permissions › Location").assertIsDisplayed()
+        rule.onNodeWithText("Choose Allow all the time").assertIsDisplayed()
+        rule.onNodeWithText("Not now").performClick()
+        rule.onNodeWithText("Open settings").performClick()
+        assertEquals(listOf("no", "go"), gone)
+    }
+
     @Test fun aBadFileSaysSoInTheSheetAndOffersAnother() {
         backup(BackupUi(restore = RestoreState.Unreadable))
         rule.onNodeWithText("Couldn't read that file").assertIsDisplayed()

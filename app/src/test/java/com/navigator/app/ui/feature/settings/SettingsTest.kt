@@ -336,8 +336,8 @@ class SettingsContentTest {
 
     @Test fun previewsSitUnderWhatTheyPreview() {
         sounds(on)
-        rule.onNode(hasContentDescription("Hear turn beeps") and hasClickAction()).performClick()
-        rule.onNode(hasContentDescription("Hear speed alert") and hasClickAction()).performClick()
+        rule.onNode(hasContentDescription("Play L · R · L, hear turn beeps") and hasClickAction()).performClick()
+        rule.onNode(hasContentDescription("Play, hear speed alert") and hasClickAction()).performClick()
         assertEquals(listOf("hearBeeps", "hearAlert"), log)
     }
 

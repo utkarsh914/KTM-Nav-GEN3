@@ -64,14 +64,21 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
     /** A file was chosen: the sheet opens at once and says what it found, or that it is not a backup. */
     fun openRestore(uri: Uri) {
         _ui.update { it.copy(restore = RestoreState.Reading) }
-        viewModelScope.launch {
+        // A newer pick (Choose another) replaces a lookup still running.
+        inspecting?.cancel()
+        inspecting = viewModelScope.launch {
             val preview = gateway.inspect(uri)
             val name = if (preview != null) gateway.displayName(uri) else null
             _ui.update { if (it.restore == null) it else it.copy(restore = preview?.let { p -> RestoreState.Ready(p, name) } ?: RestoreState.Unreadable) }
         }
     }
 
-    fun dismissRestore() = _ui.update { it.copy(restore = null) }
+    private var inspecting: kotlinx.coroutines.Job? = null
+
+    fun dismissRestore() {
+        inspecting?.cancel()
+        _ui.update { it.copy(restore = null) }
+    }
 
     fun restore(uri: Uri, rides: Boolean, places: Boolean, settings: Boolean) {
         _ui.update { it.copy(busy = true, restore = null, restoring = true) }

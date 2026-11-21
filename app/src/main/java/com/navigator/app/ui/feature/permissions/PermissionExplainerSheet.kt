@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
@@ -49,7 +51,11 @@ fun PermissionExplainerSheet(explainer: Explainer, onGo: () -> Unit, onDismiss: 
 /** A numbered step: an accent disc and what to do. */
 @Composable
 private fun Step(number: Int, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+    val spoken = stringResource(R.string.perm_step_cd, number, text)
+    Row(
+        Modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
         Box(Modifier.size(KtmSpacing.xl).background(KtmTheme.accent.container, KtmShapes.Pill), contentAlignment = Alignment.Center) {
             Text(number.toString(), style = MaterialTheme.typography.labelMedium, color = KtmTheme.accent.onContainer)
         }

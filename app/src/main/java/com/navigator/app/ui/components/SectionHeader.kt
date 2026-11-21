@@ -23,6 +23,11 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: String?
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         // What is chosen, at the right (the accent's name).
-        if (trailing != null) Text(trailing, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2)
+        if (trailing != null) {
+            Text(
+                trailing, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.sm),
+            )
+        }
     }
 }

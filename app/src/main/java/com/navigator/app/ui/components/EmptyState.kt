@@ -48,8 +48,10 @@ fun EmptyState(
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         // An 88 dp tile with a soft corner, the same on every empty page (RD4, PC4).
-        Box(Modifier.size(KtmLayout.emptyTile).background(c.surf3, KtmShapes.Sheet), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = c.fg3, modifier = Modifier.size(KtmLayout.emptyGlyph))
+        // A short screen (landscape) gets a smaller tile so the page and its buttons fit without scrolling.
+        val short = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < SHORT_SCREEN_DP
+        Box(Modifier.size(if (short) KtmLayout.emptyTileShort else KtmLayout.emptyTile).background(c.surf3, KtmShapes.Sheet), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = c.fg3, modifier = Modifier.size(if (short) KtmLayout.emptyGlyphShort else KtmLayout.emptyGlyph))
         }
         Text(title, style = MaterialTheme.typography.headlineSmall, color = c.fg, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
         Text(message, style = MaterialTheme.typography.bodyMedium, color = c.fg2, textAlign = TextAlign.Center)
@@ -64,3 +66,5 @@ fun EmptyState(
         }
     }
 }
+
+private const val SHORT_SCREEN_DP = 480
