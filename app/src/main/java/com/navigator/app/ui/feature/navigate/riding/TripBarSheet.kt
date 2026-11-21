@@ -211,7 +211,7 @@ private fun SheetPane(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
-            Column(Modifier.weight(1f).semantics { heading() }) {
+            Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
                 Text(
                     destination ?: title, style = MaterialTheme.typography.headlineSmall, color = r.onSurface, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -54,7 +57,8 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
     val ui = StartFailureMapper.of(failure)
     val r = KtmTheme.riding
     Column(
-        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
+        modifier.fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = KtmSpacing.lg).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = KtmSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {

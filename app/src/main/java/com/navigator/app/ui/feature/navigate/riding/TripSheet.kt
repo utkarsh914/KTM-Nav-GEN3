@@ -62,7 +62,7 @@ fun EndTripButton(onEnd: () -> Unit, modifier: Modifier = Modifier) {
 /**
  * NV7: everything the riding screen no longer carries as buttons, shown in the sheet the trip bar grows into
  * ([TripBarSheet]) and in the landscape controls panel (NL4): Add stop, Overview and Minimise are large tiles, the two
- * riding toggles are 56 dp rows, the dash row opens the bike screen. End trip follows, set apart (DL2).
+ * riding toggles are side-by-side 56 dp tiles, the dash row opens the bike screen. End trip follows, set apart (DL2).
  */
 @Composable
 fun ColumnScope.TripControlsBody(
@@ -143,7 +143,7 @@ private fun ToggleTile(label: String, description: String, checked: Boolean, onC
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Text(label, style = KtmTheme.type.ridingLabel, color = KtmTheme.riding.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
+        Text(label, style = KtmTheme.type.ridingLabel, color = KtmTheme.riding.onSurface, maxLines = 2, modifier = Modifier.weight(1f))
         KtmSwitch(checked, onCheckedChange = null)
     }
 }

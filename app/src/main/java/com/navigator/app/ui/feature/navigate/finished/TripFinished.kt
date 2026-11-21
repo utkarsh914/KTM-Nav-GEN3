@@ -109,7 +109,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
                         clock.format(Instant.ofEpochMilli(span.startMs).atZone(zone)), clock.format(Instant.ofEpochMilli(span.endMs).atZone(zone)),
                     )
                 }
-                Text(arrived, style = MaterialTheme.typography.labelMedium, color = c.fg2)
+                Text(arrived, style = MaterialTheme.typography.labelMedium, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     model.destination?.takeIf { it.isNotBlank() } ?: stringResource(R.string.finished_reached),
                     style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,

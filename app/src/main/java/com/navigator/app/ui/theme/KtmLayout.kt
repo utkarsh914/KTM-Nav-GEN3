@@ -136,6 +136,8 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The start-failed sheet scrolls beyond this (a short landscape screen, a large font). */
+    val startFailedMax = 360.dp
     val laneRecommendedMark = 3.dp
     val iconRiding = 28.dp
 

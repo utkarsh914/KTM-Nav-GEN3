@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -38,9 +39,11 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.contrastRatio
 import com.navigator.app.ui.theme.rememberHaptics
 
 private val PROGRESS_H = KtmLayout.progressLine
+private const val PROGRESS_MIN_CONTRAST = 3.0
 
 @Composable
 fun shortDurationText(seconds: Int): String =
@@ -62,7 +65,7 @@ fun timeLeftText(t: TimeLeft): String = when (t.kind) {
 fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val r = KtmTheme.riding
     val haptics = rememberHaptics()
-    val speedBg by animateColorAsState(if (ui.overspeed) r.overspeed else r.surfaceHigh, KtmTheme.motion.ridingColor(), label = "overspeed")
+    val speedBg by animateColorAsState(if (ui.overspeed) r.overspeed else Color.Transparent, KtmTheme.motion.ridingColor(), label = "overspeed")
     val speedFg by animateColorAsState(if (ui.overspeed) r.onOverspeed else r.onSurface, KtmTheme.motion.ridingColor(), label = "overspeedText")
     val menu = stringResource(R.string.riding_trip_menu)
     val speedDescription = when {
@@ -70,7 +73,8 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
         ui.alert != null -> stringResource(R.string.riding_speed_over_description, ui.speed, ui.alert)
         else -> stringResource(R.string.riding_speed_description, ui.speed)
     }
-    val accent = KtmTheme.accent.fill
+    // The rider's accent, unless it would vanish against this surface (a near-white or near-black custom colour).
+    val accent = KtmTheme.accent.fill.takeIf { contrastRatio(it, r.surface) >= PROGRESS_MIN_CONTRAST } ?: r.onSurface
     Box(
         modifier.fillMaxWidth().clip(KtmShapes.Card).background(r.surface)
             .clickable(role = Role.Button, onClickLabel = menu) { haptics.tap(); onOpen() },
