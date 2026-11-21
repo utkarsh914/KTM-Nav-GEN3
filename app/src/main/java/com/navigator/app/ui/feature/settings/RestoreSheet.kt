@@ -76,7 +76,7 @@ private fun Choices(p: BackupManager.Preview, actions: RestoreActions) {
     )
     KtmCheckboxRow(
         stringResource(R.string.restore_settings), settings && p.settings > 0, { settings = it }, enabled = p.settings > 0,
-        supporting = if (p.settings == 0) none else stringResource(R.string.restore_settings_detail, p.settings), supportingLines = 2,
+        supporting = if (p.settings == 0) none else stringResource(R.string.restore_settings_detail, p.settings), supportingLines = 3,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(stringResource(R.string.common_cancel), actions.onDismiss, Modifier.weight(1f), style = ButtonStyle.Outline)

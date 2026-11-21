@@ -278,4 +278,14 @@ class PlacesContentTest {
         rule.onNodeWithText("Set as Work").performClick()
         assertEquals(listOf(PlaceAction.SetWork), chosen)
     }
+
+    @Test fun thePlaceActionsTargetSurvivesTheProcessBeingKilled() {
+        val place = SavedPlace(12.5, 77.5, "Toit", "Indiranagar")
+        val saver = PlaceTarget.Saver
+        val scope = androidx.compose.runtime.saveable.SaverScope { true }
+        for (t in listOf<PlaceTarget?>(null, PlaceTarget.Saved(place), PlaceTarget.Slot(FavoriteSlot.WORK, place))) {
+            val saved = with(saver) { scope.save(t) }!!
+            assertEquals(t, saver.restore(saved))
+        }
+    }
 }

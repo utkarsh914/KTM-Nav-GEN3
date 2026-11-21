@@ -280,7 +280,7 @@ class DiagnosticsContentTest {
         rule.setContent {
             KtmTheme(darkTheme = true) {
                 CalibrationContent(
-                    CalibrationUi(rows, listOf(TurnIcon.GO_STRAIGHT), emptySet()), CalibrationActions({}, { toggled = it }, { _, _ -> }, {}),
+                    CalibrationUi(rows, listOf(TurnIcon.GO_STRAIGHT), emptySet(), loaded = true), CalibrationActions({}, { toggled = it }, { _, _ -> }, {}),
                 )
             }
         }
@@ -291,7 +291,7 @@ class DiagnosticsContentTest {
     }
 
     @Test fun calibrationWithNothingCapturedExplainsHow() {
-        rule.setContent { KtmTheme(darkTheme = true) { CalibrationContent(CalibrationUi(), CalibrationActions({}, {}, { _, _ -> }, {})) } }
+        rule.setContent { KtmTheme(darkTheme = true) { CalibrationContent(CalibrationUi(loaded = true), CalibrationActions({}, {}, { _, _ -> }, {})) } }
         rule.onNodeWithText("No turn icons yet").assertIsDisplayed()
     }
 }

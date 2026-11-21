@@ -784,7 +784,7 @@
     <string name="rec_section_colors">Track colours</string>
     <string name="rec_colors_note">Rides are drawn in these speed colours, slow to fast.</string>
     <string name="rec_band_base">Green up to</string>
-    <string name="rec_band_step">Each colour step</string>
+    <string name="rec_band_step">Each step</string>
     <string name="rec_band_count">Number of steps</string>
     <string name="rec_unit_colors">steps</string>
     <string name="rec_legend_cd">Speed colours from 0 to %1$d km per hour and over</string>
@@ -857,7 +857,7 @@
     <string name="backup_inc_places">Saved places</string>
     <string name="backup_inc_places_hint">Home, Work, saved and recent</string>
     <string name="backup_inc_settings">Your settings</string>
-    <string name="backup_inc_settings_hint">Your choices in Settings (not call audio or logs)</string>
+    <string name="backup_inc_settings_hint">Your choices in Settings, like theme, sounds and dash options</string>
     <string name="backup_not_included">The bike pairing is never included. Pair again on a new phone.</string>
     <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones.</string>
     <plurals name="backup_done">
@@ -896,7 +896,7 @@
     <string name="restore_none">None in this file</string>
     <string name="restore_rides_detail">New: %1$d of %2$d in file</string>
     <string name="restore_places_detail">In file: %1$d, merged with yours</string>
-    <string name="restore_settings_detail">In file: %1$d, replace yours. Restart the app to apply.</string>
+    <string name="restore_settings_detail">In file: %1$d. Replaces yours; anything not in the file goes back to its default. Restart the app to apply.</string>
     <string name="restore_close">Close</string>
     <string name="restore_confirm">Restore</string>
 
@@ -1063,9 +1063,9 @@
     <string name="conn_action_quit">Quit</string>
     <string name="shortcut_record_failed">Couldn\'t start recording. Try again from the app.</string>
     <string name="shortcut_record_needs_location">Recording needs location. Allow it in the app, then try again.</string>
-    <string name="shortcut_record_already">Already recording</string>
+    <string name="shortcut_record_already">Already recording.</string>
     <string name="shortcut_record_needs_setup">Finish setting up the app first, then record.</string>
-    <string name="shortcut_unset_message">Set this place again in Places</string>
+    <string name="shortcut_unset_message">Set %1$s again in Places</string>
     <string name="shortcut_record_short">Record</string>
     <string name="shortcut_record_long">Record a ride</string>
     <string name="shortcut_search_short">Where to?</string>

@@ -73,6 +73,7 @@ fun CalibrationContent(ui: CalibrationUi, actions: CalibrationActions, modifier:
     val c = KtmTheme.colors
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.calib_title), onBack = actions.onBack)
+        if (!ui.loaded) return@Column
         if (ui.rows.isEmpty()) {
             EmptyState(KtmIcons.Wand, stringResource(R.string.calib_empty_title), stringResource(R.string.calib_empty))
             return@Column

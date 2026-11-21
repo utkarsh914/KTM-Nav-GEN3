@@ -43,11 +43,12 @@ class AndroidAppInstalled(context: Context) : (String) -> Boolean {
     private val pm = context.packageManager
     private val cache = ConcurrentHashMap<String, Boolean>()
 
-    override fun invoke(packageName: String): Boolean = cache.getOrPut(packageName) {
-        try {
-            pm.getApplicationInfo(packageName, 0); true
-        } catch (e: NameNotFoundException) {
-            false
-        }
+    // Only "installed" is remembered: an app installed meanwhile must show up when the rider returns to the screen.
+    override fun invoke(packageName: String): Boolean = cache[packageName] ?: try {
+        pm.getApplicationInfo(packageName, 0)
+        cache[packageName] = true
+        true
+    } catch (e: NameNotFoundException) {
+        false
     }
 }

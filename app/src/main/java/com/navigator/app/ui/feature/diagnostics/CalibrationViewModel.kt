@@ -35,6 +35,8 @@ data class CalibrationUi(
     /** What can be picked, the commonest first; icons already confirmed on this dash are in [working]. */
     val candidates: List<TurnIcon> = emptyList(),
     val working: Set<TurnIcon> = emptySet(),
+    /** The icons have been read; until then the page shows nothing rather than "no icons". */
+    val loaded: Boolean = false,
 )
 
 interface CalibrationPorts {
@@ -68,7 +70,7 @@ class CalibrationViewModel(
     /** The icon files and the settings are read here, off the main thread. */
     io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
-    private val captured = MutableStateFlow(emptyList<CapturedIcon>())
+    private val captured = MutableStateFlow<List<CapturedIcon>?>(null)
     private val assignments = MutableStateFlow(emptyMap<Int, String?>())
     private val seen = MutableStateFlow(emptyMap<Int, Int>())
     private val working = MutableStateFlow(emptySet<TurnIcon>())
@@ -86,14 +88,14 @@ class CalibrationViewModel(
     }
 
     val ui: StateFlow<CalibrationUi> = combine(captured, assignments, open, seen, working) { icons, assigned, open, seen, working ->
-        val rows = icons.map { icon ->
+        val rows = icons.orEmpty().map { icon ->
             CalibrationRow(
                 icon.hash, icon.path, seen[icon.hash] ?: 0,
                 assigned[icon.hash]?.let { name -> TurnIcon.entries.firstOrNull { it.name == name } },
                 expanded = icon.hash in open,
             )
         }
-        CalibrationUi(rows, candidates, working)
+        CalibrationUi(rows, candidates, working, loaded = icons != null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalibrationUi())
 
     fun toggle(hash: Int) = open.update { if (hash in it) it - hash else it + hash }

@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.dismiss
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmElevation
@@ -53,6 +55,7 @@ private fun SwipeAway(data: SnackbarData, content: @Composable () -> Unit) {
         Modifier.onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
             .offset { IntOffset(dx.roundToInt(), 0) }
             .graphicsLayer { alpha = 1f - (abs(dx) / width).coerceIn(0f, 1f) }
+            .semantics { dismiss { data.dismiss(); true } }
             .pointerInput(data) {
                 detectHorizontalDragGestures(
                     onDragEnd = { if (abs(dx) > width / SWIPE_AWAY_SHARE) data.dismiss() else dx = 0f },

@@ -788,6 +788,7 @@ class BccuConnectionService : LifecycleService() {
         gatt = null
         bleThread?.quitSafely(); bleThread = null; bleHandler = null
         _connectionState.value = ConnectionState.DISCONNECTED
+        _linkUp.value = false
         _scanning.value = false
         _attempt.value = 0
         _lastError.value = null

@@ -66,7 +66,10 @@ object AppShortcuts {
             if (removed.isNotEmpty()) {
                 ShortcutManagerCompat.removeDynamicShortcuts(app, removed)
                 // A copy the rider pinned to the home screen outlives the dynamic one: grey it out instead of leaving a dead tile.
-                ShortcutManagerCompat.disableShortcuts(app, removed, app.getString(R.string.shortcut_unset_message))
+                removed.forEach { id ->
+                    val word = app.getString(if (id == idFor(FavoriteSlot.HOME)) R.string.shortcut_home_word else R.string.shortcut_work_word)
+                    ShortcutManagerCompat.disableShortcuts(app, listOf(id), app.getString(R.string.shortcut_unset_message, word))
+                }
             }
             // Returns false when rate-limited (background updates are); the next app start re-syncs.
             if (!ShortcutManagerCompat.addDynamicShortcuts(app, shortcuts)) {

@@ -110,7 +110,7 @@ class SettingsViewModelsTest {
     }
 
     @Test fun bikeDashWritesItsSettings() = runTest(UnconfinedTestDispatcher()) {
-        val vm = BikeDashViewModel(settings, connection(), permissions()).also { it.ui.launchIn(backgroundScope) }
+        val vm = BikeDashViewModel(settings, connection(), permissions(), io = kotlinx.coroutines.Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         vm.setShowOnDash(false); vm.setMarquee(false); vm.setLatinOnly(false); vm.setName("Asha")
         with(vm.ui.value) {
             assertFalse(showOnDash); assertFalse(marquee); assertFalse(latinOnly); assertEquals("Asha", userName)
@@ -120,7 +120,7 @@ class SettingsViewModelsTest {
     }
 
     @Test fun bikeDashCountsTheChosenApps() = runTest(UnconfinedTestDispatcher()) {
-        val vm = BikeDashViewModel(settings, connection(), permissions()).also { it.ui.launchIn(backgroundScope) }
+        val vm = BikeDashViewModel(settings, connection(), permissions(), io = kotlinx.coroutines.Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         settings.update { notificationSourceApps = setOf("a", "b", "c") }
         assertEquals(3, vm.ui.value.appCount)
     }

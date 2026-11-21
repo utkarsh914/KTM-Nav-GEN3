@@ -14,6 +14,7 @@ import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,8 @@ class BikeDashViewModel(
     permissions: PermissionsRepository,
     /** Whether an app is still on the phone: a source that was uninstalled is not counted. */
     private val installed: (String) -> Boolean = { true },
+    /** Installed-app lookups run here, off the main thread. */
+    io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private fun build(
         snap: SettingsSnapshot, status: BikeStatus, suggested: Boolean,
@@ -59,7 +62,7 @@ class BikeDashViewModel(
 
     val ui: StateFlow<BikeDashUi> = combine(settings.snapshot, connection.status, connection.detail, permissions.state) { snap, status, detail, perms ->
         build(snap, status, detail.repairSuggested, perms[PermissionId.NOTIFICATION_ACCESS].granted)
-    }.flowOn(Dispatchers.IO).stateIn(
+    }.flowOn(io).stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
         build(settings.snapshot.value, connection.status.value, connection.detail.value.repairSuggested, permissions.state.value[PermissionId.NOTIFICATION_ACCESS].granted),
     )

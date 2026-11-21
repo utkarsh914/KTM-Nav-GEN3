@@ -131,7 +131,7 @@ fun MainShell(
         // landscape rail) nothing above does, so the strip and snackbar take the bottom and cutout insets themselves.
         val ownInsets = if (showBar && type == NavigationSuiteType.ShortNavigationBarCompact) Modifier
         else Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-        var drawn by remember { mutableStateOf(false) }
+        var drawn by remember(immersive) { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxSize()) {
                 content()

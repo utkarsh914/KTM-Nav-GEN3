@@ -79,7 +79,7 @@ class BackupManager(context: Context) {
                 PrefsBackup.applyTo(e, entries)
                 // A smaller history limit from the backup must not prune the rides just restored.
                 val have = rides.list().size
-                val limit = (entries["ride_history_limit"] as? Int) ?: prefs.getInt("ride_history_limit", 100)
+                val limit = (entries["ride_history_limit"] as? Int) ?: com.navigator.app.settings.AppSettings.DEFAULT_RIDE_HISTORY_LIMIT
                 if (limit < have) e.putInt("ride_history_limit", have.coerceAtMost(1_000))
                 e.commit()
             }
