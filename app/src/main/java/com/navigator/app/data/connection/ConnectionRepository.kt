@@ -14,13 +14,16 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.nav.DashPreview
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** The raw facts about the link. The defaults read the service's flows; tests pass their own. */
 class LinkSources(
@@ -48,7 +51,32 @@ class ConnectionRepository(
     private val stopService: () -> Unit,
     private val cancelNotifications: () -> Unit,
     private val retryService: () -> Unit = {},
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
+    private val _lastSeenMs = MutableStateFlow(settings.legacy.bondedLastSeenMs.takeIf { it > 0 })
+
+    /** When the bike was last linked, kept across restarts; null when it never was (or after Re-pair). */
+    val lastSeenMs: StateFlow<Long?> = _lastSeenMs.asStateFlow()
+
+    init {
+        scope.launch {
+            var wasUp = false
+            sources.state.collectLatest { st ->
+                val up = st == ConnectionState.AUTHENTICATED
+                // The drop is the last moment it was there; while it is, the time keeps moving so a killed app is not far off.
+                if (wasUp && !up) markSeen()
+                wasUp = up
+                while (up) { markSeen(); delay(LAST_SEEN_EVERY_MS) }
+            }
+        }
+    }
+
+    private fun markSeen() {
+        val t = now()
+        _lastSeenMs.value = t
+        settings.legacy.bondedLastSeenMs = t
+    }
+
     val detail: StateFlow<ConnectionDetail> = combine(
         sources.state, sources.bluetoothOn, sources.scanning, combine(sources.attempt, sources.linkUp) { a, up -> a to up },
         combine(sources.repairHint, sources.lastError, settings.snapshot) { hint, error, snap -> Triple(hint, error, snap) },
@@ -85,6 +113,8 @@ class ConnectionRepository(
         s.bondedDeviceAddress?.let { s.clearPairedBefore(it) }
         s.bondedDeviceAddress = null
         s.bondedDeviceName = null
+        s.bondedLastSeenMs = 0L
+        _lastSeenMs.value = null
         stopService()
         settings.refresh()
     }
@@ -99,6 +129,8 @@ class ConnectionRepository(
     }
 
     companion object {
+        private const val LAST_SEEN_EVERY_MS = 60_000L
+
         fun create(context: Context, scope: CoroutineScope, settings: SettingsRepository): ConnectionRepository {
             val app = context.applicationContext
             val manager = app.getSystemService(BluetoothManager::class.java)

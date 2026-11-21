@@ -24,14 +24,14 @@ class BikeSheetTest {
     @get:Rule val rule = createComposeRule()
     private val log = mutableListOf<String>()
 
-    private fun show(status: BikeStatus, tripRunning: Boolean = false, settings: (() -> Unit)? = { log += "settings" }) = rule.setContent {
+    private fun show(status: BikeStatus, tripRunning: Boolean = false, lastSeen: Long? = null, settings: (() -> Unit)? = { log += "settings" }) = rule.setContent {
         KtmTheme(darkTheme = true) {
             CompositionLocalProvider(LocalOpenBikeSettings provides settings) {
                 BikeSheet(
                     state = NavigateUiState(bikeStatus = status, bike = BikePillMapper.map(status)),
                     dashTime = "6:12",
                     onBeeps = {}, onMessages = {}, onSendTest = { log += "test" }, onRePair = { log += "repair" }, onRetryNow = { log += "retry" },
-                    onDismiss = { log += "dismiss" }, tripRunning = tripRunning,
+                    onDismiss = { log += "dismiss" }, tripRunning = tripRunning, lastSeenMs = lastSeen,
                 )
             }
         }
@@ -81,8 +81,38 @@ class BikeSheetTest {
         rule.onNodeWithText("Re-pair…").assertIsDisplayed()
     }
 
+    @Test fun lastSeenShowsUnderThePreviewOnlyWhileTheBikeIsAway() {
+        show(BikeStatus.Disconnected("KTM 7F21"), lastSeen = System.currentTimeMillis() - 60_000)
+        rule.onNodeWithText("Last seen", substring = true).assertIsDisplayed()
+    }
+
+    @Test fun noLastSeenWhenConnectedOrNeverSeen() {
+        show(BikeStatus.Connected("KTM 7F21"), lastSeen = System.currentTimeMillis())
+        rule.onAllNodesWithText("Last seen", substring = true).assertCountEquals(0)
+    }
+
     @Test fun withoutAShellHookThereIsNoSettingsRow() {
         show(BikeStatus.Connected("KTM 7F21"), settings = null)
         rule.onAllNodesWithText("Bike & dash settings").assertCountEquals(0)
+    }
+}
+
+class LastSeenTest {
+    private val zone = java.time.ZoneId.of("UTC")
+    private val now = java.time.ZonedDateTime.of(2026, 11, 21, 20, 0, 0, 0, zone).toInstant().toEpochMilli()
+
+    @org.junit.After fun reset() { com.navigator.app.nav.ktm.ClockFormat.use24h = { true } }
+
+    @Test fun todayIsJustTheTime() {
+        val seen = java.time.ZonedDateTime.of(2026, 11, 21, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals("18:04", LastSeen.format(seen, now, zone))
+        com.navigator.app.nav.ktm.ClockFormat.use24h = { false }
+        assertEquals(true, LastSeen.format(seen, now, zone).contains("6:04"))
+    }
+
+    @Test fun anEarlierDayCarriesTheDate() {
+        val seen = java.time.ZonedDateTime.of(2026, 11, 12, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
+        val text = LastSeen.format(seen, now, zone)
+        assertEquals(true, text.contains("18:04") && text.contains("12"))
     }
 }

@@ -33,6 +33,7 @@ class ConnectionRepositoryTest {
     private var stopped = 0
     private var cancelled = 0
     private var retried = 0
+    private var clock = 1_000_000L
 
     @Before fun setUp() {
         ctx = RuntimeEnvironment.getApplication()
@@ -51,6 +52,7 @@ class ConnectionRepositoryTest {
         stopService = { stopped++ },
         cancelNotifications = { cancelled++ },
         retryService = { retried++ },
+        now = { clock },
     )
 
     @Test fun retryNowAsksTheServiceOnceAndForgetsNothing() = runTest(UnconfinedTestDispatcher()) {
@@ -59,6 +61,33 @@ class ConnectionRepositoryTest {
         assertEquals(1, retried)
         assertEquals(0, stopped)
         assertEquals("AA:BB:CC:DD:EE:FF", settings.legacy.bondedDeviceAddress)
+    }
+
+    @Test fun lastSeenIsWhenTheBikeWasLastLinkedAndSurvivesARestart() = runTest(UnconfinedTestDispatcher()) {
+        val repo = repo()
+        assertEquals(null, repo.lastSeenMs.value)
+        clock = 2_000_000L
+        state.value = ConnectionState.AUTHENTICATED
+        assertEquals(2_000_000L, repo.lastSeenMs.value)
+        clock = 3_000_000L
+        state.value = ConnectionState.DISCONNECTED
+        assertEquals("the drop is the last moment it was there", 3_000_000L, repo.lastSeenMs.value)
+        clock = 9_000_000L
+        assertEquals("kept while offline", 3_000_000L, repo.lastSeenMs.value)
+        assertEquals("read back by a new session", 3_000_000L, repo().lastSeenMs.value)
+    }
+
+    @Test fun rePairForgetsWhenTheOldBikeWasSeen() = runTest(UnconfinedTestDispatcher()) {
+        val repo = repo()
+        state.value = ConnectionState.AUTHENTICATED
+        state.value = ConnectionState.DISCONNECTED
+        repo.rePair()
+        assertEquals(null, repo.lastSeenMs.value)
+        assertEquals(0L, settings.legacy.bondedLastSeenMs)
+    }
+
+    @Test fun lastSeenNeverGoesIntoABackup() {
+        assertTrue(com.navigator.app.backup.PrefsBackup.isExcluded("bonded_last_seen_ms"))
     }
 
     @Test fun rePairForgetsTheBikeItsFlagAndItsKeys() = runTest(UnconfinedTestDispatcher()) {

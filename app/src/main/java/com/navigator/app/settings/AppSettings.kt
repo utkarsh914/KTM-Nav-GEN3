@@ -47,6 +47,14 @@ class AppSettings(context: Context) {
         set(value) { pairingPrefs.edit().putString(KEY_BONDED_NAME, value).commit() }
 
     /**
+     * When the bike was last linked (epoch ms, 0 = never), for "Last seen" in the bike sheet. Device-local: the
+     * `bonded_` prefix keeps it out of backups ([com.navigator.app.backup.PrefsBackup.isExcluded]).
+     */
+    var bondedLastSeenMs: Long
+        get() = pairingPrefs.getLong(KEY_BONDED_LAST_SEEN, 0L)
+        set(value) { pairingPrefs.edit().putLong(KEY_BONDED_LAST_SEEN, value).apply() }
+
+    /**
      * One-time clean-up of the retired brand choice: a rider who had picked Husqvarna and never set
      * an accent keeps blue, then the orphaned `brand` key is removed.
      */
@@ -397,6 +405,7 @@ class AppSettings(context: Context) {
         private const val KEY_DASH_PREVIEW_OVERLAY = "dash_preview_overlay"
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
+        private const val KEY_BONDED_LAST_SEEN = "bonded_last_seen_ms"
 
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         private const val KEY_USER_NAME = "user_name"

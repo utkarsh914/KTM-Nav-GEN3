@@ -138,6 +138,7 @@
     <string name="bike_sheet_messages_hint">Notifications from your phone</string>
     <string name="bike_sheet_test">Send a test</string>
     <string name="bike_sheet_test_on_trip">Available when you\'re not on a trip, so it can\'t replace your directions.</string>
+    <string name="bike_sheet_last_seen">Last seen %1$s</string>
     <string name="bike_sheet_retry_now">Retry now</string>
     <string name="bike_sheet_retrying">Trying…</string>
     <string name="bike_sheet_repair">Re-pair…</string>

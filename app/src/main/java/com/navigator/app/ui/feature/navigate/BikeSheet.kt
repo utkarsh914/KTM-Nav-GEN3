@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.ble.ReconnectPolicy
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmStep
@@ -59,6 +60,8 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.delay
 
 /** What the status block of the Bike sheet says. */
@@ -76,6 +79,15 @@ object BikeSheetMapper {
         BikeStatus.BluetoothOff -> BikeStatusText(KtmIcons.BluetoothOff, R.string.bike_sheet_bluetooth_off, null, R.string.bike_sheet_bluetooth_off_hint)
         is BikeStatus.Disconnected, BikeStatus.NotPaired ->
             BikeStatusText(KtmIcons.Bluetooth, R.string.bike_sheet_disconnected, null, R.string.bike_sheet_disconnected_hint)
+    }
+}
+
+/** "Last seen" for the bike sheet: the time today (the phone's 12/24 h), with the day in front when it was before. */
+object LastSeen {
+    fun format(seenMs: Long, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+        val seen = Instant.ofEpochMilli(seenMs).atZone(zone)
+        if (seen.toLocalDate() == Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()) return ClockFormat.local(seenMs, zone)
+        return ClockFormat.formatter(date = "MMMd").format(seen)
     }
 }
 
@@ -97,6 +109,8 @@ fun BikeSheet(
     onRetryNow: () -> Unit = {},
     /** A trip is guiding (also while riding on screen): the test turn would replace its guidance on the dash. */
     tripRunning: Boolean = state.activity != null,
+    /** When the bike was last linked (epoch ms); shown under the preview while it is not. */
+    lastSeenMs: Long? = null,
 ) {
     var confirmRePair by remember { mutableStateOf(false) }
     var trouble by remember { mutableStateOf(false) }
@@ -126,6 +140,13 @@ fun BikeSheet(
             Spacer(Modifier.height(KtmSpacing.sm))
         }
         DashPreview(preview, if (connected) Modifier else Modifier.alpha(OFFLINE_PREVIEW_ALPHA))
+        if (!connected && lastSeenMs != null) {
+            Text(
+                stringResource(R.string.bike_sheet_last_seen, LastSeen.format(lastSeenMs, System.currentTimeMillis())),
+                style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg2,
+                modifier = Modifier.padding(top = KtmSpacing.sm),
+            )
+        }
         Spacer(Modifier.height(KtmSpacing.lg))
         if (connected) {
             Column(Modifier.fillMaxWidth().clip(KtmShapes.Card).background(KtmTheme.colors.surf2)) {
