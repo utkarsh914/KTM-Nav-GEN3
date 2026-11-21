@@ -43,6 +43,7 @@ import com.navigator.app.ui.components.OutlinedIconBadge
 import com.navigator.app.ui.components.RowValue
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.feature.navigate.StraightLine
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
@@ -100,6 +101,8 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
             }
         }
         if (!ui.selecting) {
+            // A snackbar (Undo) sits above the Add button, not over it.
+            SnackbarClearance(bottom = FAB_CLEARANCE)
             KtmFab(
                 stringResource(R.string.places_add), KtmIcons.Add, actions.onAdd,
                 Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End)

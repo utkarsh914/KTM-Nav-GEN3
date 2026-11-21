@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.pick
 
+import androidx.compose.material3.Text
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -54,5 +57,48 @@ class PickOnMapScreenTest {
         rule.setContent { KtmTheme(darkTheme = true) { PickOnMapScreen(here.copy(street = null, resolving = true), onBack = {}, onUse = {}) } }
         rule.onNodeWithText("Use this point").assertIsNotEnabled()
         rule.onAllNodesWithText("Near 12th Main Rd").assertCountEquals(0)
+    }
+
+    @Test fun portraitReportsNoCoveredSideAndKeepsGuidanceAboveTheHint() {
+        val footprints = mutableListOf<Int>()
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                PickOnMapScreen(here, onBack = {}, onUse = {}, guidance = { Text("Turn right in 250 m") }, onFootprint = { footprints += it })
+            }
+        }
+        rule.waitForIdle()
+        assertEquals(listOf(0), footprints.distinct())
+        val guidance = rule.onNodeWithText("Turn right in 250 m").getUnclippedBoundsInRoot()
+        val hint = rule.onNodeWithText("Move the map to place the pin").getUnclippedBoundsInRoot()
+        assertTrue("guidance ${guidance.bottom} must end above the hint ${hint.top}", guidance.bottom <= hint.top)
+    }
+}
+
+/** Landscape: one panel at the left holds everything, and the host is told how much of the map it covers. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36], qualifiers = "w780dp-h360dp")
+class PickOnMapLandscapeTest {
+    @get:Rule val rule = createComposeRule()
+    private val here = PickOnMapState(center = MapPoint(12.9, 77.6), street = "12th Main Rd")
+
+    @Test fun thePanelHoldsTheHintTheStreetAndTheActionAndReportsItsFootprint() {
+        val footprints = mutableListOf<Int>()
+        val log = mutableListOf<String>()
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                PickOnMapScreen(here, onBack = { log += "back" }, onUse = { log += "use" }, guidance = { Text("Turn right in 250 m") }, onFootprint = { footprints += it })
+            }
+        }
+        rule.waitForIdle()
+        assertTrue(footprints.last() > 0)
+        rule.onNodeWithText("Turn right in 250 m").assertIsDisplayed()
+        rule.onNodeWithText("Move the map to place the pin").assertIsDisplayed()
+        rule.onNodeWithText("Near 12th Main Rd").assertIsDisplayed()
+        rule.onNodeWithText("Use this point").performClick()
+        rule.onNodeWithContentDescription("Back").performClick()
+        assertEquals(listOf("use", "back"), log)
+        // Everything stays inside the left panel: nothing runs across the open map.
+        val use = rule.onNodeWithText("Use this point").getUnclippedBoundsInRoot()
+        assertTrue("action ends at ${use.right}", use.right.value < 400f)
     }
 }

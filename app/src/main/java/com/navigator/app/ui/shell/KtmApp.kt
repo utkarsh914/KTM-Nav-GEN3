@@ -220,7 +220,7 @@ fun KtmApp(onQuit: () -> Unit) {
 
     KtmTheme(darkTheme = dark, accent = accent, reducedMotion = reducedMotion) {
         CompositionLocalProvider(
-            LocalFeedback provides feedback, LocalShellChrome provides chrome,
+            LocalFeedback provides feedback, LocalSnackbarCover provides feedback, LocalShellChrome provides chrome,
             LocalOpenLogs provides { navController.push(Route.Logs) },
             LocalOpenPlaces provides { navController.openTab(Tab.Places) },
             LocalOpenBikeSettings provides { navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) },

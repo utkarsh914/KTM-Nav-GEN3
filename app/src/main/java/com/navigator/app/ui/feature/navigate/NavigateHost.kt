@@ -420,7 +420,8 @@ fun NavigateHost(
         when (stage) {
             NavStage.CONFIRM, NavStage.PREVIEW -> {
                 // Framed in what the sheet leaves open (PL2); picking a stop uses the whole map (the pin is at its middle).
-                if (pickingStop) map.setPadding(0, 0, 0, 0) else map.setPadding(planInsets.first, 0, 0, planInsets.second)
+                // Picking a stop: the pick screen pads the map itself (the pin is at the middle of what is open).
+                if (!pickingStop) map.setPadding(planInsets.first, 0, 0, planInsets.second)
             }
             else -> {}
         }
@@ -810,7 +811,7 @@ fun NavigateHost(
     fun planStage() = PlanStage(
         selected = selected, savedPlaces = savedPlaces, origin = origin, routePreview = routePreview,
         pickingStop = pickingStop, stopCandidate = stopCandidate,
-        showResumePill = navState.sessionState.isActiveNav() && leftNavManually,
+        showResumePill = navState.sessionState.isActiveNav() && leftNavManually, leftInsetPx = planInsets.first,
         mapReadyForControls = available && navReady, mapBearing = mapBearing, map = map, feedback = feedback,
         places = places, scope = scope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,

@@ -209,9 +209,12 @@ internal fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (Saved
     val fallback = stringResource(R.string.pick_dropped_pin)
     val state by controller.state.collectAsState()
     DisposableEffect(controller) {
-        map.setPadding(0, 0, 0, 0) // the whole map is the canvas: the pin is at its middle
         controller.start()
-        onDispose { controller.stop() }
+        onDispose { controller.stop(); map.setPadding(0, 0, 0, 0) }
     }
-    PickOnMapScreen(state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) })
+    PickOnMapScreen(
+        state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
+        // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
+        onFootprint = { map.setPadding(it, 0, 0, 0) },
+    )
 }

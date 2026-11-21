@@ -47,6 +47,7 @@ that previews and tests render, and a thin `*Screen` that wires them.
 
 ## Insets (`ui/theme/KtmTheme.kt`)
 Content is kept clear of the bars, the display cutout and the keyboard by one of two modifiers, never by a hand-written `windowInsetsPadding`: `edgePadding()` (all system bars and the cutout, for overlays on a map) and `pageInsets(sides)` (a page's own sides; the default is the cutout sides and the bottom, for a pushed page below a `KtmTopBar`). A tab page passes only the sides its tab bar does not take (a bar under the content already takes the bottom). `KtmSheetContent` handles the keyboard itself (`imePadding = false` for a sheet that floats on the map), and `EmptyState` scrolls when the page is shorter than it (`scrollable = false` inside a list or another scroll).
+A control in a corner of the map (Back, the compass, the pick hint) uses `mapCornerPadding()`, so they share one margin. A screen that draws a sheet, a side panel or a button over the foot of the content says so with `SnackbarClearance(bottom, start)` (the full size of what it draws; the shell takes off the inset it already applies, and the largest of several wins), so a snackbar never covers a primary action. `PickOnMapScreen` is the same in portrait (sheet) and landscape (the shared panel, `onFootprint` tells the host to pad the map so the pin stays in the open part), and takes `guidance` to keep the next turn in view while a trip runs.
 
 ## Motion (`ui/theme/KtmMotion.kt`)
 - Every animation takes its spec from `KtmTheme.motion` (`KtmMotionSpecs`):

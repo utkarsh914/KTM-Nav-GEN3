@@ -4,8 +4,12 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -13,6 +17,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -38,12 +43,19 @@ class Feedback(
     val snackbarHost: SnackbarHostState,
     /** How long a message that offers an action stays, given the usual time (a screen reader may ask for longer). */
     private val actionTimeout: () -> Long = { ACTION_MS },
-) {
+) : SnackbarCover {
     var chip by mutableStateOf<RidingChipMessage?>(null)
         private set
 
-    /** How far a screen with its own bottom sheet lifts the snackbar so it sits above it (the replay). */
-    var snackbarLift by mutableStateOf(0.dp)
+    private val covers = mutableStateMapOf<Any, Cleared>()
+
+    /** What is covered at the foot and start of the content area right now: the snackbar sits clear of it. */
+    val cleared: Cleared
+        get() = covers.values.fold(Cleared.None) { a, b -> Cleared(maxOf(a.bottom, b.bottom), maxOf(a.start, b.start)) }
+
+    override fun cover(owner: Any, bottom: Dp, start: Dp) { covers[owner] = Cleared(bottom, start) }
+
+    override fun uncover(owner: Any) { covers.remove(owner) }
 
     private var chipJob: Job? = null
     private var chipSeq = 0L
@@ -91,6 +103,38 @@ class Feedback(
         const val CHIP_MS = 4_000L
         const val ACTION_MS = 8_000L
     }
+}
+
+/** How far in from the bottom and the start edge of the content area the snackbar must sit to clear what is drawn there. */
+@Immutable
+data class Cleared(val bottom: Dp = 0.dp, val start: Dp = 0.dp) {
+    companion object { val None = Cleared() }
+}
+
+/** Where a screen says what it draws at the foot of the content area (a bottom sheet, a side panel, a button), so a snackbar does not cover it. */
+interface SnackbarCover {
+    fun cover(owner: Any, bottom: Dp, start: Dp)
+    fun uncover(owner: Any)
+}
+
+private object NoCover : SnackbarCover {
+    override fun cover(owner: Any, bottom: Dp, start: Dp) = Unit
+    override fun uncover(owner: Any) = Unit
+}
+
+val LocalSnackbarCover = staticCompositionLocalOf<SnackbarCover> { NoCover }
+
+/**
+ * While this is composed, snackbars are lifted by [bottom] and moved in by [start]: pass the full size of what is
+ * drawn over the content area (a sheet's height, a panel's footprint); the shell takes off the insets it already applies.
+ * Several can be composed at once (a stage changing): the largest wins.
+ */
+@Composable
+fun SnackbarClearance(bottom: Dp = 0.dp, start: Dp = 0.dp) {
+    val cover = LocalSnackbarCover.current
+    val owner = remember { Any() }
+    LaunchedEffect(cover, bottom, start) { cover.cover(owner, bottom, start) }
+    DisposableEffect(cover) { onDispose { cover.uncover(owner) } }
 }
 
 val LocalFeedback = staticCompositionLocalOf<Feedback> { error("No Feedback provided: wrap the UI in KtmApp") }

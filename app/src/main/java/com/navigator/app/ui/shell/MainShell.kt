@@ -1,11 +1,13 @@
 package com.navigator.app.ui.shell
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -30,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -126,17 +129,22 @@ fun MainShell(
     ) {
         // Only the portrait bar sits under the content and takes the gesture-bar inset. Without it (pushed pages, the
         // landscape rail) nothing above does, so the strip and snackbar take the bottom and cutout insets themselves.
-        val ownInsets = if (showBar && type == NavigationSuiteType.ShortNavigationBarCompact) Modifier
+        val ownsBottom = !(showBar && type == NavigationSuiteType.ShortNavigationBarCompact)
+        val ownInsets = if (!ownsBottom) Modifier
         else Modifier.pageInsets(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
         var drawn by remember(immersive) { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxSize()) {
                 content()
                 // 8 dp above whatever is under it (§3.3): the strip brings its own 8 dp, so only the bare bar needs one here.
+                // Sheets, panels and buttons drawn over the content say so (SnackbarClearance); the inset already applied is not counted twice.
+                val cleared = feedback.cleared
+                val density = LocalDensity.current
+                val applied = if (ownsBottom) with(density) { WindowInsets.safeDrawing.getBottom(density).toDp() } else 0.dp
                 KtmSnackbarHost(
                     feedback.snackbarHost,
                     Modifier.align(Alignment.BottomCenter).then(ownInsets)
-                        .padding(bottom = (if (drawn && !immersive) 0.dp else KtmSpacing.sm) + feedback.snackbarLift),
+                        .padding(start = cleared.start, bottom = (if (drawn && !immersive) 0.dp else KtmSpacing.sm) + (cleared.bottom - applied).coerceAtLeast(0.dp)),
                 )
             }
             if (!immersive) {

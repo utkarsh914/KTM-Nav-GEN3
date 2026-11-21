@@ -207,8 +207,6 @@ object KtmLayout {
     val iconMedium = 24.dp
     val pillStartPadding = 14.dp
 
-    /** The map's top controls sit this far below the status bar. */
-    val mapControlTop = 10.dp
     val logRowPadding = 2.dp
 
     /** The open trip sheet never gets smaller than this, however tall the card above it is. */

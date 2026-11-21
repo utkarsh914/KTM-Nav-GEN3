@@ -47,6 +47,7 @@ import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
 import com.navigator.app.ui.shell.PopWhenResumed
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 
@@ -107,12 +108,7 @@ fun ReplayScreen(
     }
 
     // Undo for a merge sits above the sheet, not over it.
-    val density = LocalDensity.current
-    val navBar = WindowInsets.navigationBars.getBottom(density)
-    LaunchedEffect(insets, navBar) {
-        feedback.snackbarLift = with(density) { (insets.bottom - navBar).coerceAtLeast(0).toDp() }
-    }
-    DisposableEffect(feedback) { onDispose { feedback.snackbarLift = 0.dp } }
+    SnackbarClearance(bottom = with(LocalDensity.current) { insets.bottom.toDp() })
 
     Box(modifier.fillMaxSize()) {
         MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)

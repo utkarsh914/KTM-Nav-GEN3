@@ -27,6 +27,8 @@ fun PickStopOverlay(
     canAdd: Boolean,
     onBack: () -> Unit,
     onUse: (SavedPlace) -> Unit,
+    /** The next turn, kept in view while a trip runs. */
+    guidance: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -36,7 +38,7 @@ fun PickStopOverlay(
     DisposableEffect(controller) {
         // The camera keeps the route in view: the pin is at the middle of the screen, where the point is read.
         controller.start()
-        onDispose { controller.stop() }
+        onDispose { controller.stop(); map.setPadding(0, 0, 0, 0) }
     }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
@@ -44,5 +46,8 @@ fun PickStopOverlay(
         subtitle = stringResource(R.string.stop_goes_in_before, destination),
         useLabel = stringResource(if (canAdd) R.string.stop_add_here else R.string.route_stop_limit),
         useEnabled = canAdd,
+        guidance = guidance,
+        // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
+        onFootprint = { map.setPadding(it, 0, 0, 0) },
     )
 }

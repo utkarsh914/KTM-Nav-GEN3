@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
@@ -88,6 +89,7 @@ import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.components.windowWidthDp
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -150,6 +152,7 @@ fun NavigateBrowse(
             LaunchedEffect(coveredPx, mapReady) {
                 if (mapReady && coveredPx > 0) latestActions.onMapInsets(coveredPx, 0)
             }
+            SnackbarClearance(start = with(density) { coveredPx.toDp() })
             Row(Modifier.fillMaxSize()) {
                 // HM10: the Where-to panel is the same floating card as every other landscape panel.
                 Column(
@@ -185,6 +188,8 @@ fun NavigateBrowse(
                     .collect { offset -> if (offset != null) visiblePx = (containerPx - offset).toInt().coerceAtLeast(0) }
             }
             val pad = SheetPadding.mapBottomPx(visiblePx, containerPx)
+            // A snackbar (a removed recent, Undo) sits above the sheet as it stands, not over its tiles.
+            SnackbarClearance(bottom = with(density) { visiblePx.toDp() })
             // The latest actions: a tile tapped while the sheet settles changes the stage, and the old
             // callback must not then put the sheet's padding on the next stage's map.
             val currentActions by rememberUpdatedState(actions)
@@ -248,11 +253,11 @@ private fun Overlays(
 ) {
     val edge = KtmSpacing.edge
     val locationOk = location == LocationState.Ok
-    Box(modifier.windowInsetsPadding(insets)) {
-        Column(
-            Modifier.align(Alignment.TopStart).fillMaxWidth().padding(edge),
-            verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg),
-        ) {
+    BoxWithConstraints(modifier.windowInsetsPadding(insets)) {
+        // The height of what hangs from the top (pill, greeting, banner): the controls above the sheet give way to it.
+        var topPx by remember { mutableIntStateOf(0) }
+        val containerPx = constraints.maxHeight
+        Column(Modifier.align(Alignment.TopStart).fillMaxWidth().onSizeChanged { topPx = it.height }.padding(edge)) {
             // MO7: the pill pulses once as the greeting grows out of it.
             val motion = KtmTheme.motion
             val pulse = remember { Animatable(1f) }
@@ -274,27 +279,26 @@ private fun Overlays(
                 onClick = actions.onBike,
                 stateDescription = stringResource(state.bike.state),
             )
-            if (!locationOk) LocationBanner(location, actions.onFixLocation)
+            // HM8: grows out of the bike pill (top-left), then shrinks back. In the column under the pill, so a banner below it
+            // moves down instead of being covered.
+            val motionSpecs = KtmTheme.motion
+            AnimatedVisibility(
+                visible = state.greeting != null,
+                enter = fadeIn(motionSpecs.effectsDefault()) + scaleIn(motionSpecs.spatialDefault(), initialScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                    slideInVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
+                exit = fadeOut(motionSpecs.effectsDefault()) + scaleOut(motionSpecs.spatialDefault(), targetScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                    slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
+            ) {
+                val hello = state.greeting
+                if (hello != null) ConnectGreeting(hello, Modifier.padding(top = KtmSpacing.lg))
+            }
+            if (!locationOk) LocationBanner(location, actions.onFixLocation, Modifier.padding(top = KtmSpacing.lg))
         }
 
         MapStateCard(
             mapState, actions,
             Modifier.align(Alignment.Center).padding(edge).padding(bottom = with(LocalDensity.current) { sheetLiftPx.toDp() }),
         )
-
-        // HM8: grows out of the bike pill (top-left), settles lower in the open map, then shrinks back.
-        val motionSpecs = KtmTheme.motion
-        AnimatedVisibility(
-            visible = state.greeting != null,
-            enter = fadeIn(motionSpecs.effectsDefault()) + scaleIn(motionSpecs.spatialDefault(), initialScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
-                slideInVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
-            exit = fadeOut(motionSpecs.effectsDefault()) + scaleOut(motionSpecs.spatialDefault(), targetScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
-                slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
-            modifier = Modifier.align(Alignment.TopStart).padding(start = edge, top = edge + KtmLayout.targetRest * 2),
-        ) {
-            val hello = state.greeting
-            if (hello != null) ConnectGreeting(hello)
-        }
 
         // Riding the sheet's top edge: lifted by how much of the map it covers, gone once the sheet takes over.
         AnimatedVisibility(
@@ -308,7 +312,10 @@ private fun Overlays(
             modifier = Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -sheetLiftPx) }.padding(edge),
         ) {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-                if (mapState == MapState.Ready && abs(mapBearing) > 0.5f) {
+                // The compass gives way when, with the sheet this high, the stack would reach up into the banner or greeting.
+                val stackPx = with(LocalDensity.current) { (KtmLayout.targetPrimary * 2 + KtmSpacing.md + edge).roundToPx() }
+                val roomForCompass = containerPx - sheetLiftPx - stackPx >= topPx
+                if (mapState == MapState.Ready && abs(mapBearing) > 0.5f && roomForCompass) {
                     MapControlButton(
                         KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), actions.onResetNorth,
                         rotationDegrees = -mapBearing, tinted = false,
@@ -408,19 +415,19 @@ private fun MapErrorCard(title: String, message: String, action: String, icon: I
 }
 
 @Composable
-private fun ConnectGreeting(greeting: GreetingUi) {
+private fun ConnectGreeting(greeting: GreetingUi, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     val text = if (greeting.name.isBlank()) stringResource(R.string.navigate_greeting_anonymous)
     else stringResource(R.string.navigate_greeting, greeting.name)
     Row(
-        Modifier.shadow(KtmElevation.onMap, KtmShapes.Pill).background(c.surf, KtmShapes.Pill)
+        modifier.shadow(KtmElevation.onMap, KtmShapes.Pill).background(c.surf, KtmShapes.Pill)
             .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(horizontal = KtmSpacing.xl, vertical = KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         Icon(KtmIcons.Bike, null, tint = KtmTheme.accent.text)
-        Text(text, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
+        Text(text, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 

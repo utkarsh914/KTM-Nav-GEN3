@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.feature.navigate.BikeSheetMapper
 import com.navigator.app.ui.feature.navigate.plan.PickStopOverlay
 import com.navigator.app.ui.feature.navigate.riding.EndTripButton
+import com.navigator.app.ui.feature.navigate.riding.ManeuverCard
 import com.navigator.app.ui.feature.navigate.riding.ManeuverModel
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
 import com.navigator.app.ui.feature.navigate.riding.MapButtonState
@@ -165,8 +167,9 @@ internal fun NavigatingStage(
                 onEnd = { riding.showTripSheet = false; riding.showEndConfirm = true },
                 onDismiss = { riding.showTripSheet = false },
             )
+            // Also read by the pick screen, which keeps the next turn in view.
+            val maneuver = remember(navState) { ManeuverModel.from(navState) }
             if (startFailure == null && !riding.pickingStop) {
-                val maneuver = remember(navState) { ManeuverModel.from(navState) }
                 if (landscape) RidingLandscape(
                     maneuver = maneuver,
                     bar = bar,
@@ -213,6 +216,8 @@ internal fun NavigatingStage(
                     canAdd = TripStopRules.canAdd(left, online),
                     onBack = { leave(); riding.showTripStops = true },
                     onUse = { place -> leave(); trip.addStop(place) },
+                    // The trip keeps guiding underneath: the next turn stays on screen while the rider picks.
+                    guidance = { ManeuverCard(maneuver, Modifier.fillMaxWidth(), destination = bar.destination) },
                 )
             }
             if (riding.showTripStops && startFailure == null) {

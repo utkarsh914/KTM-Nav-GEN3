@@ -3,11 +3,9 @@ package com.navigator.app.ui.feature.navigate.link
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.nav.destination.LinkFailure
 import com.navigator.app.nav.destination.SavedPlace
@@ -25,10 +24,14 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.components.consumeMapTouches
+import com.navigator.app.ui.components.windowHeightDp
+import com.navigator.app.ui.components.windowWidthDp
 import com.navigator.app.ui.theme.KtmElevation
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -137,9 +140,11 @@ fun SharedLinkCard(
 ) {
     if (state == SharedLinkState.Idle) return
     val c = KtmTheme.colors
+    // A short, wide window (landscape): the card keeps a panel's width instead of running across the map.
+    val landscape = windowWidthDp(fallback = 0f) > windowHeightDp(fallback = Float.MAX_VALUE)
     Column(
-        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
-            .windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = KtmSpacing.lg)
+        modifier.widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
+            .padding(horizontal = KtmSpacing.lg).pageInsets()
             .semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         SheetHandle()

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
@@ -101,6 +102,10 @@ object KtmTheme {
 @Composable
 fun Modifier.edgePadding(): Modifier =
     this.windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+
+/** A control in a corner of the map: clear of the bars and the cutout, then one gutter in. Back, the compass and the pick hint all use it. */
+@Composable
+fun Modifier.mapCornerPadding(): Modifier = this.edgePadding().padding(KtmSpacing.lg)
 
 /**
  * Keeps the content of a page clear of the display cutout and the gesture area (and the keyboard). Use it below a

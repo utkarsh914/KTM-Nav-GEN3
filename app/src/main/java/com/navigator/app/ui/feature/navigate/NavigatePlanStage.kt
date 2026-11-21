@@ -1,15 +1,24 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import com.navigator.app.R
 import com.navigator.app.data.places.PlacesRepository
 import com.navigator.app.nav.destination.FavoritePlace
@@ -36,6 +45,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.edgePadding
+import com.navigator.app.ui.theme.mapCornerPadding
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +65,8 @@ internal class PlanStage(
     val stopCandidate: SavedPlace?,
     /** A trip still runs while another is planned: one tap back to it. */
     val showResumePill: Boolean,
+    /** How much of the map's left side the landscape panel covers (px); 0 in portrait. */
+    val leftInsetPx: Int,
     /** The map is up (so its compass can show). */
     val mapReadyForControls: Boolean,
     val mapBearing: Float,
@@ -82,26 +94,11 @@ internal class PlanStage(
 @Composable
 internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     val resources = LocalResources.current
-    // A trip is still running while the rider plans another: one tap back to it.
-    if (plan.showResumePill) {
-        ResumeNavPill(
-            onClick = plan.onResume,
-            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
-        )
-    }
     val sel = plan.selected
+    // PL1: Back is a map control above the sheet, the way to the search or the map it came from. The landscape panel
+    // covers that corner and carries its own Back. A trip still running while another is planned: one tap back to it.
+    PlanTopRow(plan, showBack = sel != null)
     if (sel != null) {
-        // PL1: Back is a map control above the sheet, the way to the search or the map it came from.
-        // The landscape panel covers that corner and carries its own Back.
-        // Judged by the same box as the panel (split-screen is portrait by configuration but wide by space).
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            if (maxWidth <= maxHeight) {
-                MapControlButton(
-                    KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
-                    Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
-                )
-            }
-        }
         val removedMessage = resources.getString(R.string.place_removed)
         val undoLabel = resources.getString(R.string.common_undo)
         val saved = PlaceSaving.isSaved(plan.savedPlaces, sel)
@@ -138,7 +135,7 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     // Top-right control: the compass, only when rotated (✕ is in the sheet).
     if (plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f) {
         Column(
-            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
+            modifier = Modifier.align(Alignment.TopEnd).mapCornerPadding(),
             horizontalAlignment = Alignment.End,
         ) {
             MapControlButton(
@@ -153,13 +150,8 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
 @Composable
 internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
     val resources = LocalResources.current
-    // A trip is still running while the rider plans another: one tap back to it.
-    if (plan.showResumePill) {
-        ResumeNavPill(
-            onClick = plan.onResume,
-            modifier = Modifier.align(Alignment.TopCenter).edgePadding().padding(top = KtmLayout.mapControlTop),
-        )
-    }
+    // Picking a stop: the pick screen owns the top of the map.
+    if (!plan.pickingStop) PlanTopRow(plan, showBack = false)
     val dest = plan.selected
     if (dest != null) {
         val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
@@ -213,13 +205,39 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
     // Top-right control: the compass, only when rotated (✕ is in the sheet).
     if (plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f && !plan.pickingStop) {
         Column(
-            modifier = Modifier.align(Alignment.TopEnd).edgePadding().padding(end = KtmSpacing.lg, top = KtmSpacing.lg),
+            modifier = Modifier.align(Alignment.TopEnd).mapCornerPadding(),
             horizontalAlignment = Alignment.End,
         ) {
             MapControlButton(
                 KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { plan.map.resetNorth() },
                 rotationDegrees = -plan.mapBearing, tinted = false,
             )
+        }
+    }
+}
+
+/**
+ * The top of the map while planning: Back (portrait), then the way back to a running trip, in one row so they never
+ * overlap; the row stops short of the compass, and starts after the landscape panel.
+ */
+@Composable
+private fun BoxScope.PlanTopRow(plan: PlanStage, showBack: Boolean) {
+    // Judged by the same box as the panel (split-screen is portrait by configuration but wide by space).
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val portrait = maxWidth <= maxHeight
+        val back = showBack && portrait
+        if (!back && !plan.showResumePill) return@BoxWithConstraints
+        val compass = plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f
+        // After the landscape panel; the cutout side is already inside the panel's footprint, and edgePadding adds it once.
+        val density = LocalDensity.current
+        val cutoutLeft = with(density) { WindowInsets.systemBars.union(WindowInsets.displayCutout).getLeft(density, LayoutDirection.Ltr).toDp() }
+        val afterPanel = if (portrait) 0.dp else (with(density) { plan.leftInsetPx.toDp() } - cutoutLeft).coerceAtLeast(0.dp)
+        Row(
+            Modifier.align(Alignment.TopStart).mapCornerPadding().padding(start = afterPanel, end = if (compass) KtmLayout.targetPrimary + KtmSpacing.md else 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+        ) {
+            if (back) MapControlButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack)
+            if (plan.showResumePill) ResumeNavPill(onClick = plan.onResume, modifier = Modifier.weight(1f, fill = false))
         }
     }
 }

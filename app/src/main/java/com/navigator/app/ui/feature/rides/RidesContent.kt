@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.Role
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.fullBleed
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.shell.rideContainer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -178,6 +179,8 @@ fun RidesContent(
         }
         val canRecord = !recording && ui != null && !ui.selecting && !ui.searchOpen && ui.body !is RidesBody.Empty
         if (canRecord) {
+            // A snackbar (Undo) sits above the Record button, not over it.
+            SnackbarClearance(bottom = FAB_CLEARANCE)
             RecordFab(
                 stringResource(R.string.rides_record), actions.onRecord,
                 Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End)

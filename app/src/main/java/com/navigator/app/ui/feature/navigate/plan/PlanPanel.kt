@@ -16,14 +16,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.consumeMapTouches
+import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
@@ -46,15 +51,22 @@ fun PlanPanel(
     val c = KtmTheme.colors
     val report by rememberUpdatedState(onInsets)
     BoxWithConstraints(modifier.fillMaxSize()) {
+        val density = LocalDensity.current
         if (maxWidth > maxHeight) {
-            LandscapePanel(onFootprint = { report(it, 0) }) {
+            var footprintPx by remember { mutableIntStateOf(0) }
+            // A snackbar (Undo) sits beside the panel, not over its buttons.
+            SnackbarClearance(start = with(density) { footprintPx.toDp() })
+            LandscapePanel(onFootprint = { footprintPx = it; report(it, 0) }) {
                 CompositionLocalProvider(LocalFillPanel provides true) { content() }
             }
         } else {
+            var heightPx by remember { mutableIntStateOf(0) }
+            // A snackbar (Undo) sits above the sheet, not over Start or Directions.
+            SnackbarClearance(bottom = with(density) { heightPx.toDp() })
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .heightIn(max = maxHeight * 0.85f)
-                    .onSizeChanged { report(0, it.height) }
+                    .onSizeChanged { heightPx = it.height; report(0, it.height) }
                     .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
                     .background(c.surf, KtmShapes.SheetTop)
                     .consumeMapTouches()
