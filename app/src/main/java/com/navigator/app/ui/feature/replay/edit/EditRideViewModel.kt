@@ -69,7 +69,7 @@ class EditRideViewModel(
 
     private suspend fun onRidesChanged(latest: RecordedRide?) {
         if (latest == null) {
-            if (!deleting) { _ui.value = EditUi.Gone; _events.send(EditEvent.Gone) }
+            if (!deleting) { _ui.value = EditUi.Loading; _events.send(EditEvent.Gone) }
             return
         }
         // The text is the rider's own while they type; only the star can change under them (from the replay).

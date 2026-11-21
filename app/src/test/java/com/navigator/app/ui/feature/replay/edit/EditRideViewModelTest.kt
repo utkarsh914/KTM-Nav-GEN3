@@ -156,7 +156,7 @@ class EditRideViewModelTest {
         val seen = events(vm)
         store.softDelete(listOf(r.id))
         assertEquals(listOf<EditEvent>(EditEvent.Gone), seen)
-        assertEquals(EditUi.Gone, vm.ui.value)
+        assertEquals(EditUi.Loading, vm.ui.value)
     }
 
     @Test fun aStarFromTheReplayShowsInTheForm() = runTest(dispatcher) {

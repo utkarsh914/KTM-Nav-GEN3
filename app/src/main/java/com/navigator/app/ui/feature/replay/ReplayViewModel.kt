@@ -130,7 +130,7 @@ class ReplayViewModel(
             is ReplayUi.Ready -> ui.ride
         }
         when {
-            latest == null -> if (!deleting && shown != null) { stopPlaying(); _ui.value = ReplayUi.NoTrack(null); _events.send(ReplayEvent.Gone) }
+            latest == null -> if (!deleting && shown != null) { stopPlaying(); _ui.value = ReplayUi.Loading; _events.send(ReplayEvent.Gone) }
             shown == null || latest.pointCount != shown.pointCount -> { stopPlaying(); load() }
             latest != shown -> _ui.update { if (it is ReplayUi.Ready) it.copy(ride = latest) else ReplayUi.NoTrack(latest) }
         }

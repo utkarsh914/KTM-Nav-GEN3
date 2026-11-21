@@ -91,6 +91,8 @@ class NavSdkMapController(
         if (detached) return // the map delivered after the screen was gone
         this.map = map
         navView = view
+        // Whatever the previous screen left on the shared map goes first: only what this screen asks for stays.
+        clearListeners(map)
         retained.mapOwner = this
         map.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
         map.uiSettings.isCompassEnabled = false          // custom controls instead
@@ -116,20 +118,25 @@ class NavSdkMapController(
         replayMarker = null
         val gm = map
         if (gm != null && owns) {
-            runCatching {
-                gm.setOnCameraMoveListener(null)
-                gm.setOnCameraMoveStartedListener(null)
-                gm.setOnMapLongClickListener(null)
-                gm.setOnPolylineClickListener(null)
-                gm.setOnMarkerClickListener(null)
-                gm.setOnPoiClickListener(null)
-                gm.setOnCameraIdleListener(null)
-                gm.setOnMapClickListener(null)
-            }
+            clearListeners(gm)
+            retained.mapOwner = null
         }
         map = null
         navView = null
         _ready.value = false
+    }
+
+    private fun clearListeners(gm: GoogleMap) {
+        runCatching {
+            gm.setOnCameraMoveListener(null)
+            gm.setOnCameraMoveStartedListener(null)
+            gm.setOnMapLongClickListener(null)
+            gm.setOnPolylineClickListener(null)
+            gm.setOnMarkerClickListener(null)
+            gm.setOnPoiClickListener(null)
+            gm.setOnCameraIdleListener(null)
+            gm.setOnMapClickListener(null)
+        }
     }
 
     private var clicksWanted = false

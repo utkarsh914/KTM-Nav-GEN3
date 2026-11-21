@@ -25,6 +25,7 @@ import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
+import com.navigator.app.ui.shell.PopWhenResumed
 import com.navigator.app.ui.theme.KtmTheme
 
 /**
@@ -37,6 +38,8 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
     val feedback = LocalFeedback.current
     val vm: TrimViewModel = viewModel(factory = TrimViewModel.factory(rideId, container))
     val ui by vm.ui.collectAsState()
+    val vanished by vm.vanished.collectAsState()
+    PopWhenResumed(vanished, onBack)
     val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(container.settings.legacy.locationMarkerStyle))
     val mapReady by map.ready.collectAsState()
     var insets by remember { mutableStateOf(MapInsets()) }

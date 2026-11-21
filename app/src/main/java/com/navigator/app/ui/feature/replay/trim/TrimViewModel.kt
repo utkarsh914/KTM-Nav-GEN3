@@ -60,6 +60,10 @@ class TrimViewModel(
     val events = _events.receiveAsFlow()
     private var keptJob: Job? = null
 
+    /** The ride was there and then went (not just never found): the page leaves by itself. */
+    private val _vanished = MutableStateFlow(false)
+    val vanished: StateFlow<Boolean> = _vanished.asStateFlow()
+
     init {
         viewModelScope.launch {
             val ride = repo.get(rideId)
@@ -70,7 +74,7 @@ class TrimViewModel(
             _ui.value = TrimUi.Ready(ride, points, range, kept = kept)
             // A ride that goes away under the page (a merge undone, deleted elsewhere) must not stay editable.
             repo.rides.collect { all ->
-                if (all.none { it.id == rideId } && ready()?.applying != true) { keptJob?.cancel(); _ui.value = TrimUi.Gone }
+                if (all.none { it.id == rideId } && ready()?.applying != true) { keptJob?.cancel(); _ui.value = TrimUi.Loading; _vanished.value = true }
             }
         }
     }
@@ -114,6 +118,7 @@ class TrimViewModel(
         viewModelScope.launch {
             val trimmed = repo.trim(rideId, r.range.from, r.range.to, expectedCount = r.points.size)
             if (trimmed != null) _events.send(TrimEvent.Trimmed(r.ride.source == RideSource.MERGED))
+            else if (repo.get(rideId) == null) { _ui.value = TrimUi.Loading; _vanished.value = true }
             else ready()?.let { _ui.value = it.copy(applying = false, failed = true) }
         }
     }

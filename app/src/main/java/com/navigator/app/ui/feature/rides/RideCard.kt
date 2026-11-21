@@ -150,7 +150,15 @@ private val DAY: DateTimeFormatter by lazy {
     DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMM"))
 }
 
-private fun rideDay(ms: Long): String = DAY.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+private val DAY_YEAR: DateTimeFormatter by lazy {
+    DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMMyyyy"))
+}
+
+/** With no day headers the card names its day, and the year when it is not this one. */
+private fun rideDay(ms: Long): String {
+    val day = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
+    return (if (day.year == java.time.Year.now().value) DAY else DAY_YEAR).format(day)
+}
 
 private fun rideTime(ms: Long): String = TIME.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 

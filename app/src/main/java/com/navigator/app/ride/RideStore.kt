@@ -171,6 +171,7 @@ class RideStore(context: Context) {
         val dest = ordered.lastOrNull { it.destLat != null && it.destLng != null }
         val tmp = File(ridesDir, "$newId.jsonl.tmp")
         var moved = false
+        var indexed = false
         try {
             FileOutputStream(tmp).use { fos ->
                 BufferedWriter(OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
@@ -205,14 +206,15 @@ class RideStore(context: Context) {
                 val at = System.currentTimeMillis()
                 val originals = ordered.map { it.id }.toSet()
                 writeIndex(now.map { if (it.id in originals) it.copy(deletedAtMs = at) else it } + ride)
+                indexed = true
                 if (ride.saved) writeSavedIds(savedIds() + newId)
                 AppLogger.log("Ride", "Merged ${ordered.size} rides into $newId")
                 return MergeResult.Merged(ride, MergeToken(newId, ordered.map { it.id }))
             }
         } catch (e: Exception) {
             runCatching { tmp.delete() }
-            // Only a file this merge itself put in place (and failed to index) is ours to remove.
-            if (moved) runCatching { trackFile(newId).delete() }
+            // Only a file this merge itself put in place and did not index is ours to remove; once indexed it must stay.
+            if (moved && !indexed) runCatching { trackFile(newId).delete() }
             AppLogger.log("Ride", "!! merge failed: ${e.javaClass.simpleName}")
             return MergeResult.Refused(MergeRefusal.Failed)
         } finally {
