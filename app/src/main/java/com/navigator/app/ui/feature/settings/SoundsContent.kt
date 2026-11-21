@@ -59,7 +59,7 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
         SectionHeader(stringResource(R.string.sounds_section_beeps))
         KtmSwitchRow(
             stringResource(R.string.sounds_beeps), ui.beeps, actions.onBeeps,
-            supporting = stringResource(R.string.sounds_beeps_hint), leadingIcon = KtmIcons.Sound,
+            supporting = stringResource(R.string.sounds_beeps_hint),
         )
         Text(
             stringResource(R.string.sounds_volume), style = MaterialTheme.typography.titleSmall, color = c.fg2,
@@ -83,7 +83,7 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
         SectionHeader(stringResource(R.string.sounds_section_speed))
         KtmSwitchRow(
             stringResource(R.string.sounds_alert), ui.speedAlert, actions.onSpeedAlert,
-            supporting = stringResource(R.string.sounds_alert_hint), leadingIcon = KtmIcons.Speed,
+            supporting = stringResource(R.string.sounds_alert_hint),
         )
         Text(
             stringResource(R.string.sounds_alert_at), style = MaterialTheme.typography.titleSmall, color = c.fg2,
@@ -109,7 +109,7 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
             title = stringResource(R.string.sounds_call_audio),
             supporting = ui.callAudioName
                 ?: stringResource(if (ui.callAudioUnavailable) R.string.sounds_call_audio_unavailable else R.string.sounds_call_audio_none),
-            leadingIcon = KtmIcons.Headset, onClick = actions.onOpenCallAudio, trailing = { RowChevron() },
+            onClick = actions.onOpenCallAudio, trailing = { RowChevron() },
         )
     }
 }

@@ -56,29 +56,29 @@ fun AboutContent(ui: AboutUi, actions: AboutActions, modifier: Modifier = Modifi
         SectionHeader(stringResource(R.string.about_section_logs))
         ListRow(
             title = stringResource(R.string.about_logs), supporting = stringResource(R.string.about_logs_hint), supportingLines = 2,
-            leadingIcon = KtmIcons.Terminal, onClick = actions.onLogs, trailing = { RowChevron() },
+            onClick = actions.onLogs, trailing = { RowChevron() },
         )
         ListDivider()
         KtmSwitchRow(
             stringResource(R.string.about_copy_logs), ui.copyLogs, actions.onCopyLogs,
-            supporting = stringResource(R.string.about_copy_logs_hint), supportingLines = 2, leadingIcon = KtmIcons.Download,
+            supporting = stringResource(R.string.about_copy_logs_hint), supportingLines = 2,
         )
 
         SectionHeader(stringResource(R.string.about_section_tools))
         ListRow(
             title = stringResource(R.string.about_symbols), supporting = stringResource(R.string.about_symbols_hint), supportingLines = 2,
-            leadingIcon = KtmIcons.Dash, onClick = actions.onSymbols, trailing = { RowChevron() },
+            onClick = actions.onSymbols, trailing = { RowChevron() },
         )
         ListDivider()
         ListRow(
             title = stringResource(R.string.about_calibration), supporting = stringResource(R.string.about_calibration_hint), supportingLines = 2,
-            leadingIcon = KtmIcons.Wand, onClick = actions.onCalibration, trailing = { RowChevron() },
+            onClick = actions.onCalibration, trailing = { RowChevron() },
         )
         if (ui.showOverlayToggle) {
             ListDivider()
             KtmSwitchRow(
                 stringResource(R.string.about_overlay), ui.overlay, actions.onOverlay,
-                supporting = stringResource(R.string.about_overlay_hint), supportingLines = 2, leadingIcon = KtmIcons.Eye,
+                supporting = stringResource(R.string.about_overlay_hint), supportingLines = 2,
                 badge = stringResource(R.string.about_debug_badge),
             )
         }

@@ -90,7 +90,7 @@ fun NavigationContent(ui: NavigationUi, actions: NavigationActions, modifier: Mo
         )
         KtmSwitchRow(
             stringResource(R.string.nav_live_updates), ui.liveUpdates, actions.onLiveUpdates,
-            supporting = stringResource(R.string.nav_live_updates_hint), supportingLines = 3, leadingIcon = KtmIcons.Bell,
+            supporting = stringResource(R.string.nav_live_updates_hint), supportingLines = 3,
         )
 
         SectionHeader(stringResource(R.string.nav_section_mirror))
@@ -98,12 +98,12 @@ fun NavigationContent(ui: NavigationUi, actions: NavigationActions, modifier: Mo
             if (ui.engine == NavEngine.IN_APP) Hint(stringResource(R.string.nav_mirror_note))
             KtmSwitchRow(
                 stringResource(R.string.nav_auto_detect), ui.autoDetect, actions.onAutoDetect,
-                supporting = stringResource(R.string.nav_auto_detect_hint), leadingIcon = KtmIcons.Wand,
+                supporting = stringResource(R.string.nav_auto_detect_hint),
             )
             if (!ui.autoDetect) {
                 ListRow(
                     title = stringResource(R.string.nav_app), supporting = ui.navAppLabel ?: stringResource(R.string.nav_app_choose),
-                    leadingIcon = KtmIcons.Navigation, onClick = actions.onChooseNavApp, trailing = { RowChevron() },
+                    onClick = actions.onChooseNavApp, trailing = { RowChevron() },
                 )
             }
             Label(stringResource(R.string.nav_drive_on))

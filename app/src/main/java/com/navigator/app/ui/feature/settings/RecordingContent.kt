@@ -67,7 +67,7 @@ fun RecordingContent(ui: RecordingUi, actions: RecordingActions, modifier: Modif
     SettingsPageScaffold(stringResource(R.string.rec_title), actions.onBack, modifier) {
         KtmSwitchRow(
             stringResource(R.string.rec_record), ui.recording, actions.onRecording,
-            supporting = stringResource(R.string.rec_record_hint), supportingLines = 2, leadingIcon = KtmIcons.Record,
+            supporting = stringResource(R.string.rec_record_hint), supportingLines = 2,
         )
         Text(
             stringResource(R.string.rec_avg), style = MaterialTheme.typography.titleSmall, color = KtmTheme.colors.fg2,

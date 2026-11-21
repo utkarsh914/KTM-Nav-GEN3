@@ -196,10 +196,17 @@ class ComponentInteractionTest {
         assertEquals("mirror", picked)
     }
 
-    @Test fun aLeadingRadioComesBeforeTheTitle() {
-        rule.setContent { KtmTheme(darkTheme = true) { KtmRadioRow("Newest first", true, {}, radioAtStart = true) } }
-        val radio = rule.onNode(androidx.compose.ui.test.isSelectable()).fetchSemanticsNode().boundsInRoot
-        val title = rule.onNodeWithText("Newest first").fetchSemanticsNode().boundsInRoot
-        assertTrue(radio.left <= title.left)
+    @Test fun aLeadingRadioPushesTheTitleAwayFromTheEdge() {
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                androidx.compose.foundation.layout.Column {
+                    KtmRadioRow("Newest first", true, {}, radioAtStart = true)
+                    KtmRadioRow("Oldest first", true, {})
+                }
+            }
+        }
+        val leftLeading = rule.onNodeWithText("Newest first", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
+        val leftTrailing = rule.onNodeWithText("Oldest first", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
+        assertTrue("leading $leftLeading vs trailing $leftTrailing", leftLeading > leftTrailing + 24f)
     }
 }

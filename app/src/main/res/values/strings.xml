@@ -712,7 +712,7 @@
     <!-- Bike & dash (ST2) -->
     <string name="bikedash_title">Bike &amp; dash</string>
     <string name="bikedash_repair_hint">Also for pairing a different bike</string>
-    <string name="bikedash_repair">Re-pair</string>
+    <string name="bikedash_repair">Re-pair…</string>
     <string name="bikedash_section_dash">Phone notifications on the dash</string>
     <string name="bikedash_section_greeting">Dash greeting</string>
     <string name="bikedash_section_text">Dash text</string>

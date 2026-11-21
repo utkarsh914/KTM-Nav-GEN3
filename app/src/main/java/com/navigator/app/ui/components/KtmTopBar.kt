@@ -30,8 +30,8 @@ import com.navigator.app.ui.theme.KtmTheme
 /**
  * 64 dp on every tab and page, even with no actions, so the large title below always lands in the
  * same place. It insets itself for the status bar
- * and cutout, so a page needs no extra padding. Actions are 48 dp icon buttons, never labelled buttons. [title] may be empty on a
- * tab root that shows a [LargeTitle] instead.
+ * and cutout, so a page needs no extra padding. Actions are 48 dp icon buttons, never labelled buttons. [title] is the page's name on a sub-page
+ * (Settings) and empty on a tab root, which shows a [LargeTitle] instead.
  */
 @Composable
 fun KtmTopBar(

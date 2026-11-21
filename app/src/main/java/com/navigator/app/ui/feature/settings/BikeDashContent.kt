@@ -116,7 +116,7 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
                 )
                 KtmButton(
                     stringResource(R.string.bikedash_test_turn), actions.onTestTurn, Modifier.weight(1f),
-                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected, icon = KtmIcons.Navigation,
+                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected, icon = KtmIcons.Dash,
                 )
             }
             if (!ui.connected) {

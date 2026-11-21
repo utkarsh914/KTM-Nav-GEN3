@@ -47,7 +47,7 @@ fun PermissionRow(item: PermissionItem, onFix: () -> Unit, modifier: Modifier = 
             } else {
                 val label = stringResource(if (PermissionFix.opensSettings(item.id)) R.string.perm_open else R.string.perm_allow)
                 val description = stringResource(if (PermissionFix.opensSettings(item.id)) R.string.perm_open_cd else R.string.perm_allow_cd, title)
-                KtmButton(label, onFix, Modifier.semantics { contentDescription = description }, style = ButtonStyle.Tonal, size = ButtonSize.Small)
+                KtmButton(label, onFix, Modifier.semantics { contentDescription = description }, style = ButtonStyle.Primary, size = ButtonSize.Small)
             }
         },
     )
