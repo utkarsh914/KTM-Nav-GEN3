@@ -43,6 +43,9 @@ sealed interface DashPreviewState {
         val time: String, val app: String, val text: String, val eta: String? = null, val remaining: String? = null,
     ) : DashPreviewState
 
+    /** ON7: the dash asking to pair; [yes] and [no] are its two answers. */
+    data class Prompt(val title: String, val yes: String, val no: String) : DashPreviewState
+
     data class NotConnected(val title: String, val hint: String) : DashPreviewState
 }
 
@@ -73,6 +76,19 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
                 Text(state.app, style = MaterialTheme.typography.titleLarge, color = DashPalette.subtle, maxLines = 1)
                 Text(state.text, style = MaterialTheme.typography.headlineSmall, color = DashPalette.text, maxLines = 2)
                 if (state.eta != null && state.remaining != null) Footer(state.eta, state.remaining)
+            }
+            is DashPreviewState.Prompt -> {
+                Text(state.title, style = MaterialTheme.typography.headlineSmall, color = DashPalette.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md, Alignment.CenterHorizontally)) {
+                    Text(
+                        state.yes, style = MaterialTheme.typography.titleMedium, color = DashPalette.bg,
+                        modifier = Modifier.background(DashPalette.text, KtmShapes.Control).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+                    )
+                    Text(
+                        state.no, style = MaterialTheme.typography.titleMedium, color = DashPalette.subtle,
+                        modifier = Modifier.border(2.dp, DashPalette.ring, KtmShapes.Control).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+                    )
+                }
             }
             is DashPreviewState.NotConnected -> {
                 Text("—", style = MaterialTheme.typography.displaySmall, color = DashPalette.subtle, modifier = Modifier.clearAndSetSemantics {})

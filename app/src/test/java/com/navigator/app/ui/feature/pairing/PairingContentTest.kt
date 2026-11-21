@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.pairing
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -26,12 +27,13 @@ class PairingContentTest {
     private fun actions(back: Boolean = true, later: Boolean = true) = PairingActions(
         onBack = if (back) ({ log += "back" }) else null,
         onPick = { log += "pick ${it.address}" }, onScanAgain = { log += "scan" }, onCancel = { log += "cancel" },
-        onRetry = { log += "retry" }, onTrouble = { log += "trouble" }, onPairLater = if (later) ({ log += "later" }) else null,
+        onRetry = { log += "retry" }, onViewLogs = { log += "logs" }, onShareLog = { log += "share" },
+        onBluetoothSettings = { log += "bt" }, onPairLater = if (later) ({ log += "later" }) else null,
         onFixBlock = { log += "fix $it" }, onDebugSkip = { log += "debug" },
     )
 
-    private fun show(ui: PairingUi, actions: PairingActions = actions()) =
-        rule.setContent { KtmTheme(darkTheme = false) { PairingContent(ui, actions) } }
+    private fun show(ui: PairingUi, actions: PairingActions = actions(), progress: Pair<Int, Int>? = null) =
+        rule.setContent { KtmTheme(darkTheme = false) { PairingContent(ui, actions, progress = progress) } }
 
     private val ktm = ScannedBike("AA:01", "KTM 1290", -50, pairedBefore = false)
     private val old = ScannedBike("AA:02", "KTM 390", null, pairedBefore = true)
@@ -41,7 +43,9 @@ class PairingContentTest {
         show(PairingUi(PairingPhase.Scanning, bikes = listOf(ktm, old), others = listOf(headset)))
         rule.onNodeWithText("Very close").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Paired before").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("KTM 1290").performScrollTo().performClick()
+        rule.onNodeWithText("KTM 1290").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("AA:01").assertDoesNotExist()
+        rule.onNode(hasContentDescription("Pair with KTM 1290") and hasClickAction()).performScrollTo().performClick()
         assertEquals(listOf("pick AA:01"), log)
     }
 
@@ -66,19 +70,36 @@ class PairingContentTest {
         rule.onNodeWithText("No bike found yet. Scan again with the ignition on.").performScrollTo().assertIsDisplayed()
     }
 
-    @Test fun havingTroubleIsInTheHeader() {
+    @Test fun havingTroubleIsAtTheFootAndOpensThreeSteps() {
         show(PairingUi(PairingPhase.Scanning))
-        rule.onNodeWithContentDescription("Having trouble?").performClick()
-        assertEquals(listOf("trouble"), log)
+        rule.onNode(hasText("Having trouble?") and hasClickAction()).performClick()
+        rule.onNodeWithText("Keep the phone within a metre of the dash while you accept.").assertIsDisplayed()
+        rule.onNodeWithText("Try again").assertDoesNotExist()
+        rule.onNode(hasText("Share log") and hasClickAction()).performClick()
+        rule.onNode(hasText("View log") and hasClickAction()).performClick()
+        assertEquals(listOf("share", "logs"), log)
+    }
+
+    @Test fun theChecklistTicksBluetoothAndNeverShowsAnAddress() {
+        show(PairingUi(PairingPhase.Scanning, bikes = listOf(ktm), scanning = true))
+        rule.onNodeWithText("Bluetooth is on").assertIsDisplayed()
+        rule.onNodeWithText("Nearby bikes").assertIsDisplayed()
+        rule.onNodeWithText("Scanning").assertIsDisplayed()
+        rule.onNodeWithText("Scan again").assertDoesNotExist()
+    }
+
+    @Test fun theFirstRunBarShowsItsLastSegment() {
+        show(PairingUi(PairingPhase.Scanning), progress = 4 to 4)
+        rule.onNodeWithContentDescription("Step 4 of 4").assertIsDisplayed()
     }
 
     @Test fun confirmingHasATimerNoBackAndACancel() {
         val bike = Attempt("AA:01", "KTM 1290", 0)
         show(PairingUi(PairingPhase.Confirming(bike, 65, securing = false)))
-        rule.onNodeWithText("1:05").assertIsDisplayed()
-        rule.onNodeWithText("Waiting for the dash").assertIsDisplayed()
+        rule.onNodeWithText("Pair with ${android.os.Build.MODEL}?").assertIsDisplayed()
+        rule.onNodeWithText("Found KTM 1290").assertIsDisplayed()
+        rule.onNodeWithText("Waiting for you on the dash · 1:05").assertIsDisplayed()
         rule.onNodeWithContentDescription("Back").assertDoesNotExist()
-        rule.onNodeWithContentDescription("Having trouble?").assertDoesNotExist()
         rule.onNode(hasText("Cancel") and hasClickAction()).performClick()
         assertEquals(listOf("cancel"), log)
     }
@@ -102,11 +123,19 @@ class PairingContentTest {
         assertEquals(listOf("fix BLUETOOTH_OFF"), log)
     }
 
-    @Test fun failedExplainsTheCausesAndTriesAgain() {
+    @Test fun failedOpensTheHelpWhichTriesAgain() {
         show(PairingUi(PairingPhase.Failed))
         rule.onNodeWithText("Couldn't pair").assertIsDisplayed()
-        rule.onNodeWithText("Bluetooth is on in Android.").performScrollTo().assertIsDisplayed()
-        rule.onNode(hasText("Try again") and hasClickAction()).performScrollTo().performClick()
+        rule.onNodeWithText("Ignition on, and the dash on its main screen (not a menu).").assertIsDisplayed()
+        rule.onNode(hasText("Try again") and hasClickAction()).performClick()
+        assertEquals(listOf("retry"), log)
+    }
+
+    @Test fun closingTheFailureHelpLeavesTryAgainAndPairLaterOnThePage() {
+        show(PairingUi(PairingPhase.Failed))
+        rule.onNodeWithContentDescription("Close").performClick()
+        rule.onNode(hasText("Pair later") and hasClickAction()).assertIsDisplayed()
+        rule.onNode(hasText("Try again") and hasClickAction()).performClick()
         assertEquals(listOf("retry"), log)
     }
 }

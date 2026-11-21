@@ -141,6 +141,14 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** One promise line on the welcome (ON1). */
+    val promiseRow = 40.dp
+    /** The disc of a checklist step (ON6, ON7). */
+    val stepDisc = 28.dp
+    /** The page behind a sheet that has taken over (ON9). */
+    val dimmedContent = 0.4f
+    /** The outline of a chosen card (ON2). */
+    val selectedOutline = 2.dp
     /** The tile of an empty page (RD4, PC4) and the glyph in it. */
     val emptyTile = 88.dp
     val emptyGlyph = 40.dp

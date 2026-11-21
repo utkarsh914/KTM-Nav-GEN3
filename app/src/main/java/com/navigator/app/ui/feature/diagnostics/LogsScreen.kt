@@ -28,6 +28,15 @@ fun LogsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     )
 }
 
+/** Shares the log from anywhere (the pairing help): the share sheet, or a snackbar when it can't. */
+@Composable
+fun rememberLogSharer(): () -> Unit {
+    val context = LocalContext.current
+    val feedback = LocalFeedback.current
+    val failed = stringResource(R.string.logs_share_failed)
+    return { if (!shareLog(context)) feedback.snackbar(failed) }
+}
+
 /** Hands the current log file to the share sheet; false when there is no file or no app took it. */
 private fun shareLog(context: Context): Boolean {
     val file = AppLogger.currentLogFile() ?: return false

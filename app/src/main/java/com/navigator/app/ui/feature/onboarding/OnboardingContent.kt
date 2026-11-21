@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,22 +20,27 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -55,15 +61,20 @@ import com.navigator.app.ui.components.DashPreviewState
 import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmRadio
+import com.navigator.app.ui.components.KtmStepHeader
 import com.navigator.app.ui.components.KtmRadioRow
 import com.navigator.app.ui.components.KtmTextField
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.SectionHeader
+import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.permissions.PermissionRow
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.rememberHaptics
 
 class OnboardingActions(
     val onBack: () -> Unit,
@@ -115,43 +126,24 @@ fun OnboardingContent(
 
 @Composable
 private fun Header(ui: OnboardingUi, actions: OnboardingActions) {
-    Row(
-        Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .fillMaxWidth().height(KtmLayout.topBar).padding(horizontal = KtmSpacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
-    ) {
-        if (ui.canGoBack) {
-            KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
+    val progress = ui.progress
+    Column(Modifier.then(if (progress == null) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)) else Modifier).fillMaxWidth()) {
+        if (progress == null) {
+            // ON1: the wordmark, no progress yet.
+            Row(
+                Modifier.fillMaxWidth().height(KtmLayout.topBar).padding(horizontal = KtmSpacing.edge),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.app_wordmark), style = MaterialTheme.typography.titleLarge, color = KtmTheme.colors.fg, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.onb_product), style = MaterialTheme.typography.labelLarge, color = KtmTheme.colors.fg2)
+            }
         } else {
-            Spacer(Modifier.size(KtmLayout.targetRest))
-        }
-        val progress = ui.progress
-        if (progress != null) {
-            ProgressBar(progress.first, progress.second, Modifier.weight(1f))
-        } else {
-            Text(
-                stringResource(R.string.app_wordmark), style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        if (ui.step == OnboardingStep.NAME) {
-            KtmButton(stringResource(R.string.onb_skip), actions.onSkipName, style = ButtonStyle.Text, size = ButtonSize.Small)
-        } else {
-            Spacer(Modifier.size(KtmLayout.targetRest))
-        }
-    }
-}
-
-@Composable
-private fun ProgressBar(position: Int, total: Int, modifier: Modifier = Modifier) {
-    val description = stringResource(R.string.onb_progress, position, total)
-    Row(modifier.semantics { contentDescription = description; progressBarRangeInfo = ProgressBarRangeInfo(position.toFloat(), 1f..total.toFloat(), total - 1) }, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
-        repeat(total) { i ->
-            Box(
-                Modifier.weight(1f).height(KtmSpacing.xs)
-                    .background(if (i < position) KtmTheme.accent.fill else KtmTheme.colors.line2, KtmShapes.Pill),
-            )
+            // ON2 to ON5: the bar on top, Back and Skip on their own row under it.
+            KtmStepHeader(progress.first, progress.second, actions.onBack.takeIf { ui.canGoBack }) {
+                if (ui.step == OnboardingStep.NAME) {
+                    KtmButton(stringResource(R.string.onb_skip), actions.onSkipName, style = ButtonStyle.Text, size = ButtonSize.Small)
+                }
+            }
         }
     }
 }
@@ -159,7 +151,8 @@ private fun ProgressBar(position: Int, total: Int, modifier: Modifier = Modifier
 /** A step: scrolling content, then its actions pinned at the bottom so they never hide on a short screen. */
 @Composable
 private fun StepFrame(
-    title: String, message: String? = null, actions: @Composable ColumnScope.() -> Unit, body: @Composable ColumnScope.() -> Unit,
+    title: String, message: String? = null, actions: @Composable ColumnScope.() -> Unit, smallMessage: Boolean = false,
+    body: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
@@ -171,7 +164,7 @@ private fun StepFrame(
             )
             if (message != null) {
                 Text(
-                    message, style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg2,
+                    message, style = if (smallMessage) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg2,
                     modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.lg),
                 )
             }
@@ -187,8 +180,8 @@ private fun rememberDashTime(): String = remember { EtaFormatter.format(System.c
 @Composable
 private fun Welcome(actions: OnboardingActions) {
     StepFrame(
-        title = stringResource(R.string.onb_welcome_title),
-        actions = { KtmButton(stringResource(R.string.onb_get_started), actions.onNext, Modifier.fillMaxWidth()) },
+        title = stringResource(R.string.onb_welcome_title), message = stringResource(R.string.onb_welcome_message),
+        actions = { KtmButton(stringResource(R.string.common_continue), actions.onNext, Modifier.fillMaxWidth()) },
     ) {
         DashPreview(
             DashPreviewState.Turn(
@@ -197,18 +190,21 @@ private fun Welcome(actions: OnboardingActions) {
             ),
             Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.lg),
         )
-        ListRow(
-            title = stringResource(R.string.onb_promise_dash), supporting = stringResource(R.string.onb_promise_dash_hint),
-            supportingLines = 2, leadingIcon = KtmIcons.Navigation,
-        )
-        ListRow(
-            title = stringResource(R.string.onb_promise_messages), supporting = stringResource(R.string.onb_promise_messages_hint),
-            supportingLines = 2, leadingIcon = KtmIcons.Message,
-        )
-        ListRow(
-            title = stringResource(R.string.onb_promise_rides), supporting = stringResource(R.string.onb_promise_rides_hint),
-            supportingLines = 2, leadingIcon = KtmIcons.Route,
-        )
+        // One line each on a 40 dp rhythm: they promise, they are not rows to tap.
+        Promise(KtmIcons.Navigation, R.string.onb_promise_dash)
+        Promise(KtmIcons.Message, R.string.onb_promise_messages)
+        Promise(KtmIcons.Route, R.string.onb_promise_rides)
+    }
+}
+
+@Composable
+private fun Promise(icon: androidx.compose.ui.graphics.vector.ImageVector, @androidx.annotation.StringRes text: Int) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = KtmLayout.promiseRow).padding(horizontal = KtmSpacing.edge),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        TonalIconBadge(icon)
+        Text(stringResource(text), style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg)
     }
 }
 
@@ -218,14 +214,59 @@ private fun Engine(engine: NavEngine, actions: OnboardingActions) {
         title = stringResource(R.string.onb_engine_title), message = stringResource(R.string.onb_engine_message),
         actions = { KtmButton(stringResource(R.string.common_continue), actions.onNext, Modifier.fillMaxWidth()) },
     ) {
-        KtmRadioRow(
-            stringResource(R.string.onb_engine_inapp), engine == NavEngine.IN_APP, { actions.onEngine(NavEngine.IN_APP) },
-            supporting = stringResource(R.string.onb_engine_inapp_hint), supportingLines = 4,
-        )
-        KtmRadioRow(
-            stringResource(R.string.onb_engine_mirror), engine == NavEngine.MIRROR, { actions.onEngine(NavEngine.MIRROR) },
-            supporting = stringResource(R.string.onb_engine_mirror_hint), supportingLines = 4,
-        )
+        Column(Modifier.padding(horizontal = KtmSpacing.edge), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+            EngineCard(
+                KtmIcons.Route, R.string.onb_engine_inapp, R.string.onb_engine_inapp_tag, R.string.onb_engine_inapp_hint,
+                R.string.onb_engine_inapp_note, engine == NavEngine.IN_APP,
+            ) { actions.onEngine(NavEngine.IN_APP) }
+            EngineCard(
+                KtmIcons.Navigation, R.string.onb_engine_mirror, R.string.onb_engine_mirror_tag, R.string.onb_engine_mirror_hint,
+                null, engine == NavEngine.MIRROR,
+            ) { actions.onEngine(NavEngine.MIRROR) }
+        }
+    }
+}
+
+/** ON2: a choice as a card: what it is called, a line on it, how it works, and a radio. The chosen one is outlined in the accent. */
+@Composable
+private fun EngineCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    @androidx.annotation.StringRes title: Int,
+    @androidx.annotation.StringRes tag: Int,
+    @androidx.annotation.StringRes body: Int,
+    @androidx.annotation.StringRes note: Int?,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val c = KtmTheme.colors
+    val a = KtmTheme.accent
+    val haptics = rememberHaptics()
+    Column(
+        Modifier.fillMaxWidth().clip(KtmShapes.Card)
+            .background(if (selected) a.container else c.surf)
+            .border(if (selected) KtmLayout.selectedOutline else KtmLayout.hairline, if (selected) a.fill else c.line, KtmShapes.Card)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = { haptics.toggle(true); onSelect() })
+            .padding(KtmSpacing.lg),
+        verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+            Box(
+                Modifier.size(KtmLayout.actionTile).background(if (selected) a.fill else c.surf3, KtmShapes.Control),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, null, tint = if (selected) a.onFill else c.fg2) }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(title), style = MaterialTheme.typography.titleMedium, color = c.fg)
+                Text(stringResource(tag), style = MaterialTheme.typography.bodySmall, color = if (selected) a.onContainer else c.fg2)
+            }
+            KtmRadio(selected)
+        }
+        Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = c.fg)
+        if (note != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                Icon(KtmIcons.Info, null, tint = c.fg2, modifier = Modifier.size(KtmSpacing.lg))
+                Text(stringResource(note), style = MaterialTheme.typography.bodySmall, color = c.fg2)
+            }
+        }
     }
 }
 
@@ -262,7 +303,7 @@ private fun Name(name: String, actions: OnboardingActions) {
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { actions.onNext() }),
         )
-        Spacer(Modifier.height(KtmSpacing.lg))
+        SectionHeader(stringResource(R.string.onb_preview))
         DashPreview(
             DashPreviewState.Message(rememberDashTime(), stringResource(R.string.dash_preview_banner_app), greeting),
             Modifier.padding(horizontal = KtmSpacing.edge),
@@ -274,7 +315,9 @@ private fun Name(name: String, actions: OnboardingActions) {
 private fun Permissions(ui: OnboardingUi, actions: OnboardingActions) {
     val missing = ui.permissions.requiredMissing.isNotEmpty()
     StepFrame(
-        title = stringResource(R.string.onb_perm_title), message = stringResource(R.string.onb_perm_message),
+        title = stringResource(R.string.onb_perm_title),
+        message = stringResource(R.string.onb_perm_message, ui.permissions.items.count { it.required }),
+        smallMessage = true,
         actions = {
             if (missing) {
                 KtmButton(stringResource(R.string.onb_perm_allow), actions.onAllowRequired, Modifier.fillMaxWidth())

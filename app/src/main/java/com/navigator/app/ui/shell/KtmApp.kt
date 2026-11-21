@@ -65,6 +65,7 @@ import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
 import com.navigator.app.ui.feature.navigate.NavigateHost
+import com.navigator.app.ui.feature.onboarding.OnboardingFlow
 import com.navigator.app.ui.feature.onboarding.OnboardingScreen
 import com.navigator.app.ui.feature.onboarding.ReadyScreen
 import com.navigator.app.ui.feature.pairing.PairingScreen
@@ -268,6 +269,7 @@ fun KtmApp(onQuit: () -> Unit) {
                             composable<Route.Pairing> { backStackEntry ->
                                 val route = backStackEntry.toRoute<Route.Pairing>()
                                 val back = { navController.popFrom(backStackEntry) }
+                                val pairingEngineAvailable = remember { GoogleNavSdkController.isAvailable(context) }
                                 PairingScreen(
                                     onPaired = {
                                         // Not a tap: it fires when the handshake completes, even while the app is paused.
@@ -281,6 +283,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     },
                                     onBack = if (route.forced) null else back,
                                     onPairLater = if (route.forced || route.toHome) ({ navController.openRoot(Route.Navigate) }) else null,
+                                    progress = if (route.fromOnboarding) OnboardingFlow.pairingProgress(pairingEngineAvailable) else null,
                                 )
                             }
                             composable<Route.Ready> {

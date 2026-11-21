@@ -180,14 +180,14 @@ class OnboardingContentTest {
 
     @Test fun welcomeShowsThePromisesAndGetStarted() {
         show(OnboardingStep.WELCOME)
-        rule.onNodeWithText("Turns on your dash").assertIsDisplayed()
-        rule.onNode(hasText("Get started") and hasClickAction()).performClick()
+        rule.onNodeWithText("Next turn and ETA on your dash").assertIsDisplayed()
+        rule.onNode(hasText("Continue") and hasClickAction()).performClick()
         assertEquals(listOf("next"), log)
     }
 
     @Test fun engineStepSelectsEitherChoice() {
         show(OnboardingStep.ENGINE)
-        rule.onNodeWithText("Use another navigation app").performScrollTo().performClick()
+        rule.onNodeWithText("Mirror Google Maps").performScrollTo().performClick()
         assertEquals(listOf("engine MIRROR"), log)
     }
 
@@ -219,7 +219,7 @@ class OnboardingContentTest {
     @Test fun permissionsStepAllowsRequiredOrCarriesOn() {
         show(OnboardingStep.PERMISSIONS)
         rule.onNode(hasText("Allow required") and hasClickAction()).performClick()
-        rule.onNode(hasText("Not now") and hasClickAction()).performClick()
+        rule.onNode(hasText("Skip for now") and hasClickAction()).performClick()
         assertEquals(listOf("allow", "next"), log)
     }
 

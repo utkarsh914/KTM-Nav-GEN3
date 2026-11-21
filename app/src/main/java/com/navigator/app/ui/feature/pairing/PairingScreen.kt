@@ -20,6 +20,7 @@ import com.navigator.app.app.appContainer
 import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.ui.feature.permissions.PermissionFix
 import com.navigator.app.ui.feature.permissions.rememberPermissionFixer
+import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.shell.LocalOpenLogs
 import com.navigator.app.ui.shell.openBluetoothSettings
 
@@ -33,13 +34,15 @@ fun PairingScreen(
     onBack: (() -> Unit)?,
     onPairLater: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** The first-run bar, its last segment; null when pairing from Settings. */
+    progress: Pair<Int, Int>? = null,
 ) {
     val context = LocalContext.current
     val container = context.appContainer
     val vm: PairingViewModel = viewModel(factory = PairingViewModel.factory(container, context))
     val ui by vm.ui.collectAsState()
     val openLogs = LocalOpenLogs.current
-    var trouble by rememberSaveable { mutableStateOf(false) }
+    val shareLog = rememberLogSharer()
     val fixer = rememberPermissionFixer(onResult = vm::refreshPermissions)
     val enableBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
 
@@ -53,7 +56,7 @@ fun PairingScreen(
         ui,
         PairingActions(
             onBack = onBack, onPick = vm::pick, onScanAgain = vm::scanAgain, onCancel = vm::cancel, onRetry = vm::retry,
-            onTrouble = { trouble = true }, onPairLater = onPairLater,
+            onViewLogs = openLogs, onShareLog = shareLog, onBluetoothSettings = ::openBluetoothSettings, onPairLater = onPairLater,
             onFixBlock = { reason ->
                 when (reason) {
                     BlockReason.NO_PERMISSION -> fixer.fix(PermissionFix.stepFor(PermissionId.NEARBY_DEVICES, container.permissions.state.value))
@@ -63,8 +66,7 @@ fun PairingScreen(
             },
             onDebugSkip = vm::skipForDebug,
         ),
-        modifier,
+        modifier, progress,
     )
     fixer.Sheet()
-    if (trouble) HavingTroubleSheet(onViewLogs = openLogs, onBluetoothSettings = ::openBluetoothSettings, onDismiss = { trouble = false })
 }

@@ -26,11 +26,17 @@ object OnboardingFlow {
 
     fun previous(steps: List<OnboardingStep>, current: OnboardingStep): OnboardingStep? = steps.lastOrNull { it.ordinal < current.ordinal }
 
-    /** (position, total) for the progress bar, which starts on the step after the welcome; null on the welcome itself. */
+    /**
+     * (position, total) for the progress bar (ON1 to ON10): Engine, Name, Permissions and Pairing count; the welcome and
+     * Google's terms do not (the terms sit under Engine). Null on the welcome itself.
+     */
     fun progress(steps: List<OnboardingStep>, current: OnboardingStep): Pair<Int, Int>? {
         if (current == OnboardingStep.WELCOME) return null
-        val counted = steps.filter { it != OnboardingStep.WELCOME }
-        val position = counted.indexOf(current).takeIf { it >= 0 }?.plus(1) ?: counted.count { it.ordinal < current.ordinal } + 1
-        return position to counted.size
+        val counted = steps.filter { it != OnboardingStep.WELCOME && it != OnboardingStep.TERMS }
+        val position = counted.count { it.ordinal <= current.ordinal }.coerceAtLeast(1)
+        return position to counted.size + 1
     }
+
+    /** The bar on the pairing screens: the last segment of the same bar. */
+    fun pairingProgress(engineAvailable: Boolean): Pair<Int, Int> = (if (engineAvailable) 4 else 3).let { it to it }
 }

@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.ui.platform.LocalContext
+import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.feature.pairing.HavingTroubleSheet
 import com.navigator.app.ui.shell.LocalOpenLogs
 import androidx.compose.runtime.getValue
@@ -131,8 +132,10 @@ fun BikeSheet(
 
     if (trouble) {
         val context = LocalContext.current
+        val shareLog = rememberLogSharer()
         HavingTroubleSheet(
             onViewLogs = openLogs,
+            onShareLog = shareLog,
             onBluetoothSettings = { context.openBluetoothSettings() },
             onDismiss = { trouble = false },
         )

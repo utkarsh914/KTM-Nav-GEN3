@@ -40,7 +40,15 @@ class OnboardingFlowTest {
         val steps = OnboardingFlow.steps(true, NavEngine.IN_APP, false)
         assertNull(OnboardingFlow.progress(steps, WELCOME))
         assertEquals(1 to 4, OnboardingFlow.progress(steps, ENGINE))
-        assertEquals(4 to 4, OnboardingFlow.progress(steps, PERMISSIONS))
-        assertEquals(1 to 2, OnboardingFlow.progress(OnboardingFlow.steps(false, NavEngine.MIRROR, true), NAME))
+        assertEquals(3 to 4, OnboardingFlow.progress(steps, PERMISSIONS))
+        assertEquals(1 to 3, OnboardingFlow.progress(OnboardingFlow.steps(false, NavEngine.MIRROR, true), NAME))
+    }
+
+    @Test fun theTermsAreNotACountedStepAndPairingIsTheLastSegment() {
+        val steps = OnboardingFlow.steps(true, NavEngine.IN_APP, false)
+        assertEquals(1 to 4, OnboardingFlow.progress(steps, TERMS))
+        assertEquals(2 to 4, OnboardingFlow.progress(steps, NAME))
+        assertEquals(4 to 4, OnboardingFlow.pairingProgress(true))
+        assertEquals(3 to 3, OnboardingFlow.pairingProgress(false))
     }
 }
