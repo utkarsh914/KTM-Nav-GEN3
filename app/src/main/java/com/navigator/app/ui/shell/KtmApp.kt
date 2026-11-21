@@ -376,7 +376,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                         onOpenPermissions = { navController.push(Route.SettingsPage(SettingsPage.PERMISSIONS)) },
                                         onRePaired = { navController.push(Route.Pairing(toHome = true)) },
                                     )
-                                    SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) })
+                                    SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) }, onOpenPlaces = { navController.openTab(Tab.Places) })
                                     SettingsPage.RECORDING -> RecordingScreen(onBack = back)
                                     SettingsPage.APPEARANCE -> AppearanceScreen(onBack = back)
                                     SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })

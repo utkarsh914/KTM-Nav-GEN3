@@ -92,7 +92,13 @@ fun SettingsHomeContent(ui: SettingsHomeUi, actions: SettingsHomeActions, modifi
 }
 
 @Composable
-internal fun BikeCardView(bike: BikeCard, onClick: (() -> Unit)?) {
+internal fun BikeCardView(
+    bike: BikeCard,
+    onClick: (() -> Unit)?,
+    /** The big wordmark belongs to the Settings home; the Bike & dash page leaves it out (ST2). */
+    wordmark: Boolean = true,
+    footer: (@Composable () -> Unit)? = null,
+) {
     val c = KtmTheme.colors
     val tone = when (bike.status.tone) {
         PillTone.Connected -> BadgeTone.Ok
@@ -101,10 +107,12 @@ internal fun BikeCardView(bike: BikeCard, onClick: (() -> Unit)?) {
         PillTone.NotPaired -> BadgeTone.Neutral
     }
     KtmCard(onClick = onClick, modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.md).fillMaxWidth()) {
-        Text(
-            stringResource(R.string.settings_wordmark), style = MaterialTheme.typography.headlineMedium,
-            color = KtmTheme.accent.text, maxLines = 1,
-        )
+        if (wordmark) {
+            Text(
+                stringResource(R.string.settings_wordmark), style = MaterialTheme.typography.headlineMedium,
+                color = KtmTheme.accent.text, maxLines = 1,
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
             Icon(KtmIcons.Bike, null, tint = c.fg2)
             Text(
@@ -114,5 +122,6 @@ internal fun BikeCardView(bike: BikeCard, onClick: (() -> Unit)?) {
             KtmBadge(stringResource(bike.status.state), tone = tone)
             if (onClick != null) RowChevron()
         }
+        footer?.invoke()
     }
 }

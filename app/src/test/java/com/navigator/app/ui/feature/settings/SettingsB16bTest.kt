@@ -220,7 +220,7 @@ class SettingsB16bContentTest {
                 ui,
                 NavigationActions(
                     {}, { log += "engine$it" }, { log += "vehicle$it" }, { log += "marker$it" }, { log += "live$it" },
-                    { log += "auto$it" }, { log += "chooseApp" }, { log += "side$it" },
+                    { log += "auto$it" }, { log += "chooseApp" }, { log += "side$it" }, { log += "places" },
                 ),
             )
         }
@@ -235,6 +235,12 @@ class SettingsB16bContentTest {
         navigation(navUi)
         rule.onNodeWithText("In-app maps (Google)").performClick()
         assertEquals(listOf("engineIN_APP"), log)
+    }
+
+    @Test fun savedPlacesOpensThePlacesTab() {
+        navigation(navUi)
+        rule.onNodeWithText("Saved places").performScrollTo().performClick()
+        assertEquals(listOf("places"), log)
     }
 
     @Test fun routeForAndMarkerAreSegmented() {

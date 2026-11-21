@@ -799,6 +799,9 @@
 
     <!-- Navigation (ST3) -->
     <string name="nav_title">Navigation</string>
+    <string name="nav_section_places">Places</string>
+    <string name="nav_saved_places">Saved places</string>
+    <string name="nav_saved_places_hint">Opens the Places tab</string>
     <string name="nav_section_engine">Navigation engine</string>
     <string name="nav_engine_in_app">In-app maps (Google)</string>
     <string name="nav_engine_in_app_hint">Enter a destination in the app and Google guides you on the dash. Needs internet and shows an extra notification while navigating.</string>

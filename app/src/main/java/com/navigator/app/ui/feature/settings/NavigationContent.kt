@@ -33,6 +33,7 @@ class NavigationActions(
     val onAutoDetect: (Boolean) -> Unit,
     val onChooseNavApp: () -> Unit,
     val onDrivingSide: (DrivingSidePreference) -> Unit,
+    val onOpenPlaces: () -> Unit = {},
 )
 
 @Composable
@@ -111,5 +112,11 @@ fun NavigationContent(ui: NavigationUi, actions: NavigationActions, modifier: Mo
             )
             Hint(stringResource(R.string.nav_drive_hint))
         }
+
+        SectionHeader(stringResource(R.string.nav_section_places))
+        ListRow(
+            title = stringResource(R.string.nav_saved_places), supporting = stringResource(R.string.nav_saved_places_hint),
+            onClick = actions.onOpenPlaces, trailing = { RowChevron() },
+        )
     }
 }

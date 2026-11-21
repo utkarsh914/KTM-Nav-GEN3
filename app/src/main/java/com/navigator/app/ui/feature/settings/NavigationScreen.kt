@@ -10,7 +10,7 @@ import com.navigator.app.app.appContainer
 
 /** The Navigation page: [NavigationContent] over its view model. */
 @Composable
-fun NavigationScreen(onBack: () -> Unit, onChooseNavApp: () -> Unit, modifier: Modifier = Modifier) {
+fun NavigationScreen(onBack: () -> Unit, onChooseNavApp: () -> Unit, onOpenPlaces: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val vm: NavigationViewModel = viewModel(factory = NavigationViewModel.factory(context.appContainer, context))
     val ui by vm.ui.collectAsState()
@@ -21,7 +21,7 @@ fun NavigationScreen(onBack: () -> Unit, onChooseNavApp: () -> Unit, modifier: M
             onLiveUpdates = vm::setLiveUpdates,
             // On: back to detecting. Off: pick the app (the pick is what turns detecting off).
             onAutoDetect = { if (it) vm.detectNavApp() else onChooseNavApp() },
-            onChooseNavApp = onChooseNavApp, onDrivingSide = vm::setDrivingSide,
+            onChooseNavApp = onChooseNavApp, onDrivingSide = vm::setDrivingSide, onOpenPlaces = onOpenPlaces,
         ),
     )
 }

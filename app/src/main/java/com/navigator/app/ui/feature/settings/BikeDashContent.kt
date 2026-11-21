@@ -54,16 +54,18 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
                 modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.md),
             )
         }
-        BikeCardView(ui.bike, onClick = null)
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge, vertical = KtmSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-        ) {
-            KtmButton(
-                stringResource(R.string.bikedash_repair), actions.onRePair,
-                style = if (ui.repairSuggested) ButtonStyle.Danger else ButtonStyle.Outline, size = ButtonSize.Small,
-            )
-            Text(stringResource(R.string.bikedash_repair_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2, modifier = Modifier.weight(1f))
+        // ST2: Re-pair lives in the bike's own card; it also covers pairing a different bike.
+        BikeCardView(ui.bike, onClick = null, wordmark = false) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = KtmSpacing.sm),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+            ) {
+                KtmButton(
+                    stringResource(R.string.bikedash_repair), actions.onRePair,
+                    style = if (ui.repairSuggested) ButtonStyle.Danger else ButtonStyle.Outline, size = ButtonSize.Small,
+                )
+                Text(stringResource(R.string.bikedash_repair_hint), style = MaterialTheme.typography.bodySmall, color = c.fg2, modifier = Modifier.weight(1f))
+            }
         }
 
         // ST2: who the dash greets, what it spells out, which phone notifications it shows, then the test sends.

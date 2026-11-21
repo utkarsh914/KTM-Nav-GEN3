@@ -107,13 +107,14 @@ fun MirrorContent(
         // MR6/MR7: the dash's own black panel on the left; the bike, the pause switch and Maps in a column beside it.
         Row(modifier.fillMaxSize().padding(KtmSpacing.ridingEdge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.ridingEdge)) {
             DashPanel(status, Modifier.weight(1f).fillMaxHeight())
-            Column(
-                Modifier.width(KtmLayout.panelWide).fillMaxHeight().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
-            ) {
-                Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
-                if (status.stale) StaleBanner(status.freshness)
-                Controls(status, actions, landscape = true, recording)
+            Column(Modifier.width(KtmLayout.panelWide).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                    Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
+                    if (status.stale) StaleBanner(status.freshness)
+                    PauseRow(status.paused, actions.onSending)
+                }
+                // Google Maps stays at the foot, where the thumb rests on the mount.
+                OpenMapsButton(actions, ButtonSize.Riding)
             }
         }
     } else if (landscape) {
@@ -283,10 +284,7 @@ private fun Controls(status: MirrorStatus, actions: MirrorActions, landscape: Bo
             status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending)
         }
         // Also during setup (MR1): Maps is where the trip starts, and the checklist does not block opening it.
-        KtmButton(
-            stringResource(R.string.mirror_open_maps), actions.onOpenMaps, Modifier.fillMaxWidth(),
-            size = size, icon = KtmIcons.Navigation,
-        )
+        OpenMapsButton(actions, size)
         if (status is MirrorStatus.Ready && !recording) {
             KtmButton(
                 stringResource(R.string.record_ride), actions.onRecord, Modifier.fillMaxWidth(),
@@ -294,6 +292,14 @@ private fun Controls(status: MirrorStatus, actions: MirrorActions, landscape: Bo
             )
         }
     }
+}
+
+@Composable
+private fun OpenMapsButton(actions: MirrorActions, size: ButtonSize) {
+    KtmButton(
+        stringResource(R.string.mirror_open_maps), actions.onOpenMaps, Modifier.fillMaxWidth(),
+        size = size, icon = KtmIcons.Navigation,
+    )
 }
 
 /** The pause switch with its reason; amber-outlined while paused so the state is plain at a glance (MR4). */
