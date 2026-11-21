@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -92,7 +93,7 @@ fun SymbolTestContent(ui: SymbolTestUi, actions: SymbolTestActions, modifier: Mo
                 )
             }
             // DG2: one divided list, not a card per symbol.
-            items(ui.rows, key = { it.key }) { row -> SymbolRowItem(row, actions) }
+            itemsIndexed(ui.rows, key = { _, r -> r.key }) { i, row -> SymbolRowItem(row, actions, first = i == 0) }
         }
     }
     if (ui.showInfo) {
@@ -106,13 +107,13 @@ fun SymbolTestContent(ui: SymbolTestUi, actions: SymbolTestActions, modifier: Mo
 }
 
 @Composable
-private fun SymbolRowItem(row: SymbolRow, actions: SymbolTestActions) {
+private fun SymbolRowItem(row: SymbolRow, actions: SymbolTestActions, first: Boolean) {
     val c = KtmTheme.colors
     val sendLabel = stringResource(R.string.symbols_send_named, row.name)
     Column(Modifier.fillMaxWidth().animateContentSize().then(if (row.expanded) Modifier.background(c.surf2) else Modifier)) {
-        HorizontalDivider(color = c.line)
+        if (!first) HorizontalDivider(color = c.line)
         ListRow(
-            title = row.name, supporting = row.code,
+            title = row.name, supporting = if (row.expanded) stringResource(R.string.symbols_code_sent, row.code) else row.code,
             leading = {
                 // The tile is the dash's own black, so the glyph reads as it will on the bike.
                 Box(Modifier.size(KtmLayout.diagRowTile).background(DashPalette.bg, KtmShapes.Control), contentAlignment = Alignment.Center) {
@@ -121,12 +122,13 @@ private fun SymbolRowItem(row: SymbolRow, actions: SymbolTestActions) {
                 }
             },
             trailing = {
+                // Sent and waiting for a verdict: the Works / Wrong row below is the next step, not another Send.
+                if (!row.expanded) KtmIconButton(KtmIcons.Dash, sendLabel, { actions.onSend(row) }, style = IconButtonStyle.Tonal)
                 when (row.result) {
                     SymbolResult.WORKS -> KtmBadge(stringResource(R.string.symbols_works), tone = BadgeTone.Ok)
                     SymbolResult.WRONG -> KtmBadge(stringResource(R.string.symbols_wrong), tone = BadgeTone.Bad)
                     null -> {}
                 }
-                KtmIconButton(KtmIcons.Dash, sendLabel, { actions.onSend(row) }, style = IconButtonStyle.Tonal)
             },
         )
         if (row.expanded) {

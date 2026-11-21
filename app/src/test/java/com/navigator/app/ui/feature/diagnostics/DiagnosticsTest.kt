@@ -263,8 +263,10 @@ class DiagnosticsContentTest {
         rule.onNodeWithText("Search the log").assertDoesNotExist()
         rule.onNodeWithContentDescription("Search the log").performClick()
         rule.onNodeWithText("Search the log").assertIsDisplayed()
-        rule.onNode(hasText("Errors") and hasClickAction()).performClick()
+        rule.onNode(hasText("Problems") and hasClickAction()).performClick()
         assertEquals(true, errors)
+        rule.onNodeWithContentDescription("Search the log").performClick()
+        rule.onNodeWithText("Search the log").assertDoesNotExist()
     }
 
     @Test fun logsSaySoWhenTheFilterHidesEverything() {
@@ -288,7 +290,8 @@ class DiagnosticsContentTest {
         rule.onNode(hasText("Wrong") and hasClickAction()).performClick()
         rule.onNode(hasText("Works") and hasClickAction()).performClick()
         assertEquals(listOf("turn_GO_STRAIGHT" to SymbolResult.WRONG, "turn_GO_STRAIGHT" to SymbolResult.WORKS), marked)
-        rule.onAllNodes(hasContentDescription("Send Go straight to the dash") or hasContentDescription("Send Start to the dash")).assertCountEquals(2)
+        rule.onNodeWithContentDescription("Send Go straight to the dash").assertDoesNotExist()
+        rule.onNodeWithText("GO_STRAIGHT · sent").assertIsDisplayed()
         rule.onNode(hasContentDescription("Send Start to the dash") and hasClickAction()).performClick()
         assertEquals(listOf("turn_START"), sent)
     }

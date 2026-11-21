@@ -102,7 +102,13 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
 
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.logs_title), onBack = actions.onBack) {
-            KtmIconButton(KtmIcons.Search, stringResource(R.string.logs_search), { searching = !searching })
+            KtmIconButton(
+                KtmIcons.Search, stringResource(R.string.logs_search),
+                {
+                    // Closing the field also drops its query, so the list is not left filtered by something unseen.
+                    if (searching || ui.query.isNotBlank()) { searching = false; actions.onQuery("") } else searching = true
+                },
+            )
             KtmIconButton(KtmIcons.Share, stringResource(R.string.logs_share), actions.onShare)
         }
         if (searching || ui.query.isNotBlank()) {
@@ -116,8 +122,8 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
             modifier = Modifier.padding(top = KtmSpacing.xs),
         ) {
             item { KtmFilterChip(stringResource(R.string.logs_all), ui.tag == null && !ui.errorsOnly, { actions.onTag(null); actions.onErrors(false) }) }
-            items(ui.tags, key = { it }) { tag -> KtmFilterChip(tag, ui.tag == tag, { actions.onTag(if (ui.tag == tag) null else tag) }) }
-            item(key = "\u0000errors") { KtmFilterChip(stringResource(R.string.logs_errors), ui.errorsOnly, { actions.onErrors(!ui.errorsOnly) }) }
+            items(ui.tags, key = { it }) { tag -> KtmFilterChip(tag, ui.tag == tag, { actions.onTag(if (ui.tag == tag) null else tag); actions.onErrors(false) }) }
+            item(key = "\u0000errors") { KtmFilterChip(stringResource(R.string.logs_errors), ui.errorsOnly, { actions.onErrors(!ui.errorsOnly); if (!ui.errorsOnly) actions.onTag(null) }) }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {

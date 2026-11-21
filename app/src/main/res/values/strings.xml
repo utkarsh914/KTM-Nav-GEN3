@@ -1160,7 +1160,7 @@
     <string name="logs_share_failed">Couldn\'t share the log</string>
     <string name="logs_search">Search the log</string>
     <string name="logs_all">All</string>
-    <string name="logs_errors">Errors</string>
+    <string name="logs_errors">Problems</string>
     <string name="logs_following">Following live</string>
     <string name="logs_paused">Paused</string>
     <string name="logs_empty_title">Nothing logged yet</string>
@@ -1177,7 +1177,7 @@
     <string name="symbols_notification_count">Notification icons · %1$d</string>
     <string name="symbols_notification">Notification icons</string>
     <string name="symbols_summary">Works: %1$d \u00b7 Wrong: %2$d \u00b7 Total: %3$d</string>
-    <string name="symbols_send">Send</string>
+    <string name="symbols_code_sent">%1$s · sent</string>
     <string name="symbols_works">Works</string>
     <string name="symbols_wrong">Wrong</string>
     <string name="calib_title">Turn icon calibration</string>

@@ -127,6 +127,11 @@ class NavigateStateTest {
         assertEquals(com.navigator.app.nav.ktm.KtmManeuverMapping.resolveIcon(com.navigator.app.nav.model.NormalizedManeuver.RIGHT), card.glyph)
     }
 
+    @Test fun noKnownManeuverMeansNoGlyph() {
+        val card = ActivityCard.build(TripState(dest = dest, minimised = true), guiding, 0L)!!
+        assertNull(card.glyph)
+    }
+
     private val idle = DashPreviewState.NotConnected("i", "i")
     private val offline = DashPreviewState.NotConnected("o", "o")
     private fun preview(s: DashPreview.State, connected: Boolean = true) =

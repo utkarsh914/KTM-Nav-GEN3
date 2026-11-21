@@ -128,7 +128,7 @@ enum class MapState { Ready, Preparing, Failed, Unavailable }
 /** The running trip as the sheet's first row. Text is composed from these parts by the UI. */
 data class ActivityCardModel(
     val distance: String?, val road: String?, val destination: String, val eta: String?,
-    /** The next turn's glyph, to lead the strip (MO6); null when there is none yet. */
+    /** The next turn's glyph, to lead the strip (MO6); null while no maneuver is known. */
     val glyph: TurnIcon? = null,
 )
 
@@ -144,7 +144,8 @@ object ActivityCard {
             destination = dest.label ?: "",
             eta = nav.preformattedEta
                 ?: nav.remainingTimeSeconds?.let { ClockFormat.local(EtaFormatter.etaEpochMs(it, nowEpochMs)) },
-            glyph = KtmManeuverMapping.resolveIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide, nav.fullInstruction),
+            glyph = KtmManeuverMapping.resolveIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide, nav.fullInstruction)
+                .takeUnless { it == TurnIcon.UNDEFINED },
         )
     }
 }

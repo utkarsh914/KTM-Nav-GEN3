@@ -1,6 +1,7 @@
 package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,12 +79,18 @@ fun ActivityStrip(
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         // MO6: a tinted tile says what is running before the words do.
+        // Guidance green on purpose, in both themes: it means "a trip is running" wherever it is seen.
         val tile = when (state) {
             is ActivityStripState.Trip -> RidingDay.guidance
             is ActivityStripState.Recording -> if (state.paused) c.warnContainer else c.badContainer
             is ActivityStripState.Mirroring -> DashPalette.bg
         }
-        Box(Modifier.size(KtmLayout.activityStripGlyph).background(tile, KtmShapes.Control), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(KtmLayout.activityStripGlyph).background(tile, KtmShapes.Control)
+                // Black on a dark strip has no edge of its own.
+                .then(if (state is ActivityStripState.Mirroring) Modifier.border(KtmLayout.hairline, c.line2, KtmShapes.Control) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
             when (state) {
                 is ActivityStripState.Trip ->
                     if (state.glyph != null) TurnGlyph(state.glyph, RidingDay.onGuidance, size = KtmLayout.activityStripIcon)
