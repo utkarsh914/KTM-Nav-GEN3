@@ -338,6 +338,18 @@ billable, so prefer the replay harness for routine testing.
   the 16 KB/LiteRT fix, the Nav SDK route-token fix, and more).
 - [`BCCU_BLE_PROTOCOL.md`](BCCU_BLE_PROTOCOL.md) — the wire-level BLE/BCCU protocol reference.
 
+### 2.2.3 Retry now and Last seen
+
+The bike sheet's **Retry now** (`ConnectionRepository.retryNow` -> `BccuConnectionService.retryNow(context)`)
+skips the reconnect pacing (absent-bike backoff, handshake cooldown) and scans at once; it starts the service
+when it is not running. `ReconnectPolicy.retryNow` decides, and never piles onto a scan, a pending connect, a
+handshake or a live link, nor onto a tap within `RETRY_NOW_MIN_GAP_MS`. A parked background connect request is
+recycled into the scan. Protocol, encoder and parsing are untouched and `linkUp` stays read-only.
+
+**Last seen**: `ConnectionRepository.lastSeenMs` is when the link was last authenticated (written at connect,
+every minute while linked and at the drop), stored as `bonded_last_seen_ms` (device-local: the `bonded_` prefix
+keeps it out of backups) and cleared by Re-pair. The bike sheet shows it under the offline dash preview.
+
 ## 9. UI architecture (2026 redesign)
 
 ### 9.1 Layers and packages

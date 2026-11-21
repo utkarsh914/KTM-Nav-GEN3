@@ -25,6 +25,12 @@ The redesign release: the version moves from 0.6 to 1.0.
 - Notifications: "Over your alert · N km/h", "Ride paused · m:ss", titles that name the bike, no second line while connected, a View button on Ride saved. Launcher shortcut order: Ride home, Ride work, Record a ride, Where to?.
 - Fixes found in review: stopping a trip is refused while offline instead of half-working, Quit also ends the trip and the recording, a restore replaces your settings (Settings starts unticked; what the file lacks returns to its default), pairing says "Securing" only once the link is up, pinned Home/Work shortcuts are disabled when the place is cleared, the empty-state tile shrinks on short screens, and the trip bar drops the distance before it cuts the arrival time.
 
+### Bike and trip additions
+- The bike sheet has **Retry now** beside Re-pair (it tries the bike at once, one attempt per tap) and shows **Last seen** under the offline dash preview.
+- Add a stop while riding: a mic beside the search field (what you say opens the search with it typed in) and **Pick on map**, which leads a single scrolling row of categories; the trip keeps guiding while you place the pin.
+- The trip sheet's next stop shows its pin number and how far away it is.
+- Search's Saved list has **See all**, which opens the Places tab.
+
 ### Navigation
 - Times follow the phone's 12 or 24 hour setting (arrival times, leg lines, the Live Update); the dash stays 24 hour. Haptics follow the system touch-feedback setting.
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
