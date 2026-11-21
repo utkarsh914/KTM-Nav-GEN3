@@ -19,26 +19,27 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.DashPalette
+import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
-import com.navigator.app.ui.components.KtmCard
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.KtmTopBar
+import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -59,34 +60,39 @@ class SymbolTestActions(
 @Composable
 fun SymbolTestContent(ui: SymbolTestUi, actions: SymbolTestActions, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
-    val turnLabel = stringResource(R.string.symbols_turn)
-    val notificationLabel = stringResource(R.string.symbols_notification)
+    val turnLabel = if (ui.turnCount > 0) stringResource(R.string.symbols_turn_count, ui.turnCount) else stringResource(R.string.symbols_turn)
+    val notificationLabel =
+        if (ui.notificationCount > 0) stringResource(R.string.symbols_notification_count, ui.notificationCount) else stringResource(R.string.symbols_notification)
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.symbols_title), onBack = actions.onBack) {
             KtmIconButton(KtmIcons.Help, stringResource(R.string.symbols_info), { actions.onInfo(true) })
         }
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = KtmSpacing.edge, vertical = KtmSpacing.sm),
-            verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+            contentPadding = PaddingValues(vertical = KtmSpacing.sm),
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
         ) {
             item {
-                Text(stringResource(R.string.symbols_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
+                Text(
+                    stringResource(R.string.symbols_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
+                    modifier = Modifier.padding(horizontal = KtmSpacing.edge, vertical = KtmSpacing.sm),
+                )
             }
             item {
                 KtmSegmented(
                     SymbolKind.entries, ui.kind, actions.onKind,
                     { if (it == SymbolKind.TURN) turnLabel else notificationLabel },
-                    Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge),
                 )
             }
             item {
                 Text(
                     stringResource(R.string.symbols_summary, ui.works, ui.wrong, ui.rows.size),
                     style = MaterialTheme.typography.labelMedium, color = c.fg3,
+                    modifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm),
                 )
             }
-            items(ui.rows, key = { it.key }) { row -> SymbolRowCard(row, actions) }
+            // DG2: one divided list, not a card per symbol.
+            items(ui.rows, key = { it.key }) { row -> SymbolRowItem(row, actions) }
         }
     }
     if (ui.showInfo) {
@@ -100,41 +106,36 @@ fun SymbolTestContent(ui: SymbolTestUi, actions: SymbolTestActions, modifier: Mo
 }
 
 @Composable
-private fun SymbolRowCard(row: SymbolRow, actions: SymbolTestActions) {
+private fun SymbolRowItem(row: SymbolRow, actions: SymbolTestActions) {
     val c = KtmTheme.colors
-    KtmCard(Modifier.fillMaxWidth().animateContentSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(KtmSpacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-        ) {
-            row.turn?.let {
-                Box(Modifier.size(KtmLayout.diagRowTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                    TurnIconRef(icon = it, size = KtmLayout.diagGlyphSmall, color = c.fg)
+    val sendLabel = stringResource(R.string.symbols_send_named, row.name)
+    Column(Modifier.fillMaxWidth().animateContentSize().then(if (row.expanded) Modifier.background(c.surf2) else Modifier)) {
+        HorizontalDivider(color = c.line)
+        ListRow(
+            title = row.name, supporting = row.code,
+            leading = {
+                // The tile is the dash's own black, so the glyph reads as it will on the bike.
+                Box(Modifier.size(KtmLayout.diagRowTile).background(DashPalette.bg, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                    row.turn?.let { TurnIconRef(icon = it, size = KtmLayout.diagGlyphSmall, color = DashPalette.text) }
+                        ?: Icon(KtmIcons.Message, null, tint = DashPalette.text)
                 }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(row.name, style = MaterialTheme.typography.titleSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(row.code, style = KtmTheme.type.mono, color = c.fg3, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            when (row.result) {
-                SymbolResult.WORKS -> KtmBadge(stringResource(R.string.symbols_works), tone = BadgeTone.Ok)
-                SymbolResult.WRONG -> KtmBadge(stringResource(R.string.symbols_wrong), tone = BadgeTone.Bad)
-                null -> {}
-            }
-            val sendLabel = stringResource(R.string.symbols_send_named, row.name)
-            KtmButton(
-                stringResource(R.string.symbols_send), { actions.onSend(row) },
-                Modifier.semantics { contentDescription = sendLabel }, ButtonStyle.Tonal, ButtonSize.Small,
-            )
-        }
+            },
+            trailing = {
+                when (row.result) {
+                    SymbolResult.WORKS -> KtmBadge(stringResource(R.string.symbols_works), tone = BadgeTone.Ok)
+                    SymbolResult.WRONG -> KtmBadge(stringResource(R.string.symbols_wrong), tone = BadgeTone.Bad)
+                    null -> {}
+                }
+                KtmIconButton(KtmIcons.Dash, sendLabel, { actions.onSend(row) }, style = IconButtonStyle.Tonal)
+            },
+        )
         if (row.expanded) {
-            Column(Modifier.padding(start = KtmSpacing.md, end = KtmSpacing.md, bottom = KtmSpacing.md), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                Text(stringResource(R.string.symbols_question), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
-                Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-                    KtmButton(stringResource(R.string.symbols_works), { actions.onMark(row, SymbolResult.WORKS) }, Modifier.weight(1f), ButtonStyle.Primary, ButtonSize.Rest, icon = KtmIcons.Done)
-                    KtmButton(stringResource(R.string.symbols_wrong), { actions.onMark(row, SymbolResult.WRONG) }, Modifier.weight(1f), ButtonStyle.DangerTonal, ButtonSize.Rest, icon = KtmIcons.Close)
-                }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+            ) {
+                KtmButton(stringResource(R.string.symbols_works), { actions.onMark(row, SymbolResult.WORKS) }, Modifier.weight(1f), ButtonStyle.Tonal, ButtonSize.Small, icon = KtmIcons.Done)
+                KtmButton(stringResource(R.string.symbols_wrong), { actions.onMark(row, SymbolResult.WRONG) }, Modifier.weight(1f), ButtonStyle.DangerTonal, ButtonSize.Small, icon = KtmIcons.Close)
             }
         }
     }

@@ -142,7 +142,7 @@ fun PlaceSearchScreen(
             }
             if (activity != null && actions.onResumeTrip != null && mode != SearchMode.TripStop) {
                 ActivityStrip(
-                    ActivityStripState.Trip(activity.titleText(), activity.detailText()),
+                    ActivityStripState.Trip(activity.titleText(), activity.detailText(), activity.glyph),
                     onOpen = actions.onResumeTrip, onResume = actions.onResumeTrip,
                 )
             }

@@ -46,6 +46,7 @@ import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.DashPalette
 import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmCard
@@ -103,7 +104,9 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
     val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, row.path) {
         value = withContext(Dispatchers.IO) { runCatching { BitmapFactory.decodeFile(row.path)?.asImageBitmap() }.getOrNull() }
     }
-    KtmCard(Modifier.fillMaxWidth().animateContentSize()) {
+    KtmCard(
+        Modifier.fillMaxWidth().animateContentSize().then(if (row.expanded) Modifier.border(KtmLayout.selectedOutline, a.fill, KtmShapes.Card) else Modifier),
+    ) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = KtmLayout.diagRowMin)
                 .clickable(role = Role.Button, onClick = { actions.onToggle(row.hash) })
@@ -112,15 +115,16 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
-            Box(Modifier.size(KtmLayout.diagTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
+            // DG3: Google Maps' icon on white, as it arrives, and the dash's symbol on the dash's black.
+            Box(Modifier.size(KtmLayout.diagTile).background(DashPalette.text, KtmShapes.Control), contentAlignment = Alignment.Center) {
                 val bitmap = image
                 if (bitmap != null) Image(bitmap, contentDescription = stringResource(R.string.calib_captured), modifier = Modifier.size(KtmLayout.diagThumb))
-                else Text("?", style = MaterialTheme.typography.titleMedium, color = c.fg3)
+                else Text("?", style = MaterialTheme.typography.titleMedium, color = DashPalette.subtle)
             }
             row.assigned?.let {
                 Icon(KtmIcons.ChevronRight, null, tint = c.fg3, modifier = Modifier.size(KtmLayout.iconSmall))
-                Box(Modifier.size(KtmLayout.diagTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                    TurnIconRef(icon = it, size = KtmLayout.diagGlyph, color = a.text)
+                Box(Modifier.size(KtmLayout.diagTile).background(DashPalette.bg, KtmShapes.Control), contentAlignment = Alignment.Center) {
+                    TurnIconRef(icon = it, size = KtmLayout.diagGlyph, color = a.fill)
                 }
             }
             Column(Modifier.weight(1f)) {
@@ -166,7 +170,7 @@ private fun CandidateTile(icon: TurnIcon, selected: Boolean, working: Boolean, o
     val description = if (working) stringResource(R.string.calib_working_named, name) else name
     Column(
         Modifier.width(KtmLayout.diagCellWidth)
-            .background(if (selected) a.container else c.surf2, KtmShapes.Control)
+            .background(if (selected) a.fill else c.surf2, KtmShapes.Control)
             .border(if (working) KtmLayout.outline else KtmLayout.hairline, if (working) c.ok else c.line2, KtmShapes.Control)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics(mergeDescendants = true) { this.selected = selected; contentDescription = description }
@@ -174,11 +178,11 @@ private fun CandidateTile(icon: TurnIcon, selected: Boolean, working: Boolean, o
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(KtmLayout.diagCell), contentAlignment = Alignment.Center) {
-            TurnIconRef(icon = icon, size = KtmLayout.diagGlyphLarge, color = if (selected) a.onContainer else c.fg)
+            TurnIconRef(icon = icon, size = KtmLayout.diagGlyphLarge, color = if (selected) a.onFill else c.fg)
         }
         Text(
             (if (working) "\u2605 " else "") + name, style = MaterialTheme.typography.labelSmall,
-            color = if (selected) a.onContainer else c.fg2, maxLines = 3, textAlign = TextAlign.Center,
+            color = if (selected) a.onFill else c.fg2, maxLines = 3, textAlign = TextAlign.Center,
         )
     }
 }

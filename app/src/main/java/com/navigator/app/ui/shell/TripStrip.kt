@@ -26,7 +26,7 @@ fun TripStrip(onNavigateTab: Boolean, onOpen: () -> Unit) {
     val nav by GoogleNavSdkProvider.state.collectAsState()
     val card = ActivityCard.build(trip, nav, System.currentTimeMillis()) ?: return
     ActivityStrip(
-        state = ActivityStripState.Trip(title = card.titleText(), detail = card.detailText()),
+        state = ActivityStripState.Trip(title = card.titleText(), detail = card.detailText(), glyph = card.glyph),
         onOpen = onOpen, onResume = onOpen, modifier = Modifier.padding(KtmSpacing.sm),
     )
 }

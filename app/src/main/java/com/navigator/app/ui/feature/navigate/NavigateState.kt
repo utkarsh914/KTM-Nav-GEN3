@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.navigate
 
 import androidx.annotation.StringRes
 import com.navigator.app.R
+import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.data.connection.DashSnapshot
 import com.navigator.app.nav.DashPreview
@@ -10,6 +11,7 @@ import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
+import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.model.NormalizedNavigationState
@@ -124,7 +126,11 @@ enum class LocationState {
 enum class MapState { Ready, Preparing, Failed, Unavailable }
 
 /** The running trip as the sheet's first row. Text is composed from these parts by the UI. */
-data class ActivityCardModel(val distance: String?, val road: String?, val destination: String, val eta: String?)
+data class ActivityCardModel(
+    val distance: String?, val road: String?, val destination: String, val eta: String?,
+    /** The next turn's glyph, to lead the strip (MO6); null when there is none yet. */
+    val glyph: TurnIcon? = null,
+)
 
 object ActivityCard {
     /** Only a trip the rider stepped away from, and that is still guiding, gets a card. */
@@ -138,6 +144,7 @@ object ActivityCard {
             destination = dest.label ?: "",
             eta = nav.preformattedEta
                 ?: nav.remainingTimeSeconds?.let { ClockFormat.local(EtaFormatter.etaEpochMs(it, nowEpochMs)) },
+            glyph = KtmManeuverMapping.resolveIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide, nav.fullInstruction),
         )
     }
 }

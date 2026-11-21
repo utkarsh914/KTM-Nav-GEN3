@@ -30,6 +30,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.RidingDay
 import com.navigator.app.ui.theme.rememberHaptics
 
 /** What the strip above the tab bar is showing. Text comes from the caller (it is built from live state). */
@@ -76,15 +77,21 @@ fun ActivityStrip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Box(Modifier.size(KtmLayout.activityStripGlyph), contentAlignment = Alignment.Center) {
+        // MO6: a tinted tile says what is running before the words do.
+        val tile = when (state) {
+            is ActivityStripState.Trip -> RidingDay.guidance
+            is ActivityStripState.Recording -> if (state.paused) c.warnContainer else c.badContainer
+            is ActivityStripState.Mirroring -> DashPalette.bg
+        }
+        Box(Modifier.size(KtmLayout.activityStripGlyph).background(tile, KtmShapes.Control), contentAlignment = Alignment.Center) {
             when (state) {
                 is ActivityStripState.Trip ->
-                    if (state.glyph != null) TurnGlyph(state.glyph, c.fg, size = KtmLayout.activityStripGlyph)
-                    else Icon(KtmIcons.Navigation, null, tint = c.fg, modifier = Modifier.size(KtmLayout.activityStripIcon))
+                    if (state.glyph != null) TurnGlyph(state.glyph, RidingDay.onGuidance, size = KtmLayout.activityStripIcon)
+                    else Icon(KtmIcons.Navigation, null, tint = RidingDay.onGuidance, modifier = Modifier.size(KtmLayout.activityStripIcon))
                 is ActivityStripState.Recording ->
-                    Icon(if (state.paused) KtmIcons.Pause else KtmIcons.Record, null, tint = if (state.paused) c.fg2 else c.bad, modifier = Modifier.size(KtmLayout.activityStripIcon))
+                    Icon(if (state.paused) KtmIcons.Pause else KtmIcons.Record, null, tint = if (state.paused) c.warn else c.bad, modifier = Modifier.size(KtmLayout.activityStripIcon))
                 is ActivityStripState.Mirroring ->
-                    Icon(KtmIcons.Dash, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmLayout.activityStripIcon))
+                    Icon(KtmIcons.Dash, null, tint = KtmTheme.accent.fill, modifier = Modifier.size(KtmLayout.activityStripIcon))
             }
         }
         Column(Modifier.weight(1f)) {
@@ -99,7 +106,7 @@ fun ActivityStrip(
                         KtmIconButton(KtmIcons.PinPlus, stringResource(R.string.trip_add_stop), onAddStop)
                     }
                     if (onResume != null) {
-                        KtmButton(stringResource(R.string.activity_strip_resume), onResume, style = ButtonStyle.Tonal, size = ButtonSize.Small)
+                        KtmButton(stringResource(R.string.activity_strip_resume), onResume, style = ButtonStyle.Primary, size = ButtonSize.Small)
                     }
                 }
                 is ActivityStripState.Recording -> {
@@ -111,10 +118,10 @@ fun ActivityStrip(
                         }
                     }
                     if (onStop != null) {
-                        KtmIconButton(KtmIcons.Stop, stringResource(R.string.activity_strip_stop_recording), onStop)
+                        KtmIconButton(KtmIcons.Stop, stringResource(R.string.activity_strip_stop_recording), onStop, tint = c.bad)
                     }
                 }
-                is ActivityStripState.Mirroring -> Unit
+                is ActivityStripState.Mirroring -> Icon(KtmIcons.ChevronRight, null, tint = c.fg2)
             }
         }
     }

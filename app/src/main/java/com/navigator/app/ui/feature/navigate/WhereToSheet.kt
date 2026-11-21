@@ -45,7 +45,6 @@ import androidx.compose.foundation.lazy.items
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.ui.feature.navigate.search.labelRes
 import com.navigator.app.ui.components.SectionHeader
-import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.theme.KtmIcons
@@ -106,6 +105,7 @@ fun WhereToSheetContent(
                 state = ActivityStripState.Trip(
                     title = card.titleText(),
                     detail = card.detailText(),
+                    glyph = card.glyph,
                 ),
                 onOpen = actions.onResumeTrip,
                 onResume = actions.onResumeTrip,

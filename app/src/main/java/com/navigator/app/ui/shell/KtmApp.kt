@@ -566,8 +566,9 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMov
     (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
         (initialState.destination.hasRoute<Route.RideReplay>() && targetState.destination.hasRoute<Route.Rides>())
 
+/** Tab to tab, and the end of first run into the app: the old screen fades out, then the new one settles in (MO10, ON10). */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boolean =
-    initialState.destination.tab() != null && targetState.destination.tab() != null
+    (initialState.destination.tab() != null || initialState.destination.hasRoute<Route.Ready>()) && targetState.destination.tab() != null
 
 // With "Remove animations" every move becomes a crossfade.
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(reduced: Boolean, slidePx: Int): EnterTransition = when {

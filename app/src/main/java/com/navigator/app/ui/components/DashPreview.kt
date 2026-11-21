@@ -21,11 +21,13 @@ import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 
 /** The dash's own palette: it imitates the TFT's lettering, so it does not follow the app theme. */
-private object DashPalette {
+internal object DashPalette {
     val bg = Color(0xFF050607)
     val ring = Color(0xFF2A2D33)
     val text = Color(0xFFFFFFFF)
     val subtle = Color(0xFF9AA0A8)
+    /** The debug overlay's green monospace (DG4). */
+    val debugText = Color(0xFF5CFF8A)
 }
 
 /**

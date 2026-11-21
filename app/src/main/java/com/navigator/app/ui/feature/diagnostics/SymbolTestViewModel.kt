@@ -44,6 +44,9 @@ data class SymbolTestUi(
     val works: Int = 0,
     val wrong: Int = 0,
     val showInfo: Boolean = false,
+    /** How many symbols each list holds, for the switch's labels ("Turn icons · 42"); 0 leaves the number off. */
+    val turnCount: Int = 0,
+    val notificationCount: Int = 0,
 )
 
 /** Where results are kept, and how a symbol reaches the dash. */
@@ -85,7 +88,8 @@ class SymbolTestViewModel(private val ports: SymbolTestPorts) : ViewModel() {
                 SymbolRow(keyOf(it), TurnIconNames.human(it.name), it.name, null, results[keyOf(it)], open == keyOf(it))
             }
         }
-        SymbolTestUi(kind, rows, rows.count { it.result == SymbolResult.WORKS }, rows.count { it.result == SymbolResult.WRONG }, info)
+        SymbolTestUi(kind, rows, rows.count { it.result == SymbolResult.WORKS }, rows.count { it.result == SymbolResult.WRONG }, info,
+            turnCount = BccuProtocol.TurnIcon.entries.size, notificationCount = BccuProtocol.NotificationIcon.entries.size)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SymbolTestUi())
 
     fun selectKind(value: SymbolKind) { kind.value = value; expanded.value = null }

@@ -79,7 +79,7 @@ fun KtmSnackbar(data: SnackbarData, modifier: Modifier = Modifier) {
             .shadow(KtmElevation.onMap, KtmShapes.Control)
             .background(c.inv, KtmShapes.Control)
             .heightIn(min = 52.dp)
-            .padding(start = KtmSpacing.lg, top = 6.dp, bottom = 6.dp, end = 6.dp),
+            .padding(start = KtmSpacing.lg, top = KtmSpacing.sm, bottom = KtmSpacing.sm, end = KtmSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {

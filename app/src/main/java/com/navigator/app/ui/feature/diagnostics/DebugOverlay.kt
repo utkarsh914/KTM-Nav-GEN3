@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.navigator.app.R
 import com.navigator.app.nav.DashPreview
+import com.navigator.app.ui.components.DashPalette
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
@@ -85,7 +86,7 @@ fun DebugOverlay(riding: Boolean, modifier: Modifier = Modifier) {
             Modifier.align(corner.alignment)
                 .offset { IntOffset(drag.x.roundToInt(), drag.y.roundToInt()) }
                 .onGloballyPositioned { panel = it.boundsInParent() }
-                .background(c.inv.copy(alpha = 0.92f), KtmShapes.Control)
+                .background(DashPalette.bg.copy(alpha = OVERLAY_ALPHA), KtmShapes.Control)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDrag = { change, amount -> change.consume(); drag += amount },
@@ -99,7 +100,7 @@ fun DebugOverlay(riding: Boolean, modifier: Modifier = Modifier) {
                 .clickable(role = Role.Button) { expanded = !expanded }
                 .padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs),
         ) {
-            val mono = KtmTheme.type.mono.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, color = c.onInv)
+            val mono = KtmTheme.type.mono.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize, color = DashPalette.debugText)
             if (!expanded) {
                 Text(stringResource(R.string.overlay_chip, s.icon?.name ?: "-"), style = mono, maxLines = 1)
             } else {
@@ -121,3 +122,5 @@ fun DebugOverlay(riding: Boolean, modifier: Modifier = Modifier) {
         }
     }
 }
+
+private const val OVERLAY_ALPHA = 0.82f

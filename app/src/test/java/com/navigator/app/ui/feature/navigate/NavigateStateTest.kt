@@ -121,6 +121,12 @@ class NavigateStateTest {
         assertNull("guidance stopped", ActivityCard.build(trip, NormalizedNavigationState(NavSessionState.IDLE), 0L))
     }
 
+    @Test fun theCardCarriesTheNextTurnGlyphForTheStrip() {
+        val right = guiding.copy(maneuver = com.navigator.app.nav.model.NormalizedManeuver.RIGHT)
+        val card = ActivityCard.build(TripState(dest = dest, minimised = true), right, 0L)!!
+        assertEquals(com.navigator.app.nav.ktm.KtmManeuverMapping.resolveIcon(com.navigator.app.nav.model.NormalizedManeuver.RIGHT), card.glyph)
+    }
+
     private val idle = DashPreviewState.NotConnected("i", "i")
     private val offline = DashPreviewState.NotConnected("o", "o")
     private fun preview(s: DashPreview.State, connected: Boolean = true) =

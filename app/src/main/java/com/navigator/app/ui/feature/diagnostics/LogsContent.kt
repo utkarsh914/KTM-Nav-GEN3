@@ -56,6 +56,7 @@ class LogsActions(
     val onShare: () -> Unit,
     val onTag: (String?) -> Unit,
     val onQuery: (String) -> Unit,
+    val onErrors: (Boolean) -> Unit = {},
 )
 
 /** DG1: timestamp split from message, warning and OK tints, a chip per subsystem, search and a Following live pill. Stateless. */
@@ -64,6 +65,8 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
     val c = KtmTheme.colors
     val listState = rememberLazyListState()
     var following by rememberSaveable { mutableStateOf(true) }
+    // DG1: the field opens from the top bar's search icon; a query in force keeps it showing.
+    var searching by rememberSaveable { mutableStateOf(false) }
 
     // Scrolling by hand pauses following; reaching the end again resumes it. The auto-scroll below is also a scroll in
     // progress and must not pause itself, so only the rider's scrolls count: a drag, or any scroll that goes backward
@@ -99,18 +102,22 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
 
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.logs_title), onBack = actions.onBack) {
+            KtmIconButton(KtmIcons.Search, stringResource(R.string.logs_search), { searching = !searching })
             KtmIconButton(KtmIcons.Share, stringResource(R.string.logs_share), actions.onShare)
         }
-        KtmSearchField(
-            ui.query, actions.onQuery, stringResource(R.string.logs_search),
-            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge),
-        )
+        if (searching || ui.query.isNotBlank()) {
+            KtmSearchField(
+                ui.query, actions.onQuery, stringResource(R.string.logs_search),
+                Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge),
+            )
+        }
         LazyRow(
             contentPadding = PaddingValues(horizontal = KtmSpacing.edge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
             modifier = Modifier.padding(top = KtmSpacing.xs),
         ) {
-            item { KtmFilterChip(stringResource(R.string.logs_all), ui.tag == null, { actions.onTag(null) }) }
+            item { KtmFilterChip(stringResource(R.string.logs_all), ui.tag == null && !ui.errorsOnly, { actions.onTag(null); actions.onErrors(false) }) }
             items(ui.tags, key = { it }) { tag -> KtmFilterChip(tag, ui.tag == tag, { actions.onTag(if (ui.tag == tag) null else tag) }) }
+            item(key = "\u0000errors") { KtmFilterChip(stringResource(R.string.logs_errors), ui.errorsOnly, { actions.onErrors(!ui.errorsOnly) }) }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
@@ -171,13 +178,13 @@ private fun FollowPill(following: Boolean, onToggle: () -> Unit, modifier: Modif
     val label = stringResource(if (following) R.string.logs_following else R.string.logs_paused)
     Row(
         modifier.heightIn(min = KtmLayout.targetRest)
-            .background(if (following) a.container else c.surf3, KtmShapes.Pill)
+            .background(if (following) a.fill else c.surf3, KtmShapes.Pill)
             .toggleable(value = following, role = Role.Switch, onValueChange = { onToggle() })
             .padding(horizontal = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Icon(if (following) KtmIcons.Pause else KtmIcons.Play, null, tint = if (following) a.onContainer else c.fg, modifier = Modifier.size(KtmLayout.iconSmall))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (following) a.onContainer else c.fg)
+        Icon(if (following) KtmIcons.ChevronDown else KtmIcons.Play, null, tint = if (following) a.onFill else c.fg, modifier = Modifier.size(KtmLayout.iconSmall))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (following) a.onFill else c.fg)
     }
 }

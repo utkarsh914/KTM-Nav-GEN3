@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.diagnostics
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -89,6 +90,16 @@ class DiagnosticsViewModelsTest {
         assertEquals(3, keys.toSet().size)
         lines.value = lines.value + "[t] [BLE] same"
         assertEquals("earlier lines keep their keys when one is added", keys, vm.ui.value.entries.map { it.key }.take(3))
+    }
+
+    @Test fun theErrorsChipKeepsOnlyWarningLines() = runTest(UnconfinedTestDispatcher()) {
+        val lines = MutableStateFlow(listOf("[t] [BLE] connected", "[t] [BLE] !! write failed", "[t] [Nav] fine"))
+        val vm = LogsViewModel(lines, UnconfinedTestDispatcher()).also { it.ui.launchIn(backgroundScope) }
+        vm.setErrorsOnly(true)
+        assertTrue(vm.ui.value.errorsOnly)
+        assertEquals(listOf("!! write failed"), vm.ui.value.entries.map { it.message })
+        vm.setErrorsOnly(false)
+        assertEquals(3, vm.ui.value.entries.size)
     }
 
     @Test fun logsFilterByChipAndQuery() = runTest(UnconfinedTestDispatcher()) {
@@ -245,6 +256,17 @@ class DiagnosticsContentTest {
         assertTrue(shared)
     }
 
+    @Test fun searchOpensFromTheTopBarAndErrorsIsAChip() {
+        var errors: Boolean? = null
+        val ui = LogsUi(entries = listOf(LogEntries.parse("[12:30:01.123] [BLE] Scanning").copy(key = "a")), tags = listOf("BLE"))
+        rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, LogsActions({}, {}, {}, {}, { errors = it })) } }
+        rule.onNodeWithText("Search the log").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Search the log").performClick()
+        rule.onNodeWithText("Search the log").assertIsDisplayed()
+        rule.onNode(hasText("Errors") and hasClickAction()).performClick()
+        assertEquals(true, errors)
+    }
+
     @Test fun logsSaySoWhenTheFilterHidesEverything() {
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(LogsUi(filteredOut = true), LogsActions({}, {}, {}, {})) } }
         rule.onNodeWithText("No matching lines").assertIsDisplayed()
@@ -262,12 +284,12 @@ class DiagnosticsContentTest {
                 )
             }
         }
-        rule.onNodeWithText("Does the dash show this symbol?").assertIsDisplayed()
+        rule.onNodeWithText("Does the dash show this symbol?").assertDoesNotExist()
         rule.onNode(hasText("Wrong") and hasClickAction()).performClick()
         rule.onNode(hasText("Works") and hasClickAction()).performClick()
         assertEquals(listOf("turn_GO_STRAIGHT" to SymbolResult.WRONG, "turn_GO_STRAIGHT" to SymbolResult.WORKS), marked)
-        rule.onAllNodes(hasText("Send") and hasClickAction()).assertCountEquals(2)
-        rule.onAllNodes(hasText("Send") and hasClickAction())[1].performClick()
+        rule.onAllNodes(hasContentDescription("Send Go straight to the dash") or hasContentDescription("Send Start to the dash")).assertCountEquals(2)
+        rule.onNode(hasContentDescription("Send Start to the dash") and hasClickAction()).performClick()
         assertEquals(listOf("turn_START"), sent)
     }
 

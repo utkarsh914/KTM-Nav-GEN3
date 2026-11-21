@@ -23,7 +23,7 @@ fun LogsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val failed = stringResource(R.string.logs_share_failed)
     LogsContent(
         ui,
-        LogsActions(onBack, { if (!shareLog(context)) feedback.snackbar(failed) }, vm::selectTag, vm::setQuery),
+        LogsActions(onBack, { if (!shareLog(context)) feedback.snackbar(failed) }, vm::selectTag, vm::setQuery, vm::setErrorsOnly),
         modifier,
     )
 }

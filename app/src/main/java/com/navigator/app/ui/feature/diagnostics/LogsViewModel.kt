@@ -22,14 +22,17 @@ data class LogsUi(
     val query: String = "",
     /** Lines exist but the filter hides them all. */
     val filteredOut: Boolean = false,
+    /** The "Errors" chip is on: only warning and error lines. */
+    val errorsOnly: Boolean = false,
 )
 
 /** DG1: the live log, split into parts and filtered by subsystem and text. */
 class LogsViewModel(lines: Flow<List<String>>, parsing: CoroutineDispatcher = Dispatchers.Default) : ViewModel() {
     private val tag = MutableStateFlow<String?>(null)
     private val query = MutableStateFlow("")
+    private val errors = MutableStateFlow(false)
 
-    val ui: StateFlow<LogsUi> = combine(lines, tag, query) { raw, tag, query ->
+    val ui: StateFlow<LogsUi> = combine(lines, tag, query, errors) { raw, tag, query, errorsOnly ->
         // A key per line that outlives the buffer sliding, so a paused reader keeps their place and new lines can fade in.
         val seen = HashMap<String, Int>()
         val all = raw.map { line ->
@@ -39,12 +42,13 @@ class LogsViewModel(lines: Flow<List<String>>, parsing: CoroutineDispatcher = Di
         val tags = LogEntries.tagsOf(all)
         // A chip whose subsystem fell out of the buffer can no longer be shown.
         val active = tag?.takeIf { it in tags }
-        val shown = LogEntries.filter(all, active, query)
-        LogsUi(shown, tags, active, query, filteredOut = all.isNotEmpty() && shown.isEmpty())
+        val shown = LogEntries.filter(all, active, query, errorsOnly)
+        LogsUi(shown, tags, active, query, filteredOut = all.isNotEmpty() && shown.isEmpty(), errorsOnly = errorsOnly)
     }.flowOn(parsing).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LogsUi())
 
     fun selectTag(value: String?) { tag.value = value }
     fun setQuery(value: String) { query.value = value }
+    fun setErrorsOnly(value: Boolean) { errors.value = value }
 
     companion object {
         fun factory() = object : ViewModelProvider.Factory {

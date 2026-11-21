@@ -32,11 +32,11 @@ object LogEntries {
     /** Subsystems A to Z for the filter chips: a fixed order, so chips don't move while a rider reaches for one. */
     fun tagsOf(entries: List<LogEntry>): List<String> = entries.map { it.tag }.filter { it.isNotEmpty() }.distinct().sorted()
 
-    /** [tag] null shows every subsystem; [query] matches the tag or the message, ignoring case. */
-    fun filter(entries: List<LogEntry>, tag: String?, query: String): List<LogEntry> {
+    /** [tag] null shows every subsystem; [errorsOnly] keeps the warning and error lines (DG1 "Errors"); [query] matches the tag or the message, ignoring case. */
+    fun filter(entries: List<LogEntry>, tag: String?, query: String, errorsOnly: Boolean = false): List<LogEntry> {
         val q = query.trim()
         return entries.filter { e ->
-            (tag == null || e.tag == tag) &&
+            (tag == null || e.tag == tag) && (!errorsOnly || e.level == LogLevel.Warn) &&
                 (q.isEmpty() || e.message.contains(q, ignoreCase = true) || e.tag.contains(q, ignoreCase = true))
         }
     }

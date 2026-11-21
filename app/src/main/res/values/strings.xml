@@ -1160,6 +1160,7 @@
     <string name="logs_share_failed">Couldn\'t share the log</string>
     <string name="logs_search">Search the log</string>
     <string name="logs_all">All</string>
+    <string name="logs_errors">Errors</string>
     <string name="logs_following">Following live</string>
     <string name="logs_paused">Paused</string>
     <string name="logs_empty_title">Nothing logged yet</string>
@@ -1172,12 +1173,13 @@
     <string name="symbols_info_body" tools:ignore="Typos">Send RAB_SECT_1_RH to 16_RH in order and note the clock position of the exit arrow for each N (for example 3 o\'clock). That list of N and angle is what is needed to draw Google\'s roundabout exits correctly.</string>
     <string name="symbols_intro">Send each symbol, look at the dash, then mark Works or Wrong. The dash shows the symbol\'s name as text, so photos explain themselves.</string>
     <string name="symbols_turn">Turn icons</string>
+    <string name="symbols_turn_count">Turn icons · %1$d</string>
+    <string name="symbols_notification_count">Notification icons · %1$d</string>
     <string name="symbols_notification">Notification icons</string>
     <string name="symbols_summary">Works: %1$d \u00b7 Wrong: %2$d \u00b7 Total: %3$d</string>
     <string name="symbols_send">Send</string>
     <string name="symbols_works">Works</string>
     <string name="symbols_wrong">Wrong</string>
-    <string name="symbols_question">Does the dash show this symbol?</string>
     <string name="calib_title">Turn icon calibration</string>
     <string name="calib_intro">Pick the dash symbol that matches each icon Google Maps showed. It is saved for good and sent to the dash so you can check it.</string>
     <string name="calib_legend">\u2605 means confirmed working on your dash.</string>
