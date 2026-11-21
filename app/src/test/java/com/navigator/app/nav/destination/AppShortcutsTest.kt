@@ -18,7 +18,10 @@ import org.robolectric.annotation.Config
 class AppShortcutsTest {
     private lateinit var ctx: Context
 
-    @Before fun setUp() { ctx = RuntimeEnvironment.getApplication() }
+    @Before fun setUp() {
+        ctx = RuntimeEnvironment.getApplication()
+        ctx.getSystemService(ShortcutManager::class.java).removeAllDynamicShortcuts()
+    }
 
     private fun ids(): Set<String> =
         ctx.getSystemService(ShortcutManager::class.java).dynamicShortcuts.map { it.id }.toSet()
@@ -27,7 +30,8 @@ class AppShortcutsTest {
 
     @Test fun theFixedShortcutsAreAlwaysThereAndASlotOnlyWhileItIsSet() {
         AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.HOME)))
-        assertEquals(setOf("record_ride", "where_to", "ride_home"), ids())
+        val manager = ctx.getSystemService(ShortcutManager::class.java)
+        assertEquals("max ${manager.maxShortcutCountPerActivity}, rate limited ${manager.isRateLimitingActive}", setOf("record_ride", "where_to", "ride_home"), ids())
         AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.HOME), fav(FavoriteSlot.WORK)))
         assertTrue("ride_work" in ids())
     }
