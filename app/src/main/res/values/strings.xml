@@ -200,7 +200,7 @@
     <string name="place_directions">Directions</string>
     <string name="place_replace_trip">Replace trip…</string>
     <string name="place_add_as_stop">Add as stop</string>
-    <string name="place_away">%1$s away</string>
+    <string name="place_away">%1$s away (straight line)</string>
     <!-- Route sheet (PL2–PL4) -->
     <string name="route_your_location">Your location</string>
     <string name="route_fastest">Fastest</string>

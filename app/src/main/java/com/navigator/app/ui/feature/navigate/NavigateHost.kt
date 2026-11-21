@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -156,7 +157,7 @@ fun NavigateHost(
     val context = LocalContext.current
     val feedback = com.navigator.app.ui.shell.LocalFeedback.current
     val resources = androidx.compose.ui.platform.LocalResources.current
-    val activity = remember(context) { context.findActivity() }
+    val activity = remember(context) { context.findHostActivity() }
     val scope = rememberCoroutineScope()
 
     val appSettings = remember { context.appContainer.settings.legacy }
@@ -733,7 +734,7 @@ fun NavigateHost(
         }
     }
     // Trip progress is measured against the longest the trip has been (a reroute or added stop can lengthen it).
-    var progressTrip by remember { mutableStateOf(0L) }
+    var progressTrip by remember { mutableLongStateOf(0L) }
     LaunchedEffect(tripState.startMs, navState.remainingDistanceMeters, navState.sessionState) {
         if (progressTrip != tripState.startMs) { progressTrip = tripState.startMs; initialRemainingM = null }
         val rem = navState.remainingDistanceMeters ?: return@LaunchedEffect

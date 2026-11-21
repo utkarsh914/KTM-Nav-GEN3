@@ -2,6 +2,7 @@ package com.navigator.app.notify
 
 import android.content.res.Resources
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
@@ -13,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -25,6 +27,15 @@ import java.time.ZoneOffset
 class LiveUpdateContentTest {
     private val res: Resources get() = RuntimeEnvironment.getApplication().resources
     private val now = 1_700_000_000_000L // 2023-11-14 22:13:20 UTC
+
+    @Before fun pin24h() { ClockFormat.use24h = { true } }
+
+    @Test fun theEtaFollowsThePhones12HourSetting() {
+        ClockFormat.use24h = { false }
+        try {
+            assertTrue(build(LiveInput(enroute(), now, destination = "Toit")).text.contains("ETA 10:23 PM"))
+        } finally { ClockFormat.use24h = { true } }
+    }
 
     private fun enroute(
         instr: String? = "Turn left onto MG Road", road: String? = "MG Road", toTurn: Int? = 220,

@@ -46,6 +46,7 @@ import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
@@ -63,9 +64,6 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class OnboardingActions(
     val onBack: () -> Unit,
@@ -184,7 +182,7 @@ private fun StepFrame(
 }
 
 @Composable
-private fun rememberDashTime(): String = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
+private fun rememberDashTime(): String = remember { EtaFormatter.format(System.currentTimeMillis()) }
 
 @Composable
 private fun Welcome(actions: OnboardingActions) {

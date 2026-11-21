@@ -76,7 +76,7 @@ the right one.
 
 ## Feedback
 Snackbars through `LocalFeedback` (`Feedback.snackbar(message, actionLabel, …)`),
-never a Toast; Undo lasts 8 s (`Feedback.ACTION_MS`). While riding the same events
+never a Toast (the one exception is the launcher's Record-a-ride shortcut, which has no UI of its own and says why it could not start); Undo lasts 8 s (`Feedback.ACTION_MS`). While riding the same events
 are chips (`RidingChips`). Confirms use `KtmDialog` (riding variant stacks 64 dp
 buttons with the safe choice on top).
 
@@ -89,7 +89,7 @@ panes with a Close action; glyphs are decorative unless given a description
 the QA list.
 
 ## Rules (grep-checked by the local-only `overhaul/scripts/check-ui-rules.sh`)
-No `Toast`, no raw `AlertDialog` (use `KtmDialog`), no Material icons, no
+No `Toast` (except the Record shortcut activity), no raw `AlertDialog` (use `KtmDialog`), no Material icons, no
 `Color(0x…)` or `.sp`/`.em` in screens, no `AppSettings(…)` in `ui/` (use the
 container's `SettingsRepository`), no legacy `Ktm.*` accessor. Strings live in
 `strings.xml` (`<feature>_<element>_<meaning>`), distances are metric.

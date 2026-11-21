@@ -23,19 +23,17 @@ class Haptics(private val view: View) {
 
     private fun perform(constant: Int) {
         runCatching {
-            view.performHapticFeedback(
-                constant,
-                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING,
-            )
+            // Honours the rider's own "touch feedback" system setting (no override flag).
+            view.performHapticFeedback(constant)
         }
     }
 
     /** Light tick for a normal tap on a button/row/icon. */
     fun tap() = perform(HapticFeedbackConstants.CONTEXT_CLICK)
 
-    /** Toggle switched on/off — a crisp tick either way. */
+    /** Toggle switched on/off: the system's own on and off feedback. */
     fun toggle(on: Boolean) = perform(
-        if (on) HapticFeedbackConstants.CONTEXT_CLICK else HapticFeedbackConstants.CLOCK_TICK,
+        if (on) HapticFeedbackConstants.TOGGLE_ON else HapticFeedbackConstants.TOGGLE_OFF,
     )
 
     /** Positive confirmation (accept / save / start). */

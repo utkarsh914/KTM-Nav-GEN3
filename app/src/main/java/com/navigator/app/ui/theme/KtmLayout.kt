@@ -119,8 +119,7 @@ object KtmLayout {
     val panelPadding = 12.dp
     val panelInset = 8.dp
 
-    /** Riding toggle tile (Beeps, Messages). */
-    val ridingToggle = 56.dp
+    /** Riding toggle tile glyphs (Beeps, Messages) and the mirror screen glyph. */
     val ridingGlyph = 60.dp
     val ridingGlyphLand = 76.dp
     val mirrorGlyph = 96.dp
@@ -144,6 +143,8 @@ object KtmLayout {
 
     /** A docked activity strip row. */
     val activityStrip = 64.dp
+    val activityStripGlyph = 40.dp
+    val activityStripIcon = 28.dp
     val sheetTitleRow = 48.dp
 
     // Small icons and the gaps around them in pills, chips and rows.

@@ -21,7 +21,6 @@ import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class OpenDashApplication : Application() {
@@ -40,6 +39,7 @@ class OpenDashApplication : Application() {
         runCatching {
             com.navigator.app.ui.theme.AppFonts.apply(AppSettings(this).fontMode)
         }
+        com.navigator.app.nav.ktm.ClockFormat.use24h = { android.text.format.DateFormat.is24HourFormat(this) }
         // Dash text: ICU transliterator (null = pass-through) + the rider's switch.
         com.navigator.app.ble.DashText.transliterate = com.navigator.app.ble.DashText.icuTransliterator()
         com.navigator.app.ble.DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)

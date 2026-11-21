@@ -7,9 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.navigator.app.nav.ktm.EtaFormatter
 
 /**
  * The Bike sheet over any Navigate surface: the browse map and, while riding, the trip sheet's dash row and the
@@ -20,7 +18,7 @@ fun BikeSheetHost(tripRunning: Boolean, onOpenPairing: () -> Unit, onDismiss: ()
     val container = LocalContext.current.appContainer
     val vm: NavigateViewModel = viewModel(factory = NavigateViewModel.factory(container))
     val state by vm.state.collectAsState()
-    val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
+    val time = remember { EtaFormatter.format(System.currentTimeMillis()) }
     BikeSheet(
         state = state, dashTime = time,
         onBeeps = vm::setBeeps, onMessages = vm::setMessages, onSendTest = vm::sendTest,

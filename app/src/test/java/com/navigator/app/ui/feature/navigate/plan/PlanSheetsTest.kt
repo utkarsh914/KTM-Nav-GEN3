@@ -39,7 +39,7 @@ class PlanSheetsTest {
     @Test fun thePlaceSheetAlwaysHasAWayBack() {
         rule.setContent { KtmTheme(darkTheme = true) { PlaceSheet(place(), placeActions()) } }
         rule.onNodeWithText("Toit Brewpub").assertIsDisplayed()
-        rule.onNodeWithText("3.2 km away").assertIsDisplayed()
+        rule.onNodeWithText("3.2 km away (straight line)").assertIsDisplayed()
         rule.onNodeWithContentDescription("Back").performClick()
         rule.onNodeWithContentDescription("Close").performClick()
         rule.onNodeWithText("Directions").performClick()

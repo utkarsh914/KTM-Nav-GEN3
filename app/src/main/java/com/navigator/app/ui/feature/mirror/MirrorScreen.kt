@@ -27,6 +27,7 @@ import com.navigator.app.app.AppContainer
 import com.navigator.app.app.appContainer
 import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.mirror.MirrorStatus
+import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.notifications.AppNotificationListener
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.feature.navigate.BikePillMapper
@@ -38,9 +39,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MirrorViewModel(private val repo: MirrorRepository) : ViewModel() {
     /** Null until the first reading, so the screen never flashes a wrong state. */
@@ -76,7 +74,7 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
     val time by produceState("") {
         while (true) {
             val now = System.currentTimeMillis()
-            value = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(now))
+            value = EtaFormatter.format(now)
             // To the next minute boundary, so the shown time is never up to a tick behind.
             delay(MINUTE_MS - now % MINUTE_MS + 50)
         }

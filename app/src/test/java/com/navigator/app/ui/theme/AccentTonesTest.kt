@@ -59,7 +59,6 @@ class AccentTonesTest {
         assertEquals("orange", accentFor("nonsense").id)
         val custom = accentFor("#12AB34")
         assertEquals("#12AB34", custom.id)
-        assertEquals("Custom", custom.displayName)
         assertEquals(custom.tones.fill, parseHexColor(hexOf(custom.tones.fill)))
     }
 

@@ -20,6 +20,7 @@
 - Landscape: the Where-to panel is a floating card like the other landscape panels, the rail shows the bike's state on Navigate, pages without a map get rounded corners while they leave (a back swipe shrinks them), and the trim bar keeps its time order in right-to-left languages.
 
 ### Navigation
+- Times follow the phone's 12 or 24 hour setting (arrival times, leg lines, the Live Update); the dash stays 24 hour.
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
   destination.
 - Retrained the on-device maneuver model with the corrected labels (all 64 Google Maps icons

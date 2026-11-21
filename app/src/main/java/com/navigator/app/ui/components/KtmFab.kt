@@ -35,7 +35,7 @@ fun KtmFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Icon(icon, null, tint = a.onFill, modifier = Modifier.size(KtmSpacing.xl))
+        Icon(icon, null, tint = a.onFill, modifier = Modifier.size(KtmLayout.iconMedium))
         Text(label, style = KtmTheme.type.buttonCompact, color = a.onFill, maxLines = 1)
     }
 }

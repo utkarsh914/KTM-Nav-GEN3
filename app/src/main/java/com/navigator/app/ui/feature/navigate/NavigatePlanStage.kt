@@ -95,7 +95,7 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
             PlaceSheet(
                 state = PlaceSheetState(
                     title = sel.label, address = sel.address,
-                    distance = distanceLabel(plan.origin, sel.lat, sel.lng),
+                    distance = StraightLine.label(plan.origin, sel),
                     saved = saved, tripRunning = plan.tripRunning(),
                 ),
                 actions = PlaceSheetActions(

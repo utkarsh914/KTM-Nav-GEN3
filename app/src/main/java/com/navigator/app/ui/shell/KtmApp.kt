@@ -607,7 +607,7 @@ private fun openInGoogleMaps(context: android.content.Context, sharedText: Strin
         ?: resolver.parseCoordinates(sharedText)?.let { "geo:${it.lat},${it.lng}".toUri() }
         ?: return false
     val view = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
-    val maps = android.content.Intent(view).setPackage("com.google.android.apps.maps")
+    val maps = com.navigator.app.ui.feature.places.PlaceActions.mapsIntent(uri)
     return runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }.isSuccess
 }
 

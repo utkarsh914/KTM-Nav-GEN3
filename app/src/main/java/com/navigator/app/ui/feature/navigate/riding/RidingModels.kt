@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.ktm.KtmManeuverMapping
@@ -145,7 +146,7 @@ object TripBarModel {
             alert = if (over) limitKmh else null,
             timeLeft = seconds?.let(TimeLeft::of),
             distance = nav.remainingDistanceMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) },
-            arrival = seconds?.let { EtaFormatter.format(it, nowMs, zone) },
+            arrival = seconds?.let { ClockFormat.local(EtaFormatter.etaEpochMs(it, nowMs), zone) },
             progress = progress(nav.remainingDistanceMeters, initialRemainingMeters),
             destination = destination,
             starting = seconds == null,
@@ -179,6 +180,7 @@ object MapButtonMachine {
     const val FOLLOW_AFTER_MS = 10_000L
 
     fun reduce(state: MapButtonState, event: MapButtonEvent): Pair<MapButtonState, MapButtonEffect> = when (event) {
+        MapButtonEvent.Reset -> MapButtonState() to MapButtonEffect.None
         is MapButtonEvent.Pan -> MapButtonState(panned = true, overview = false, pannedAtMs = event.nowMs) to MapButtonEffect.None
         MapButtonEvent.Tap ->
             if (state.recenter) MapButtonState() to MapButtonEffect.Follow
@@ -188,7 +190,6 @@ object MapButtonMachine {
             if (state.panned && event.kmh > FOLLOW_ABOVE_KMH && event.nowMs - state.pannedAtMs >= FOLLOW_AFTER_MS)
                 MapButtonState() to MapButtonEffect.Follow
             else state to MapButtonEffect.None
-        MapButtonEvent.Reset -> MapButtonState() to MapButtonEffect.None
     }
 }
 

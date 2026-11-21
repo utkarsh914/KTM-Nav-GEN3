@@ -3,6 +3,7 @@ package com.navigator.app.notify
 import android.content.res.Resources
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
@@ -10,9 +11,7 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ride.RideSessionState
 import com.navigator.app.ride.formatElapsed
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /** The visible buttons on the guidance notification (SY1). */
 enum class LiveAction { OPEN, MUTE_BEEPS, UNMUTE_BEEPS, END_TRIP }
@@ -49,12 +48,10 @@ data class LiveUpdateContent(
 )
 
 object LiveUpdateBuilder {
-    private val CLOCK = DateTimeFormatter.ofPattern("HH:mm")
-
     fun build(input: LiveInput, res: Resources, zone: ZoneId = ZoneId.systemDefault()): LiveUpdateContent {
         val state = input.nav
         val etaMs = state.remainingTimeSeconds?.takeIf { it >= 0 }?.let { input.nowMs + it * 1000L }
-        val etaClock = etaMs?.let { CLOCK.format(Instant.ofEpochMilli(it).atZone(zone)) }
+        val etaClock = etaMs?.let { ClockFormat.local(it, zone) }
         val toTurn = state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) }
         val remaining = state.remainingDistanceMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) }
         val instruction = state.fullInstruction?.takeIf { it.isNotBlank() } ?: state.roadName?.takeIf { it.isNotBlank() }

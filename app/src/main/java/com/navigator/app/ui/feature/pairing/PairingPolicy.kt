@@ -52,5 +52,5 @@ object PairingPolicy {
     fun timedOut(startedAtMs: Long, nowMs: Long): Boolean = nowMs - startedAtMs >= TIMEOUT_MS
 
     /** m:ss for the timer on ON7. */
-    fun clock(seconds: Int): String = "%d:%02d".format(java.util.Locale.getDefault(), seconds / 60, seconds % 60)
+    fun clock(seconds: Int): String = com.navigator.app.ride.formatElapsed(seconds * 1000L)
 }

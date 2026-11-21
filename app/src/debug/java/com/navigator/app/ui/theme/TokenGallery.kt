@@ -72,7 +72,7 @@ internal fun TokenGallery() {
                     Swatch("inverse", a.inverseAccent)
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AccentPalettes.forEach { Swatch(it.displayName, it.tones.fill, it.tones.onFill) }
+                    AccentPalettes.forEach { Swatch(it.id, it.tones.fill, it.tones.onFill) }
                 }
             }
             Section("Riding") {

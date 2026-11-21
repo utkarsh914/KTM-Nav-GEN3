@@ -1,5 +1,9 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,9 +66,9 @@ fun KtmTextField(
         supportingText = (error ?: helper)?.let {
             {
                 // A validation message slides down under the field instead of popping in.
-                androidx.compose.animation.AnimatedVisibility(
-                    visibleState = remember(it, error != null) { androidx.compose.animation.core.MutableTransitionState(error == null).apply { targetState = true } },
-                    enter = androidx.compose.animation.fadeIn(motion.effectsFast()) + androidx.compose.animation.slideInVertically(motion.spatialFast()) { if (motion.reduced) 0 else -it },
+                AnimatedVisibility(
+                    visibleState = remember(it, error != null) { MutableTransitionState(error == null).apply { targetState = true } },
+                    enter = fadeIn(motion.effectsFast()) + slideInVertically(motion.spatialFast()) { if (motion.reduced) 0 else -it },
                 ) { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         },

@@ -120,10 +120,8 @@ exact dash, a per-slot dash text playground, and shareable logs — which is how
 - The **In-app maps engine** *does* go online. It needs your own Google Maps Platform API key + Google
   Play Services; entering a destination runs Google's Navigation SDK, which means your **destination and
   location are sent to Google**, and it needs internet. Pick the engine any time in
-  **Settings → Navigation engine** (the two are mutually exclusive). While it's navigating you'll also see
-  Google's own notification alongside the app's.
-- Other optional, opt-in online bit: live weather for the dash idle screen (Open-Meteo, no key, coarse
-  location only), off by default.
+  **Settings → Navigation engine** (the two are mutually exclusive). While it's navigating, the app's own Live Update
+  notification is the guidance notification.
 
 ---
 

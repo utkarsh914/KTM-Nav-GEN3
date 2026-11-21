@@ -40,6 +40,7 @@ import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.SkeletonRow
 import com.navigator.app.ui.components.StatTile
+import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.feature.rides.ThumbnailGeometry
 import com.navigator.app.ui.feature.rides.drawRoute
@@ -98,8 +99,8 @@ private fun Ready(ui: MergeUi.Ready, onMerge: () -> Unit) {
             if (plan.block == null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                     StatTile(stringResource(R.string.merge_stat_distance), DistanceFormatter.format(plan.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f))
-                    StatTile(stringResource(R.string.merge_stat_riding), duration(plan.ridingSeconds), Modifier.weight(1f))
-                    StatTile(stringResource(R.string.merge_stat_total), duration(plan.totalSeconds), Modifier.weight(1f))
+                    StatTile(stringResource(R.string.merge_stat_riding), rideDuration(plan.ridingSeconds), Modifier.weight(1f))
+                    StatTile(stringResource(R.string.merge_stat_total), rideDuration(plan.totalSeconds), Modifier.weight(1f))
                 }
                 ListRow(
                     title = stringResource(R.string.merge_name_title),
@@ -182,11 +183,4 @@ private fun gapText(gap: MergeGap): String {
         minutes < 60 -> pluralStringResource(R.plurals.merge_gap_min, minutes, minutes)
         else -> pluralStringResource(R.plurals.merge_gap_hours, minutes / 60, minutes / 60, minutes % 60)
     }
-}
-
-@Composable
-private fun duration(seconds: Int): String {
-    val minutes = (seconds + 59) / 60
-    return if (minutes < 60) stringResource(R.string.ride_duration_min, minutes)
-    else stringResource(R.string.ride_duration_h, minutes / 60, minutes % 60)
 }

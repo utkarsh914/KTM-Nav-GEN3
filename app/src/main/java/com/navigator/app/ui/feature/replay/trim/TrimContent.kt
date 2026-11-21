@@ -64,6 +64,7 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.LandscapePanelSpec
+import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.replay.PlaybackEngine
 import com.navigator.app.ui.feature.replay.ReplayFormat
 import com.navigator.app.ui.feature.replay.trackFraction
@@ -159,7 +160,7 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
     }
     ui.kept?.let {
         Text(
-            stringResource(R.string.trim_keeps, DistanceFormatter.format(it.distanceMeters, DistanceUnits.METRIC), duration(it.durationSeconds)),
+            stringResource(R.string.trim_keeps, DistanceFormatter.format(it.distanceMeters, DistanceUnits.METRIC), rideDuration(it.durationSeconds)),
             style = MaterialTheme.typography.titleSmall, color = c.fg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -175,13 +176,6 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
 }
 
 private fun timeAt(ui: TrimUi.Ready, index: Int): String = ReplayFormat.timeOfDay(ui.points[index.coerceIn(0, ui.points.lastIndex)].timeMs)
-
-@Composable
-private fun duration(seconds: Int): String {
-    val minutes = (seconds + 59) / 60
-    return if (minutes < 60) stringResource(R.string.ride_duration_min, minutes)
-    else stringResource(R.string.ride_duration_h, minutes / 60, minutes % 60)
-}
 
 /** A touch moves the nearer handle (to the touch, by tap or drag); the 28 dp handles sit in 48 dp touch bands. */
 @Composable

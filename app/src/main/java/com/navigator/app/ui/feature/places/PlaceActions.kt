@@ -60,7 +60,8 @@ object PlaceActions {
     fun navigationIntent(place: SavedPlace): Intent = mapsIntent(navigationUri(place))
     fun showIntent(place: SavedPlace): Intent = mapsIntent(mapsUri(place))
 
-    private fun mapsIntent(uri: Uri) = Intent(Intent.ACTION_VIEW, uri).setPackage(MAPS_PACKAGE)
+    /** Opens [uri] in Google Maps itself (callers fall back to a plain VIEW when it is missing). */
+    fun mapsIntent(uri: Uri) = Intent(Intent.ACTION_VIEW, uri).setPackage(MAPS_PACKAGE)
 
     private fun coords(p: SavedPlace) = String.format(Locale.ROOT, "%.6f,%.6f", p.lat, p.lng)
 

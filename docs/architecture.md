@@ -29,17 +29,17 @@ navigation engines, selectable in Settings, each with its own home. There are on
 1. **Navigate, phone-first (In-app maps engine)** — plan and run turn-by-turn in-app on the
    map home (`NavigateHost`), pushing the same guidance to the dash over BLE.
 2. **Mirror another nav app (Notification-mirror engine)** — mirror Google Maps' turn
-   notifications to the dash; the mirror home (`MirrorHomeScreen`) shows the same guidance.
+   notifications to the dash; the mirror screen (`MirrorScreen`) shows the same guidance.
    Offline-capable; also the home when no Nav SDK key/Play Services is available.
 
 The engines are **mutually exclusive**: the Settings "Navigation engine" selector picks one,
-`homeRoute()` maps it to `NAV_HOME` or `MIRROR_HOME`, and the mirror path is suppressed while
+the Navigate tab (`Route.Navigate`) shows `NavigateHost` or `MirrorScreen` to match, and the mirror path is suppressed while
 the in-app SDK engine is selected (so both never drive the dash at once).
 
 The legacy dash-companion surface (handlebar-remote controller / on-screen D-pad / 2×2 grid
 home), accelerometer engine-detect, and media/call handling have all been
 **removed** in the D2 lean-down (commits `refactor(d2): ...`). (Ride recording itself — NDJSON
-tracks, history and replay — is present; only GPX export/import is not.) Symbol Testing + Turn-icon
+tracks, history and replay — is present, with GPX export.) Symbol Testing + Turn-icon
 calibration are intentionally retained as hardware diagnostics.
 
 ---
@@ -155,7 +155,7 @@ dedup/throttle/state-machine. The Nav SDK path leaves them null and uses the num
 
 > The screens described here were rebuilt in the 2026 redesign; §9 is the current UI architecture and wins where they differ.
 
-## 3. Map home & destination flow (`AppRoute.NAV_HOME` · `NavigateHost`)
+## 3. Map home & destination flow (`Route.Navigate` · `NavigateHost`)
 
 The app's primary surface. One persistent Nav SDK `NavigationView` is the map across a small
 stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
@@ -175,10 +175,10 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   draws the selected route (Google blue) + alternates (desaturated blue); a **route chip per
   option** selects reliably. ETA/distance + **Start**. The origin is a **fresh** location fix
   so the route-token origin matches the SDK's GPS.
-- **NAVIGATING** — `GoogleNavSdkController.startNavigation` begins guidance and the SDK's
-  stock `NavigationView` UI renders on the phone (maneuver header + ETA card + re-center +
-  report). Overlay: a circular **END** (top-left, below the header); hardware Back also ends.
-  Auto-returns to BROWSE on arrival.
+- **NAVIGATING** — `GoogleNavSdkController.startNavigation` begins guidance; the Navigation SDK's own
+  guidance UI is turned off and the app draws the riding screen (maneuver card, trip bar, trip sheet;
+  see §9). Ending the trip is in the trip sheet. A finished trip shows the
+  trip-finished screen on arrival.
 
 **Trip auto-finish** (`NavigateHost.kt`). Three paths end a trip, each guarded by a
 one-shot `arrivalLatched` (reset on new trip start) so continued movement past the destination

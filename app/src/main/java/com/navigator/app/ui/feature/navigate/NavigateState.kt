@@ -8,6 +8,7 @@ import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.EtaFormatter
@@ -136,7 +137,7 @@ object ActivityCard {
             road = nav.roadName?.takeIf { it.isNotBlank() },
             destination = dest.label ?: "",
             eta = nav.preformattedEta
-                ?: nav.remainingTimeSeconds?.let { EtaFormatter.format(EtaFormatter.etaEpochMs(it, nowEpochMs)) },
+                ?: nav.remainingTimeSeconds?.let { ClockFormat.local(EtaFormatter.etaEpochMs(it, nowEpochMs)) },
         )
     }
 }

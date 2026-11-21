@@ -19,7 +19,7 @@ import com.navigator.app.R
  * - [BarlowCondensed]: display / headings / labels (hero headlines & road
  *   names use its italic).
  * - [Barlow]: body & secondary copy.
- * - [JetBrainsMono]: numeric / technical / MAC / codes / time / RSSI.
+ * - [JetBrainsMono]: logs, MAC addresses, hex and protocol codes only (see `KtmTypography.mono`).
  *
  * These are the *brand* families. The public [Barlow]/[BarlowCondensed]/
  * [JetBrainsMono] accessors below resolve against the live [AppFonts.mode], so

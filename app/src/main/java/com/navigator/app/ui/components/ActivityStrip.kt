@@ -26,6 +26,7 @@ import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -67,7 +68,7 @@ fun ActivityStrip(
     Row(
         modifier.fillMaxWidth()
             .shadow(KtmElevation.onMap, KtmShapes.Card)
-            .heightIn(min = 64.dp)
+            .heightIn(min = KtmLayout.activityStrip)
             .clip(KtmShapes.Card)
             .background(c.surf3)
             .clickable(role = Role.Button) { haptics.tap(); onOpen() }
@@ -75,15 +76,15 @@ fun ActivityStrip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(KtmLayout.activityStripGlyph), contentAlignment = Alignment.Center) {
             when (state) {
                 is ActivityStripState.Trip ->
-                    if (state.glyph != null) TurnGlyph(state.glyph, c.fg, size = 40.dp)
-                    else Icon(KtmIcons.Navigation, null, tint = c.fg, modifier = Modifier.size(28.dp))
+                    if (state.glyph != null) TurnGlyph(state.glyph, c.fg, size = KtmLayout.activityStripGlyph)
+                    else Icon(KtmIcons.Navigation, null, tint = c.fg, modifier = Modifier.size(KtmLayout.activityStripIcon))
                 is ActivityStripState.Recording ->
-                    Icon(if (state.paused) KtmIcons.Pause else KtmIcons.Record, null, tint = if (state.paused) c.fg2 else c.bad, modifier = Modifier.size(28.dp))
+                    Icon(if (state.paused) KtmIcons.Pause else KtmIcons.Record, null, tint = if (state.paused) c.fg2 else c.bad, modifier = Modifier.size(KtmLayout.activityStripIcon))
                 is ActivityStripState.Mirroring ->
-                    Icon(KtmIcons.Dash, null, tint = KtmTheme.accent.text, modifier = Modifier.size(28.dp))
+                    Icon(KtmIcons.Dash, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmLayout.activityStripIcon))
             }
         }
         Column(Modifier.weight(1f)) {

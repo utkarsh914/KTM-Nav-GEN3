@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
@@ -40,7 +41,7 @@ fun RecordingStrip(feedback: Feedback, onOpenActivity: () -> Unit, onOpenRides: 
     val resources = LocalResources.current
     val session by RideSession.state.collectAsState()
     val finish by RideEvents.lastFinish.collectAsState()
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var confirmStop by remember { mutableStateOf(false) }
     var awaitingResult by remember { mutableStateOf(false) }
 

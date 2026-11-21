@@ -24,6 +24,7 @@ import com.navigator.app.ride.RideSession
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
  * requested as a promoted ongoing notification (a Live Update); everywhere else it is a normal ongoing one with the
  * same content. In-app engine only: in mirror mode Google Maps owns its own notification.
  */
+@OptIn(FlowPreview::class)
 class NavLiveUpdate(
     private val app: Application,
     private val resumeIntent: Intent,

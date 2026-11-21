@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,9 +46,9 @@ import com.navigator.app.ui.theme.hexOf
 fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     val c = KtmTheme.colors
     val start = Hsv.of(initial)
-    var hue by rememberSaveable { mutableStateOf(start.hue) }
-    var sat by rememberSaveable { mutableStateOf(start.sat) }
-    var value by rememberSaveable { mutableStateOf(start.value) }
+    var hue by rememberSaveable { mutableFloatStateOf(start.hue) }
+    var sat by rememberSaveable { mutableFloatStateOf(start.sat) }
+    var value by rememberSaveable { mutableFloatStateOf(start.value) }
     var hex by rememberSaveable { mutableStateOf(hexOf(initial).removePrefix("#")) }
     val color = Hsv(hue, sat, value).toColor()
     val valid = HexInput.parse(hex) != null

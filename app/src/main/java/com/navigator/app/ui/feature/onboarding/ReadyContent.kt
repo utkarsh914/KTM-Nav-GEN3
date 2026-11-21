@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.ui.components.DashPreview
 import com.navigator.app.ui.components.DashPreviewState
 import com.navigator.app.ui.components.KtmButton
@@ -31,16 +32,13 @@ import com.navigator.app.ui.feature.settings.SettingsPage
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class ReadyActions(val onOpenPage: (SettingsPage) -> Unit, val onStart: () -> Unit)
 
 /** ON10: the dash greeting as proof, what was chosen (each row opens its setting), and Start riding. Stateless. */
 @Composable
 fun ReadyContent(ui: ReadyUi, actions: ReadyActions, modifier: Modifier = Modifier) {
-    val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
+    val time = remember { EtaFormatter.format(System.currentTimeMillis()) }
     val greeting = if (ui.userName.isBlank()) stringResource(R.string.onb_greeting_blank) else stringResource(R.string.onb_greeting, ui.userName)
     Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         KtmTopBar()

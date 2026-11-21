@@ -23,6 +23,7 @@ import com.navigator.app.notify.RecordingNotice
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -41,6 +42,7 @@ import kotlinx.coroutines.launch
  *
  * Started/stopped by the app-scoped nav-state observer in OpenDashApplication.
  */
+@OptIn(FlowPreview::class)
 class RideRecordingService : Service() {
 
     private var recorder: RideRecorder? = null

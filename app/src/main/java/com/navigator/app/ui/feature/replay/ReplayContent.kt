@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -69,6 +70,7 @@ import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.StatTile
+import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.theme.KtmElevation
@@ -155,7 +157,7 @@ private fun Portrait(
     sheetMax: androidx.compose.ui.unit.Dp,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    var sheetHeight by remember { mutableStateOf(0) }
+    var sheetHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
         Row(
@@ -403,7 +405,7 @@ private fun Stats(ride: RecordedRide, mode: AvgSpeedMode) {
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             StatTile(stringResource(R.string.replay_stat_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f), valueStyle = valueStyle)
-            StatTile(stringResource(R.string.replay_stat_time), duration(ride.durationSeconds), Modifier.weight(1f), valueStyle = valueStyle)
+            StatTile(stringResource(R.string.replay_stat_time), rideDuration(ride.durationSeconds), Modifier.weight(1f), valueStyle = valueStyle)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             StatTile(
@@ -413,13 +415,6 @@ private fun Stats(ride: RecordedRide, mode: AvgSpeedMode) {
             StatTile(stringResource(R.string.replay_stat_max), ride.maxSpeedKmh.roundToInt().toString(), Modifier.weight(1f), unit = kmh, valueStyle = valueStyle)
         }
     }
-}
-
-@Composable
-private fun duration(seconds: Int): String {
-    val minutes = (seconds + 59) / 60
-    return if (minutes < 60) stringResource(R.string.ride_duration_min, minutes)
-    else stringResource(R.string.ride_duration_h, minutes / 60, minutes % 60)
 }
 
 @Composable

@@ -1,17 +1,14 @@
 package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RouteLeg
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 /** Per-leg summary lines and drag-reorder maths for the multi-stop preview (pure, JVM-testable). */
 object StopLegs {
-
-    private val CLOCK = DateTimeFormatter.ofPattern("HH:mm")
 
     /** "12 min" / "1 h 05 min". */
     fun duration(seconds: Int): String {
@@ -34,7 +31,7 @@ object StopLegs {
         var elapsed = 0L
         return legs.map { leg ->
             elapsed += leg.durationSeconds * 1000L
-            val arrive = CLOCK.format(Instant.ofEpochMilli(nowMs + elapsed).atZone(zone))
+            val arrive = ClockFormat.local(nowMs + elapsed, zone)
             "arrive $arrive \u00b7 " + duration(leg.durationSeconds) + " \u00b7 " +
                 DistanceFormatter.format(leg.distanceMeters, DistanceUnits.METRIC)
         }

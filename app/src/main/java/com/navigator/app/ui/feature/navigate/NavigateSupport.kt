@@ -1,9 +1,6 @@
 package com.navigator.app.ui.feature.navigate
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
-import android.location.Location
 import android.location.LocationManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
@@ -23,8 +20,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.navigator.app.R
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.nav.destination.SavedPlace
-import com.navigator.app.nav.ktm.DistanceFormatter
-import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.theme.KtmIcons
 
@@ -32,23 +27,6 @@ import com.navigator.app.ui.theme.KtmIcons
 @Composable
 internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
     KtmButton(stringResource(R.string.navigate_resume), onClick, modifier, icon = KtmIcons.Navigation)
-}
-
-/** Unwrap the hosting Activity from a (possibly wrapped) Compose context. */
-internal tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-/** Straight-line distance label from [origin] to a point, or null if unknown. */
-internal fun distanceLabel(origin: Pair<Double, Double>?, lat: Double, lng: Double): String? {
-    origin ?: return null
-    val out = FloatArray(1)
-    Location.distanceBetween(origin.first, origin.second, lat, lng, out)
-    val meters = out[0].toInt()
-    if (meters <= 0) return null
-    return "~" + DistanceFormatter.format(meters, DistanceUnits.METRIC)
 }
 
 /** Location permission granted AND the system location switch on; re-checked whenever the screen resumes. */

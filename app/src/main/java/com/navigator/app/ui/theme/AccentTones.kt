@@ -78,8 +78,7 @@ data class AccentTones(
 }
 
 /** A selectable accent. `null` in settings means [KtmOrange]. */
-data class AccentOption(val id: String, val displayName: String, val tones: AccentTones) {
-}
+data class AccentOption(val id: String, val tones: AccentTones)
 
 private val OnBlack = Color(0xFF0B0C0E)
 private val OnWhite = Color(0xFFFFFFFF)
@@ -98,12 +97,12 @@ val RainbowHint: List<Color> = listOf(
 
 /** Preset accents offered in Settings, in display order (the first is the default). */
 val AccentPalettes: List<AccentOption> = listOf(
-    AccentOption("orange", "KTM orange", KtmOrange),
-    AccentOption("blue", "Blue", AccentTones.preset(0xFF2570D8, 0xFF6AA5F5, 0xFF1F5FBF, OnWhite)),
-    AccentOption("purple", "Purple", AccentTones.preset(0xFF7C4DEB, 0xFFA98BFA, 0xFF6D3FD8, OnWhite)),
-    AccentOption("teal", "Teal", AccentTones.preset(0xFF14B8A6, 0xFF2DD4BF, 0xFF0E7C70, OnBlack)),
-    AccentOption("green", "Green", AccentTones.preset(0xFF22C55E, 0xFF4ADE80, 0xFF15803D, OnBlack)),
-    AccentOption("magenta", "Magenta", AccentTones.preset(0xFFD02E7C, 0xFFF472B6, 0xFFBE185D, OnWhite)),
+    AccentOption("orange", KtmOrange),
+    AccentOption("blue", AccentTones.preset(0xFF2570D8, 0xFF6AA5F5, 0xFF1F5FBF, OnWhite)),
+    AccentOption("purple", AccentTones.preset(0xFF7C4DEB, 0xFFA98BFA, 0xFF6D3FD8, OnWhite)),
+    AccentOption("teal", AccentTones.preset(0xFF14B8A6, 0xFF2DD4BF, 0xFF0E7C70, OnBlack)),
+    AccentOption("green", AccentTones.preset(0xFF22C55E, 0xFF4ADE80, 0xFF15803D, OnBlack)),
+    AccentOption("magenta", AccentTones.preset(0xFFD02E7C, 0xFFF472B6, 0xFFBE185D, OnWhite)),
 )
 
 /**
@@ -137,7 +136,7 @@ fun hexOf(color: Color): String {
 /** An accent from any colour. Its id is the canonical hex, so it round-trips through [accentFor]. */
 fun customAccent(color: Color): AccentOption {
     val opaque = color.copy(alpha = 1f)
-    return AccentOption(id = hexOf(opaque), displayName = "Custom", tones = AccentTones.from(opaque))
+    return AccentOption(id = hexOf(opaque), tones = AccentTones.from(opaque))
 }
 
 /** WCAG contrast ratio between two opaque colours. */
