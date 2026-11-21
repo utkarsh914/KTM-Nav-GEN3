@@ -34,9 +34,9 @@ import org.robolectric.annotation.Config
 
 /** What the trip sheet shows: the controls and End trip, as the sheet the trip bar grows into and the landscape panel use them. */
 @Composable
-internal fun TripSheetForTest(beeps: Boolean, messages: Boolean, dashStatus: String?, canAddStop: Boolean, nextStop: String?, actions: TripSheetActions) {
+internal fun TripSheetForTest(beeps: Boolean, messages: Boolean, dashStatus: String?, canAddStop: Boolean, nextStop: String?, actions: TripSheetActions, nextStopNumber: Int? = null, nextStopDistance: String? = null) {
     androidx.compose.foundation.layout.Column {
-        TripControlsBody(beeps, messages, dashStatus, canAddStop, nextStop, actions)
+        TripControlsBody(beeps, messages, dashStatus, canAddStop, nextStop, actions, nextStopNumber = nextStopNumber, nextStopDistance = nextStopDistance)
         Spacer(Modifier.height(KtmSpacing.xl))
         EndTripButton(actions.onEnd)
     }

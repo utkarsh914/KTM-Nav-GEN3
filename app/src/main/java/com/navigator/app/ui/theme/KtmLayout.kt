@@ -51,6 +51,9 @@ object KtmElevation {
 object KtmLayout {
     // Targets
     val targetRest = 48.dp
+
+    /** The numbered stop pin in the trip sheet's Next stop row. */
+    val stopPin = 32.dp
     val targetPrimary = 56.dp
     val targetRiding = 64.dp
 

@@ -68,6 +68,19 @@ class RidingSheetsTest {
         }
     }
 
+    @Test fun theNextStopIsNumberedAfterThosePassed() {
+        assertEquals(1, TripStopRules.nextNumber(planned = 3, ahead = 3))
+        assertEquals(3, TripStopRules.nextNumber(planned = 3, ahead = 1))
+        assertEquals("never below 1", 1, TripStopRules.nextNumber(planned = 0, ahead = 1))
+    }
+
+    @Test fun theNextStopDistanceIsStraightLineMetricAndBlankWithoutAFix() {
+        val stop = com.navigator.app.nav.model.Stop(12.0, 77.1, "Toit")
+        assertEquals(null, TripStopRules.distanceTo(null, stop))
+        assertEquals("no distance when basically there", null, TripStopRules.distanceTo(12.0 to 77.1, stop))
+        assertEquals("11 km", TripStopRules.distanceTo(12.0 to 77.0, stop))
+    }
+
     @Test fun stopRoomIsTheLimitMinusWhatIsAhead() {
         assertEquals(4, TripStopRules.left(0, 0))
         assertEquals(2, TripStopRules.left(2, 9))
@@ -129,6 +142,19 @@ class RidingSheetsTest {
         rule.onNodeWithText("Next stop").assertIsDisplayed()
         rule.onNodeWithContentDescription("Remove next stop").performClick()
         assertEquals(listOf("removeNext"), log)
+    }
+
+    @Test fun theNextStopRowShowsItsPinNumberAndDistance() {
+        val actions = TripSheetActions({}, {}, {}, {}, {}, {}, {}, {}, {})
+        riding {
+            TripSheetForTest(
+                beeps = true, messages = true, dashStatus = null, canAddStop = true, nextStop = "Indian Oil", actions = actions,
+                nextStopNumber = 2, nextStopDistance = "4.2 km",
+            )
+        }
+        rule.onNodeWithText("2").assertIsDisplayed()
+        rule.onNodeWithText("4.2 km").assertIsDisplayed()
+        rule.onNodeWithText("Indian Oil").assertIsDisplayed()
     }
 
     @Test fun noNextStopNoRow() {

@@ -85,6 +85,9 @@ fun ColumnScope.TripControlsBody(
     bleed: Dp = KtmSpacing.lg,
     /** Smaller tiles for a short landscape screen (NL8). */
     compact: Boolean = false,
+    /** Which stop of the trip the next one is (the map's pin number) and how far off, in a straight line. */
+    nextStopNumber: Int? = null,
+    nextStopDistance: String? = null,
 ) {
     val tile = if (compact) ButtonSize.Tile else ButtonSize.TileLarge
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
@@ -117,8 +120,13 @@ fun ColumnScope.TripControlsBody(
     if (nextStop != null) {
         ListRow(
             modifier = Modifier.fullBleed(bleed),
-            title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
+            title = nextStop, supporting = stringResource(R.string.trip_next_stop),
+            leadingIcon = KtmIcons.PinPlus.takeIf { nextStopNumber == null },
+            leading = nextStopNumber?.let { n -> { StopPin(n) } },
             trailing = {
+                nextStopDistance?.let {
+                    Text(it, style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg2, maxLines = 1, softWrap = false)
+                }
                 KtmIconButton(
                     KtmIcons.Close, stringResource(R.string.trip_remove_next_stop), actions.onRemoveNextStop,
                     size = IconButtonSize.Map,
@@ -165,3 +173,15 @@ private fun ToggleTile(label: String, description: String, checked: Boolean, onC
         KtmSwitch(checked, onCheckedChange = null)
     }
 }
+
+/** The map's numbered stop pin, as a 32 dp disc: the number is plain text, so it never animates. */
+@Composable
+private fun StopPin(number: Int) {
+    Box(
+        Modifier.size(KtmLayout.stopPin).background(KtmTheme.accent.fill, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.onFill, maxLines = 1)
+    }
+}
+

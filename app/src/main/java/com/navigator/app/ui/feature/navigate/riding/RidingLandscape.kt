@@ -88,6 +88,8 @@ class TripControlsUi(
     val dashStatus: String?,
     val canAddStop: Boolean,
     val nextStop: String?,
+    val nextStopNumber: Int? = null,
+    val nextStopDistance: String? = null,
     val dashTone: PillTone = PillTone.Connected,
 )
 
@@ -211,7 +213,7 @@ private fun ColumnScope.TripControlsPanelBody(maneuver: ManeuverUi, bar: TripBar
         Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone, KtmLayout.panelPadding, compact = short)
+        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone, KtmLayout.panelPadding, compact = short, nextStopNumber = ui.nextStopNumber, nextStopDistance = ui.nextStopDistance)
     }
     EndTripButton(actions.onEnd)
 }

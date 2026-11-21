@@ -9,11 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
@@ -38,6 +40,7 @@ import com.navigator.app.ui.feature.navigate.riding.TripBarModel
 import com.navigator.app.ui.feature.navigate.riding.TripControlsBody
 import com.navigator.app.ui.feature.navigate.riding.TripControlsUi
 import com.navigator.app.ui.feature.navigate.riding.TripSheetActions
+import com.navigator.app.ui.feature.navigate.riding.TripStopRules
 import com.navigator.app.ui.feature.navigate.riding.TripStopSheetHost
 import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapInsets
@@ -134,6 +137,11 @@ internal fun NavigatingStage(
             )
             val dashText = BikeSheetMapper.status(bikeStatus)
             val nextStopTarget = if (riding.showTripSheet) remember { trip.stopsAhead()?.firstOrNull() } else null
+            val stopsLeft = if (riding.showTripSheet) remember { trip.stopsAhead()?.size } else null
+            val context = LocalContext.current
+            // A snapshot when the sheet opens: the figure is read at a glance, not watched.
+            val nextStopDistance = nextStopTarget?.let { stop -> remember(stop) { TripStopRules.distanceTo(lastKnownLocation(context), stop) } }
+            val nextStopNumber = nextStopTarget?.let { TripStopRules.nextNumber(tripState.allStops.size, stopsLeft ?: 1) }
             val nextStop = nextStopTarget?.let { it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.trip_stop_unnamed) }
             val dashPill = BikePillMapper.map(bikeStatus)
             val dashState = stringResource(dashText.title, dashText.arg ?: 0)
@@ -160,7 +168,7 @@ internal fun NavigatingStage(
                     recenter = riding.mapButton.recenter,
                     bearing = mapBearing,
                     narrow = narrow,
-                    controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, dashPill.tone) else null,
+                    controls = if (riding.showTripSheet) TripControlsUi(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, nextStopNumber, nextStopDistance, dashPill.tone) else null,
                     actions = ridingActions,
                     controlActions = tripActions,
                     onInsets = { actions.onRidingInsets(it) },
@@ -174,7 +182,7 @@ internal fun NavigatingStage(
                     onInsets = { top, bottom -> actions.onRidingInsets(MapInsets(top = top, bottom = bottom)) },
                     sheetOpen = riding.showTripSheet,
                     sheet = {
-                        TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions, dashPill.tone)
+                        TripControlsBody(settingsSnap.turnBeepEnabled, settingsSnap.mirrorEnabled, dashStatus, canAddStop, nextStop, tripActions, dashPill.tone, nextStopNumber = nextStopNumber, nextStopDistance = nextStopDistance)
                         Spacer(Modifier.height(KtmSpacing.xl))
                         EndTripButton(tripActions.onEnd)
                     },
