@@ -43,11 +43,11 @@ import com.navigator.app.ui.theme.KtmTheme
 /** Scrim behind sheets and dialogs: 60% black. */
 val KtmScrim = Color.Black.copy(alpha = 0.6f)
 
-/** The drag handle: a 32 × 4 bar with a 12 dp zone above and below (28 dp in all). */
+/** The drag handle: a 36 × 4 bar with a 12 dp zone above and below (28 dp in all). */
 @Composable
 fun SheetHandle(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(KtmLayout.sheetHandleZone), contentAlignment = Alignment.Center) {
-        Box(Modifier.size(width = 32.dp, height = 4.dp).background(KtmTheme.colors.line2, RoundedCornerShape(2.dp)))
+        Box(Modifier.size(width = KtmLayout.sheetHandleWidth, height = KtmLayout.sheetHandleHeight).background(KtmTheme.colors.line2, RoundedCornerShape(KtmSpacing.xs / 2)))
     }
 }
 

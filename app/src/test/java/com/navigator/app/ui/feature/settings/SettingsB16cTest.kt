@@ -279,9 +279,9 @@ class SettingsB16cContentTest {
     @Test fun theChecklistSaysInWordsWhatIsAndIsNotInABackup() {
         backup(BackupUi())
         rule.onNodeWithText("Rides, with tracks and notes").performScrollTo()
-        for (state in listOf("Included", "Not included")) {
-            assertTrue(state, rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, state)).fetchSemanticsNodes().isNotEmpty())
-        }
+        fun state(value: String) = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
+        rule.onNode(hasText("Rides, with tracks and notes") and state("Included")).assertExists()
+        rule.onNode(hasText("Bike pairing", substring = true) and state("Not included")).assertExists()
     }
 
     @Test fun restoreIsOffWhileBackingUp() {

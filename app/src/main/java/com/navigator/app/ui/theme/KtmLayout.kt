@@ -188,6 +188,17 @@ object KtmLayout {
     /** Save beside Directions on the place sheet (PL1). */
     val placeSaveMinWidth = 116.dp
 
+    /** The drag handle (the mock's `.hdl`: 36 x 4). */
+    val sheetHandleWidth = 36.dp
+    val sheetHandleHeight = 4.dp
+
+    /** A 40 dp tile behind a list row's icon, and the status dot on the bike pill. */
+    val badgeTile = 40.dp
+    val statusDot = 8.dp
+
+    /** Side padding of a 56/64 dp button (48 dp and text buttons use less). */
+    val buttonPaddingH = 20.dp
+
     /** A Where-to tile's two lines of text at font scale 1 (title and caption), before they scale. */
     val tileTextBlock = 40.dp
 

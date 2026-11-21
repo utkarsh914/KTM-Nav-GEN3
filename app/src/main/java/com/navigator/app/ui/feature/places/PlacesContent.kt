@@ -145,7 +145,7 @@ private fun SelectionBar(ui: PlacesUi, actions: PlacesActions) {
             { actions.onSelectAll(!ui.allSelected) }, tint = a.onContainer,
         )
         KtmIconButton(
-            KtmIcons.Delete, stringResource(R.string.places_delete_selected), actions.onDelete, enabled = has,
+            KtmIcons.Delete, stringResource(R.string.places_remove_selected), actions.onDelete, enabled = has,
             tint = if (has) a.onContainer else c.fg3,
         )
     }

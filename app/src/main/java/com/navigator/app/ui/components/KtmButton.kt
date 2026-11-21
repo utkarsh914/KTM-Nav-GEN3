@@ -174,7 +174,7 @@ fun KtmButton(
             lead()
             Text(text, style = label, color = palette.content, maxLines = if (stacked) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
         }
-        val pad = PaddingValues(horizontal = if (style == ButtonStyle.Text) KtmSpacing.md else if (size == ButtonSize.Small) KtmSpacing.lg else 20.dp)
+        val pad = PaddingValues(horizontal = if (style == ButtonStyle.Text) KtmSpacing.md else if (size == ButtonSize.Small) KtmSpacing.lg else KtmLayout.buttonPaddingH)
         if (stacked) {
             Column(
                 Modifier.padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs), horizontalAlignment = Alignment.CenterHorizontally,

@@ -117,7 +117,7 @@ fun ListRow(
 @Composable
 fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: Color = KtmTheme.accent.text) {
     Box(
-        modifier.size(40.dp).background(KtmTheme.colors.surf3, KtmShapes.Control),
+        modifier.size(KtmLayout.badgeTile).background(KtmTheme.colors.surf3, KtmShapes.Control),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = tint, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }
@@ -126,7 +126,7 @@ fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: Color
 @Composable
 fun OutlinedIconBadge(icon: ImageVector, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(40.dp).border(1.dp, KtmTheme.colors.line2, KtmShapes.Pill),
+        modifier.size(KtmLayout.badgeTile).border(1.dp, KtmTheme.colors.line2, KtmShapes.Pill),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }

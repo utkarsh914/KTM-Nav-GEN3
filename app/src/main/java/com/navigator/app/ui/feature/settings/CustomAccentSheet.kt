@@ -51,7 +51,6 @@ import com.navigator.app.ui.theme.hexOf
 @Composable
 fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     val c = KtmTheme.colors
-    val haptics = com.navigator.app.ui.theme.rememberHaptics()
     val start = Hsv.of(initial)
     var hue by rememberSaveable { mutableFloatStateOf(start.hue) }
     var sat by rememberSaveable { mutableFloatStateOf(start.sat) }

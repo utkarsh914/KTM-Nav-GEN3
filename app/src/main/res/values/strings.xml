@@ -86,10 +86,10 @@
     <string name="navigate_activity_to_eta">To %1$s · ETA %2$s</string>
     <string name="navigate_activity_title_both">%1$s · %2$s</string>
     <string name="navigate_location_off_title">Location is off</string>
-    <string name="navigate_location_off_message">Your position, Record and recenter won\'t work until it\'s on.</string>
+    <string name="navigate_location_off_message">Your position, Record and recentre won\'t work until it\'s on.</string>
     <string name="navigate_location_off_action">Turn on</string>
     <string name="navigate_location_permission_title">Location permission is off</string>
-    <string name="navigate_location_permission_message">Your position, Record and recenter won\'t work until you allow it.</string>
+    <string name="navigate_location_permission_message">Your position, Record and recentre won\'t work until you allow it.</string>
     <string name="navigate_location_permission_action">Allow</string>
     <string name="navigate_sheet_expand">Show saved and recent places</string>
     <string name="navigate_sheet_collapse">Hide saved and recent places</string>
@@ -136,7 +136,7 @@
     <string name="bike_sheet_disconnected_hint">Switch the bike on and keep the phone close.</string>
     <string name="bike_sheet_beeps">Beeps</string>
     <string name="bike_sheet_beeps_hint">Sound for each turn</string>
-    <string name="bike_sheet_messages">Messages on dash</string>
+    <string name="bike_sheet_messages">Messages</string>
     <string name="bike_sheet_messages_hint">Notifications from your phone</string>
     <string name="bike_sheet_test">Send a test</string>
     <string name="bike_sheet_test_on_trip">Available when you\'re not on a trip, so it can\'t replace your directions.</string>
@@ -599,7 +599,7 @@
     <string name="replay_delete_starred_title">Delete a starred ride?</string>
     <string name="replay_delete_starred_message">\"%1$s\" is starred to keep forever. Delete it anyway?</string>
     <string name="replay_delete_unnamed">this ride</string>
-    <string name="replay_delete_keep">Keep it</string>
+    <string name="replay_delete_keep">Keep ride</string>
     <!-- Edit ride (RP4) -->
     <string name="edit_ride_title">Edit ride</string>
     <string name="edit_ride_name">Name</string>
@@ -647,7 +647,7 @@
     <string name="places_selection_close">Cancel selection</string>
     <string name="places_select_all">Select all</string>
     <string name="places_select_none">Select none</string>
-    <string name="places_delete_selected">Remove selected places</string>
+    <string name="places_remove_selected">Remove selected places</string>
     <plurals name="places_selected_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
@@ -936,7 +936,7 @@
     <string name="backup_row_included">Included</string>
     <string name="backup_row_not_included">Not included</string>
     <string name="logs_level_warning">Warning</string>
-    <string name="logs_level_ok">Done</string>
+    <string name="logs_level_ok">Success</string>
     <string name="mirror_details_expanded">Expanded</string>
     <string name="mirror_details_collapsed">Collapsed</string>
     <string name="backup_included">What\'s in a backup</string>

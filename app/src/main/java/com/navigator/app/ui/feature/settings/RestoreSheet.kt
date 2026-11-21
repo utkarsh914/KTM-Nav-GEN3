@@ -37,7 +37,18 @@ class RestoreActions(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RestoreSheet(state: RestoreState, actions: RestoreActions) {
-    KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.restore_title)) {
+    KtmModalSheet(
+        onDismiss = actions.onDismiss, title = stringResource(R.string.restore_title),
+        // A file that can't be read: the way on is pinned at the foot, like every sheet's actions.
+        actions = if (state == RestoreState.Unreadable) {
+            {
+                Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                    KtmButton(stringResource(R.string.restore_choose_another), actions.onChooseAnother, Modifier.fillMaxWidth())
+                    KtmButton(stringResource(R.string.restore_close), actions.onDismiss, Modifier.fillMaxWidth(), style = ButtonStyle.Text)
+                }
+            }
+        } else null,
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
             when (state) {
                 RestoreState.Reading -> {
@@ -49,8 +60,6 @@ fun RestoreSheet(state: RestoreState, actions: RestoreActions) {
                         stringResource(R.string.restore_unreadable), tone = BannerTone.Bad,
                         title = stringResource(R.string.restore_unreadable_title),
                     )
-                    KtmButton(stringResource(R.string.restore_choose_another), actions.onChooseAnother, Modifier.fillMaxWidth())
-                    KtmButton(stringResource(R.string.restore_close), actions.onDismiss, Modifier.fillMaxWidth(), style = ButtonStyle.Text)
                 }
                 is RestoreState.Ready -> Choices(state.preview, state.fileName, actions)
             }

@@ -67,7 +67,7 @@ fun BikeStatusPill(
         Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(KtmLayout.iconInline))
         Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Box(
-            Modifier.size(8.dp).background(pillDotColor(tone, c), CircleShape),
+            Modifier.size(KtmLayout.statusDot).background(pillDotColor(tone, c), CircleShape),
         )
     }
 }
@@ -96,6 +96,6 @@ fun BikeStatusDot(
         contentAlignment = Alignment.Center,
     ) {
         Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(KtmLayout.iconInline))
-        Box(Modifier.align(Alignment.TopEnd).padding(KtmSpacing.xs).size(8.dp).background(pillDotColor(tone, c), CircleShape))
+        Box(Modifier.align(Alignment.TopEnd).padding(KtmSpacing.xs).size(KtmLayout.statusDot).background(pillDotColor(tone, c), CircleShape))
     }
 }

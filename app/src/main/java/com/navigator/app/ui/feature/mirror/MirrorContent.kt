@@ -207,9 +207,11 @@ private fun StaleBanner(f: Freshness) {
     )
 }
 
-/** The setup checklist: each row says why, with a 48 dp button; a done row is green. */
+/**
+ * The setup checklist: each row says why, with a 48 dp button; a done row is green. [bleed] is the padding of the page
+ * around it: rows pad themselves, so they run out to the edge of it (fullBleed).
+ */
 @Composable
-/** [bleed] is the padding of the page around it: rows pad themselves, so they run out to the edge of it (fullBleed). */
 private fun Checklist(rows: List<MirrorSetupRow>, actions: MirrorActions, bleed: Dp) {
     val c = KtmTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
@@ -322,7 +324,8 @@ private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit, bleed: Dp) {
         supporting = stringResource(if (paused) R.string.mirror_sending_paused else R.string.mirror_sending_on),
         supportingLines = 2,
         leadingIcon = KtmIcons.Dash,
-        modifier = Modifier.fullBleed(bleed).then(if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier),
+        // Paused: an inset card with an amber outline (the outline stays inside the page padding); otherwise a full-width row.
+        modifier = if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier.fullBleed(bleed),
     )
 }
 

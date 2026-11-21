@@ -274,7 +274,7 @@ class DiagnosticsContentTest {
     @Test fun aWarningLineIsAnnouncedAsOneNotOnlyTinted() {
         val ui = LogsUi(entries = listOf(LogEntries.parse("[12:30:02.000] [BLE] !! write failed").copy(key = "b")), tags = listOf("BLE"))
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, LogsActions({}, {}, {}, {})) } }
-        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Warning")).assertExists()
+        rule.onNode(hasText("write failed", substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Warning")).assertExists()
     }
 
     @Test fun logsSaySoWhenTheFilterHidesEverything() {
