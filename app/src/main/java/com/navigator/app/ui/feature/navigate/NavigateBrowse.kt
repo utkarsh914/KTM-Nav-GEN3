@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
@@ -380,12 +381,12 @@ private fun MapStateCard(mapState: MapState, actions: NavigateBrowseActions, mod
 private fun MapErrorCard(title: String, message: String, action: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onAction: () -> Unit, modifier: Modifier) {
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).padding(KtmSpacing.xl)
+        modifier.widthIn(max = KtmLayout.errorCardMax).fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).padding(KtmSpacing.xl)
             .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(KtmLayout.errorTile).background(c.warnContainer, KtmShapes.Card), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(KtmIcons.Warning, null, tint = c.warn)
+            androidx.compose.material3.Icon(KtmIcons.Map, null, tint = c.warn)
         }
         androidx.compose.material3.Text(
             title, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg,

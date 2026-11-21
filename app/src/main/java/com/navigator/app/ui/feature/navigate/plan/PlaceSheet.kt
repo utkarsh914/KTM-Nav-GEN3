@@ -38,6 +38,8 @@ data class PlaceSheetState(
 )
 
 class PlaceSheetActions(
+    /** Shown inside the sheet only in the landscape panel, which covers the map's own Back button. */
+    val onBack: () -> Unit,
     val onClose: () -> Unit,
     val onToggleSave: () -> Unit,
     val onDirections: () -> Unit,
@@ -54,6 +56,7 @@ fun PlaceSheet(state: PlaceSheetState, actions: PlaceSheetActions, modifier: Mod
     val c = KtmTheme.colors
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            if (LocalFillPanel.current) KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             Column(Modifier.weight(1f).padding(start = KtmSpacing.sm, top = KtmSpacing.xs)) {
                 Text(
                     state.title, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 2,

@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.libraries.navigation.NavigationView
@@ -382,12 +381,11 @@ fun NavigateHost(
     LaunchedEffect(routePreview.origin) { routePreview.origin?.let { origin = it } }
 
     // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
-    val mapNight = KtmTheme.colors.surf.luminance() < 0.5f
     val pinStyle = com.navigator.app.ui.map.PreviewPinStyle(
         accent = KtmTheme.accent.fill.toArgb(), onAccent = KtmTheme.accent.onFill.toArgb(),
         surface = KtmTheme.colors.surf.toArgb(), onSurface = KtmTheme.colors.fg.toArgb(), outline = KtmTheme.colors.line2.toArgb(),
-        route = if (mapNight) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_LIGHT,
-        routeAlt = if (mapNight) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_LIGHT,
+        route = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_LIGHT,
+        routeAlt = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_LIGHT,
     )
     LaunchedEffect(planInsets, stage) {
         // The card measures after the stage arrives: frame again once its size is known (the pin goes to the open map's middle).

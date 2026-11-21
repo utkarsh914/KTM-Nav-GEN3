@@ -1,5 +1,10 @@
 package com.navigator.app.ui.feature.navigate.pick
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -67,21 +72,23 @@ fun PickOnMapScreen(
 ) {
     val c = KtmTheme.colors
     // The pin sits in the un-inset box so its tip is the map's centre, which is where the point is read.
-    Box(modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Landscape: the pill and the sheet keep a panel's width at the left, so the pin stays in the open map.
+        val cap = if (maxWidth > maxHeight) Modifier.widthIn(max = KtmLayout.panelWide) else Modifier
         Row(
-            Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing).padding(KtmSpacing.lg).consumeMapTouches(),
+            Modifier.align(Alignment.TopStart).then(cap).windowInsetsPadding(WindowInsets.safeDrawing).padding(KtmSpacing.lg).consumeMapTouches(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
             MapControlButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), onBack)
             Box(
-                Modifier.weight(1f).height(KtmLayout.targetPrimary).shadow(KtmElevation.onMap, KtmShapes.Card)
-                    .background(c.surf, KtmShapes.Card).padding(horizontal = KtmSpacing.lg),
+                Modifier.weight(1f).heightIn(min = KtmLayout.targetPrimary).shadow(KtmElevation.onMap, KtmShapes.Card)
+                    .background(c.surf, KtmShapes.Card).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    hint, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    hint, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
         }
@@ -98,10 +105,12 @@ fun PickOnMapScreen(
             modifier = Modifier.align(Alignment.Center).size(KtmLayout.mapPin).offset { androidx.compose.ui.unit.IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },
         )
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.SheetTop)
+            Modifier.align(if (cap == Modifier) Alignment.BottomCenter else Alignment.BottomStart).then(cap).fillMaxWidth()
+                .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
                 .background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
                 .padding(horizontal = KtmSpacing.lg).padding(top = KtmSpacing.lg)
-                .windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = KtmSpacing.lg),
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .padding(bottom = KtmSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
@@ -111,16 +120,17 @@ fun PickOnMapScreen(
                         contentAlignment = Alignment.Center,
                     ) { Text(stopNumber.toString(), style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.onFill) }
                 }
-                Column(Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }) {
+                Column(Modifier.weight(1f)) {
                     Text(
                         title, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() },
                     )
                     when {
-                        state.resolving && state.street == null -> Skeleton(Modifier.fillMaxWidth(0.6f).height(KtmSpacing.lg))
-                        state.street != null -> Text(
-                            stringResource(R.string.pick_near, state.street), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        state.resolving && state.street == null -> Skeleton(Modifier.fillMaxWidth(0.6f).height(KtmSpacing.xl))
+                        else -> Text(
+                            if (state.street != null) stringResource(R.string.pick_near, state.street) else stringResource(R.string.pick_no_street),
+                            style = MaterialTheme.typography.bodyMedium, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
                 }

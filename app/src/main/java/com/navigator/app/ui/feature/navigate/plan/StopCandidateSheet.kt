@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
+import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.theme.KtmLayout
@@ -61,6 +62,6 @@ fun StopCandidateSheet(
             stringResource(if (canAdd) R.string.stop_add_here else R.string.route_stop_limit), onAdd,
             Modifier.fillMaxWidth(), enabled = canAdd,
         )
-        KtmButton(stringResource(R.string.common_cancel), onCancel, Modifier.fillMaxWidth(), style = ButtonStyle.Text)
+        KtmButton(stringResource(R.string.common_cancel), onCancel, Modifier.fillMaxWidth(), style = ButtonStyle.Text, size = ButtonSize.Small)
     }
 }

@@ -37,7 +37,7 @@ fun ReplaceTripDialog(
         footer = {
             KtmButton(
                 stringResource(R.string.replace_add_stop), onAddAsStop, Modifier.fillMaxWidth(),
-                style = ButtonStyle.Text, size = ButtonSize.Small,
+                style = ButtonStyle.Text, size = if (riding) ButtonSize.Riding else ButtonSize.Small,
             )
         },
     )

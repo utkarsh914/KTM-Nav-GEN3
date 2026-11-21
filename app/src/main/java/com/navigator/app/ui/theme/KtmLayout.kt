@@ -141,6 +141,7 @@ object KtmLayout {
     /** The glyph in a destination tile's badge (HM1), and the alert tile of the map error card (HM4). */
     val tileIcon = 20.dp
     val errorTile = 64.dp
+    val errorCardMax = 400.dp
     /** The marker column of the stop list (PL3), and the numbered badge in it. */
     val stopMarker = 28.dp
     val timelineStroke = 2.dp

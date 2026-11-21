@@ -241,6 +241,7 @@
     <string name="stop_pick_title">Move the map to place the stop</string>
     <string name="stop_goes_in_before">Goes in before %1$s. You can reorder it in the stop list.</string>
     <string name="pick_near">Near %1$s</string>
+    <string name="pick_no_street">No street name here</string>
     <string name="stop_new">New stop</string>
     <string name="map_stop_marker">Stop %1$d: %2$s</string>
         <string name="stop_add_here">Add stop here</string>

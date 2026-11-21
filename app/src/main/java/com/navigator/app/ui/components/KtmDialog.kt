@@ -63,7 +63,7 @@ fun KtmDialog(
     riding: Boolean = false,
     /** Full-width 64 dp buttons one under another (a choice with a safe option first), also off the riding screen. */
     stacked: Boolean = riding,
-    /** A quiet extra choice under the buttons. */
+    /** A quiet extra choice under the buttons (only with [stacked]). */
     footer: (@Composable () -> Unit)? = null,
     content: (@Composable () -> Unit)? = null,
 ) {

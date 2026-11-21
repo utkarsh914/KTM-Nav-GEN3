@@ -1,11 +1,13 @@
 package com.navigator.app.ui.feature.navigate
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
@@ -90,10 +92,13 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     val sel = plan.selected
     if (sel != null) {
         // PL1: Back is a map control above the sheet, the way to the search or the map it came from.
-        MapControlButton(
-            KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
-            Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
-        )
+        // The landscape panel covers that corner and carries its own Back.
+        if (LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            MapControlButton(
+                KtmIcons.ArrowLeft, stringResource(R.string.common_back), plan.onBack,
+                Modifier.align(Alignment.TopStart).edgePadding().padding(top = KtmLayout.mapControlTop),
+            )
+        }
         val removedMessage = resources.getString(R.string.place_removed)
         val undoLabel = resources.getString(R.string.common_undo)
         val saved = PlaceSaving.isSaved(plan.savedPlaces, sel)
@@ -105,6 +110,7 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
                     saved = saved, tripRunning = plan.tripRunning(),
                 ),
                 actions = PlaceSheetActions(
+                    onBack = plan.onBack,
                     onClose = plan.onClose,
                     onToggleSave = {
                         plan.scope.launch(Dispatchers.IO) {

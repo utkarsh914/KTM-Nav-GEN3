@@ -108,7 +108,7 @@ fun RouteSheet(state: RouteSheetState, actions: RouteSheetActions, modifier: Mod
                 val sub = if (withStops) state.summary else stringResource(R.string.route_from_location)
                 if (sub != null) {
                     Text(
-                        sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         modifier = if (withStops) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier,
                     )
                 }
@@ -193,7 +193,9 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
         }
         AddStopRow(state, actions.onAddStop)
         StopLine(state.destination, state.legLines.getOrNull(state.stops.size), MaterialTheme.typography.titleMedium, c.fg) {
-            Icon(KtmIcons.Flag, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmSpacing.xl))
+            Box(Modifier.background(c.surf, KtmShapes.Pill).padding(KtmSpacing.xs)) {
+                Icon(KtmIcons.Flag, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmSpacing.lg))
+            }
         }
     }
 }

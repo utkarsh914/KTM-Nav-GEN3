@@ -32,7 +32,7 @@ class PlanSheetsTest {
     private val log = mutableListOf<String>()
 
     private fun placeActions() = PlaceSheetActions(
-        onClose = { log += "close" }, onToggleSave = { log += "save" },
+        onBack = { log += "back" }, onClose = { log += "close" }, onToggleSave = { log += "save" },
         onDirections = { log += "directions" }, onAddAsStop = { log += "stop" },
     )
 
@@ -50,6 +50,21 @@ class PlanSheetsTest {
         val directions = rule.onNodeWithText("Directions").fetchSemanticsNode().boundsInRoot
         val save = rule.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot
         assertTrue("Directions and Save share a row", kotlin.math.abs(directions.center.y - save.center.y) < 2f)
+    }
+
+    @Test fun theLandscapePanelCarriesItsOwnBackBecauseItCoversTheMapButton() {
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalFillPanel provides true) { PlaceSheet(place(), placeActions()) }
+            }
+        }
+        rule.onNodeWithContentDescription("Back").performClick()
+        assertEquals(listOf("back"), log)
+    }
+
+    @Test fun theReplaceDialogWithoutTheRunningDestinationUsesTheGenericMessage() {
+        rule.setContent { KtmTheme(darkTheme = true) { ReplaceTripDialog("Toit", onReplace = {}, onKeep = {}, onAddAsStop = {}) } }
+        rule.onNodeWithText("Your current navigation will stop and a new trip will start.").assertIsDisplayed()
     }
 
     @Test fun saveReadsSavedOnceSavedAndOffersNoAddAsStopWithoutATrip() {
