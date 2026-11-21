@@ -87,7 +87,7 @@ private val OnWhite = Color(0xFFFFFFFF)
 val KtmOrange: AccentTones = AccentTones.preset(0xFFFF6600, 0xFFFF7A1F, 0xFFC24E00, OnBlack).copy(
     containerDark = Color(0xFF3D1F0B), onContainerDark = Color(0xFFFFD3B3),
     containerLight = Color(0xFFFFE2CF), onContainerLight = Color(0xFF6B2A00),
-    inverseOnDark = Color(0xFFB84A00), inverseOnLight = Color(0xFFFF9A57),
+    inverseOnDark = Color(0xFFA84300), inverseOnLight = Color(0xFFFF9A57),
 )
 
 /** The hues a "Custom" swatch shows before a custom colour is chosen. */

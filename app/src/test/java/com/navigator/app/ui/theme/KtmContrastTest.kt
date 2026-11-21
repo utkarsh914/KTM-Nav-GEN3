@@ -71,4 +71,13 @@ class KtmContrastTest {
             }
         }
     }
+
+    @Test fun theSnackbarActionIsReadableOnTheInverseSurfaceInBothThemes() {
+        for (option in AccentPalettes) {
+            assertTrue("${option.id} dark theme: ${ratio(option.tones.forTheme(true).inverseAccent, KtmDarkColors.inv)}",
+                ratio(option.tones.forTheme(true).inverseAccent, KtmDarkColors.inv) >= 4.5)
+            assertTrue("${option.id} light theme: ${ratio(option.tones.forTheme(false).inverseAccent, KtmLightColors.inv)}",
+                ratio(option.tones.forTheme(false).inverseAccent, KtmLightColors.inv) >= 4.5)
+        }
+    }
 }
