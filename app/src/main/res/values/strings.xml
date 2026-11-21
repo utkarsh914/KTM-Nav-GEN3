@@ -790,6 +790,8 @@
     <string name="picker_all">All apps</string>
     <string name="picker_none_found">Nothing matches</string>
     <string name="picker_none_found_message">Try another name.</string>
+    <string name="picker_no_apps">No apps found</string>
+    <string name="picker_no_apps_message">Apps that can show notifications appear here.</string>
     <string name="picker_audio_empty_title">No paired headsets</string>
     <string name="picker_audio_permission_title">Nearby devices is off</string>
     <string name="picker_apps_title">Apps on your dash</string>

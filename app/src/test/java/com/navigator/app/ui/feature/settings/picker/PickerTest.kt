@@ -1,6 +1,8 @@
 package com.navigator.app.ui.feature.settings.picker
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -136,6 +138,26 @@ class PickerContentTest {
     @Test fun noMatchesSaysSo() {
         rule.setContent { KtmTheme(darkTheme = false) { AppPickerContent(AppPickerUi(false, "zzz", emptyList(), emptySet()), AppPickerActions({}, {}, {})) } }
         rule.onNodeWithText("Nothing matches").assertIsDisplayed()
+    }
+
+    @Test fun anEmptySearchOffersToClearItAndAnEmptyListDoesNotAskForAnotherName() {
+        val queries = mutableListOf<String>()
+        rule.setContent { KtmTheme(darkTheme = false) { AppPickerContent(AppPickerUi(false, "zzz", emptyList(), emptySet()), AppPickerActions({}, { queries += it }, {})) } }
+        rule.onNodeWithText("Try another name.").assertIsDisplayed()
+        rule.onNodeWithText("Clear search").performClick()
+        assertEquals(listOf(""), queries)
+    }
+
+    @Test fun anEmptyListWithNoSearchSaysThereAreNoApps() {
+        rule.setContent { KtmTheme(darkTheme = false) { AppPickerContent(AppPickerUi(false, "", emptyList(), emptySet()), AppPickerActions({}, {}, {})) } }
+        rule.onNodeWithText("No apps found").assertIsDisplayed()
+        rule.onAllNodesWithText("Try another name.").assertCountEquals(0)
+    }
+
+    @Test fun withoutNearbyDevicesAccessItOffersAndroidSettings() {
+        rule.setContent { KtmTheme(darkTheme = false) { AudioPickerContent(AudioPickerUi(false, emptyList(), null, permissionDenied = true), AudioPickerActions({}, {}, { log += "settings" })) } }
+        rule.onNodeWithText("Open settings").performClick()
+        assertEquals(listOf("settings"), log)
     }
 
     @Test fun theAudioPickerListsNoneAndTheDevicesAndChoosesOne() {

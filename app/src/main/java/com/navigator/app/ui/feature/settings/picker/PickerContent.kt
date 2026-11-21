@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,7 +57,9 @@ fun AppPickerContent(ui: AppPickerUi, actions: AppPickerActions, modifier: Modif
             when {
                 loading -> Column { repeat(5) { SkeletonRow(announce = it == 0) } }
                 ui.sections.isEmpty() -> EmptyState(
-                    KtmIcons.Search, stringResource(R.string.picker_none_found), stringResource(R.string.picker_none_found_message),
+                    KtmIcons.Search,
+                    stringResource(if (ui.query.isNotEmpty()) R.string.picker_none_found else R.string.picker_no_apps),
+                    stringResource(if (ui.query.isNotEmpty()) R.string.picker_none_found_message else R.string.picker_no_apps_message),
                     primary = if (ui.query.isNotEmpty()) StateAction(stringResource(R.string.picker_search_clear)) { actions.onQuery("") } else null,
                 )
                 else -> LazyColumn(Modifier.pageInsets()) {
@@ -77,7 +81,7 @@ fun AppPickerContent(ui: AppPickerUi, actions: AppPickerActions, modifier: Modif
     }
 }
 
-class AudioPickerActions(val onBack: () -> Unit, val onChoose: (String?) -> Unit)
+class AudioPickerActions(val onBack: () -> Unit, val onChoose: (String?) -> Unit, val onOpenSettings: () -> Unit = {})
 
 /** DL8: choose one device (or none) from a short list. Stateless. */
 @Composable
@@ -86,7 +90,7 @@ fun AudioPickerContent(ui: AudioPickerUi, actions: AudioPickerActions, modifier:
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.picker_audio_title), onBack = actions.onBack)
         if (ui.loading) Column { repeat(3) { SkeletonRow(announce = it == 0) } }
-        else Column(Modifier.pageInsets()) {
+        else Column(Modifier.pageInsets().verticalScroll(rememberScrollState())) {
             KtmRadioRow(stringResource(R.string.picker_audio_none), selected = ui.selected == null, onSelect = { actions.onChoose(null) })
             // A saved choice that can't be listed now stays visible and selected: it is still in force.
             if (ui.selectedUnavailable) {
@@ -98,6 +102,9 @@ fun AudioPickerContent(ui: AudioPickerUi, actions: AudioPickerActions, modifier:
                     KtmIcons.Headset,
                     stringResource(if (ui.permissionDenied) R.string.picker_audio_permission_title else R.string.picker_audio_empty_title),
                     stringResource(if (ui.permissionDenied) R.string.picker_audio_permission else R.string.picker_audio_empty),
+                    // The page scrolls as a whole, so the empty state does not scroll on its own.
+                    primary = if (ui.permissionDenied) StateAction(stringResource(R.string.common_open_settings), actions.onOpenSettings) else null,
+                    scrollable = false,
                 )
             }
         }

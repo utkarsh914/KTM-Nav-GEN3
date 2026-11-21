@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +23,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.nav.providers.StartFailure
 import com.navigator.app.ui.components.ButtonSize
@@ -50,11 +52,11 @@ class StartFailedActions(
  * pointless and Switch to mirror mode takes its place.
  */
 @Composable
-fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFailedActions, modifier: Modifier = Modifier) {
+fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFailedActions, modifier: Modifier = Modifier, landscape: Boolean = false) {
     val ui = StartFailureMapper.of(failure)
     val r = KtmTheme.riding
     Column(
-        modifier.fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
+        modifier.widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
             .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         SheetHandle()

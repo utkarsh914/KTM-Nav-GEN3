@@ -24,7 +24,7 @@ fun SectionHeader(
     text: String,
     modifier: Modifier = Modifier,
     trailing: String? = null,
-    /** An accent link at the right ("See all"); a 48 dp target. */
+    /** An accent link at the right ("See all"); its touch area is widened to 48 dp by Compose. */
     action: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
@@ -40,7 +40,7 @@ fun SectionHeader(
         if (trailing != null) {
             Text(
                 trailing, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.sm).widthIn(max = KtmLayout.sectionTrailingMax),
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = KtmLayout.sectionTrailingMax).padding(start = KtmSpacing.sm),
             )
         }
         if (action != null && onAction != null) {

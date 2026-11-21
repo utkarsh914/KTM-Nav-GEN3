@@ -20,6 +20,7 @@ import kotlin.math.roundToInt
  * Keeps the foot of a list clear of the keyboard by exactly as much as the keyboard covers it. A tab page cannot use
  * `imePadding()`: the tab bar already sits under it, so the keyboard's full height would leave a bar-sized gap.
  * The overlap is measured against the window, so it is right with or without a bar, rail or gesture area below.
+ * The host must fill the space it is given (a list with `fillMaxSize`): the measured bottom would otherwise grow with the padding.
  */
 @Composable
 fun Modifier.keyboardClearance(): Modifier {

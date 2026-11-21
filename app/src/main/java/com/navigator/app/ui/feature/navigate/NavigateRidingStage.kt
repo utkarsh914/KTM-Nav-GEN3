@@ -130,7 +130,8 @@ internal fun NavigatingStage(
                             actions.onBackToBrowse()
                         },
                     ),
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(if (landscape) Alignment.BottomEnd else Alignment.BottomCenter),
+                    landscape = landscape,
                 )
             }
             val destinationName = tripState.dest?.label ?: selected?.label

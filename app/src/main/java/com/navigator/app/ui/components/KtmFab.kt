@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -29,13 +30,14 @@ fun KtmFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modi
     val a = KtmTheme.accent
     val haptics = rememberHaptics()
     Row(
-        modifier.shadow(KtmElevation.sheet, KtmShapes.Pill).height(KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(a.fill)
+        modifier.shadow(KtmElevation.sheet, KtmShapes.Card).height(KtmLayout.targetPrimary).clip(KtmShapes.Card).background(a.fill)
             .clickable(role = Role.Button) { haptics.tap(); onClick() }
             .padding(start = KtmSpacing.lg, end = KtmLayout.buttonPaddingH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         Icon(icon, null, tint = a.onFill, modifier = Modifier.size(KtmLayout.iconMedium))
-        Text(label, style = KtmTheme.type.buttonCompact, color = a.onFill, maxLines = 1)
+        // The mock's `.r2 .fab`: condensed 700, 18/22, .3 spacing.
+        Text(label, style = KtmTheme.type.buttonCompact.copy(fontSize = 18.sp, lineHeight = 22.sp, letterSpacing = 0.3.sp), color = a.onFill, maxLines = 1)
     }
 }
