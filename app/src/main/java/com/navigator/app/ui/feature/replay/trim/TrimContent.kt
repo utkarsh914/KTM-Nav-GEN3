@@ -75,7 +75,6 @@ import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class TrimActions(
     val onBack: () -> Unit,

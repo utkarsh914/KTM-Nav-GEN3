@@ -184,7 +184,7 @@ class ReplayViewModelTest {
         v.togglePlay()
         store.softDelete(listOf(r.id))
         assertEquals(listOf<ReplayEvent>(ReplayEvent.Gone), seen)
-        assertFalse(v.ready().playing)
+        assertEquals("no stale ride is left on show", ReplayUi.NoTrack(null), v.ui.value)
     }
 
     @Test fun aTrimReloadsTheTrackFromTheStartKeepingTheSettings() = runTest(dispatcher) {

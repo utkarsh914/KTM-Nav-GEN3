@@ -66,7 +66,8 @@ class RidesRepository(
     suspend fun updateMeta(id: String, label: String?, notes: String?) = withContext(io + NonCancellable) { store.updateMeta(id, label, notes) }
 
     /** Keep only fixes [from]..[to]; null when the store refused (see [RideStore.trimRide]). */
-    suspend fun trim(id: String, from: Int, to: Int): RecordedRide? = withContext(io + NonCancellable) { store.trimRide(id, from, to) }
+    suspend fun trim(id: String, from: Int, to: Int, expectedCount: Int? = null): RecordedRide? =
+        withContext(io + NonCancellable) { store.trimRide(id, from, to, expectedCount) }
 
     /** The chooser intent that shares the ride as GPX, or null when it has no readable track. */
     suspend fun gpxShare(context: Context, ride: RecordedRide): Intent? = withContext(io) { GpxShare.buildIntent(context, ride, store) }
@@ -75,6 +76,7 @@ class RidesRepository(
     suspend fun merge(ids: Collection<String>): MergeResult = withContext(io) { store.mergeRides(ids) }
     suspend fun undoMerge(token: MergeToken): Boolean = withContext(io) { store.undoMerge(token) }
     suspend fun thumbnail(ride: RecordedRide): List<ThumbPoint> = withContext(io) { thumbnails.get(ride.id, ride.pointCount) }
+    fun peekThumbnail(ride: RecordedRide): List<ThumbPoint>? = thumbnails.peek(ride.id, ride.pointCount)
 }
 
 sealed interface ImportResult {

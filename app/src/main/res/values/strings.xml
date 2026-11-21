@@ -400,6 +400,7 @@
     <string name="ride_how_merged">merged</string>
     <string name="ride_badge_gpx">GPX</string>
     <string name="ride_when_how">%1$s · %2$s</string>
+    <string name="ride_when_date_how">%1$s · %2$s · %3$s</string>
     <string name="ride_stats_three">%1$s · %2$s · %3$s</string>
     <string name="ride_stats_two">%1$s · %2$s</string>
     <string name="ride_duration_min">%1$d min</string>

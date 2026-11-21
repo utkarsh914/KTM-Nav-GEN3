@@ -40,6 +40,7 @@ import com.navigator.app.ui.map.rememberDeviceLatLng
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
+import com.navigator.app.ui.shell.PopWhenResumed
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 
@@ -72,6 +73,7 @@ fun ReplayScreen(
     val bearing by map.bearing.collectAsState()
     var insets by remember { mutableStateOf(MapInsets()) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var gone by remember { mutableStateOf(false) }
     val accent = KtmTheme.accent.fill.toArgb()
     val ready = ui as? ReplayUi.Ready
     val following by rememberUpdatedState(ready?.following == true)
@@ -82,11 +84,13 @@ fun ReplayScreen(
         vm.events.collect { event ->
             when (event) {
                 is ReplayEvent.Deleted -> onDeleted(event.ids)
-                ReplayEvent.Gone -> onBack()
+                ReplayEvent.Gone -> gone = true
                 ReplayEvent.MergedRideChanged -> feedback.endOffer(MERGE_OFFER + rideId)
             }
         }
     }
+
+    PopWhenResumed(gone, onBack)
 
     // Playback must not keep walking the marker under a covered page or a backgrounded app.
     DisposableEffect(vm) {
@@ -112,7 +116,7 @@ fun ReplayScreen(
         var coverGone by remember { mutableStateOf(false) }
         LaunchedEffect(mapFramed) { if (mapFramed) { kotlinx.coroutines.delay(COVER_HOLD_MS); coverGone = true } }
         LaunchedEffect(Unit) { kotlinx.coroutines.delay(COVER_MAX_MS); coverGone = true }
-        val coverPoints by androidx.compose.runtime.produceState<List<com.navigator.app.data.rides.ThumbPoint>?>(null, ready?.ride?.id) {
+        val coverPoints by androidx.compose.runtime.produceState<List<com.navigator.app.data.rides.ThumbPoint>?>(ready?.ride?.let(container.rides::peekThumbnail), ready?.ride?.id) {
             val ride = ready?.ride ?: return@produceState
             value = runCatching { container.rides.thumbnail(ride) }.getOrNull()
         }

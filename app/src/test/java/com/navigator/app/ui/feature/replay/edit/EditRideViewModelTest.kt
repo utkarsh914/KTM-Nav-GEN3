@@ -140,12 +140,23 @@ class EditRideViewModelTest {
         assertTrue(store.list().isEmpty())
     }
 
+    @Test fun undoAfterADeleteBringsBackTheTextTypedJustBefore() = runTest(dispatcher) {
+        val r = ride()
+        val vm = edit(r.id)
+        vm.onName("typed")
+        vm.delete()
+        advanceTimeBy(1_000); runCurrent()
+        store.restore(listOf(r.id))
+        assertEquals("typed", store.get(r.id)!!.destinationLabel)
+    }
+
     @Test fun aRideDeletedElsewhereClosesThePage() = runTest(dispatcher) {
         val r = ride()
         val vm = edit(r.id)
         val seen = events(vm)
         store.softDelete(listOf(r.id))
         assertEquals(listOf<EditEvent>(EditEvent.Gone), seen)
+        assertEquals(EditUi.Gone, vm.ui.value)
     }
 
     @Test fun aStarFromTheReplayShowsInTheForm() = runTest(dispatcher) {

@@ -40,8 +40,11 @@ class EditRideViewModel(
     private val repo: RidesRepository,
     private val saveScope: CoroutineScope,
     private val debounceMs: Long = SAVE_DELAY_MS,
-    /** Called the moment a merged ride is first changed, before anything is saved: the page may be left at once. */
-    private val onMergedRideChanged: () -> Unit = {},
+    /**
+     * Called the moment a merged ride is first changed, before anything is saved: the page may be left at once.
+     * The screen sets it for as long as it is shown, so the view model never keeps an old screen alive.
+     */
+    var onMergedRideChanged: () -> Unit = {},
 ) : ViewModel() {
     private val _ui = MutableStateFlow<EditUi>(EditUi.Loading)
     val ui: StateFlow<EditUi> = _ui.asStateFlow()
@@ -66,7 +69,7 @@ class EditRideViewModel(
 
     private suspend fun onRidesChanged(latest: RecordedRide?) {
         if (latest == null) {
-            if (!deleting) _events.send(EditEvent.Gone)
+            if (!deleting) { _ui.value = EditUi.Gone; _events.send(EditEvent.Gone) }
             return
         }
         // The text is the rider's own while they type; only the star can change under them (from the replay).
@@ -113,11 +116,11 @@ class EditRideViewModel(
     fun delete() {
         deleting = true
         viewModelScope.launch {
+            // Typed text is saved first: Undo brings the ride back as the rider left it (a deleted ride refuses edits).
+            pending?.cancel()
+            if (dirty) save()
             val gone = repo.softDelete(listOf(rideId))
             if (gone.isEmpty()) deleting = false else {
-                // Only now is typed text moot: a refused delete must not lose it.
-                pending?.cancel()
-                dirty = false
                 _events.send(EditEvent.Deleted(gone))
             }
         }
@@ -128,10 +131,10 @@ class EditRideViewModel(
     companion object {
         const val SAVE_DELAY_MS = 500L
 
-        fun factory(rideId: String, container: AppContainer, onMergedRideChanged: () -> Unit) = object : ViewModelProvider.Factory {
+        fun factory(rideId: String, container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                EditRideViewModel(rideId, container.rides, container.appScope, onMergedRideChanged = onMergedRideChanged) as T
+                EditRideViewModel(rideId, container.rides, container.appScope) as T
         }
     }
 }

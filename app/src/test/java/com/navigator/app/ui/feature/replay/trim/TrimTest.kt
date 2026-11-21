@@ -167,6 +167,14 @@ class TrimViewModelTest {
         assertEquals(listOf<TrimEvent>(TrimEvent.Trimmed(merged = true)), seen)
     }
 
+    @Test fun aRideThatGoesAwayUnderThePageIsGone() = runTest(dispatcher) {
+        val r = ride(1_000_000L)
+        val v = vm(r.id)
+        assertTrue(v.ui.value is TrimUi.Ready)
+        store.softDelete(listOf(r.id))
+        assertEquals(TrimUi.Gone, v.ui.value)
+    }
+
     @Test fun aMissingRideIsGone() = runTest(dispatcher) {
         assertEquals(TrimUi.Gone, vm("nope").ui.value)
     }

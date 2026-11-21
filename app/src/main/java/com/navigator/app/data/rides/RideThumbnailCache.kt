@@ -18,7 +18,8 @@ object RideThumbnail {
         if (points.size <= max) return points.map(::thumb)
         val last = points.lastIndex
         val gaps = points.indices.filter { points[it].gapBefore }.take(max / 2)
-        val keep = (0 until max - gaps.size).map { i -> (i.toLong() * last / (max - gaps.size - 1)).toInt() }
+        val evenly = (max - gaps.size).coerceAtLeast(2) // never a zero divisor, however few points are allowed
+        val keep = (0 until evenly).map { i -> (i.toLong() * last / (evenly - 1)).toInt() }
         return (keep + gaps).distinct().sorted().map { thumb(points[it]) }
     }
 }
@@ -35,6 +36,9 @@ class RideThumbnailCache(
     private val lru = object : LinkedHashMap<String, List<ThumbPoint>>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<ThumbPoint>>?) = size > capacity
     }
+
+    /** What [get] would return if it is already cached, without reading anything: lets a card draw on its first frame. */
+    fun peek(id: String, pointCount: Int): List<ThumbPoint>? = synchronized(lru) { lru["$id:$pointCount"] }
 
     fun get(id: String, pointCount: Int): List<ThumbPoint> {
         val key = "$id:$pointCount"

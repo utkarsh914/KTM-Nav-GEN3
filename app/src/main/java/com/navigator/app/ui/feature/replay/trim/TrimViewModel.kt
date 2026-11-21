@@ -68,6 +68,10 @@ class TrimViewModel(
             val range = TrimRange.whole(points.size)
             val kept = withContext(compute) { keptOf(points, range) }
             _ui.value = TrimUi.Ready(ride, points, range, kept = kept)
+            // A ride that goes away under the page (a merge undone, deleted elsewhere) must not stay editable.
+            repo.rides.collect { all ->
+                if (all.none { it.id == rideId } && ready()?.applying != true) { keptJob?.cancel(); _ui.value = TrimUi.Gone }
+            }
         }
     }
 
@@ -98,9 +102,9 @@ class TrimViewModel(
     fun nudgeEnd(steps: Int) = setRange { it.moveEnd(it.to + steps) }
 
     /** A tap on the map: the nearest handle goes to the fix nearest the tap, if the tap was close to the route. */
-    fun tapRoute(lat: Double, lng: Double) {
+    fun tapRoute(lat: Double, lng: Double, maxM: Double = PlaybackEngine.SEEK_TAP_MAX_M) {
         val r = ready() ?: return
-        PlaybackEngine.nearest(r.points, lat, lng)?.let { index -> setRange { it.moveNearest(index) } }
+        PlaybackEngine.nearest(r.points, lat, lng, maxM)?.let { index -> setRange { it.moveNearest(index) } }
     }
 
     fun apply() {
@@ -108,7 +112,7 @@ class TrimViewModel(
         if (!r.canApply) return
         _ui.value = r.copy(applying = true, failed = false)
         viewModelScope.launch {
-            val trimmed = repo.trim(rideId, r.range.from, r.range.to)
+            val trimmed = repo.trim(rideId, r.range.from, r.range.to, expectedCount = r.points.size)
             if (trimmed != null) _events.send(TrimEvent.Trimmed(r.ride.source == RideSource.MERGED))
             else ready()?.let { _ui.value = it.copy(applying = false, failed = true) }
         }

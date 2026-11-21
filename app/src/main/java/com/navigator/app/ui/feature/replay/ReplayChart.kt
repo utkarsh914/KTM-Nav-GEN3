@@ -43,6 +43,8 @@ import kotlin.math.roundToInt
 fun ReplayChart(
     series: ChartSeries,
     seams: List<Float>,
+    /** Which of [seams] are joins between merged rides: only those are marked; a pause just breaks the line. */
+    joins: List<Float>,
     position: State<Int>,
     pointCount: Int,
     startMs: Long,
@@ -120,7 +122,7 @@ fun ReplayChart(
                         drawText(label, topLeft = Offset(axisW - gap - label.size.width, (ty - label.size.height / 2).coerceAtLeast(0f)))
                     }
                     drawText(unitLabel, topLeft = Offset(0f, plotH + gap))
-                    seams.forEach { s ->
+                    joins.forEach { s ->
                         val sx = left + plotW * s
                         drawLine(c.warn, Offset(sx, 0f), Offset(sx, plotH), strokeWidth = hairline * 2, pathEffect = dash)
                     }

@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -18,6 +19,7 @@ import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
+import com.navigator.app.ui.shell.PopWhenResumed
 
 /**
  * The edit page: wires [EditRideContent] to its ViewModel. [onDeleted] leaves and offers Undo (the shell owns the
@@ -33,18 +35,24 @@ fun EditRideScreen(
 ) {
     val container = LocalContext.current.appContainer
     val feedback = LocalFeedback.current
-    val vm: EditRideViewModel = viewModel(factory = EditRideViewModel.factory(rideId, container) { feedback.endOffer(MERGE_OFFER + rideId) })
+    val vm: EditRideViewModel = viewModel(factory = EditRideViewModel.factory(rideId, container))
+    DisposableEffect(vm, feedback) {
+        vm.onMergedRideChanged = { feedback.endOffer(MERGE_OFFER + rideId) }
+        onDispose { vm.onMergedRideChanged = {} }
+    }
     val ui by vm.ui.collectAsState()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var gone by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
                 is EditEvent.Deleted -> onDeleted(event.ids)
-                EditEvent.Gone -> onBack()
+                EditEvent.Gone -> gone = true
             }
         }
     }
+    PopWhenResumed(gone, onBack)
     DisposableEffect(vm) { onDispose { vm.flush() } }
 
     EditRideContent(

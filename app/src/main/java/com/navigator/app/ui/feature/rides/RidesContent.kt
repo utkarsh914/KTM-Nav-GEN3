@@ -98,13 +98,19 @@ fun RidesContent(
     actions: RidesActions,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
+    thumbnailPeek: (RecordedRide) -> List<ThumbPoint>? = { null },
 ) {
     val c = KtmTheme.colors
     var showSort by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
-    // Back to the top when the order or the search starts or ends, not on every keystroke of a refinement.
+    // Back to the top when the order or the search starts or ends, not on every keystroke of a refinement, and
+    // not when the page is simply shown again (coming back from a replay, or turning the phone).
     val searching = ui?.query?.isNotBlank() == true
-    LaunchedEffect(ui?.sort, searching) { listState.scrollToItem(0) }
+    val topOnChange = remember { TopOnChange<Pair<RideSort, Boolean>>() }
+    val order = ui?.sort
+    LaunchedEffect(order, searching) {
+        if (topOnChange.shouldReset(order?.let { it to searching })) listState.scrollToItem(0)
+    }
 
     Box(modifier.fillMaxSize().background(c.bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -121,7 +127,7 @@ fun RidesContent(
                     null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
                     RidesBody.Empty -> EmptyRides(autoRecordOn, recording, actions)
                     RidesBody.NoMatch -> EmptyState(
-                        KtmIcons.Search, stringResource(R.string.rides_no_match_title, shown?.query.orEmpty().trim()),
+                        KtmIcons.Search, stringResource(R.string.rides_no_match_title, shown.query.trim()),
                         stringResource(R.string.rides_no_match_message),
                         primary = StateAction(stringResource(R.string.rides_clear_search)) { actions.onCloseSearch() },
                     )
@@ -145,7 +151,7 @@ fun RidesContent(
                                 is RideListItem.Ride -> item(key = item.key) {
                                     val id = item.ride.id
                                     RideCard(
-                                        item, selecting = shown.selecting, selected = id in shown.selected, thumbnail = thumbnail,
+                                        item, selecting = shown.selecting, selected = id in shown.selected, thumbnail = thumbnail, thumbnailPeek = thumbnailPeek,
                                         onClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onOpenRide(id) },
                                         onLongClick = { if (shown.selecting) actions.onToggleSelected(id) else actions.onSelect(id) },
                                         onToggleStar = { actions.onToggleStar(id) },

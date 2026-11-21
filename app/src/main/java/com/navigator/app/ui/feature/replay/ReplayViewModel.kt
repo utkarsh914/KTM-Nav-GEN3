@@ -105,16 +105,23 @@ class ReplayViewModel(
         _position.value = 0
         _ui.value = if (ride == null || points.size < 2) ReplayUi.NoTrack(ride) else {
             // Resampling a long track is CPU work: off the main thread.
-            val (chart, seams) = withContext(compute) { RideChart.build(points) to PlaybackEngine.seams(points) }
+            val built = withContext(compute) {
+                Built(
+                    RideChart.build(points), PlaybackEngine.seams(points),
+                    PlaybackEngine.mergeSeams(points, ride.source == RideSource.MERGED, ride.parts), partsOf(ride, points),
+                )
+            }
             val previous = _ui.value as? ReplayUi.Ready
             ReplayUi.Ready(
-                ride = ride, points = points, chart = chart, seams = seams, mergeSeams = PlaybackEngine.mergeSeams(points, ride.source == RideSource.MERGED, ride.parts), parts = partsOf(ride, points),
+                ride = ride, points = points, chart = built.chart, seams = built.seams, mergeSeams = built.mergeSeams, parts = built.parts,
                 speed = previous?.speed ?: PlaybackEngine.DEFAULT_SPEED, following = previous?.following ?: false,
                 smoothingMeters = previous?.smoothingMeters ?: ReplayUi.DEFAULT_SMOOTHING_M,
                 showElevation = previous?.showElevation ?: true,
             )
         }
     }
+
+    private class Built(val chart: ChartSeries?, val seams: List<Float>, val mergeSeams: List<Float>, val parts: Int)
 
     private suspend fun onRidesChanged(latest: RecordedRide?) {
         val shown = when (val ui = _ui.value) {
@@ -123,7 +130,7 @@ class ReplayViewModel(
             is ReplayUi.Ready -> ui.ride
         }
         when {
-            latest == null -> if (!deleting && shown != null) { stopPlaying(); _events.send(ReplayEvent.Gone) }
+            latest == null -> if (!deleting && shown != null) { stopPlaying(); _ui.value = ReplayUi.NoTrack(null); _events.send(ReplayEvent.Gone) }
             shown == null || latest.pointCount != shown.pointCount -> { stopPlaying(); load() }
             latest != shown -> _ui.update { if (it is ReplayUi.Ready) it.copy(ride = latest) else ReplayUi.NoTrack(latest) }
         }

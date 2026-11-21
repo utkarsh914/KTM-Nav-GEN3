@@ -25,8 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
@@ -63,6 +64,8 @@ fun RideCard(
     onLongClick: () -> Unit,
     onToggleStar: () -> Unit,
     modifier: Modifier = Modifier,
+    /** A thumbnail that is already cached, so a card coming back into view draws it on its first frame. */
+    thumbnailPeek: (RecordedRide) -> List<ThumbPoint>? = { null },
 ) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
@@ -70,7 +73,9 @@ fun RideCard(
     val ride = item.ride
     val title = ride.destinationLabel?.takeIf { it.isNotBlank() } ?: stringResource(RideSourceText.title(ride.source))
     val how = stringResource(RideSourceText.how(ride.source))
-    val whenText = stringResource(R.string.ride_when_how, rideTime(ride.startMs), how)
+    val whenText = if (item.showDate) {
+        stringResource(R.string.ride_when_date_how, rideDay(ride.startMs), rideTime(ride.startMs), how)
+    } else stringResource(R.string.ride_when_how, rideTime(ride.startMs), how)
     val container = if (selected) a.container else c.surf
     val selectLabel = stringResource(R.string.rides_menu_select)
     Row(
@@ -78,7 +83,7 @@ fun RideCard(
             .clip(KtmShapes.Card)
             .background(container)
             .border(if (selected) KtmLayout.outline else KtmLayout.hairline, if (selected) a.fill else c.line, KtmShapes.Card)
-            .semantics { if (selecting) this.selected = selected }
+            .semantics { if (selecting) toggleableState = if (selected) ToggleableState.On else ToggleableState.Off }
             .combinedClickable(
                 role = if (selecting) Role.Checkbox else Role.Button,
                 onLongClickLabel = selectLabel,
@@ -89,7 +94,7 @@ fun RideCard(
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RideThumbnailView(ride, thumbnail)
+        RideThumbnailView(ride, thumbnail, thumbnailPeek)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
             Text(
                 highlightedText(title, item.titleMatch.takeIf { ride.destinationLabel?.isNotBlank() == true }),
@@ -141,13 +146,19 @@ private fun rideStats(ride: RecordedRide): String {
 
 private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
+private val DAY: DateTimeFormatter by lazy {
+    DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMM"))
+}
+
+private fun rideDay(ms: Long): String = DAY.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+
 private fun rideTime(ms: Long): String = TIME.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /** A 64 dp route preview drawn from the stored points: speed-coloured, a neutral line for rides with no speed (GPX). */
 @Composable
-private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>) {
+private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>, peek: (RecordedRide) -> List<ThumbPoint>?) {
     val c = KtmTheme.colors
-    val points by produceState<List<ThumbPoint>?>(null, ride.id, ride.pointCount) {
+    val points by produceState(peek(ride), ride.id, ride.pointCount) {
         value = runCatching { thumbnail(ride) }.getOrDefault(emptyList())
     }
     val stroke = KtmLayout.outline

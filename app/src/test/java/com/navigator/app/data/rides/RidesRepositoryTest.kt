@@ -30,6 +30,14 @@ class RidesRepositoryTest {
         assertEquals(10f, out.first().speedKmh)
     }
 
+    @Test fun downsamplingToTwoPointsWithASeamDoesNotDivideByZero() {
+        val p = (0 until 10).map { RidePoint(it.toDouble(), 0.0, it * 1000L, gapBefore = it == 5) }
+        val out = RideThumbnail.downsample(p, 2)
+        assertTrue(out.isNotEmpty())
+        assertEquals(0.0, out.first().lat, 0.0)
+        assertEquals(9.0, out.last().lat, 0.0)
+    }
+
     @Test fun downsamplingKeepsEndsAndTheCap() {
         val out = RideThumbnail.downsample(pts(1000), 64)
         assertEquals(64, out.size)

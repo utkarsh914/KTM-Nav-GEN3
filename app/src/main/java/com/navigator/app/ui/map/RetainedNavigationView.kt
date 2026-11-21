@@ -34,7 +34,7 @@ class RetainedNavigationView(
      *  the camera back to the starting location. */
     var mapInitialized: Boolean = false
 
-    /** Which screen last configured the shared map's listeners/overlays. A screen
+    /** Which screen's controller last configured the shared map's listeners/overlays. A screen
      *  being disposed only cleans the map if it is still the owner - with animated
      *  route transitions the NEW screen sets up before the OLD one is disposed. */
     @Volatile var mapOwner: Any? = null

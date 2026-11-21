@@ -6,6 +6,7 @@ import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -51,6 +52,23 @@ class RidesListTest {
         assertTrue("the default title is not searchable text", RidesListBuilder.build(all, "manual", RideSort(), utc).isEmpty())
         assertTrue(RidesListBuilder.build(all, "nandi coffee", RideSort(), utc).isEmpty())
         assertEquals(4, RidesListBuilder.build(all, "   ", RideSort(), utc).count { it is RideListItem.Ride })
+    }
+
+    @Test fun theListGoesToTheTopOnlyWhenTheOrderOrSearchChanges() {
+        val t = TopOnChange<Pair<RideSort, Boolean>>()
+        val date = RideSort() to false
+        assertFalse("nothing loaded yet", t.shouldReset(null))
+        assertFalse("first sight, e.g. coming back from a replay", t.shouldReset(date))
+        assertFalse("the same again, e.g. a recomposition", t.shouldReset(date))
+        assertTrue(t.shouldReset(RideSort(RideSortField.Distance) to false))
+        assertTrue("a search starts", t.shouldReset(RideSort(RideSortField.Distance) to true))
+    }
+
+    @Test fun cardsNameTheirDayWhenThereAreNoDayHeaders() {
+        fun dated(l: List<RideListItem>) = l.filterIsInstance<RideListItem.Ride>().map { it.showDate }
+        assertTrue(dated(RidesListBuilder.build(all, "", RideSort(), utc)).none { it })
+        assertTrue(dated(RidesListBuilder.build(all, "", RideSort(RideSortField.Distance), utc)).all { it })
+        assertTrue(dated(RidesListBuilder.build(all, "nandi", RideSort(), utc)).all { it })
     }
 
     @Test fun matchesAreReportedForHighlighting() {

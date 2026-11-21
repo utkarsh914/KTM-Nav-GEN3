@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +63,7 @@ import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmMenuItem
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.MapControlButton
@@ -306,20 +306,11 @@ private fun OverflowMenu(actions: ReplayActions, size: IconButtonSize) {
     Box {
         KtmIconButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true }, style = if (size == IconButtonSize.Map) IconButtonStyle.Tonal else IconButtonStyle.Plain, size = size)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = KtmTheme.colors.surf) {
-            MenuRow(stringResource(R.string.replay_menu_edit)) { open = false; actions.onEdit() }
-            MenuRow(stringResource(R.string.replay_menu_trim)) { open = false; actions.onTrim() }
-            MenuRow(stringResource(R.string.replay_menu_delete)) { open = false; actions.onDelete() }
+            KtmMenuItem(stringResource(R.string.replay_menu_edit)) { open = false; actions.onEdit() }
+            KtmMenuItem(stringResource(R.string.replay_menu_trim)) { open = false; actions.onTrim() }
+            KtmMenuItem(stringResource(R.string.replay_menu_delete)) { open = false; actions.onDelete() }
         }
     }
-}
-
-@Composable
-private fun MenuRow(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg) },
-        onClick = onClick,
-        modifier = Modifier.heightIn(min = KtmLayout.row1),
-    )
 }
 
 @Composable
@@ -389,7 +380,7 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
     if (!chartFirst) Stats(ride, avgMode)
     if (ui.chart != null) {
         ReplayChart(
-            ui.chart, ui.seams, position, ui.points.size, ui.points.first().timeMs, ui.points.last().timeMs,
+            ui.chart, ui.seams, ui.mergeSeams, position, ui.points.size, ui.points.first().timeMs, ui.points.last().timeMs,
             ui.showElevation, actions.onSeek, actions.onScrubStart,
         )
         if (ui.hasElevation) {

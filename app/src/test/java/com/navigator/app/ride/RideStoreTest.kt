@@ -104,6 +104,13 @@ class RideStoreTest {
         assertEquals("note", t.notes)
     }
 
+    @Test fun trimRefusesWhenTheTrackIsNotTheOneTheIndicesWereChosenOn() {
+        val r = importRide(30)
+        assertNull("the page saw 40 fixes", store.trimRide(r.id, 5, 20, expectedCount = 40))
+        assertEquals(30, store.points(r.id).size)
+        assertEquals(16, store.trimRide(r.id, 5, 20, expectedCount = 30)!!.pointCount)
+    }
+
     @Test fun trimRefusesInvalidRangesAndMissingRides() {
         val r = importRide(30)
         assertNull(store.trimRide(r.id, 5, 5))
@@ -357,5 +364,15 @@ class RideStoreTest {
         assertEquals(2, cache.size())
         cache.get("a", 100)
         assertEquals("the least recently used was evicted", 4, reads)
+    }
+
+    @Test fun aCachedThumbnailCanBePeekedWithoutReading() {
+        var reads = 0
+        val cache = com.navigator.app.data.rides.RideThumbnailCache(store, load = { reads++; pts(100) })
+        assertNull(cache.peek("a", 100))
+        val first = cache.get("a", 100)
+        assertEquals(first, cache.peek("a", 100))
+        assertNull("a trimmed ride has a different key", cache.peek("a", 50))
+        assertEquals(1, reads)
     }
 }

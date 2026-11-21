@@ -161,14 +161,16 @@ class RideStore(context: Context) {
         }
         val merged = RideMerge.concat(parts)
         val stats = RideMetrics.summarize(merged)
-        var n = System.currentTimeMillis()
-        while (trackFile(n.toString()).exists()) n++
-        val newId = n.toString()
+        // Picked and reserved under the lock: another writer taking the same millisecond must not share the file.
+        val newId = synchronized(LOCK) {
+            var n = System.currentTimeMillis()
+            while (trackFile(n.toString()).exists() || n.toString() in ACTIVE_TRACKS) n++
+            n.toString().also { ACTIVE_TRACKS.add(it) } // keeps orphan recovery away until the index entry exists
+        }
         val name = RideTrim.cleanName(ordered.first().destinationLabel)
         val dest = ordered.lastOrNull { it.destLat != null && it.destLng != null }
         val tmp = File(ridesDir, "$newId.jsonl.tmp")
-        ACTIVE_TRACKS.add(newId) // keep orphan recovery away until the index entry exists
-        var indexed = false
+        var moved = false
         try {
             FileOutputStream(tmp).use { fos ->
                 BufferedWriter(OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
@@ -199,17 +201,18 @@ class RideStore(context: Context) {
                     tmp.toPath(), trackFile(newId).toPath(),
                     java.nio.file.StandardCopyOption.ATOMIC_MOVE,
                 )
+                moved = true
                 val at = System.currentTimeMillis()
                 val originals = ordered.map { it.id }.toSet()
                 writeIndex(now.map { if (it.id in originals) it.copy(deletedAtMs = at) else it } + ride)
-                indexed = true
                 if (ride.saved) writeSavedIds(savedIds() + newId)
                 AppLogger.log("Ride", "Merged ${ordered.size} rides into $newId")
                 return MergeResult.Merged(ride, MergeToken(newId, ordered.map { it.id }))
             }
         } catch (e: Exception) {
             runCatching { tmp.delete() }
-            if (!indexed) runCatching { trackFile(newId).delete() }
+            // Only a file this merge itself put in place (and failed to index) is ours to remove.
+            if (moved) runCatching { trackFile(newId).delete() }
             AppLogger.log("Ride", "!! merge failed: ${e.javaClass.simpleName}")
             return MergeResult.Refused(MergeRefusal.Failed)
         } finally {
@@ -398,9 +401,10 @@ class RideStore(context: Context) {
 
     /**
      * Cut a ride to the fixes [from]..[to] (inclusive) and recompute its stats. Destructive: the
-     * track is rewritten (temp file, then an atomic replace) and the old points are gone.
+     * track is rewritten (temp file, then an atomic replace) and the old points are gone. [expectedCount] is how many
+     * fixes the caller chose the indices on.
      */
-    fun trimRide(id: String, from: Int, to: Int): RecordedRide? {
+    fun trimRide(id: String, from: Int, to: Int, expectedCount: Int? = null): RecordedRide? {
         if (id in ACTIVE_TRACKS) return null // still being recorded
         val file = trackFile(id)
         val sizeBefore = file.length()
@@ -409,6 +413,8 @@ class RideStore(context: Context) {
         // A read that lost lines would permanently truncate the ride: refuse unless it matches the index.
         val expected = get(id)?.pointCount ?: return null
         if (expected > 0 && pts.size < expected) return null
+        // The indices are the page's: refuse when the track is no longer the one they were chosen on.
+        if (expectedCount != null && pts.size != expectedCount) return null
         val kept = RideTrim.trim(pts, from, to) ?: return null
         val stats = RideMetrics.summarize(kept)
         val tmp = File(ridesDir, "$id.jsonl.tmp")

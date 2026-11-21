@@ -24,9 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Owner token for the shared map while the map home is the active screen. */
-internal object HomeMapOwner
-
 private const val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private const val ROUTE_ALT = 0xFF7C93B0.toInt()      // desaturated blue alternate
 
@@ -80,6 +77,12 @@ class NavSdkMapController(
     private val endpointPins by lazy { RideEndpointPins(appContext) }
     private val trimOverlay by lazy { TrimPreviewOverlay(endpointPins) }
 
+    /**
+     * Whether this screen set the shared map up last. Each screen owns its own controller, so a screen that leaves
+     * (Replay → Trim and back) must not clear the listeners the arriving one has just set.
+     */
+    private val owns: Boolean get() = retained.mapOwner === this
+
     /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
     internal fun arm() { detached = false }
 
@@ -88,7 +91,7 @@ class NavSdkMapController(
         if (detached) return // the map delivered after the screen was gone
         this.map = map
         navView = view
-        retained.mapOwner = HomeMapOwner
+        retained.mapOwner = this
         map.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
         map.uiSettings.isCompassEnabled = false          // custom controls instead
         _bearing.value = map.cameraPosition.bearing
@@ -112,7 +115,7 @@ class NavSdkMapController(
         runCatching { userMarker.remove() }
         replayMarker = null
         val gm = map
-        if (gm != null && retained.mapOwner === HomeMapOwner) {
+        if (gm != null && owns) {
             runCatching {
                 gm.setOnCameraMoveListener(null)
                 gm.setOnCameraMoveStartedListener(null)
@@ -135,7 +138,7 @@ class NavSdkMapController(
         clicksWanted = enabled
         val gm = map ?: return
         if (enabled) gm.setOnMapClickListener { _mapClicks.tryEmit(MapPoint(it.latitude, it.longitude)) }
-        else gm.setOnMapClickListener(null)
+        else if (owns) gm.setOnMapClickListener(null)
     }
 
     private var gesturesWanted = false
@@ -147,7 +150,7 @@ class NavSdkMapController(
             gm.setOnCameraMoveStartedListener { reason ->
                 if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) _gesturePans.tryEmit(Unit)
             }
-        } else gm.setOnCameraMoveStartedListener(null)
+        } else if (owns) gm.setOnCameraMoveStartedListener(null)
     }
 
     private var poiWanted = false
@@ -157,7 +160,7 @@ class NavSdkMapController(
         val gm = map ?: return
         if (enabled) {
             gm.setOnPoiClickListener { _poiClicks.tryEmit(MapPoi(MapPoint(it.latLng.latitude, it.latLng.longitude), it.name, it.placeId)) }
-        } else gm.setOnPoiClickListener(null)
+        } else if (owns) gm.setOnPoiClickListener(null)
     }
 
     override fun cameraCenter(): MapPoint? = map?.cameraPosition?.target?.let { MapPoint(it.latitude, it.longitude) }
@@ -170,7 +173,7 @@ class NavSdkMapController(
         idleWanted = enabled
         val gm = map ?: return
         if (enabled) gm.setOnCameraIdleListener { cameraCenter()?.let { _cameraIdle.tryEmit(it) } }
-        else gm.setOnCameraIdleListener(null)
+        else if (owns) gm.setOnCameraIdleListener(null)
     }
 
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {

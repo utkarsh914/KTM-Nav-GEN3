@@ -113,11 +113,14 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
     }
     RidesContent(
         ui = ui, autoRecordOn = snap.rideRecordingEnabled, recording = session.active,
-        thumbnail = { container.rides.thumbnail(it) }, actions = actions, modifier = modifier, today = today,
+        thumbnail = { container.rides.thumbnail(it) }, thumbnailPeek = container.rides::peekThumbnail, actions = actions, modifier = modifier, today = today,
     )
 
-    if (confirmStarred) {
-        val n = ui?.starredSelected ?: 0
+    // The selection lives in the view model, not in the saved state: a dialog restored with nothing selected closes.
+    val starredN = ui?.starredSelected ?: 0
+    LaunchedEffect(ui != null, starredN) { if (ui != null && starredN == 0) confirmStarred = false }
+    if (confirmStarred && starredN > 0) {
+        val n = starredN
         KtmDialog(
             title = pluralStringResource(R.plurals.rides_delete_starred_title, n, n),
             message = stringResource(R.string.rides_delete_starred_message),

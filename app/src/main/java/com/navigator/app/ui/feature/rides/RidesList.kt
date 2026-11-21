@@ -34,7 +34,8 @@ sealed interface RideListItem {
         override val key get() = "hdr-$date"
     }
 
-    data class Ride(val ride: RecordedRide, val titleMatch: IntRange?, val notesMatch: IntRange?) : RideListItem {
+    /** [showDate]: the list has no day headers (searching, or sorted by something else), so the card says which day. */
+    data class Ride(val ride: RecordedRide, val titleMatch: IntRange?, val notesMatch: IntRange?, val showDate: Boolean = false) : RideListItem {
         override val key get() = ride.id
     }
 }
@@ -57,11 +58,13 @@ object RidesListBuilder {
             RideSortField.TopSpeed -> compareBy { it.maxSpeedKmh }
         }
         val ordered = shown.sortedWith((if (sort.desc) by.reversed() else by).thenByDescending { it.startMs })
+        val headers = words.isEmpty() && sort.field == RideSortField.Date
         fun item(r: RecordedRide) = RideListItem.Ride(
             r, words.firstNotNullOfOrNull { matchRange(r.destinationLabel, it) }, words.firstNotNullOfOrNull { matchRange(r.notes, it) },
+            showDate = !headers,
         )
         // Day headers only when the order is by date and nothing is being searched.
-        if (words.isNotEmpty() || sort.field != RideSortField.Date) return ordered.map(::item)
+        if (!headers) return ordered.map(::item)
         val out = ArrayList<RideListItem>(ordered.size + 8)
         var last: LocalDate? = null
         for (r in ordered) {
@@ -115,4 +118,16 @@ object RideSelection {
 
     /** Star everything unless everything is already starred, then unstar. */
     fun starTarget(rides: List<RecordedRide>): Boolean = rides.any { !it.saved }
+}
+
+/** When a list goes back to the top: only if its [key] differs from the last one seen; the first sight (or no key yet) never does. */
+internal class TopOnChange<T : Any> {
+    private var last: T? = null
+
+    fun shouldReset(key: T?): Boolean {
+        if (key == null) return false
+        val reset = last != null && last != key
+        last = key
+        return reset
+    }
 }

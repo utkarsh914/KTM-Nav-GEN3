@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
+import com.navigator.app.ui.feature.replay.PlaybackEngine
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapSurface
@@ -62,7 +63,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
             if (!mapReady) return@LaunchedEffect
             map.setMapClickListening(true)
         }
-        LaunchedEffect(map) { map.mapClicks.collect { vm.tapRoute(it.lat, it.lng) } }
+        LaunchedEffect(map) { map.mapClicks.collect { vm.tapRoute(it.lat, it.lng, PlaybackEngine.tapRadiusM(map.cameraZoom(), it.lat)) } }
         DisposableEffect(map) { onDispose { map.setMapClickListening(false) } }
 
         // Drawn again at every handle move: what the cut keeps is exactly what the map shows.
