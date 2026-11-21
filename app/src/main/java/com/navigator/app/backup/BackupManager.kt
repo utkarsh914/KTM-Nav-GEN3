@@ -74,6 +74,8 @@ class BackupManager(context: Context) {
             val entries = if (withSettings) PrefsBackup.decode(c.prefsJson) else emptyMap()
             if (entries.isNotEmpty()) {
                 val e = prefs.edit()
+                // The file replaces the settings: what it does not mention returns to its default, not the old value.
+                PrefsBackup.absentFrom(entries).forEach { e.remove(it) }
                 PrefsBackup.applyTo(e, entries)
                 // A smaller history limit from the backup must not prune the rides just restored.
                 val have = rides.list().size

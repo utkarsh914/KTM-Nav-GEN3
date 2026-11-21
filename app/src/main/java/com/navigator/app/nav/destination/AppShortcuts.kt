@@ -32,6 +32,7 @@ object AppShortcuts {
         runCatching {
             val app = context.applicationContext
             val shortcuts = mutableListOf<ShortcutInfoCompat>()
+            val enabled = mutableListOf<String>()
             val removed = mutableListOf<String>()
             fun icon(res: Int) = IconCompat.createWithResource(app, res)
             shortcuts += ShortcutInfoCompat.Builder(app, ID_RECORD)
@@ -52,6 +53,7 @@ object AppShortcuts {
                 val fav = favorites.firstOrNull { it.slot == slot }
                 if (fav == null) { removed += idFor(slot); continue }
                 val word = app.getString(if (slot == FavoriteSlot.HOME) R.string.shortcut_home_word else R.string.shortcut_work_word)
+                enabled += idFor(slot)
                 shortcuts += ShortcutInfoCompat.Builder(app, idFor(slot))
                     .setShortLabel(word)
                     .setLongLabel(app.getString(R.string.shortcut_ride_label, word))
@@ -60,7 +62,12 @@ object AppShortcuts {
                     .setIntent(mainIntent(app).setAction(ACTION_RIDE_TO).putExtra(EXTRA_SLOT, slot.name))
                     .build()
             }
-            if (removed.isNotEmpty()) ShortcutManagerCompat.removeDynamicShortcuts(app, removed)
+            if (enabled.isNotEmpty()) ShortcutManagerCompat.enableShortcuts(app, shortcuts.filter { it.id in enabled })
+            if (removed.isNotEmpty()) {
+                ShortcutManagerCompat.removeDynamicShortcuts(app, removed)
+                // A copy the rider pinned to the home screen outlives the dynamic one: grey it out instead of leaving a dead tile.
+                ShortcutManagerCompat.disableShortcuts(app, removed, app.getString(R.string.shortcut_unset_message))
+            }
             // Returns false when rate-limited (background updates are); the next app start re-syncs.
             if (!ShortcutManagerCompat.addDynamicShortcuts(app, shortcuts)) {
                 AppLogger.log("Places", "shortcut update rate-limited; will retry at next start")
@@ -71,6 +78,16 @@ object AppShortcuts {
     /** Reach a running singleTask activity through onNewIntent instead of letting the launcher clear and recreate the task. */
     private fun mainIntent(app: Context) = Intent(app, com.navigator.app.ui.MainActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+    /** Tell the launcher a shortcut was used, so it ranks it (and keeps it) properly. */
+    fun reportUsed(context: Context, intent: Intent?) {
+        val id = when (intent?.action) {
+            ACTION_SEARCH -> ID_SEARCH
+            ACTION_RIDE_TO -> slotFrom(intent)?.let(::idFor)
+            else -> null
+        } ?: return
+        runCatching { ShortcutManagerCompat.reportShortcutUsed(context.applicationContext, id) }
+    }
 
     /** Slot named by a shortcut intent, or null. */
     fun slotFrom(intent: Intent?): FavoriteSlot? {

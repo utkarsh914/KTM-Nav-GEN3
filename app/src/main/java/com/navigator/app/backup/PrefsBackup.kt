@@ -1,6 +1,7 @@
 package com.navigator.app.backup
 
 import android.content.SharedPreferences
+import com.navigator.app.data.settings.SettingSpecs
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,7 +22,7 @@ object PrefsBackup {
      * crafted / future-version file could crash the app at every launch.
      */
     private val RULES: Map<String, Rule> = mapOf(
-        "avg_speed_mode" to Rule(T.S), "dash_preview_overlay" to Rule(T.B), "user_name" to Rule(T.S, maxLen = 60),
+        "avg_speed_mode" to Rule(T.S), "dash_preview_overlay" to Rule(T.B), "user_name" to Rule(T.S, maxLen = SettingSpecs.MAX_USER_NAME),
         "theme_mode" to Rule(T.S), "font_mode" to Rule(T.S), "nav_theme_mode" to Rule(T.S),
         "accent_color" to Rule(T.S, maxLen = 40), "notification_source_apps" to Rule(T.SS),
         "nav_app_override" to Rule(T.S, maxLen = 160),
@@ -97,6 +98,9 @@ object PrefsBackup {
         }
         return out
     }
+
+    /** The backed-up settings keys that [entries] (a restored file) does not set: a restore replaces, so these go back to their defaults. */
+    fun absentFrom(entries: Map<String, Any>): List<String> = RULES.keys.filter { it !in entries }
 
     fun applyTo(editor: SharedPreferences.Editor, entries: Map<String, Any>) {
         for ((k, v) in entries) {

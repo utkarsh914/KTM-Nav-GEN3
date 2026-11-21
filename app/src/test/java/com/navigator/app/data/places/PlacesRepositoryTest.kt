@@ -103,4 +103,20 @@ class PlacesRepositoryTest {
         repo.restore(gone)
         assertEquals(setOf(toit, park), repo.favorites.value.filter { it.slot == FavoriteSlot.OTHER }.map { it.place }.toSet())
     }
+
+    @Test fun undoingARemovedHomeDoesNotOverwriteANewerOne() {
+        val repo = PlacesRepository(ctx)
+        repo.assign(toit, FavoriteSlot.HOME)
+        val gone = listOfNotNull(repo.removeSlot(FavoriteSlot.HOME))
+        repo.assign(park, FavoriteSlot.HOME)
+        repo.restore(gone)
+        assertEquals("the newer Home stays", park, repo.favorites.value.single { it.slot == FavoriteSlot.HOME }.place)
+    }
+
+    @Test fun undoingARemovedHomeRestoresItWhenTheSlotIsStillEmpty() {
+        val repo = PlacesRepository(ctx)
+        repo.assign(toit, FavoriteSlot.HOME)
+        repo.restore(listOfNotNull(repo.removeSlot(FavoriteSlot.HOME)))
+        assertEquals(toit, repo.favorites.value.single { it.slot == FavoriteSlot.HOME }.place)
+    }
 }

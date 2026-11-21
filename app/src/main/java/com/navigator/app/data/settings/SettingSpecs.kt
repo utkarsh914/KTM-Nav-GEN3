@@ -50,6 +50,9 @@ data class IntSpec(
 }
 
 object SettingSpecs {
+    /** The longest name the rider can give themselves (the dash greeting); onboarding, Settings and a restore all cap at this. */
+    const val MAX_USER_NAME = 30
+
     val overspeedLimit = IntSpec(
         AppSettings.OVERSPEED_LIMIT_MIN, AppSettings.OVERSPEED_LIMIT_MAX, 5,
         AppSettings.DEFAULT_OVERSPEED_LIMIT_KMH, SettingUnit.KMH,

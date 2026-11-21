@@ -29,7 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -49,12 +50,15 @@ import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmCard
 import com.navigator.app.ui.components.KtmTopBar
+import com.navigator.app.ui.components.TurnIconNames
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class CalibrationActions(
     val onBack: () -> Unit,
@@ -94,7 +98,10 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val stateText = stringResource(if (row.expanded) R.string.calib_expanded else R.string.calib_collapsed)
-    val image = remember(row.path) { runCatching { BitmapFactory.decodeFile(row.path)?.asImageBitmap() }.getOrNull() }
+    // A file decode: off the main thread, the tile shows its "?" until it is ready.
+    val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, row.path) {
+        value = withContext(Dispatchers.IO) { runCatching { BitmapFactory.decodeFile(row.path)?.asImageBitmap() }.getOrNull() }
+    }
     KtmCard(Modifier.fillMaxWidth().animateContentSize()) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = KtmLayout.diagRowMin)
@@ -105,7 +112,8 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
             Box(Modifier.size(KtmLayout.diagTile).background(c.surf3, KtmShapes.Control), contentAlignment = Alignment.Center) {
-                if (image != null) Image(image, contentDescription = stringResource(R.string.calib_captured), modifier = Modifier.size(KtmLayout.diagThumb))
+                val bitmap = image
+                if (bitmap != null) Image(bitmap, contentDescription = stringResource(R.string.calib_captured), modifier = Modifier.size(KtmLayout.diagThumb))
                 else Text("?", style = MaterialTheme.typography.titleMedium, color = c.fg3)
             }
             row.assigned?.let {
@@ -116,7 +124,7 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    row.assigned?.let { SymbolNames.human(it.name) } ?: stringResource(R.string.calib_unmatched),
+                    row.assigned?.let { TurnIconNames.human(it.name) } ?: stringResource(R.string.calib_unmatched),
                     style = MaterialTheme.typography.titleSmall, color = if (row.assigned != null) a.text else c.fg, maxLines = 1,
                 )
                 Text(
@@ -153,7 +161,7 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
 private fun CandidateTile(icon: TurnIcon, selected: Boolean, working: Boolean, onClick: () -> Unit) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
-    val name = SymbolNames.human(icon.name)
+    val name = TurnIconNames.human(icon.name)
     val description = if (working) stringResource(R.string.calib_working_named, name) else name
     Column(
         Modifier.width(KtmLayout.diagCellWidth)

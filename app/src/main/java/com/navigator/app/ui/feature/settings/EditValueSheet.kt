@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.navigator.app.R
 import com.navigator.app.data.settings.IntSpec
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SpecValidation
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
@@ -65,7 +66,7 @@ fun EditTextSheet(title: String, label: String, initial: String, onSave: (String
     val save = { onSave(text.trim()) }
     SheetFrame(title, onDismiss, canSave = true, onSave = save) { focus ->
         KtmTextField(
-            text, { text = it.take(MAX_NAME) }, label = label, modifier = Modifier.focusRequester(focus),
+            text, { text = it.take(SettingSpecs.MAX_USER_NAME) }, label = label, modifier = Modifier.focusRequester(focus),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { save() }),
         )
     }
@@ -89,4 +90,3 @@ private fun SheetFrame(title: String, onDismiss: () -> Unit, canSave: Boolean, o
 }
 
 private const val MAX_DIGITS = 9
-private const val MAX_NAME = 40

@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import com.navigator.app.R
 import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmFilterChip
@@ -85,6 +84,9 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                 if (byHand || (backward && !auto)) {
                     following = !more
                     if (!moving) byHand = false
+                } else if (!more && !auto) {
+                    // A forward scroll that is not a drag (a screen reader, a keyboard) reaching the end resumes too.
+                    following = true
                 }
             }
     }
@@ -128,7 +130,8 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
                     }
                 }
             }
-            FollowPill(
+            // Nothing to follow on an empty or filtered-out list.
+            if (ui.entries.isNotEmpty()) FollowPill(
                 following, { following = !following },
                 Modifier.align(Alignment.BottomCenter).padding(bottom = KtmSpacing.lg)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)),
@@ -152,7 +155,7 @@ private fun LogRow(entry: LogEntry, modifier: Modifier = Modifier) {
             .padding(horizontal = KtmSpacing.xs, vertical = KtmLayout.logRowPadding),
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Text(entry.time, style = KtmTheme.type.mono.copy(fontWeight = FontWeight.Normal), color = c.fg3, maxLines = 1)
+        Text(entry.time, style = KtmTheme.type.mono, color = c.fg3, maxLines = 1)
         Column(Modifier.weight(1f)) {
             if (entry.tag.isNotEmpty()) Text(entry.tag, style = MaterialTheme.typography.labelSmall, color = c.fg2)
             Text(entry.message, style = KtmTheme.type.mono, color = tint)

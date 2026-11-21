@@ -9,8 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -31,7 +33,12 @@ data class RidingChipMessage(val id: Long, val text: String, val tone: ChipTone,
  * Failures that belong to a control are shown inline by that control instead.
  */
 @Stable
-class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHostState) {
+class Feedback(
+    private val scope: CoroutineScope,
+    val snackbarHost: SnackbarHostState,
+    /** How long a message that offers an action stays, given the usual time (a screen reader may ask for longer). */
+    private val actionTimeout: () -> Long = { ACTION_MS },
+) {
     var chip by mutableStateOf<RidingChipMessage?>(null)
         private set
 
@@ -41,7 +48,7 @@ class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHost
     private var chipJob: Job? = null
     private var chipSeq = 0L
 
-    /** A message with an optional action. With an action it stays 8 s, else about 4 s. [onDismiss] runs when it goes without the action being taken (timed out, swiped or replaced). */
+    /** A message with an optional action. With an action it stays 8 s, else about 4 s. [onDismiss] runs when it goes without the action being taken (timed out, swiped away or replaced). */
     fun snackbar(
         message: String, actionLabel: String? = null, onDismiss: (() -> Unit)? = null,
         /** Names an offer so [endOffer] can end this one and no other. */
@@ -55,7 +62,7 @@ class Feedback(private val scope: CoroutineScope, val snackbarHost: SnackbarHost
             val result = if (actionLabel == null) {
                 snackbarHost.showSnackbar(message = message, duration = SnackbarDuration.Short)
             } else {
-                withTimeoutOrNull(ACTION_MS) {
+                withTimeoutOrNull(actionTimeout()) {
                     snackbarHost.showSnackbar(message = message, actionLabel = actionLabel, duration = SnackbarDuration.Indefinite)
                 } ?: SnackbarResult.Dismissed
             }
@@ -92,5 +99,7 @@ val LocalFeedback = staticCompositionLocalOf<Feedback> { error("No Feedback prov
 fun rememberFeedback(): Feedback {
     val scope = rememberCoroutineScope()
     val host = remember { SnackbarHostState() }
-    return remember(scope, host) { Feedback(scope, host) }
+    val accessibility = LocalAccessibilityManager.current
+    val timeout by rememberUpdatedState { accessibility?.calculateRecommendedTimeoutMillis(Feedback.ACTION_MS, containsIcons = false, containsText = true, containsControls = true) ?: Feedback.ACTION_MS }
+    return remember(scope, host) { Feedback(scope, host, actionTimeout = { timeout() }) }
 }

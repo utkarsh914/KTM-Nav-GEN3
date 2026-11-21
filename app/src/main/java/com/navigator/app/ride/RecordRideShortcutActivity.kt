@@ -2,12 +2,16 @@ package com.navigator.app.ride
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
-import com.navigator.app.R
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
+import com.navigator.app.R
+import com.navigator.app.app.appContainer
+import com.navigator.app.ui.MainActivity
 
 /**
  * The "Record a ride" shortcut (SY6): a no-UI trampoline that starts the recording service and finishes, so recording
@@ -17,17 +21,28 @@ import androidx.core.content.ContextCompat
 class RecordRideShortcutActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val app = applicationContext
+        val setUp = appContainer.settings.snapshot.value.onboardingComplete
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val alreadyRecording = RideSession.state.value.active
-        when (RecordStartPolicy.result(granted) { alreadyRecording || RideRecordingService.startManual(this) }) {
+        if (!setUp) {
+            // Nothing is set up yet: the app's own setup comes first.
+            say(app, R.string.shortcut_record_needs_setup)
+            openApp()
+        } else if (RideSession.state.value.active) {
+            say(app, R.string.shortcut_record_already)
+        } else when (RecordStartPolicy.result(granted) { RideRecordingService.startManual(this) }) {
             RecordStartResult.Started -> {}
             RecordStartResult.NeedsLocation, RecordStartResult.Failed -> {
                 // The app opens next; say why, so it doesn't look like the shortcut did nothing.
-                val reason = if (granted) R.string.shortcut_record_failed else R.string.shortcut_record_needs_location
-                Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
-                startActivity(Intent(this, com.navigator.app.ui.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                say(app, if (granted) R.string.shortcut_record_failed else R.string.shortcut_record_needs_location)
+                openApp()
             }
         }
         finish()
     }
+
+    // The application context: this activity is finishing, and the toast outlives it.
+    private fun say(app: Context, @StringRes text: Int) = Toast.makeText(app, text, Toast.LENGTH_LONG).show()
+
+    private fun openApp() = startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

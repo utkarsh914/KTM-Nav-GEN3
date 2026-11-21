@@ -99,8 +99,8 @@ class BackupLogicTest {
     private fun preview(inFile: Int, new: Int, places: Int, settings: Int) = BackupManager.Preview(inFile, new, places, settings)
 
     @Test fun choicesStartOnForWhatIsNew() {
-        assertEquals(RestoreChoice(true, true, true), RestoreChoice.defaultsFor(preview(3, 2, 4, 5)))
-        assertEquals(RestoreChoice(false, false, true), RestoreChoice.defaultsFor(preview(3, 0, 0, 5)))
+        assertEquals(RestoreChoice(true, true, false), RestoreChoice.defaultsFor(preview(3, 2, 4, 5)))
+        assertEquals("settings replace the rider's own: never on by default", RestoreChoice(false, false, false), RestoreChoice.defaultsFor(preview(3, 0, 0, 5)))
         assertFalse(RestoreChoice.defaultsFor(preview(0, 0, 0, 0)).any)
     }
 
@@ -232,7 +232,8 @@ class SettingsB16cContentTest {
 
     @Test fun missingRequiredPermissionsGetABannerAndAnAllowButton() {
         permissions(grants(location = false))
-        rule.onNodeWithText("Some things are switched off").assertIsDisplayed()
+        rule.onNodeWithText("1 thing needs attention").assertIsDisplayed()
+        rule.onNodeWithText("Maps, speed and rides won't work.").assertIsDisplayed()
         rule.onNodeWithContentDescription("Allow Location").performClick()
         assertEquals(listOf("LOCATION"), log)
     }
@@ -252,8 +253,8 @@ class SettingsB16cContentTest {
 
     @Test fun anOptionalOneAloneIsOnlyASuggestion() {
         permissions(grants(always = false))
-        rule.onNodeWithText("Works, but could be better").assertIsDisplayed()
-        rule.onNodeWithText("Some things are switched off").assertDoesNotExist()
+        rule.onNodeWithText("1 thing needs attention").assertIsDisplayed()
+        rule.onNodeWithText("Rides won't record after the bike reconnects on its own.").assertIsDisplayed()
     }
 
     private fun backup(ui: BackupUi) = rule.setContent {
@@ -282,7 +283,7 @@ class SettingsB16cContentTest {
         backup(BackupUi(restore = RestoreState.Ready(BackupManager.Preview(3, 2, 0, 4))))
         rule.onNodeWithText("New: 2 of 3 in file").assertIsDisplayed()
         rule.onNode(hasText("Restore") and hasClickAction()).assertIsEnabled().performClick()
-        assertEquals(listOf("gotruefalsetrue"), log)
+        assertEquals("settings start unticked", listOf("gotruefalsefalse"), log)
     }
 
     @Test fun aBadFileSaysSoInTheSheetAndOffersAnother() {

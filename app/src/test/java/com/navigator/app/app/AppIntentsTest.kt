@@ -105,8 +105,12 @@ class AppIntentsTest {
         assertEquals(IntentOutcome.Drop, AppIntents.decide(AppIntent.OpenSearch, firstRun))
     }
 
-    @Test fun quitRePairAndRideAreActedOnByTheShellInEitherEngine() {
-        for (i in listOf(AppIntent.ConfirmQuit, AppIntent.OpenRePair, AppIntent.OpenRide("7"))) {
+    @Test fun quitWorksEvenBeforeSetupIsDone() {
+        assertEquals(IntentOutcome.Act, AppIntents.decide(AppIntent.ConfirmQuit, firstRun))
+    }
+
+    @Test fun rePairAndRideAreActedOnByTheShellInEitherEngine() {
+        for (i in listOf(AppIntent.OpenRePair, AppIntent.OpenRide("7"))) {
             assertEquals(IntentOutcome.Act, AppIntents.decide(i, ready))
             assertEquals(IntentOutcome.Act, AppIntents.decide(i, mirrorOnly))
             assertEquals(IntentOutcome.Drop, AppIntents.decide(i, firstRun))

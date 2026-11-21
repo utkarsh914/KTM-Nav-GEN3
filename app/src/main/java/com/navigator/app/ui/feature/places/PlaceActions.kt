@@ -16,6 +16,22 @@ sealed interface PlaceTarget {
 
     data class Slot(val slot: FavoriteSlot, override val place: SavedPlace) : PlaceTarget
     data class Saved(override val place: SavedPlace) : PlaceTarget
+
+    companion object {
+        /** Survives the process being killed while the sheet is open. */
+        val Saver: androidx.compose.runtime.saveable.Saver<PlaceTarget?, List<Any?>> = androidx.compose.runtime.saveable.Saver(
+            save = { t ->
+                if (t == null) emptyList()
+                else listOf((t as? Slot)?.slot?.name, t.place.lat, t.place.lng, t.place.label, t.place.address)
+            },
+            restore = { v ->
+                if (v.size < 5) null else {
+                    val place = SavedPlace(v[1] as Double, v[2] as Double, v[3] as String, v[4] as String?)
+                    (v[0] as String?)?.let { name -> Slot(FavoriteSlot.valueOf(name), place) } ?: Saved(place)
+                }
+            },
+        )
+    }
 }
 
 /** The pure rules of PC1/PC5: which actions a place has, in order, Remove last. */

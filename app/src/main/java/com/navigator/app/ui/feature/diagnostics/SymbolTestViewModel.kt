@@ -7,6 +7,7 @@ import com.navigator.app.app.AppContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.ui.components.TurnIconNames
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -56,10 +57,6 @@ interface SymbolTestPorts {
     fun dashConnected(): Boolean
 }
 
-object SymbolNames {
-    fun human(enumName: String): String = com.navigator.app.ui.components.TurnIconNames.human(enumName)
-}
-
 /** DG2: send each dash symbol, look at the dash, mark Works or Wrong. Results persist across sessions. */
 class SymbolTestViewModel(private val ports: SymbolTestPorts) : ViewModel() {
     private val kind = MutableStateFlow(SymbolKind.TURN)
@@ -82,10 +79,10 @@ class SymbolTestViewModel(private val ports: SymbolTestPorts) : ViewModel() {
     val ui: StateFlow<SymbolTestUi> = combine(kind, expanded, results, showInfo) { kind, open, results, info ->
         val rows = when (kind) {
             SymbolKind.TURN -> BccuProtocol.TurnIcon.entries.map {
-                SymbolRow(keyOf(it), SymbolNames.human(it.name), it.name, it, results[keyOf(it)], open == keyOf(it))
+                SymbolRow(keyOf(it), TurnIconNames.human(it.name), it.name, it, results[keyOf(it)], open == keyOf(it))
             }
             SymbolKind.NOTIFICATION -> BccuProtocol.NotificationIcon.entries.map {
-                SymbolRow(keyOf(it), SymbolNames.human(it.name), it.name, null, results[keyOf(it)], open == keyOf(it))
+                SymbolRow(keyOf(it), TurnIconNames.human(it.name), it.name, null, results[keyOf(it)], open == keyOf(it))
             }
         }
         SymbolTestUi(kind, rows, rows.count { it.result == SymbolResult.WORKS }, rows.count { it.result == SymbolResult.WRONG }, info)

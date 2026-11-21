@@ -146,7 +146,9 @@ class AppIntents {
                 if (readiness.setupDone && readiness.inAppMaps) IntentOutcome.Navigate
                 else if (readiness.setupDone) IntentOutcome.Reject(RejectReason.MAP_NEEDS_IN_APP) else IntentOutcome.Drop
             AppIntent.OpenSearch -> if (readiness.setupDone) IntentOutcome.Navigate else IntentOutcome.Drop
-            AppIntent.ConfirmQuit, AppIntent.OpenRePair, is AppIntent.OpenRide ->
+            // Quit works at any time: the notification's Quit must also end a link left running during setup.
+            AppIntent.ConfirmQuit -> IntentOutcome.Act
+            AppIntent.OpenRePair, is AppIntent.OpenRide ->
                 if (readiness.setupDone) IntentOutcome.Act else IntentOutcome.Drop
             AppIntent.OpenNav -> if (readiness.setupDone) IntentOutcome.Navigate else IntentOutcome.Drop
             is AppIntent.OpenPlace -> when {

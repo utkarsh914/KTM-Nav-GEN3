@@ -78,17 +78,9 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
     private val _scanning = MutableStateFlow(false)
     override val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
-    /** Set when the scan could not start for lack of the Nearby devices permission. */
-    private val _permissionMissing = MutableStateFlow(false)
-    val permissionMissing: StateFlow<Boolean> = _permissionMissing.asStateFlow()
-
     /** The Bluetooth stack's error code when the scan could not run (for example scanning too often), else null. */
     private val _scanError = MutableStateFlow<Int?>(null)
     override val scanError: StateFlow<Int?> = _scanError.asStateFlow()
-
-    /** True when the adapter is off, so an empty list means "turn Bluetooth on", not "nothing found". */
-    private val _bluetoothOff = MutableStateFlow(false)
-    val bluetoothOff: StateFlow<Boolean> = _bluetoothOff.asStateFlow()
 
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val stopRunnable = Runnable { stop() }
@@ -109,14 +101,9 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
     }
 
     override fun start() {
-        if (!OpenDashPermissions.bluetoothGranted(context)) {
-            _permissionMissing.value = true
-            return
-        }
-        _permissionMissing.value = false
+        if (!OpenDashPermissions.bluetoothGranted(context)) return
         val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
         val scanner = adapter?.takeIf { it.isEnabled }?.bluetoothLeScanner
-        _bluetoothOff.value = scanner == null
         if (_scanning.value) stop()
         _scanError.value = null
         if (scanner == null) {
@@ -137,7 +124,6 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
             )
             _scanning.value = true
         } catch (e: SecurityException) {
-            _permissionMissing.value = true
             return
         }
         handler.postDelayed(stopRunnable, WINDOW_MS)

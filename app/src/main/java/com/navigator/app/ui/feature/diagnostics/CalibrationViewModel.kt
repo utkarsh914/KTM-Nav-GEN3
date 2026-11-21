@@ -9,12 +9,15 @@ import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.notifications.IconHashCache
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /** A turn icon Google Maps showed that the app couldn't match, saved as an image. */
 data class CapturedIcon(val path: String, val hash: Int)
@@ -60,17 +63,32 @@ object CalibrationCandidates {
 }
 
 /** DG3: label each captured Maps icon once with the matching dash symbol; it is exact and permanent afterwards. */
-class CalibrationViewModel(private val ports: CalibrationPorts) : ViewModel() {
-    private val captured = MutableStateFlow(ports.captured())
-    private val assignments = MutableStateFlow(captured.value.associate { it.hash to ports.assigned(it.hash) })
+class CalibrationViewModel(
+    private val ports: CalibrationPorts,
+    /** The icon files and the settings are read here, off the main thread. */
+    io: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
+    private val captured = MutableStateFlow(emptyList<CapturedIcon>())
+    private val assignments = MutableStateFlow(emptyMap<Int, String?>())
+    private val seen = MutableStateFlow(emptyMap<Int, Int>())
+    private val working = MutableStateFlow(emptySet<TurnIcon>())
     private val open = MutableStateFlow<Set<Int>>(emptySet())
     private val candidates = CalibrationCandidates.ordered()
-    private val working = candidates.filter(ports::works).toSet()
 
-    val ui: StateFlow<CalibrationUi> = combine(captured, assignments, open) { icons, assigned, open ->
+    init {
+        viewModelScope.launch(io) {
+            val icons = ports.captured()
+            seen.value = icons.associate { it.hash to ports.seen(it.hash) }
+            assignments.value = icons.associate { it.hash to ports.assigned(it.hash) }
+            working.value = candidates.filter(ports::works).toSet()
+            captured.value = icons // last: the rows appear with everything they show
+        }
+    }
+
+    val ui: StateFlow<CalibrationUi> = combine(captured, assignments, open, seen, working) { icons, assigned, open, seen, working ->
         val rows = icons.map { icon ->
             CalibrationRow(
-                icon.hash, icon.path, ports.seen(icon.hash),
+                icon.hash, icon.path, seen[icon.hash] ?: 0,
                 assigned[icon.hash]?.let { name -> TurnIcon.entries.firstOrNull { it.name == name } },
                 expanded = icon.hash in open,
             )

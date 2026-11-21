@@ -71,8 +71,9 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
         )
         ListRow(
             title = stringResource(R.string.bikedash_access),
-            supporting = stringResource(if (ui.accessGranted) R.string.bikedash_access_on else R.string.bikedash_access_off),
-            supportingLines = if (ui.accessGranted) 1 else 2, leadingIcon = KtmIcons.Permission, attention = !ui.accessGranted,
+            // Granted: the badge says it, once.
+            supporting = if (ui.accessGranted) null else stringResource(R.string.bikedash_access_off),
+            supportingLines = if (ui.accessGranted) 0 else 2, leadingIcon = KtmIcons.Permission, attention = !ui.accessGranted,
             onClick = if (ui.accessGranted) null else actions.onOpenPermissions,
             trailing = { if (ui.accessGranted) KtmBadge(stringResource(R.string.bikedash_access_on), tone = BadgeTone.Ok) else RowChevron() },
         )

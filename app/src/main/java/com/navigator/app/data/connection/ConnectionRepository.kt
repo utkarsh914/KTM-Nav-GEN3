@@ -30,6 +30,7 @@ class LinkSources(
     val repairHint: StateFlow<Boolean> = BccuConnectionService.repairHint,
     val lastError: StateFlow<String?> = BccuConnectionService.lastError,
     val deviceName: StateFlow<String?> = BccuConnectionService.deviceName,
+    val linkUp: StateFlow<Boolean> = BccuConnectionService.linkUpState,
     val bluetoothOn: StateFlow<Boolean>,
 )
 
@@ -48,12 +49,12 @@ class ConnectionRepository(
     private val cancelNotifications: () -> Unit,
 ) {
     val detail: StateFlow<ConnectionDetail> = combine(
-        sources.state, sources.bluetoothOn, sources.scanning, sources.attempt,
+        sources.state, sources.bluetoothOn, sources.scanning, combine(sources.attempt, sources.linkUp) { a, up -> a to up },
         combine(sources.repairHint, sources.lastError, settings.snapshot) { hint, error, snap -> Triple(hint, error, snap) },
-    ) { state, btOn, scanning, attempt, (hint, error, snap) ->
+    ) { state, btOn, scanning, (attempt, linkUp), (hint, error, snap) ->
         // Read on every change of the link: the service marks a bike paired in the raw prefs, which the snapshot does not see.
         val paired = snap.bondedDeviceAddress?.let { settings.legacy.hasPairedBefore(it) } ?: false
-        ConnectionMapping.detail(state, btOn, scanning, attempt, hint, paired, error)
+        ConnectionMapping.detail(state, btOn, scanning, attempt, hint, paired, error, linkUp)
     }.stateIn(scope, SharingStarted.Eagerly, ConnectionDetail())
 
     val status: StateFlow<BikeStatus> = combine(detail, settings.snapshot, sources.deviceName) { d, snap, live ->

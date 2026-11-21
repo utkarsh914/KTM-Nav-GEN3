@@ -8,7 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +38,7 @@ fun PlacesScreen(
     val feedback = LocalFeedback.current
     val vm: PlacesViewModel = viewModel(factory = PlacesViewModel.factory(context.appContainer, context))
     val ui by vm.ui.collectAsState()
-    var target by remember { mutableStateOf<PlaceTarget?>(null) }
+    var target by rememberSaveable(stateSaver = PlaceTarget.Saver) { mutableStateOf<PlaceTarget?>(null) }
     val undo = resources.getString(R.string.common_undo)
 
     LaunchedEffect(vm) { vm.refreshOrigin() }

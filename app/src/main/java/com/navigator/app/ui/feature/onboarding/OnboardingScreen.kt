@@ -31,10 +31,11 @@ fun OnboardingScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
     val fixer = rememberPermissionFixer(onResult = vm::refreshPermissions)
     val appName = stringResource(R.string.app_wordmark)
     val colors = KtmTheme.colors
+    val accentText = KtmTheme.accent.text
 
     val finished by rememberUpdatedState(onFinished)
     LaunchedEffect(vm) { vm.refreshPermissions(); vm.events.collect { if (it == OnboardingEvent.Finished) finished() } }
-    BackHandler(enabled = ui.canGoBack && ui.step != OnboardingStep.WELCOME) { vm.back() }
+    BackHandler(enabled = ui.canGoBack) { vm.back() }
 
     OnboardingContent(
         ui, TermsUi(declined, showing),
@@ -44,7 +45,7 @@ fun OnboardingScreen(onFinished: () -> Unit, modifier: Modifier = Modifier) {
                 val activity = context.findHostActivity()
                 if (activity != null && !showing) {
                     showing = true
-                    GoogleTerms.show(activity, appName, colors) { accepted ->
+                    GoogleTerms.show(activity, appName, colors, accentText) { accepted ->
                         showing = false
                         declined = !accepted
                         if (accepted) vm.termsAccepted()

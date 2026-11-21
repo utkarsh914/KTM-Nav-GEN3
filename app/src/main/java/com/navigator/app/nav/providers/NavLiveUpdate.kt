@@ -17,6 +17,7 @@ import com.navigator.app.notify.LiveAction
 import com.navigator.app.notify.LiveInput
 import com.navigator.app.notify.LiveUpdateBuilder
 import com.navigator.app.notify.NotificationActions
+import com.navigator.app.notify.NotificationRequestCodes
 import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.notify.PromotedOngoing
 import com.navigator.app.ride.RideSession
@@ -79,7 +80,7 @@ class NavLiveUpdate(
     }
 
     private val tapIntent: PendingIntent by lazy {
-        PendingIntent.getActivity(app, 0, resumeIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        PendingIntent.getActivity(app, NotificationRequestCodes.LIVE_TAP, resumeIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     // The SDK calls this inside Service.startForeground: it must never throw.
@@ -150,7 +151,7 @@ class NavLiveUpdate(
             LiveAction.MUTE_BEEPS -> R.string.live_action_mute to NotificationActions.toggleBeeps(app)
             LiveAction.UNMUTE_BEEPS -> R.string.live_action_unmute to NotificationActions.toggleBeeps(app)
             // Ending needs a confirm, so the app opens on it.
-            LiveAction.END_TRIP -> R.string.live_action_end to NotificationActions.open(app, CODE_END, AppIntents.REQUEST_END_TRIP)
+            LiveAction.END_TRIP -> R.string.live_action_end to NotificationActions.open(app, NotificationRequestCodes.LIVE_END_TRIP, AppIntents.REQUEST_END_TRIP)
         }
         return Notification.Action.Builder(Icon.createWithResource(app, R.drawable.ic_notification), app.getString(label), intent).build()
     }
@@ -160,9 +161,11 @@ class NavLiveUpdate(
     companion object {
         /** Same id the SDK foreground service is started with (GoogleNavSdkController). */
         const val NOTIFICATION_ID = 1010
-        private const val CODE_END = 72
 
         @Volatile private var current: NavLiveUpdate? = null
+
+        /** A trip's Live Update is on screen (and carries the overspeed state). */
+        val isShowing: Boolean get() = current != null
 
         /** A button or setting changed what the notification says: redraw it now rather than at the next tick. */
         fun refreshNow() {

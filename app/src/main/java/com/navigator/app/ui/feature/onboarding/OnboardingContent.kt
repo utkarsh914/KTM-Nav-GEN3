@@ -123,7 +123,7 @@ private fun Header(ui: OnboardingUi, actions: OnboardingActions) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
     ) {
-        if (ui.canGoBack && ui.step != OnboardingStep.WELCOME) {
+        if (ui.canGoBack) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
         } else {
             Spacer(Modifier.size(KtmLayout.targetRest))

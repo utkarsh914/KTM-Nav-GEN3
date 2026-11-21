@@ -11,8 +11,8 @@ class PairingPolicyTest {
 
     private fun phase(
         granted: Boolean = true, btOn: Boolean = true, attempt: Attempt? = null, failed: Boolean = false,
-        now: Long = 1_000, link: ConnectionPhase = ConnectionPhase.IDLE,
-    ) = PairingPolicy.phase(granted, btOn, attempt, failed, now, link)
+        now: Long = 1_000, link: ConnectionPhase = ConnectionPhase.IDLE, linkUp: Boolean = false,
+    ) = PairingPolicy.phase(granted, btOn, attempt, failed, now, link, linkUp)
 
     @Test fun noPermissionBlocksBeforeBluetoothOff() {
         assertEquals(PairingPhase.Blocked(BlockReason.NO_PERMISSION), phase(granted = false, btOn = false))
@@ -33,7 +33,14 @@ class PairingPolicyTest {
         assertEquals(65, p.elapsedSec)
         assertEquals("1:05", PairingPolicy.clock(p.elapsedSec))
         assertFalse(phase(attempt = attempt, link = ConnectionPhase.IDLE).let { (it as PairingPhase.Confirming).securing })
-        assertTrue((phase(attempt = attempt, link = ConnectionPhase.HANDSHAKE_FIRST_PAIR) as PairingPhase.Confirming).securing)
+        assertTrue((phase(attempt = attempt, link = ConnectionPhase.HANDSHAKE_FIRST_PAIR, linkUp = true) as PairingPhase.Confirming).securing)
+    }
+
+    @Test fun securingWaitsForTheLinkToBeUp() {
+        fun securing(link: ConnectionPhase, up: Boolean) = (phase(attempt = attempt, link = link, linkUp = up) as PairingPhase.Confirming).securing
+        assertFalse("connecting, the dash not reached yet", securing(ConnectionPhase.HANDSHAKE_FIRST_PAIR, up = false))
+        assertFalse(securing(ConnectionPhase.CONNECTING, up = false))
+        assertTrue(securing(ConnectionPhase.CONNECTING, up = true))
     }
 
     @Test fun twoMinutesIsTheLimit() {

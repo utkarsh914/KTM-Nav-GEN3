@@ -64,7 +64,7 @@ class PairingViewModel(
     val events: Flow<PairingEvent> = _events.receiveAsFlow()
 
     private val phase: Flow<PairingPhase> = combine(permissions, connection, attempt, failed, now) { perms, link, a, f, t ->
-        PairingPolicy.phase(perms[PermissionId.NEARBY_DEVICES].granted, link.bluetoothOn, a, f, t, link.phase)
+        PairingPolicy.phase(perms[PermissionId.NEARBY_DEVICES].granted, link.bluetoothOn, a, f, t, link.phase, link.linkUp)
     }
 
     val ui: StateFlow<PairingUi> = combine(

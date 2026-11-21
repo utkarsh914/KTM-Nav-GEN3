@@ -17,13 +17,13 @@ object GoogleTerms {
         return NavigationApi.areTermsAccepted(context.applicationContext as Application)
     }
 
-    fun show(activity: Activity, appName: String, colors: KtmColors, onAnswer: (Boolean) -> Unit) {
+    fun show(activity: Activity, appName: String, colors: KtmColors, accentText: androidx.compose.ui.graphics.Color, onAnswer: (Boolean) -> Unit) {
         GoogleNavSdkController.ensureApiKey()
         val params = TermsAndConditionsUIParams.builder()
             .setBackgroundColor(colors.surf.toArgb())
             .setTitleColor(colors.fg.toArgb())
             .setMainTextColor(colors.fg2.toArgb())
-            .setAcceptButtonTextColor(colors.fg.toArgb())
+            .setAcceptButtonTextColor(accentText.toArgb())
             .setCancelButtonTextColor(colors.fg2.toArgb())
             .build()
         NavigationApi.showTermsAndConditionsDialog(

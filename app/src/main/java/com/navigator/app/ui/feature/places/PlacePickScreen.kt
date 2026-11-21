@@ -1,6 +1,10 @@
 package com.navigator.app.ui.feature.places
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
@@ -37,6 +41,7 @@ import com.navigator.app.ui.map.MapSurface
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
+import com.navigator.app.ui.feature.navigate.findHostActivity
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -51,6 +56,7 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
     val resources = LocalResources.current
     val container = context.appContainer
     val feedback = LocalFeedback.current
+    val settings by container.settings.snapshot.collectAsState()
     val scope = rememberCoroutineScope()
     var mapping by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -90,13 +96,26 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
     // Asked at the moment it is needed; a refusal says so instead of doing nothing.
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted.values.any { it }) useHere(unavailableText, fallbackName)
-        else feedback.snackbar(resources.getString(R.string.search_current_denied))
+        else {
+            // After "don't ask again" Android shows no dialog any more: the way out is the app's own settings.
+            val activity = context.findHostActivity()
+            val stuck = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+            feedback.snackbar(
+                resources.getString(R.string.search_current_denied),
+                if (stuck) resources.getString(R.string.common_open_settings) else null,
+                onAction = {
+                    runCatching {
+                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+                    }
+                },
+            )
+        }
     }
 
     BackHandler(enabled = mapping) { mapping = false }
     Box(modifier.fillMaxSize()) {
         if (mapping) {
-            val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(container.settings.legacy.locationMarkerStyle))
+            val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(settings.locationMarkerStyle))
             val mapReady by map.ready.collectAsState()
             MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
             LaunchedEffect(mapReady) {

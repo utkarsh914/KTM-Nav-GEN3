@@ -26,11 +26,9 @@ object NotificationActions {
     }
 
     fun toggleBeeps(context: Context): PendingIntent = PendingIntent.getBroadcast(
-        context, CODE_TOGGLE_BEEPS,
+        context, NotificationRequestCodes.TOGGLE_BEEPS,
         Intent(context, NotificationActionReceiver::class.java).setAction(ACTION_TOGGLE_BEEPS), IMMUTABLE_UPDATE,
     )
-
-    private const val CODE_TOGGLE_BEEPS = 71
 }
 
 /** Handles the notification buttons that must not open the app. */

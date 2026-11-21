@@ -52,7 +52,9 @@ that previews and tests render, and a thin `*Screen` that wires them.
   numbers never animate.
 - **Remove animations** (`rememberReducedMotion`, read live): spatial moves become
   short crossfades with no offset, camera moves jump. Code that slides must zero
-  its offset when `motion.reduced`.
+  its offset when `motion.reduced`. The system setting itself is the animator scale
+  being 0, and Compose multiplies every duration by it, so in practice those
+  crossfades are cuts (decision D22: accepted, nothing is animated while it is off).
 - Shared elements: `SharedElements`/`rideContainer` (ride card to replay page),
   `TripBarSheet` (trip bar to trip sheet), `tripStripBounds` (trip bar to the
   activity strip). The sheets are drawn in the tree (not in a window) so they

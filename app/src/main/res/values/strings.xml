@@ -8,16 +8,22 @@
     <!-- Permissions: what each is for, in under five words (ON5, ST7) -->
     <string name="permission_nearby_title">Nearby devices</string>
     <string name="permission_nearby_why">Connect to your bike</string>
+    <string name="permission_nearby_cost">The app can\'t find or talk to the dash.</string>
     <string name="permission_location_title">Location</string>
     <string name="permission_location_why">Navigate and record rides</string>
+    <string name="permission_location_cost">Maps, speed and rides won\'t work.</string>
     <string name="permission_location_always_title">Location all the time</string>
     <string name="permission_location_always_why">Guide with screen off</string>
+    <string name="permission_location_always_cost">Rides won\'t record after the bike reconnects on its own.</string>
     <string name="permission_notifications_title">Notifications</string>
     <string name="permission_notifications_why">Trip and bike status</string>
+    <string name="permission_notifications_cost">Trip and connection status won\'t show.</string>
     <string name="permission_notification_access_title">Notification access</string>
     <string name="permission_notification_access_why">Read Google Maps\' turns</string>
+    <string name="permission_notification_access_cost">Messages and Google Maps turns won\'t reach the dash.</string>
     <string name="permission_battery_title">Battery: unrestricted</string>
     <string name="permission_battery_why">Keep the bike connected</string>
+    <string name="permission_battery_cost">Android may stop the dash link in the background.</string>
 
     <!-- Shared components -->
     <string name="common_back">Back</string>
@@ -600,6 +606,7 @@
     <string name="search_hint_add">Search for a place to save</string>
     <string name="search_use_current">Use my current location</string>
     <string name="search_use_current_caption">Saves where you are right now</string>
+    <string name="common_open_settings">Open settings</string>
     <string name="search_current_denied">Location access is off. Allow it to use where you are.</string>
     <string name="search_current_unavailable">Can\'t find your location yet. Check that location is on.</string>
 
@@ -778,8 +785,8 @@
     <string name="rec_colors_note">Rides are drawn in these speed colours, slow to fast.</string>
     <string name="rec_band_base">Green up to</string>
     <string name="rec_band_step">Each colour step</string>
-    <string name="rec_band_count">Number of colours</string>
-    <string name="rec_unit_colors">colours</string>
+    <string name="rec_band_count">Number of steps</string>
+    <string name="rec_unit_colors">steps</string>
     <string name="rec_legend_cd">Speed colours from 0 to %1$d km per hour and over</string>
     <string name="rec_legend_start">0</string>
     <string name="rec_legend_end">%1$d+ km/h</string>
@@ -821,10 +828,10 @@
 
     <!-- Permissions (ST7, DL10, DL11) -->
     <string name="perm_title">Permissions</string>
-    <string name="perm_banner_required_title">Some things are switched off</string>
-    <string name="perm_banner_required">Needs to be on: %1$s. Without them, parts of the app won\'t work.</string>
-    <string name="perm_banner_optional_title">Works, but could be better</string>
-    <string name="perm_banner_optional">Optional: %1$s. Turn on for the most reliable rides.</string>
+    <plurals name="perm_banner_title">
+        <item quantity="one">%1$d thing needs attention</item>
+        <item quantity="other">%1$d things need attention</item>
+    </plurals>
     <string name="perm_banner_ok">Everything the app needs is allowed.</string>
     <string name="perm_optional">Optional</string>
     <string name="perm_allowed">Allowed</string>
@@ -850,7 +857,7 @@
     <string name="backup_inc_places">Saved places</string>
     <string name="backup_inc_places_hint">Home, Work, saved and recent</string>
     <string name="backup_inc_settings">Your settings</string>
-    <string name="backup_inc_settings_hint">Everything in Settings</string>
+    <string name="backup_inc_settings_hint">Your choices in Settings (not call audio or logs)</string>
     <string name="backup_not_included">The bike pairing is never included. Pair again on a new phone.</string>
     <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones.</string>
     <plurals name="backup_done">
@@ -1056,6 +1063,9 @@
     <string name="conn_action_quit">Quit</string>
     <string name="shortcut_record_failed">Couldn\'t start recording. Try again from the app.</string>
     <string name="shortcut_record_needs_location">Recording needs location. Allow it in the app, then try again.</string>
+    <string name="shortcut_record_already">Already recording</string>
+    <string name="shortcut_record_needs_setup">Finish setting up the app first, then record.</string>
+    <string name="shortcut_unset_message">Set this place again in Places</string>
     <string name="shortcut_record_short">Record</string>
     <string name="shortcut_record_long">Record a ride</string>
     <string name="shortcut_search_short">Where to?</string>

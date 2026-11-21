@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.navigator.app.app.AppContainer
 import com.navigator.app.data.permissions.PermissionId
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.NavEngine
 import com.navigator.app.data.settings.SettingsRepository
@@ -55,8 +56,8 @@ class OnboardingViewModel(
     private var finished = false
 
     init {
-        // A saved step that is not in this run's list (the terms were accepted since) starts over.
-        if (step.value !in steps()) step.value = OnboardingStep.WELCOME
+        // A saved step that is not in this run's list (the terms were accepted since) goes on to the next one in it.
+        if (step.value !in steps()) step.value = OnboardingFlow.next(steps(), step.value) ?: OnboardingStep.WELCOME
     }
 
     private val _events = Channel<OnboardingEvent>(Channel.BUFFERED)
@@ -86,7 +87,7 @@ class OnboardingViewModel(
 
     fun chooseEngine(choice: NavEngine) { if (engineAvailable) engine.value = choice }
 
-    fun setName(text: String) { name.value = text.take(MAX_NAME) }
+    fun setName(text: String) { name.value = text.take(SettingSpecs.MAX_USER_NAME) }
 
     fun next() {
         when (step.value) {
@@ -135,7 +136,6 @@ class OnboardingViewModel(
     private fun saveEngine() { if (engineAvailable) settings.update { googleNavEnabled = engine.value == NavEngine.IN_APP } }
 
     companion object {
-        const val MAX_NAME = 30
         private const val KEY_STEP = "onboarding_step"
 
         fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {

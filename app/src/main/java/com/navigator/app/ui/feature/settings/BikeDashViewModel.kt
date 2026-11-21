@@ -14,9 +14,11 @@ import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 data class BikeDashUi(
@@ -57,7 +59,7 @@ class BikeDashViewModel(
 
     val ui: StateFlow<BikeDashUi> = combine(settings.snapshot, connection.status, connection.detail, permissions.state) { snap, status, detail, perms ->
         build(snap, status, detail.repairSuggested, perms[PermissionId.NOTIFICATION_ACCESS].granted)
-    }.stateIn(
+    }.flowOn(Dispatchers.IO).stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
         build(settings.snapshot.value, connection.status.value, connection.detail.value.repairSuggested, permissions.state.value[PermissionId.NOTIFICATION_ACCESS].granted),
     )

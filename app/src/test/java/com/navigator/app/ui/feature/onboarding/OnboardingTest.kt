@@ -71,10 +71,10 @@ class OnboardingViewModelTest {
         assertEquals(OnboardingStep.TERMS, restored.ui.value.step)
     }
 
-    @Test fun aSavedStepThatIsNoLongerInTheListStartsOver() = runTest(UnconfinedTestDispatcher()) {
+    @Test fun aSavedStepThatIsNoLongerInTheListGoesOnToTheNextOne() = runTest(UnconfinedTestDispatcher()) {
         val handle = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.TERMS.name))
-        assertEquals(OnboardingStep.WELCOME, vm(available = true, accepted = true, saved = handle).ui.value.step)
-        assertEquals(OnboardingStep.WELCOME, vm(saved = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to "NOPE"))).ui.value.step)
+        assertEquals("the terms were accepted since: on to the name", OnboardingStep.NAME, vm(available = true, accepted = true, saved = handle).ui.value.step)
+        assertEquals("an unknown step starts over", OnboardingStep.WELCOME, vm(saved = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to "NOPE"))).ui.value.step)
     }
 
     @Test fun walksTheStepsWithTermsForInAppAndSavesTheChoices() = runTest(UnconfinedTestDispatcher()) {
@@ -123,7 +123,7 @@ class OnboardingViewModelTest {
     @Test fun theNameIsCapped() = runTest(UnconfinedTestDispatcher()) {
         val vm = vm()
         vm.setName("x".repeat(100))
-        assertEquals(OnboardingViewModel.MAX_NAME, vm.ui.value.name.length)
+        assertEquals(com.navigator.app.data.settings.SettingSpecs.MAX_USER_NAME, vm.ui.value.name.length)
     }
 
     @Test fun backReturnsAndStopsAtTheWelcome() = runTest(UnconfinedTestDispatcher()) {

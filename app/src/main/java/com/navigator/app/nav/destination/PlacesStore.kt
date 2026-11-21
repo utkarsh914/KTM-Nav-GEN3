@@ -1,5 +1,6 @@
 package com.navigator.app.nav.destination
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.annotation.Keep
 
@@ -115,8 +116,11 @@ class PlacesStore(context: Context) {
 
     // ---- helpers ----------------------------------------------------------
 
-    private fun writeFavorites(favs: List<FavoritePlace>) {
-        prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs)).apply()
+    /** [durable]: written to disk before returning (a restore is followed at once by the app restarting). */
+    @SuppressLint("ApplySharedPref") // durable: the restore that follows restarts the app at once
+    private fun writeFavorites(favs: List<FavoritePlace>, durable: Boolean = false) {
+        val edit = prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs))
+        if (durable) edit.commit() else edit.apply()
         // Keep the launcher's "Ride home / work" shortcuts in step with Home / Work.
         AppShortcuts.sync(appContext, favs)
     }
@@ -130,13 +134,14 @@ class PlacesStore(context: Context) {
      * Merge places from a backup: what is already here wins (see [PlacesMerge]). Returns how many
      * places were added.
      */
+    @SuppressLint("ApplySharedPref") // the app restarts right after a restore: nothing may still be queued
     fun mergeFromBackup(recentsRaw: String?, favoritesRaw: String?): Int = synchronized(LOCK) {
         val haveFavs = favorites()
         val favs = PlacesMerge.favorites(haveFavs, PlacesJson.parseFavorites(favoritesRaw).items)
-        if (favs.size != haveFavs.size) writeFavorites(favs)
+        if (favs.size != haveFavs.size) writeFavorites(favs, durable = true)
         val haveRecents = recents()
         val rec = PlacesMerge.recents(haveRecents, PlacesJson.parsePlaces(recentsRaw).items, MAX_RECENTS)
-        if (rec != haveRecents) prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(rec)).apply()
+        if (rec != haveRecents) prefs.edit().putString(KEY_RECENTS, PlacesJson.writePlaces(rec)).commit()
         (favs.size - haveFavs.size) + (rec.size - haveRecents.size).coerceAtLeast(0)
     }
 

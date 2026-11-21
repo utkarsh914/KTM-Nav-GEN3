@@ -14,9 +14,11 @@ import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.destination.AppShortcuts
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.shell.KtmApp
+import com.navigator.app.ui.theme.AppFonts
 import kotlinx.coroutines.launch
 
 /**
@@ -75,6 +77,8 @@ class MainActivity : ComponentActivity() {
         // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
         forwardIntent(intent, freshLaunch = savedInstanceState == null)
 
+        // The brand font from the first frame: the setting is applied after composition only when it changes.
+        AppFonts.apply(appContainer.settings.snapshot.value.fontMode)
         setContent { KtmApp(onQuit = { exitApp() }) }
 
         // DEBUG-only: `adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS`
@@ -101,9 +105,12 @@ class MainActivity : ComponentActivity() {
 
     /** Hand what the launch intent carries (a share, a shortcut, a notification tap) to the app. */
     private fun forwardIntent(intent: Intent?, freshLaunch: Boolean) {
+        // Reopened from Recents: the intent is the old launch's, and its share or request was already served.
+        if (intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        if (freshLaunch) AppShortcuts.reportUsed(this, intent)
         AppIntents.fromIntent(intent)
             // A recreated activity must not re-open a dialog or page the rider already used.
-            .filter { freshLaunch || it is AppIntent.SharedLink || it == AppIntent.OpenNav }
+            .filter { freshLaunch || it == AppIntent.OpenNav }
             .forEach { appContainer.intents.post(it) }
     }
 

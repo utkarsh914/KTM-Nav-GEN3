@@ -103,6 +103,14 @@ class BackupTest {
         assertEquals(setOf("a", "b"), back["notification_source_apps"])
     }
 
+    @Test fun aRestoreReplacesSoKeysTheFileLacksReturnToTheirDefaults() {
+        val entries = PrefsBackup.decode(PrefsBackup.encode(mapOf<String, Any?>("theme_mode" to "dark")))
+        val absent = PrefsBackup.absentFrom(entries)
+        assertFalse("theme_mode" in absent)
+        assertTrue("overspeed_limit_kmh" in absent)
+        assertTrue("the pairing is never touched", absent.none { PrefsBackup.isExcluded(it) })
+    }
+
     @Test fun aWrongTypedValueForAKnownKeyIsNeverRestored() {
         // The app's getters throw ClassCastException on a type mismatch, which would crash every launch.
         val json = """{"beep_volume_percent":{"t":"s","v":"loud"},"theme_mode":{"t":"i","v":3},
@@ -118,7 +126,7 @@ class BackupTest {
         assertEquals(100, back["beep_volume_percent"])
         assertEquals(30, back["overspeed_limit_kmh"])
         assertEquals(20, back["speed_band_count"])
-        assertEquals(60, (back["user_name"] as String).length)
+        assertEquals(com.navigator.app.data.settings.SettingSpecs.MAX_USER_NAME, (back["user_name"] as String).length)
     }
 
     @Test fun hostileOrBrokenPrefsAreFilteredOnDecode() {

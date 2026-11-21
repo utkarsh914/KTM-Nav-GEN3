@@ -4,13 +4,14 @@ import androidx.annotation.StringRes
 import com.navigator.app.R
 import com.navigator.app.data.settings.NavEngine
 
-enum class PermissionId(@StringRes val titleRes: Int, @StringRes val whyRes: Int) {
-    NEARBY_DEVICES(R.string.permission_nearby_title, R.string.permission_nearby_why),
-    LOCATION(R.string.permission_location_title, R.string.permission_location_why),
-    LOCATION_ALWAYS(R.string.permission_location_always_title, R.string.permission_location_always_why),
-    NOTIFICATIONS(R.string.permission_notifications_title, R.string.permission_notifications_why),
-    NOTIFICATION_ACCESS(R.string.permission_notification_access_title, R.string.permission_notification_access_why),
-    BATTERY(R.string.permission_battery_title, R.string.permission_battery_why),
+/** [consequenceRes] says what stops working while it is off (the Permissions banner, ST7). */
+enum class PermissionId(@StringRes val titleRes: Int, @StringRes val whyRes: Int, @StringRes val consequenceRes: Int) {
+    NEARBY_DEVICES(R.string.permission_nearby_title, R.string.permission_nearby_why, R.string.permission_nearby_cost),
+    LOCATION(R.string.permission_location_title, R.string.permission_location_why, R.string.permission_location_cost),
+    LOCATION_ALWAYS(R.string.permission_location_always_title, R.string.permission_location_always_why, R.string.permission_location_always_cost),
+    NOTIFICATIONS(R.string.permission_notifications_title, R.string.permission_notifications_why, R.string.permission_notifications_cost),
+    NOTIFICATION_ACCESS(R.string.permission_notification_access_title, R.string.permission_notification_access_why, R.string.permission_notification_access_cost),
+    BATTERY(R.string.permission_battery_title, R.string.permission_battery_why, R.string.permission_battery_cost),
 }
 
 data class PermissionItem(val id: PermissionId, val granted: Boolean, val required: Boolean)

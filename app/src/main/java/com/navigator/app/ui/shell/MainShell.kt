@@ -27,11 +27,17 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import com.navigator.app.R
 import com.navigator.app.ui.components.KtmSnackbarHost
@@ -121,19 +127,25 @@ fun MainShell(
         contentColor = c.fg,
         state = state,
     ) {
-        // With the bar hidden (pushed pages) nothing above consumes the gesture-bar and cutout insets
-        // any more, so the strip and snackbar take them themselves.
-        val ownInsets = if (showBar) Modifier
+        // Only the portrait bar sits under the content and takes the gesture-bar inset. Without it (pushed pages, the
+        // landscape rail) nothing above does, so the strip and snackbar take the bottom and cutout insets themselves.
+        val ownInsets = if (showBar && type == NavigationSuiteType.ShortNavigationBarCompact) Modifier
         else Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+        var drawn by remember { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxSize()) {
                 content()
+                // 8 dp above whatever is under it (§3.3): the strip brings its own 8 dp, so only the bare bar needs one here.
                 KtmSnackbarHost(
                     feedback.snackbarHost,
-                    Modifier.align(Alignment.BottomCenter).then(ownInsets).padding(bottom = KtmSpacing.sm + feedback.snackbarLift),
+                    Modifier.align(Alignment.BottomCenter).then(ownInsets)
+                        .padding(bottom = (if (drawn && !immersive) 0.dp else KtmSpacing.sm) + feedback.snackbarLift),
                 )
             }
-            if (!immersive) Box(ownInsets) { strip() }
+            if (!immersive) {
+                // An empty strip must not pad the gesture inset: it would leave a band under the map of a pushed page.
+                Box(if (drawn) ownInsets else Modifier) { Box(Modifier.onSizeChanged { drawn = it.height > 0 }) { strip() } }
+            }
         }
     }
 }

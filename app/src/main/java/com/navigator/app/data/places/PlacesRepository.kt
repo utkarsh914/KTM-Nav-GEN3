@@ -94,7 +94,12 @@ class PlacesRepository(context: Context, private val store: PlacesStore = Places
 
     /** Put removed places back (Undo). They go to the end of the list. */
     fun restore(items: List<FavoritePlace>) {
-        items.forEach { store.saveFavorite(it.place, it.slot) }
+        // A Home or Work set again since is the rider's newer wish: Undo must not overwrite it.
+        val current = store.favorites()
+        items.forEach { item ->
+            val taken = item.slot != FavoriteSlot.OTHER && current.any { it.slot == item.slot && key(it.place) != key(item.place) }
+            if (!taken) store.saveFavorite(item.place, item.slot)
+        }
         refresh()
     }
 

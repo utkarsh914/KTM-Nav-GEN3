@@ -33,12 +33,15 @@ sealed interface BackupEvent {
     data class RestoreFailed(val uri: Uri, val rides: Boolean, val places: Boolean, val settings: Boolean) : BackupEvent
 }
 
-/** The three choices on the Restore sheet start on for whatever the file holds that is new. */
+/**
+ * The Restore sheet starts with rides and places on for whatever the file holds that is new. Settings start off:
+ * they replace the current ones, so that is the rider's own choice (DL6).
+ */
 data class RestoreChoice(val rides: Boolean, val places: Boolean, val settings: Boolean) {
     val any: Boolean get() = rides || places || settings
 
     companion object {
-        fun defaultsFor(p: BackupManager.Preview) = RestoreChoice(p.newRides > 0, p.places > 0, p.settings > 0)
+        fun defaultsFor(p: BackupManager.Preview) = RestoreChoice(p.newRides > 0, p.places > 0, settings = false)
     }
 }
 

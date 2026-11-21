@@ -143,7 +143,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         val nm = context.getSystemService(NotificationManager::class.java)
         _overspeedKmh.value = kmh.toInt()
         // While a trip is guiding, overspeed is a state of its Live Update (SY3), not a notification of its own.
-        if (com.navigator.app.nav.providers.GoogleNavSdkProvider.state.value.sessionState.isActiveNav()) {
+        if (com.navigator.app.nav.providers.GoogleNavSdkProvider.state.value.sessionState.isActiveNav() && com.navigator.app.nav.providers.NavLiveUpdate.isShowing) {
             nm.cancel(NOTIFICATION_ID)
         } else {
             val n = NotificationCompat.Builder(context, CHANNEL_ID)

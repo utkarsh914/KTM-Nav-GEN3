@@ -12,6 +12,8 @@ data class ConnectionDetail(
     val attempt: Int = 0,
     val repairSuggested: Boolean = false,
     val lastError: String? = null,
+    /** The link itself is up, before the handshake finishes. */
+    val linkUp: Boolean = false,
 )
 
 /** What the rider sees about the bike: one state, with the name where it helps. */
@@ -50,6 +52,7 @@ object ConnectionMapping {
         repairHint: Boolean,
         paired: Boolean,
         lastError: String?,
+        linkUp: Boolean = false,
     ): ConnectionDetail {
         val phase = when {
             !bluetoothOn -> ConnectionPhase.IDLE
@@ -63,7 +66,7 @@ object ConnectionMapping {
             }
             else -> ConnectionPhase.IDLE
         }
-        return ConnectionDetail(bluetoothOn, scanning, phase, attempt, repairHint, lastError)
+        return ConnectionDetail(bluetoothOn, scanning, phase, attempt, repairHint, lastError, linkUp)
     }
 
     fun status(detail: ConnectionDetail, bondedAddress: String?, name: String?): BikeStatus = when {

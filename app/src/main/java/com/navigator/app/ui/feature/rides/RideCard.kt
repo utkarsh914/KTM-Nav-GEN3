@@ -22,6 +22,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -36,6 +37,7 @@ import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
+import com.navigator.app.ride.rideDurationText
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmBadge
@@ -136,9 +138,7 @@ fun RideCard(
 @Composable
 private fun rideStats(ride: RecordedRide): String {
     val distance = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC)
-    val minutes = (ride.durationSeconds + 59) / 60
-    val duration = if (minutes < 60) stringResource(R.string.ride_duration_min, minutes)
-    else stringResource(R.string.ride_duration_h, minutes / 60, minutes % 60)
+    val duration = rideDurationText(LocalResources.current, ride.durationSeconds)
     val top = ride.maxSpeedKmh.toInt()
     return if (top >= 1) stringResource(R.string.ride_stats_three, distance, duration, stringResource(R.string.ride_speed_kmh, top))
     else stringResource(R.string.ride_stats_two, distance, duration)

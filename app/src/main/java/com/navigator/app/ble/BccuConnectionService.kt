@@ -2,7 +2,6 @@ package com.navigator.app.ble
 
 import android.annotation.SuppressLint
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
@@ -36,9 +35,9 @@ import com.navigator.app.notify.ConnectionAction
 import com.navigator.app.notify.ConnectionNotice
 import com.navigator.app.notify.ConnectionNoticeContent
 import com.navigator.app.notify.NotificationActions
+import com.navigator.app.notify.NotificationRequestCodes
 import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.ride.formatElapsed
-import java.util.ArrayDeque
 
 /**
  * Owns the BLE connection to the bike's BCCU: handshake, session crypto, and
@@ -120,6 +119,11 @@ class BccuConnectionService : LifecycleService() {
 
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
+
+        private val _linkUp = MutableStateFlow(false)
+
+        /** The GATT link itself is up (before the handshake): what tells "waiting for the dash" from "securing". */
+        val linkUpState: StateFlow<Boolean> = _linkUp
 
         /** True after repeated failed handshakes with a known bike: a re-pair may be needed. */
         private val _repairHint = MutableStateFlow(false)
@@ -227,6 +231,7 @@ class BccuConnectionService : LifecycleService() {
     private var scanTimeoutJob: Job? = null
     /** True once the current GATT client has actually reached STATE_CONNECTED (vs. a pending connect request). */
     @Volatile private var linkUp = false
+        set(value) { field = value; _linkUp.value = value }
     @Volatile private var scanning: Boolean = false
         set(value) { field = value; _scanning.value = value }
     @Volatile private var scanTargetAddress: String? = null
@@ -740,6 +745,7 @@ class BccuConnectionService : LifecycleService() {
             // Bluetooth is off; stay CONNECTING and let the AutoConnectReceiver's
             // adapter-on broadcast (or the next onStartCommand) retry.
             AppLogger.log("BLE", "Bluetooth adapter unavailable/off, deferring connect")
+            updateForegroundNotification(ConnectionNotice.BLUETOOTH_OFF)
             return
         }
         try {
@@ -809,22 +815,22 @@ class BccuConnectionService : LifecycleService() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             // Tapping fronts the existing task (launchMode=singleTask) and shows the active navigation screen.
-            .setContentIntent(NotificationActions.open(this, 0))
+            .setContentIntent(NotificationActions.open(this, NotificationRequestCodes.OPEN_APP))
         content.actions.forEach { action ->
             when (action) {
                 ConnectionAction.TURN_ON -> builder.addAction(
                     0, getString(R.string.conn_action_turn_on),
                     PendingIntent.getActivity(
-                        this, 2, Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        this, NotificationRequestCodes.BLUETOOTH_TURN_ON, Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                         PendingIntent.FLAG_IMMUTABLE,
                     ),
                 )
                 // Re-pairing and quitting each ask for their confirm in the app (DL5, DL1).
                 ConnectionAction.REPAIR -> builder.addAction(
-                    0, getString(R.string.conn_action_repair), NotificationActions.open(this, 3, AppIntents.REQUEST_REPAIR),
+                    0, getString(R.string.conn_action_repair), NotificationActions.open(this, NotificationRequestCodes.CONNECTION_REPAIR, AppIntents.REQUEST_REPAIR),
                 )
                 ConnectionAction.QUIT -> builder.addAction(
-                    0, getString(R.string.conn_action_quit), NotificationActions.open(this, 4, AppIntents.REQUEST_QUIT),
+                    0, getString(R.string.conn_action_quit), NotificationActions.open(this, NotificationRequestCodes.CONNECTION_QUIT, AppIntents.REQUEST_QUIT),
                 )
             }
         }
@@ -861,9 +867,9 @@ class BccuConnectionService : LifecycleService() {
                     NotificationCompat.Builder(this, NotificationChannels.CONNECTION_ALERT)
                         .setContentTitle(content.title).setContentText(content.text)
                         .setSmallIcon(R.drawable.ic_notification).setAutoCancel(true)
-                        .setContentIntent(NotificationActions.open(this, 5, AppIntents.REQUEST_REPAIR))
-                        .addAction(0, getString(R.string.conn_action_repair), NotificationActions.open(this, 6, AppIntents.REQUEST_REPAIR))
-                        .addAction(0, getString(R.string.conn_action_quit), NotificationActions.open(this, 7, AppIntents.REQUEST_QUIT))
+                        .setContentIntent(NotificationActions.open(this, NotificationRequestCodes.ALERT_OPEN, AppIntents.REQUEST_REPAIR))
+                        .addAction(0, getString(R.string.conn_action_repair), NotificationActions.open(this, NotificationRequestCodes.ALERT_REPAIR, AppIntents.REQUEST_REPAIR))
+                        .addAction(0, getString(R.string.conn_action_quit), NotificationActions.open(this, NotificationRequestCodes.ALERT_QUIT, AppIntents.REQUEST_QUIT))
                         .build(),
                 )
             }

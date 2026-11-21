@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.ButtonSize
@@ -113,8 +114,8 @@ private fun SymbolRowCard(row: SymbolRow, actions: SymbolTestActions) {
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text(row.name, style = MaterialTheme.typography.titleSmall, color = c.fg, maxLines = 1)
-                Text(row.code, style = KtmTheme.type.mono, color = c.fg3, maxLines = 1)
+                Text(row.name, style = MaterialTheme.typography.titleSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(row.code, style = KtmTheme.type.mono, color = c.fg3, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             when (row.result) {
                 SymbolResult.WORKS -> KtmBadge(stringResource(R.string.symbols_works), tone = BadgeTone.Ok)

@@ -34,13 +34,15 @@ object PairingPolicy {
         failed: Boolean,
         nowMs: Long,
         link: ConnectionPhase,
+        linkUp: Boolean = false,
     ): PairingPhase = when {
         !permissionGranted -> PairingPhase.Blocked(BlockReason.NO_PERMISSION)
         !bluetoothOn -> PairingPhase.Blocked(BlockReason.BLUETOOTH_OFF)
         failed -> PairingPhase.Failed
         attempt != null -> PairingPhase.Confirming(
             attempt, elapsedSec(attempt.startedAtMs, nowMs),
-            securing = link == ConnectionPhase.HANDSHAKE_FIRST_PAIR || link == ConnectionPhase.CONNECTING,
+            // "Securing" only once the link is up: until then the dash has not been reached (ON7).
+            securing = linkUp && (link == ConnectionPhase.HANDSHAKE_FIRST_PAIR || link == ConnectionPhase.CONNECTING),
         )
         else -> PairingPhase.Scanning
     }

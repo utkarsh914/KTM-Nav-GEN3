@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 class SettingsRepository(private val settings: AppSettings) {
 
     /**
-     * The raw store, for screens not yet moved to [snapshot] and [update]. Writes through it still
-     * reach [snapshot]. Goes away as the screens are rebuilt (B15-B17).
+     * The raw store, for what is not in [snapshot]: per-icon calibration, the paired-before flag and other
+     * service-side keys. Writes through it still reach [snapshot]. UI state comes from [snapshot].
      */
     val legacy: AppSettings get() = settings
 

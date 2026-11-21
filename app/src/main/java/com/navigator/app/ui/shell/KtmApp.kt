@@ -3,7 +3,6 @@ package com.navigator.app.ui.shell
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -26,6 +25,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.core.net.toUri
@@ -112,7 +112,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val legacy = settings.legacy
     val snap by settings.snapshot.collectAsState()
     val intents = container.intents
-    var showQuit by remember { mutableStateOf(false) }
+    var showQuit by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(snap.fontMode) { AppFonts.apply(snap.fontMode) }
 
@@ -204,7 +204,7 @@ fun KtmApp(onQuit: () -> Unit) {
         if (pending.confirmEnd) handle(AppIntent.ConfirmEndTrip, intents::consumeConfirmEnd)
         if (pending.openSearch) handle(AppIntent.OpenSearch, intents::consumeOpenSearch)
         // These open a dialog or a page of the shell itself, wherever the rider is.
-        if (pending.quit) { handle(AppIntent.ConfirmQuit, intents::consumeQuit).also { if (setupDone) showQuit = true } }
+        if (pending.quit) { handle(AppIntent.ConfirmQuit, intents::consumeQuit); showQuit = true }
         if (pending.rePair) { handle(AppIntent.OpenRePair, intents::consumeRePair); if (setupDone) navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) }
         pending.rideId?.let { id -> handle(AppIntent.OpenRide(id), intents::consumeRide); if (setupDone) navController.push(Route.RideReplay(id)) }
     }
@@ -340,7 +340,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                 }
                             }
                             composable<Route.Rides> {
-                                CompositionLocalProvider(LocalSharedElements provides SharedElements(this@SharedTransitionLayout, this)) {
+                                CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
                                     RidesScreen(
                                         onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
                                         onMerge = { ids -> navController.push(Route.MergeRides(ids)) },
@@ -420,7 +420,7 @@ fun KtmApp(onQuit: () -> Unit) {
                             }
                             composable<Route.RideReplay> { backStackEntry ->
                                 val id = backStackEntry.toRoute<Route.RideReplay>().rideId
-                                CompositionLocalProvider(LocalSharedElements provides SharedElements(this@SharedTransitionLayout, this)) {
+                                CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
                                 ReplayScreen(
                                     modifier = Modifier.rideContainer(id, remeasure = false),
                                     rideId = id,

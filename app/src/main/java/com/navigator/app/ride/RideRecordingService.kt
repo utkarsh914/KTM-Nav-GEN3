@@ -17,6 +17,7 @@ import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.notify.NotificationActions
 import com.navigator.app.notify.NotificationChannels
+import com.navigator.app.notify.NotificationRequestCodes
 import com.navigator.app.notify.PromotedOngoing
 import com.navigator.app.notify.RecordingNotice
 import com.navigator.app.settings.AppSettings
@@ -143,9 +144,9 @@ class RideRecordingService : Service() {
     }
 
     private fun buildNotification(): android.app.Notification {
-        val open = NotificationActions.open(this, 0)
+        val open = NotificationActions.open(this, NotificationRequestCodes.OPEN_APP)
         val stop = PendingIntent.getService(
-            this, 1,
+            this, NotificationRequestCodes.RECORDING_STOP,
             Intent(this, RideRecordingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
@@ -157,7 +158,7 @@ class RideRecordingService : Service() {
         val content = RecordingNotice.build(session.copy(paused = recorder?.isPaused == true || session.paused), now, mode, dash, resources)
         val paused = content.paused
         val toggle = PendingIntent.getService(
-            this, 2,
+            this, NotificationRequestCodes.RECORDING_TOGGLE,
             Intent(this, RideRecordingService::class.java).setAction(if (paused) ACTION_RESUME else ACTION_PAUSE),
             PendingIntent.FLAG_IMMUTABLE,
         )

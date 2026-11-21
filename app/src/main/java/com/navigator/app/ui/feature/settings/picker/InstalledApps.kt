@@ -2,7 +2,6 @@ package com.navigator.app.ui.feature.settings.picker
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,7 +19,7 @@ class AndroidInstalledApps(context: Context, private val io: CoroutineDispatcher
     @SuppressLint("QueryPermissionsNeeded")
     override suspend fun launchable(): List<AppEntry> = withContext(io) {
         runCatching {
-            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            pm.getInstalledApplications(0)
                 .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
                 .map { AppEntry(it.packageName, pm.getApplicationLabel(it).toString()) }
         }.getOrDefault(emptyList())
