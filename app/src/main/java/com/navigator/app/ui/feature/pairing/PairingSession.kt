@@ -48,6 +48,8 @@ class AndroidPairingSession(context: Context, private val settings: SettingsRepo
         previous = null
         // The date the pairing was confirmed, for the bike card.
         settings.legacy.bondedPairedMs = System.currentTimeMillis()
+        // The snapshot was read when the pairing began, before the date existed.
+        settings.refresh()
     }
 
     override fun bondDebugDevice() {

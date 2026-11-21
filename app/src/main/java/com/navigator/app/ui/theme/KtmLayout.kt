@@ -187,7 +187,7 @@ object KtmLayout {
     /** The marker column of the stop list (PL3), and the numbered badge in it. */
     val stopMarker = 28.dp
     val timelineStroke = 2.dp
-    val pinRing = 2.dp
+    val pinRing = 2.5.dp
     /** Save beside Directions on the place sheet (PL1). */
     val placeSaveMinWidth = 116.dp
 

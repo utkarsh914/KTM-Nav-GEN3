@@ -330,8 +330,13 @@ private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit, bleed: Dp, c
         ),
         supportingLines = if (compact) 1 else 2,
         leadingIcon = if (compact) null else KtmIcons.Dash,
-        // Paused: an inset card with an amber outline (the outline stays inside the page padding); otherwise a full-width row.
-        modifier = if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier.fullBleed(bleed),
+        // Compact (mounted landscape): always a card in the column, outlined in amber while paused. Otherwise an outlined
+        // inset card while paused and a full-width row when on.
+        modifier = when {
+            compact -> Modifier.clip(KtmShapes.Card).background(c.surf2).then(if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier)
+            paused -> Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card)
+            else -> Modifier.fullBleed(bleed)
+        },
     )
 }
 

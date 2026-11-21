@@ -126,7 +126,7 @@ fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: Color
 @Composable
 fun OutlinedIconBadge(icon: ImageVector, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(KtmLayout.badgeTile).border(1.dp, KtmTheme.colors.line2, KtmShapes.Pill),
+        modifier.size(KtmLayout.badgeTile).border(KtmLayout.hairline, KtmTheme.colors.line2, KtmShapes.Pill),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }

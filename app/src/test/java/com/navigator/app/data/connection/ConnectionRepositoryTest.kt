@@ -96,6 +96,8 @@ class ConnectionRepositoryTest {
         assertEquals(0L, settings.legacy.bondedPairedMs)
         session.commit()
         assertTrue(settings.legacy.bondedPairedMs > 0L)
+        assertTrue("the bike card reads the snapshot", settings.snapshot.value.bondedPairedMs > 0L)
+        assertTrue("device-local: never in a backup", com.navigator.app.backup.PrefsBackup.isExcluded("bonded_paired_ms"))
     }
 
     @Test fun rePairWhileLinkedLeavesNoLastSeenBehind() = runTest(UnconfinedTestDispatcher()) {

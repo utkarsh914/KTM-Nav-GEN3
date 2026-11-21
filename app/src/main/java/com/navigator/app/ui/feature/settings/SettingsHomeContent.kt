@@ -120,7 +120,7 @@ internal fun BikeCardView(
             // ST2: the bike in a round tile (green while it is connected), its name, and when it was paired.
             val connected = bike.status.tone == PillTone.Connected
             Box(
-                Modifier.size(KtmLayout.badgeTile).background(if (connected) c.okContainer else c.surf3, KtmShapes.Pill),
+                Modifier.size(KtmLayout.badgeTile).background(if (connected) c.okContainer else c.surf3, KtmShapes.Control),
                 contentAlignment = Alignment.Center,
             ) { Icon(KtmIcons.Bike, null, tint = if (connected) c.ok else c.fg2) }
             Column(Modifier.weight(1f)) {
