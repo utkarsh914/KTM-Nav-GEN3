@@ -33,6 +33,7 @@ import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.KtmModalSheet
@@ -76,7 +77,7 @@ class TripStopActions(
 fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
     val c = KtmTheme.colors
     val canAdd = TripStopRules.canAdd(ui.left, ui.online)
-    KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trip_stop_title), scrollable = true, onClose = actions.onDismiss) {
+    KtmModalSheet(onDismiss = actions.onDismiss, title = stringResource(R.string.trip_stop_title), scrollable = true, onClose = actions.onDismiss, closeSize = IconButtonSize.Map) {
         val left = when {
             ui.left == 0 -> stringResource(R.string.trip_stop_full)
             else -> pluralStringResource(R.plurals.trip_stop_left, ui.left, ui.left, TripStopRules.MAX)

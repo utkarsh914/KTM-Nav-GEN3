@@ -14,7 +14,7 @@ fun RePairDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = stringResource(R.string.bike_repair_title),
         message = stringResource(R.string.bike_repair_message),
         onDismiss = onDismiss,
-        confirm = DialogAction(stringResource(R.string.bike_sheet_repair), onConfirm, ButtonStyle.Primary),
+        confirm = DialogAction(stringResource(R.string.bike_repair_confirm), onConfirm, ButtonStyle.Primary),
         dismiss = DialogAction(stringResource(R.string.common_cancel), onDismiss),
     )
 }

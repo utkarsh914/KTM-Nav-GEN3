@@ -138,6 +138,7 @@
     <string name="bike_sheet_test">Send a test</string>
     <string name="bike_sheet_test_on_trip">Available when you\'re not on a trip, so it can\'t replace your directions.</string>
     <string name="bike_sheet_repair">Re-pair…</string>
+    <string name="bike_repair_confirm">Re-pair</string>
     <string name="bike_sheet_trouble">Trouble?</string>
     <string name="bike_sheet_settings">Bike &amp; dash settings</string>
     <string name="bike_check_ignition">Is the ignition on?</string>

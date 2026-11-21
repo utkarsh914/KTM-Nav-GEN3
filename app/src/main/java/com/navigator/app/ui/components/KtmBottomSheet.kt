@@ -62,6 +62,8 @@ fun KtmSheetContent(
     scrollable: Boolean = true,
     /** A ✕ at the end of the title row, for a sheet that is a task rather than a menu. */
     onClose: (() -> Unit)? = null,
+    /** The ✕ is 56 dp on a riding surface. */
+    closeSize: IconButtonSize = IconButtonSize.Rest,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -77,7 +79,7 @@ fun KtmSheetContent(
                     title, style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                if (onClose != null) KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onClose, modifier = Modifier.offset(x = KtmSpacing.sm))
+                if (onClose != null) KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onClose, modifier = Modifier.offset(x = KtmSpacing.sm), size = closeSize)
             }
             Spacer(Modifier.height(KtmSpacing.md))
         }
@@ -99,6 +101,7 @@ fun KtmModalSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     scrollable: Boolean = true,
     onClose: (() -> Unit)? = null,
+    closeSize: IconButtonSize = IconButtonSize.Rest,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -112,6 +115,6 @@ fun KtmModalSheet(
         dragHandle = { SheetHandle() },
         contentWindowInsets = { WindowInsets(0) },
     ) {
-        KtmSheetContent(title = title, scrollable = scrollable, onClose = onClose, actions = actions, content = content)
+        KtmSheetContent(title = title, scrollable = scrollable, onClose = onClose, closeSize = closeSize, actions = actions, content = content)
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
@@ -80,6 +81,8 @@ fun ColumnScope.TripControlsBody(
     nextStop: String?,
     actions: TripSheetActions,
     dashTone: PillTone = PillTone.Connected,
+    /** How far the sheet pads its content: the rows run out to its edge. */
+    bleed: Dp = KtmSpacing.lg,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
@@ -110,7 +113,7 @@ fun ColumnScope.TripControlsBody(
     Spacer(Modifier.height(KtmSpacing.sm))
     if (nextStop != null) {
         ListRow(
-            modifier = Modifier.fullBleed(),
+            modifier = Modifier.fullBleed(bleed),
             title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
             trailing = {
                 KtmIconButton(
@@ -120,9 +123,9 @@ fun ColumnScope.TripControlsBody(
             },
         )
     }
-    if (nextStop != null) ListDivider(Modifier.fullBleed())
+    if (nextStop != null) ListDivider(Modifier.fullBleed(bleed))
     ListRow(
-        modifier = Modifier.fullBleed(),
+        modifier = Modifier.fullBleed(bleed),
         title = dashStatus ?: stringResource(R.string.trip_dash),
         leading = { Box(Modifier.size(KtmSpacing.md).background(pillDotColor(dashTone, KtmTheme.colors), CircleShape)) },
         onClick = actions.onDash,

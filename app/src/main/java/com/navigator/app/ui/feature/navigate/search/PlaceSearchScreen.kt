@@ -208,7 +208,7 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
             }
         }
         if (state.recents.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.navigate_recent_header), trailing = stringResource(R.string.search_straight_line)) }
+            item { SectionHeader(stringResource(R.string.navigate_recent_header), trailing = stringResource(R.string.search_straight_line).takeIf { state.origin != null }) }
             itemsIndexed(state.recents, key = { _, it -> "r-${it.lat},${it.lng}" }) { index, it ->
                 if (index > 0) ListDivider()
                 PlaceRow(it, KtmIcons.History, state.origin, actions.onPlace, onRemove = { actions.onRemoveRecent(it) })

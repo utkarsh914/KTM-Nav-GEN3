@@ -162,6 +162,7 @@ class PlaceSearchViewModel(
     }
 
     private fun loadCategory(next: PlaceCategory) {
+        categoryJob?.cancel()
         val route = routeProvider()
         core.update {
             it.copy(

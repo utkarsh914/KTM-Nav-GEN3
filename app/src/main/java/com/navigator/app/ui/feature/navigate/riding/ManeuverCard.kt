@@ -253,7 +253,7 @@ private fun InstructionLines(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Colo
     }
     if (ui.road != null) {
         Text(
-            ui.road, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = on,
+            ui.road, style = (if (m.fill) m.instruction else MaterialTheme.typography.titleMedium).copy(fontWeight = FontWeight.Bold), color = on,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim),
         )
     }

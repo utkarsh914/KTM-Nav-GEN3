@@ -194,7 +194,7 @@ private fun ColumnScope.TripControlsPanelBody(maneuver: ManeuverUi, ui: TripCont
         Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
     ) {
-        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone)
+        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone, KtmLayout.panelPadding)
     }
     EndTripButton(actions.onEnd)
 }
