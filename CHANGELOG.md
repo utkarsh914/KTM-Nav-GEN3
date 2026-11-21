@@ -19,6 +19,10 @@
 - Logs: following live no longer switches itself off after the first scroll, and a screen reader's scroll pauses it; the trim bar's two handles are each adjustable by a screen reader; the corners of the colour panel take touches.
 - Landscape: the Where-to panel is a floating card like the other landscape panels, the rail shows the bike's state on Navigate, pages without a map get rounded corners while they leave (a back swipe shrinks them), and the trim bar keeps its time order in right-to-left languages.
 
+- Design pass over every screen against the mocks: activity strip with a tinted tile (trip, recording, paused, mirroring), first-run progress bar that includes pairing, "Find your bike" with Pair buttons and a help sheet, an all-set screen, ride replay/edit/trim/merge rows, Settings summaries and the backup and restore cards, a custom-accent sheet with a contrast check for both themes, Places "Home & work" and "Saved · N", Logs search icon and a "Problems" chip, a divided symbol-test list.
+- Notifications: "Over your alert · N km/h", "Ride paused · m:ss", titles that name the bike, no second line while connected, a View button on Ride saved. Launcher shortcut order: Ride home, Ride work, Record a ride, Where to?.
+- Fixes found in review: stopping a trip is refused while offline instead of half-working, Quit also ends the trip and the recording, a restore replaces your settings (Settings starts unticked; what the file lacks returns to its default), pairing says "Securing" only once the link is up, pinned Home/Work shortcuts are disabled when the place is cleared, the empty-state tile shrinks on short screens, and the trip bar drops the distance before it cuts the arrival time.
+
 ### Navigation
 - Times follow the phone's 12 or 24 hour setting (arrival times, leg lines, the Live Update); the dash stays 24 hour. Haptics follow the system touch-feedback setting.
 - Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final

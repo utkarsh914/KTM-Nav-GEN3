@@ -84,7 +84,7 @@ in-app SDK is never started. The user can also **pause** mirror-to-dash on the m
 | `nav/NavigationCoordinator.kt` | Collects the active provider's state, runs the encoder, applies `DashWrite`s via `DashOutput`; owns provider switching (clears the old source's guidance), auto-revert only on a *genuine* trip end, re-auth/resync re-send, the throttle's trailing flush, and a 15 s full-guidance refresh. |
 | `nav/ktm/KtmNavigationEncoder.kt` | **Reliability core** (stateful, pure): dedup, distance rounding, throttle, ETA deadband, state machine. |
 | `nav/ktm/KtmManeuverMapping.kt` | The single lossy reduction from `NormalizedManeuver` → 58-entry KTM `TurnIcon` (exhaustive `when`). Also the shared rules every path uses: `roundaboutIcon` (exit angle → section glyph), `ordinalExitAngle`, `enterHighwayIcon` (merge lane), `resolveIcon` (encoder + phone header), driving-side helpers. |
-| `nav/ktm/DistanceFormatter.kt`, `EtaFormatter.kt`, `DashWrite.kt` | Pure formatting + the sealed write set. |
+| `nav/ktm/DistanceFormatter.kt`, `EtaFormatter.kt`, `ClockFormat.kt`, `DashWrite.kt` | Pure formatting + the sealed write set. `EtaFormatter` is the dash's always-24 h clock; `ClockFormat` is every time the rider reads (12/24 h, locale, cached formatters). |
 | `nav/providers/NotificationNavProvider.kt` | Notification-mirroring provider (session-end debounce). |
 | `nav/providers/GoogleNavSdkProvider.kt` | Nav SDK provider (owns `Navigator`, maps the feed, arrival→ARRIVED). |
 | `nav/providers/GoogleNavManeuverMap.kt` | SDK `Maneuver` int → `NormalizedManeuver` + rotation. |
@@ -180,17 +180,11 @@ stage machine `BROWSE → SEARCH → CONFIRM → PREVIEW → NAVIGATING`:
   see §9). Ending the trip is in the trip sheet. A finished trip shows the
   trip-finished screen on arrival.
 
-**Trip auto-finish** (`NavigateHost.kt`). Three paths end a trip, each guarded by a
-one-shot `arrivalLatched` (reset on new trip start) so continued movement past the destination
-can't re-trigger them:
-1. **SDK arrival callback** — `Navigator.ArrivalListener` → `NavSessionState.ARRIVED` (primary).
-2. **Proximity** — the SDK's `remainingDistanceMeters` drops to ≤ `ARRIVAL_RADIUS_M` (40 m;
-   generous vs GPS scatter and off-road destinations, which used to leave the trip running when
-   a fix never landed in the old tight 10 m).
-3. **Idle fallback** — within `ARRIVAL_OUTER_RADIUS_M` (150 m) of the destination but progress
-   has stalled (`remainingDistanceMeters` not decreasing by ≥ `ARRIVAL_PROGRESS_EPS_M`) for
-   `ARRIVAL_STALL_MS` (45 s). A 5 s timer drives this so it fires even when no fresh NavInfo
-   frames arrive (rider parked just shy of the point, or guidance stuck mid-reroute offline).
+**Trip auto-finish** (`TripController`, `TripPolicies`). A trip ends in two ways, each guarded by a one-shot
+`arrivalLatched` (reset on a new trip) so continued movement can't re-trigger it:
+1. **Google's arrival** — `Navigator.ArrivalListener` → `NavSessionState.ARRIVED` (primary).
+2. **Dwell** — staying within `DWELL_RADIUS_M` (20 m) of the destination for `DWELL_MS` (2 min), checked every
+   5 s. Nothing else ends a trip on its own, so a red light or a jam near the destination doesn't finish it.
 
 **Start on the selected route.** The picked route's Routes API `routeToken` is passed via
 `NavDestination.routeToken` → `Navigator.setDestinationsWithToken(token)` (stops and travel
@@ -241,9 +235,9 @@ Confirmed against Nav SDK **7.9.0**; builds and the `Maneuver` completeness test
 - **Requires network** to fetch a route — a real regression vs the offline notification path.
   Mitigated by keeping the notification provider first-class and user-selectable.
 - **Requires Google Play Services** at runtime (+ ≥2 GB RAM, OpenGL ES 2.0). Not the Maps app.
-- **Runs its own foreground service + notification** during guidance → **two notifications**
-  today. Consolidation via `NavigationApi.initForegroundServiceManager*` is tracked in
-  [`BACKLOG.md`](BACKLOG.md).
+- **Runs its own foreground service** during guidance; its notification is the app's one Live Update
+  (`NavLiveUpdate`, via `NavigationApi.initForegroundServiceManager*`), with the quiet bike-connection
+  and recording rows beside it.
 - **Cannot coexist with the Maps SDK** — the Nav SDK bundles Maps; `play-services-maps` is
   excluded from all configurations. The map-pin picker uses the *bundled* Maps.
 - **Pricing** — self-serve, SKU "Navigation Request", billed per destination on

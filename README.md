@@ -56,15 +56,12 @@ pill and a search bar. Find a destination by search (with Recents and Home/Work/
 the route with selectable **alternates**, then Start to run turn-by-turn on the phone and the dash at once.
 
 **A location dot that faces where you do.** The live-location marker shows your heading from the phone's
-compass and rotates as you turn — like the Google Maps app — instead of only following GPS course. You can
-pick the direction indicator style (a detached arrow or a beam) in Settings → Advanced.
+compass and rotates as you turn, like the Google Maps app, instead of only following GPS course.
 
-**Choose your navigation UI.** Active guidance renders with the app's own custom overlays by default, or
-you can switch to Google's full stock navigation UI (its maneuver header, ETA card and speedometer) in
-Settings → Advanced.
+**The riding screen is the app's own.** Active guidance draws a maneuver card, a trip bar and a trip sheet built for gloves and sunlight; Google's own navigation UI is switched off.
 
 **Shows over the lock screen.** While navigating, the app stays visible over the lock screen and keeps the
-screen awake — and tapping either navigation notification jumps straight back to the live nav screen.
+screen awake — and tapping the navigation notification jumps straight back to the live nav screen.
 
 **Turn sounds.** Optional stereo approach beeps — left ear for a left turn, right for a right — that
 speed up as you near the corner and go quiet when you stop. Adjustable volume, swappable channels.
@@ -79,10 +76,10 @@ billing. The Rides screen lists your rides with a speed-coloured track and stats
 speed), searchable and sortable, and the Replay screen plays each ride back on the map at up to 64×, with
 tap-to-seek, drag-to-scrub, a follow toggle, **tap-the-track to jump to that point**, and the **wall-clock
 time of the current instant** shown as it plays. Zooming stays **smooth even on long (1–2 h) rides** —
-the track is simplified before drawing — and a **Track detail** slider lets you trade line detail for
-extra smoothness on huge rides. Recording is configurable (minimum distance/duration and a
+the track is simplified before drawing — and a smoothing row
+in the replay lets you trade line detail for extra smoothness on huge rides. Recording is configurable (minimum distance/duration and a
 "keep last N rides" limit; saved rides are pinned and never pruned). The speed-to-colour mapping is
-configurable too (green ceiling, step size and number of bands, green→red) in Settings → Advanced.
+configurable too (green ceiling, step size and number of bands, green→red) in Settings → Recording.
 
 **Offline resilience.** If you lose signal mid-route, guidance keeps running from the already-computed
 route. An offline banner appears during navigation, rerouting is paused until you're back online, and the

@@ -34,13 +34,14 @@ When adding UI, reach for these before hand-rolling values, and run
 
 ## Components (`ui/components/`)
 `KtmButton` (Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal; sizes
-Small 48, Rest 56, Riding 64, Tile 72), `KtmIconButton`, `MapControlButton`,
+Small 48, Rest 56, Riding 64, Tile 72, TileLarge 84), `KtmIconButton`, `MapControlButton`,
 `KtmFab`, `ListRow`, `KtmSwitchRow`, `KtmCheckboxRow`/`KtmRadioRow`, `KtmSelectionBar`, `KtmCard`, `KtmBadge`,
 `KtmFilterChip`, `KtmSegmented`, `KtmSearchField`, `KtmTextField`, `KtmStepper`,
 `KtmSwitch`, `KtmColorPicker`, `KtmTopBar`, `LargeTitle`, `SectionHeader`,
 `EmptyState`, `InfoBanner`, `FixItBanner`, `Skeleton`/`SkeletonRow`, `StatTile`,
 `ActivityStrip`, `BikeStatusPill`, `DashPreview`, `TurnIconRef`, `KtmDialog`,
-`KtmModalSheet`/`KtmSheetContent`, `KtmSnackbar`, `LandscapePanel`.
+`KtmModalSheet`/`KtmSheetContent`, `KtmSnackbar`, `LandscapePanel`, `KtmStep`/`StepState` (a checklist line: tick, number or spinner), `KtmStepProgress`/`KtmStepHeader` (the first-run bar with Back under it), `KtmMenuItem`, `TurnIconGlyph`, `RideDuration`, `Modifier.fullBleed()` (a row that runs to the edge of a padded sheet or page: rows pad themselves, so inside a padded container they would sit twice as far in).
+Parameters worth knowing: `SectionHeader(trailing)` (the chosen value at the right), `KtmStepper(trailing)` (a Play beside the +), `KtmCard(enabled)`, `KtmSwitchRow(badge)`, `ListRow(accentTitle)`, `KtmFilterChip(riding)` (56 dp for gloves). `EmptyState` has an 88 dp tile (56 dp below 480 dp screen height) on every empty page. `DashPalette` (internal) is the dash's own black and white, and the one place a raw palette is allowed besides the theme.
 Screens are written as `*ViewModel` (state + actions), a stateless `*Content`
 that previews and tests render, and a thin `*Screen` that wires them.
 
@@ -92,4 +93,4 @@ the QA list.
 No `Toast` (except the Record shortcut activity), no raw `AlertDialog` (use `KtmDialog`), no Material icons, no
 `Color(0x…)` or `.sp`/`.em` in screens, no `AppSettings(…)` in `ui/` (use the
 container's `SettingsRepository`), no legacy `Ktm.*` accessor. Strings live in
-`strings.xml` (`<feature>_<element>_<meaning>`), distances are metric.
+`strings.xml` (`<feature>_<element>_<meaning>`), distances are metric. No raw dp in screens: use `KtmLayout`/`KtmSpacing` tokens. Rider-facing times go through `ClockFormat` (the phone's 12/24 h setting and locale); only the dash uses `EtaFormatter` (always 24 h). Status and navigation bar icons have one owner, `SystemBarIcons`.
