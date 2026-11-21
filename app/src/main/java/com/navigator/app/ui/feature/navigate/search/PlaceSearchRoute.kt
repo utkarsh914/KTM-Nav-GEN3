@@ -126,6 +126,7 @@ fun PlaceSearchRoute(
             onPlace = vm::pickPlace,
             onCategoryResult = vm::pickCategoryResult,
             onRemoveRecent = vm::removeRecent,
+            onRetry = vm::retry,
             onResumeTrip = onResumeTrip,
             onPickOnMap = onPickOnMap,
             onUseCurrent = onUseCurrent,

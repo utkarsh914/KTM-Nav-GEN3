@@ -139,6 +139,17 @@ class PlaceSearchViewModelTest {
         assertEquals(listOf("Toit Brewpub"), s.localResults.map { it.label })
     }
 
+    @Test fun tryAgainAsksAgainOnceTheLookupCanSucceed() = runTest {
+        api.failed = true
+        val vm = vm()
+        vm.setQuery("toit"); advanceTimeBy(400); runCurrent()
+        assertTrue(vm.state.value.offline)
+        api.failed = false
+        vm.retry(); advanceTimeBy(400); runCurrent()
+        assertFalse(vm.state.value.offline)
+        assertEquals(listOf("toit", "toit"), api.autocompleteCalls)
+    }
+
     @Test fun beingOfflineShowsLocalMatchesBeforeAnyAnswer() = runTest {
         places.addRecent(SavedPlace(12.1, 77.1, "Cubbon Park"))
         runCurrent()

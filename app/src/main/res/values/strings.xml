@@ -157,7 +157,12 @@
     <string name="search_hint_work">Search for your work</string>
     <string name="search_add_stop_header">Add a stop to your trip</string>
     <string name="search_clear">Clear search</string>
-    <string name="search_offline">You\'re offline. Showing matching saved and recent places.</string>
+    <string name="search_offline_title">You\'re offline</string>
+    <string name="search_offline_message">Search needs internet. Your saved and recent places still work.</string>
+    <string name="search_local_header">Matching saved &amp; recent</string>
+    <string name="search_try_again">Try again</string>
+    <string name="search_straight_line">Straight-line distance</string>
+    <string name="search_nothing_for">Nothing found for \'%1$s\'. Check the spelling or try a category.</string>
     <string name="search_no_matches">No matches</string>
     <string name="search_failed">Couldn\'t search. Check your connection.</string>
     <string name="search_nothing_nearby">Nothing found nearby</string>

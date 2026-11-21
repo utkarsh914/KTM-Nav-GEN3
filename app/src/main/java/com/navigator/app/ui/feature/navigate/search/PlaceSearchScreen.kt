@@ -1,6 +1,13 @@
 package com.navigator.app.ui.feature.navigate.search
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import com.navigator.app.ui.components.ButtonSize
+import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.animation.core.tween
@@ -71,6 +78,8 @@ class PlaceSearchActions(
     val onPickOnMap: (() -> Unit)? = null,
     /** Pick mode: save where the rider is now. */
     val onUseCurrent: (() -> Unit)? = null,
+    /** Search again: after the connection came back, or a failed category load. */
+    val onRetry: () -> Unit = {},
 )
 
 @StringRes
@@ -113,9 +122,9 @@ fun PlaceSearchScreen(
 ) {
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxSize().background(c.bg).consumeMapTouches().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = KtmSpacing.lg),
+        modifier.fillMaxSize().background(c.bg).consumeMapTouches().windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Row(Modifier.padding(horizontal = KtmSpacing.lg), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             KtmSearchField(
                 value = state.query,
@@ -137,17 +146,17 @@ fun PlaceSearchScreen(
             if (mode == SearchMode.TripStop) {
                 Text(
                     stringResource(R.string.search_add_stop_header), style = MaterialTheme.typography.titleLarge,
-                    color = KtmTheme.accent.text,
+                    color = KtmTheme.accent.text, modifier = Modifier.padding(horizontal = KtmSpacing.lg),
                 )
             }
             if (activity != null && actions.onResumeTrip != null && mode != SearchMode.TripStop) {
                 ActivityStrip(
                     ActivityStripState.Trip(activity.titleText(), activity.detailText(), activity.glyph),
-                    onOpen = actions.onResumeTrip, onResume = actions.onResumeTrip,
+                    onOpen = actions.onResumeTrip, onResume = actions.onResumeTrip, modifier = Modifier.padding(horizontal = KtmSpacing.lg),
                 )
             }
             if (state.query.isBlank()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), contentPadding = PaddingValues(horizontal = KtmSpacing.lg)) {
                     items(PlaceCategory.entries.toList(), key = { it.name }) { category ->
                         KtmFilterChip(
                             stringResource(category.labelRes()), selected = state.category == category,
@@ -178,7 +187,7 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
             if (pickOnMap != null) PickOnMapRow(pickOnMap)
             Text(
                 stringResource(R.string.navigate_empty_hint), style = MaterialTheme.typography.bodyMedium,
-                color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.sm),
+                color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.lg),
             )
         }
         return
@@ -188,7 +197,8 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
         if (pickOnMap != null) item { PickOnMapRow(pickOnMap) }
         if (saved.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.navigate_saved_header)) }
-            items(saved, key = { "s-${it.slot}-${it.place.lat},${it.place.lng}" }) {
+            itemsIndexed(saved, key = { _, it -> "s-${it.slot}-${it.place.lat},${it.place.lng}" }) { index, it ->
+                if (index > 0) ListDivider()
                 val icon = when (it.slot) {
                     FavoriteSlot.HOME -> KtmIcons.Home
                     FavoriteSlot.WORK -> KtmIcons.Work
@@ -198,8 +208,9 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
             }
         }
         if (state.recents.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.navigate_recent_header)) }
-            items(state.recents, key = { "r-${it.lat},${it.lng}" }) {
+            item { SectionHeader(stringResource(R.string.navigate_recent_header), trailing = stringResource(R.string.search_straight_line)) }
+            itemsIndexed(state.recents, key = { _, it -> "r-${it.lat},${it.lng}" }) { index, it ->
+                if (index > 0) ListDivider()
                 PlaceRow(it, KtmIcons.History, state.origin, actions.onPlace, onRemove = { actions.onRemoveRecent(it) })
             }
         }
@@ -226,17 +237,31 @@ private fun PickOnMapRow(onClick: () -> Unit) {
 private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
     when {
         // Offline first: no skeleton rows for an answer that cannot come.
-        state.offline -> Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-            InfoBanner(stringResource(R.string.search_offline), tone = BannerTone.Info, icon = KtmIcons.Offline)
-            if (state.localResults.isEmpty()) NoMatches()
-            else LazyColumn { items(state.localResults, key = { "l-${it.lat},${it.lng}" }) { PlaceRow(it, KtmIcons.Pin, state.origin, actions.onPlace) } }
+        state.offline -> Column {
+            InfoBanner(
+                stringResource(R.string.search_offline_message), Modifier.padding(horizontal = KtmSpacing.lg), title = stringResource(R.string.search_offline_title),
+                tone = BannerTone.Warn, icon = KtmIcons.Offline,
+            )
+            KtmButton(
+                stringResource(R.string.search_try_again), actions.onRetry, Modifier.padding(start = KtmSpacing.lg, top = KtmSpacing.md),
+                style = ButtonStyle.Outline, size = ButtonSize.Small, icon = KtmIcons.Refresh,
+            )
+            if (state.localResults.isEmpty()) NoMatches(state.query)
+            else LazyColumn {
+                item { SectionHeader(stringResource(R.string.search_local_header)) }
+                itemsIndexed(state.localResults, key = { _, it -> "l-${it.lat},${it.lng}" }) { index, it ->
+                    if (index > 0) ListDivider()
+                    PlaceRow(it, KtmIcons.Pin, state.origin, actions.onPlace)
+                }
+            }
         }
         state.loading && state.suggestions.isEmpty() -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
-        state.suggestions.isEmpty() -> NoMatches()
+        state.suggestions.isEmpty() -> NoMatches(state.query)
         else -> LazyColumn(Modifier.alpha(if (state.resolving) KtmLayout.disabledAlpha else 1f)) {
             itemsIndexed(state.suggestions, key = { _, s -> s.placeId }) { index, s ->
                 // SE2: results fade in 20 ms after one another.
-                Box(Modifier.staggeredFade(this, index, KtmTheme.motion)) {
+                Column(Modifier.staggeredFade(this, index, KtmTheme.motion)) {
+                    if (index > 0) ListDivider()
                     MatchRow(s, state.query) { if (!state.resolving) actions.onSuggestion(s) }
                 }
             }
@@ -248,30 +273,39 @@ private fun ResultList(state: PlaceSearchState, actions: PlaceSearchActions) {
 private fun CategoryList(state: PlaceSearchState, actions: PlaceSearchActions) {
     when {
         state.loading -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
-        state.categoryFailed -> InfoBanner(stringResource(R.string.search_failed), tone = BannerTone.Bad)
+        state.categoryFailed -> Column {
+            InfoBanner(stringResource(R.string.search_failed), Modifier.padding(horizontal = KtmSpacing.lg), tone = BannerTone.Bad)
+            KtmButton(
+                stringResource(R.string.search_try_again), actions.onRetry, Modifier.padding(start = KtmSpacing.lg, top = KtmSpacing.md),
+                style = ButtonStyle.Outline, size = ButtonSize.Small, icon = KtmIcons.Refresh,
+            )
+        }
         state.categoryResults.isEmpty() -> Text(
             stringResource(R.string.search_nothing_nearby), style = MaterialTheme.typography.bodyMedium,
-            color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.sm),
+            color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.lg),
         )
         else -> LazyColumn {
             item { SectionHeader(stringResource(if (state.alongRoute) R.string.search_along_route else R.string.search_near_you)) }
             itemsIndexed(state.categoryResults, key = { _, r -> "${r.lat},${r.lng},${r.name}" }) { index, r ->
-                ListRow(
-                    modifier = Modifier.staggeredFade(this, index, KtmTheme.motion),
-                    title = r.name, supporting = r.address, leadingIcon = KtmIcons.Pin,
-                    onClick = { actions.onCategoryResult(r) },
-                    trailing = { r.distanceMeters?.takeIf { state.origin != null }?.let { RowValue(DistanceFormatter.format(it, DistanceUnits.METRIC)) } },
-                )
+                Column(Modifier.staggeredFade(this, index, KtmTheme.motion)) {
+                    if (index > 0) ListDivider()
+                    ListRow(
+                        title = r.name, supporting = r.address, leadingIcon = KtmIcons.Pin,
+                        onClick = { actions.onCategoryResult(r) },
+                        trailing = { r.distanceMeters?.takeIf { state.origin != null }?.let { RowValue(DistanceFormatter.format(it, DistanceUnits.METRIC)) } },
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NoMatches() {
+private fun NoMatches(query: String) {
     Text(
-        stringResource(R.string.search_no_matches), style = MaterialTheme.typography.bodyMedium,
-        color = KtmTheme.colors.fg2, modifier = Modifier.padding(KtmSpacing.sm),
+        if (query.isBlank()) stringResource(R.string.search_no_matches) else stringResource(R.string.search_nothing_for, query.trim()),
+        style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg2,
+        modifier = Modifier.padding(KtmSpacing.lg).semantics { this.liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
     )
 }
 

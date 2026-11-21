@@ -142,6 +142,13 @@ class PlaceSearchViewModel(
         }
     }
 
+    /** Ask again: the category being browsed, or else the text in the field. */
+    fun retry() {
+        val now = core.value
+        now.category?.let { loadCategory(it); return }
+        setQuery(now.query)
+    }
+
     /** Pick a category chip, or null to clear it. Picking the active one again clears it. */
     fun selectCategory(category: PlaceCategory?) {
         categoryJob?.cancel()
