@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 /** What the Restore sheet (DL6) is showing. */
 sealed interface RestoreState {
     data object Reading : RestoreState
-    data class Ready(val preview: BackupManager.Preview) : RestoreState
+    data class Ready(val preview: BackupManager.Preview, val fileName: String? = null) : RestoreState
     data object Unreadable : RestoreState
 }
 
@@ -66,7 +66,8 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         _ui.update { it.copy(restore = RestoreState.Reading) }
         viewModelScope.launch {
             val preview = gateway.inspect(uri)
-            _ui.update { if (it.restore == null) it else it.copy(restore = preview?.let(RestoreState::Ready) ?: RestoreState.Unreadable) }
+            val name = if (preview != null) gateway.displayName(uri) else null
+            _ui.update { if (it.restore == null) it else it.copy(restore = preview?.let { p -> RestoreState.Ready(p, name) } ?: RestoreState.Unreadable) }
         }
     }
 

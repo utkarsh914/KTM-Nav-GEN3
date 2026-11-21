@@ -756,9 +756,7 @@
     <!-- Edit value sheet (DL9) -->
     <string name="edit_value_save">Save</string>
     <string name="edit_value_cancel">Cancel</string>
-    <string name="edit_value_not_number">Enter a whole number</string>
-    <string name="edit_value_too_low">At least %1$d</string>
-    <string name="edit_value_too_high">At most %1$d</string>
+    <string name="edit_value_range">Enter a number from %1$d to %2$d</string>
     <string name="edit_value_name_label">Name</string>
 
     <!-- Pickers (ST11, DL8) -->
@@ -871,9 +869,9 @@
     <string name="custom_hex">Hex colour</string>
     <string name="custom_hex_error">Enter 6 hex digits, like FF6A00</string>
     <string name="custom_sample">Sample text</string>
-    <string name="custom_ok">Readable as it is. Contrast %1$s:1.</string>
+    <string name="custom_ok_both">Readable: text %1$s:1 on dark, %2$s:1 on light</string>
     <string name="custom_adjusted">This colour is too close to the background, so text in it is adjusted to stay readable. Contrast %1$s:1.</string>
-    <string name="custom_save">Use this colour</string>
+    <string name="custom_save">Use colour</string>
 
     <!-- Permissions (ST7, DL10, DL11) -->
     <string name="perm_title">Permissions</string>
@@ -889,25 +887,30 @@
     <string name="perm_allow_cd">Allow %1$s</string>
     <string name="perm_open_cd">Open settings for %1$s</string>
     <string name="perm_background_title">Allow location all the time</string>
-    <string name="perm_background_body">Guidance and ride recording keep working when the screen is off or the app is in the background, like when the bike reconnects by itself. Android asks for this separately. Choose \"Allow all the time\" on the next screen.</string>
-    <string name="perm_background_go">Continue</string>
-    <string name="perm_access_title">Allow notification access</string>
-    <string name="perm_access_body">To mirror turns from Google Maps, Android has to let this app read notifications. On the next screen, find KTM Navigator and switch it on. The app only looks at notifications from the apps you chose.</string>
-    <string name="perm_access_go">Open Android settings</string>
+    <string name="perm_background_body">Android asks for this on a separate screen:</string>
+    <string name="perm_background_step1">Tap Open settings</string>
+    <string name="perm_background_step2">Permissions › Location</string>
+    <string name="perm_background_step3">Choose Allow all the time</string>
+    <string name="perm_background_note">Guidance and ride recording keep working when the screen is off, like when the bike reconnects by itself.</string>
+    <string name="perm_background_go">Open settings</string>
+    <string name="perm_access_title">Turn on notification access</string>
+    <string name="perm_access_body">On the next screen, find KTM Navigator and switch it on.</string>
+    <string name="perm_access_note">Used only to read Google Maps\' turns and the apps you pick for the dash.</string>
+    <string name="perm_access_app">KTM Navigator</string>
+    <string name="perm_access_go">Open settings</string>
     <string name="perm_explainer_cancel">Not now</string>
 
     <!-- Backup & restore (ST8, DL6) -->
     <string name="backup_title">Backup &amp; restore</string>
     <string name="backup_action_backup">Back up now</string>
-    <string name="backup_action_restore">Restore from a backup</string>
-    <string name="backup_included">What\'s included</string>
-    <string name="backup_inc_rides">Your rides</string>
-    <string name="backup_inc_rides_hint">With their tracks</string>
-    <string name="backup_inc_places">Saved places</string>
-    <string name="backup_inc_places_hint">Home, Work, saved and recent</string>
-    <string name="backup_inc_settings">Your settings</string>
-    <string name="backup_inc_settings_hint">Your choices in Settings, like theme, sounds and dash options</string>
-    <string name="backup_not_included">The bike pairing is never included. Pair again on a new phone.</string>
+    <string name="backup_action_restore">Restore from a file</string>
+    <string name="backup_action_backup_hint">Rides, places and settings in one file</string>
+    <string name="backup_action_restore_hint">Choose what to bring back</string>
+    <string name="backup_included">What\'s in a backup</string>
+    <string name="backup_inc_rides">Rides, with tracks and notes</string>
+    <string name="backup_inc_places">Saved places, Home and Work</string>
+    <string name="backup_inc_settings">All settings</string>
+    <string name="backup_inc_pairing">Bike pairing. Pair again on a new phone</string>
     <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones.</string>
     <plurals name="backup_done">
         <item quantity="one">Backed up %1$d ride, your places and settings</item>
@@ -943,9 +946,9 @@
     <string name="restore_places">Saved places</string>
     <string name="restore_settings">Settings</string>
     <string name="restore_none">None in this file</string>
-    <string name="restore_rides_detail">New: %1$d of %2$d in file</string>
-    <string name="restore_places_detail">In file: %1$d, merged with yours</string>
-    <string name="restore_settings_detail">In file: %1$d. Replaces yours; anything not in the file goes back to its default. Restart the app to apply.</string>
+    <string name="restore_rides_detail">%1$d new · %2$d already here</string>
+    <string name="restore_places_detail">%1$d · merged with yours</string>
+    <string name="restore_settings_detail">Replaces yours · app restarts</string>
     <string name="restore_close">Close</string>
     <string name="restore_confirm">Restore</string>
 
@@ -963,8 +966,8 @@
     <string name="about_calibration_hint">Match turn icons to what your dash shows.</string>
     <string name="about_overlay">Dash preview overlay</string>
     <string name="about_overlay_hint">A floating chip with what would be sent to the dash.</string>
-    <string name="about_section_app">App</string>
-    <string name="about_version">Version</string>
+    <string name="about_app_name">KTM Navigator</string>
+    <string name="about_debug_badge">Debug</string>
 
     <!-- Onboarding (ON1 to ON5) and Ready (ON10) -->
     <string name="app_wordmark">KTM Navigator</string>

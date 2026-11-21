@@ -21,6 +21,7 @@ import com.navigator.app.ui.theme.rememberHaptics
 fun KtmCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = KtmTheme.colors
@@ -30,7 +31,7 @@ fun KtmCard(
             .clip(KtmShapes.Card)
             .background(c.surf)
             .border(1.dp, c.line, KtmShapes.Card)
-            .let { if (onClick != null) it.clickable(role = Role.Button) { haptics.tap(); onClick() } else it }
+            .let { if (onClick != null) it.clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onClick() } else it }
             .padding(KtmSpacing.lg),
         content = content,
     )

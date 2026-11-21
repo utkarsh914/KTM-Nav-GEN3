@@ -31,11 +31,10 @@ import com.navigator.app.ui.theme.KtmSpacing
 
 /** The message under a number field for what was typed, or null when it is fine (or nothing was typed yet). */
 object EditValueText {
-    fun error(v: SpecValidation, typed: String): UiText? = when (v) {
+    fun error(v: SpecValidation, typed: String, spec: IntSpec): UiText? = when (v) {
         is SpecValidation.Valid -> null
-        SpecValidation.NotANumber -> if (typed.isBlank()) null else UiText.Res(R.string.edit_value_not_number)
-        is SpecValidation.TooLow -> UiText.Res(R.string.edit_value_too_low, listOf(v.min))
-        is SpecValidation.TooHigh -> UiText.Res(R.string.edit_value_too_high, listOf(v.max))
+        SpecValidation.NotANumber -> if (typed.isBlank()) null else UiText.Res(R.string.edit_value_range, listOf(spec.min, spec.max))
+        is SpecValidation.TooLow, is SpecValidation.TooHigh -> UiText.Res(R.string.edit_value_range, listOf(spec.min, spec.max))
     }
 }
 
@@ -47,7 +46,7 @@ object EditValueText {
 fun EditNumberSheet(title: String, initial: Int, spec: IntSpec, unit: String, onSave: (Int) -> Unit, onDismiss: () -> Unit) {
     var text by rememberSaveable { mutableStateOf(initial.toString()) }
     val validation = spec.validate(text)
-    val error = EditValueText.error(validation, text)?.resolve()
+    val error = EditValueText.error(validation, text, spec)?.resolve()
     val save = { (validation as? SpecValidation.Valid)?.let { onSave(it.value) }; Unit }
     SheetFrame(title, onDismiss, canSave = validation is SpecValidation.Valid, onSave = save) { focus ->
         KtmTextField(

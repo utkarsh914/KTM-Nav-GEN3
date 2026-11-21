@@ -269,19 +269,19 @@ class SettingsB16cContentTest {
     @Test fun twoBigActionsAndTheChecklist() {
         backup(BackupUi())
         rule.onNode(hasText("Back up now") and hasClickAction()).performClick()
-        rule.onNode(hasText("Restore from a backup") and hasClickAction()).performClick()
-        rule.onNodeWithText("Your rides").performScrollTo().assertIsDisplayed()
+        rule.onNode(hasText("Restore from a file") and hasClickAction()).performClick()
+        rule.onNodeWithText("Rides, with tracks and notes").performScrollTo().assertIsDisplayed()
         assertEquals(listOf("backup", "restore"), log)
     }
 
     @Test fun restoreIsOffWhileBackingUp() {
         backup(BackupUi(busy = true))
-        rule.onNode(hasText("Restore from a backup") and hasClickAction()).assertIsNotEnabled()
+        rule.onNode(hasText("Restore from a file") and hasClickAction()).assertIsNotEnabled()
     }
 
     @Test fun theSheetOffersWhatIsNewAndRestoresTheChoice() {
         backup(BackupUi(restore = RestoreState.Ready(BackupManager.Preview(3, 2, 0, 4))))
-        rule.onNodeWithText("New: 2 of 3 in file").assertIsDisplayed()
+        rule.onNodeWithText("2 new · 1 already here").assertIsDisplayed()
         rule.onNode(hasText("Restore") and hasClickAction()).assertIsEnabled().performClick()
         assertEquals("settings start unticked", listOf("gotruefalsefalse"), log)
     }

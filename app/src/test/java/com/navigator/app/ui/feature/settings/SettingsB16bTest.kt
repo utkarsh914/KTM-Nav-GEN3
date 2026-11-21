@@ -345,13 +345,13 @@ class SettingsB16bContentTest {
     @Test fun theCustomSheetKeepsSaveOffForABadHexAndExplainsIt() {
         val saved = mutableListOf<String>()
         rule.setContent { KtmTheme(darkTheme = false) { CustomAccentSheet(Color(0xFF3B82F6), dark = false, { saved += it }, {}) } }
-        rule.onNode(hasText("Use this colour") and hasClickAction()).assertIsEnabled()
+        rule.onNode(hasText("Use colour") and hasClickAction()).assertIsEnabled()
         rule.onNode(hasSetTextAction()).performTextReplacement("12")
         rule.onNodeWithText("Enter 6 hex digits", substring = true).assertIsDisplayed()
-        rule.onNode(hasText("Use this colour") and hasClickAction()).assertIsNotEnabled()
+        rule.onNode(hasText("Use colour") and hasClickAction()).assertIsNotEnabled()
         rule.onNode(hasSetTextAction()).performTextReplacement("FFF59D")
         rule.onNodeWithText("too close to the background", substring = true).assertIsDisplayed()
-        rule.onNode(hasText("Use this colour") and hasClickAction()).assertIsEnabled().performClick()
+        rule.onNode(hasText("Use colour") and hasClickAction()).assertIsEnabled().performClick()
         assertEquals(listOf("#FFF59D"), saved)
     }
 
@@ -359,7 +359,7 @@ class SettingsB16bContentTest {
         val saved = mutableListOf<String>()
         rule.setContent { KtmTheme(darkTheme = false) { CustomAccentSheet(Color(0xFF3B82F6), dark = false, { saved += it }, {}) } }
         rule.onNode(hasSetTextAction()).performTextReplacement("3B83F7")
-        rule.onNode(hasText("Use this colour") and hasClickAction()).performClick()
+        rule.onNode(hasText("Use colour") and hasClickAction()).performClick()
         assertEquals(listOf("#3B83F7"), saved)
     }
 }

@@ -1,6 +1,7 @@
 package com.navigator.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,6 +20,8 @@ fun KtmSwitchRow(
     supportingLines: Int = if (supporting == null) 0 else 1,
     leadingIcon: ImageVector? = null,
     enabled: Boolean = true,
+    /** A small neutral badge before the switch ("Debug"). */
+    badge: String? = null,
 ) {
     val haptics = rememberHaptics()
     ListRow(
@@ -30,6 +33,12 @@ fun KtmSwitchRow(
             value = checked, enabled = enabled, role = Role.Switch,
             onValueChange = { haptics.toggle(it); onCheckedChange(it) },
         ),
-        trailing = { KtmSwitch(checked, onCheckedChange = null, enabled = enabled) },
+        trailing = {
+            if (badge != null) {
+                KtmBadge(badge, tone = BadgeTone.Neutral)
+                androidx.compose.foundation.layout.Spacer(Modifier.width(com.navigator.app.ui.theme.KtmSpacing.sm))
+            }
+            KtmSwitch(checked, onCheckedChange = null, enabled = enabled)
+        },
     )
 }

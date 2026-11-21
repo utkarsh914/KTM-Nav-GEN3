@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 interface BackupGateway {
     suspend fun backup(uri: Uri): BackupManager.Summary
     suspend fun inspect(uri: Uri): BackupManager.Preview?
+
+    /** The file's name as the picker shows it, for the restore sheet; null when it can't be read. */
+    suspend fun displayName(uri: Uri): String? = null
     suspend fun restore(uri: Uri, rides: Boolean, places: Boolean, settings: Boolean): BackupManager.Restored
 }
 
@@ -30,6 +33,14 @@ class AndroidBackupGateway(context: Context) : BackupGateway {
 
     override suspend fun inspect(uri: Uri): BackupManager.Preview? = withContext(io) {
         runCatching { app.contentResolver.openInputStream(uri)?.use { BackupManager(app).inspect(it) } }.getOrNull()
+    }
+
+    override suspend fun displayName(uri: Uri): String? = withContext(io) {
+        runCatching {
+            app.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull()
     }
 
     override suspend fun restore(uri: Uri, rides: Boolean, places: Boolean, settings: Boolean): BackupManager.Restored = withContext(io) {

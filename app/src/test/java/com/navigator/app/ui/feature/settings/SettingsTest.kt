@@ -215,16 +215,17 @@ class SettingsSummaryTest {
 class EditValueTextTest {
     private val spec = IntSpec(10, 200, 5, 60, com.navigator.app.data.settings.SettingUnit.KMH)
 
-    @Test fun anInRangeNumberHasNoMessage() = assertNull(EditValueText.error(spec.validate("80"), "80"))
+    @Test fun anInRangeNumberHasNoMessage() = assertNull(EditValueText.error(spec.validate("80"), "80", spec))
 
     @Test fun anOutOfRangeNumberSaysTheLimit() {
-        assertEquals(UiText.Res(R.string.edit_value_too_low, listOf(10)), EditValueText.error(spec.validate("5"), "5"))
-        assertEquals(UiText.Res(R.string.edit_value_too_high, listOf(200)), EditValueText.error(spec.validate("999"), "999"))
+        // One message for both ends: the whole range, as the mock says ("Enter a number from 10 to 200").
+        assertEquals(UiText.Res(R.string.edit_value_range, listOf(10, 200)), EditValueText.error(spec.validate("5"), "5", spec))
+        assertEquals(UiText.Res(R.string.edit_value_range, listOf(10, 200)), EditValueText.error(spec.validate("999"), "999", spec))
     }
 
     @Test fun anEmptyFieldIsNotAnErrorYetButGarbageIs() {
-        assertNull(EditValueText.error(SpecValidation.NotANumber, ""))
-        assertNotNull(EditValueText.error(SpecValidation.NotANumber, "1a"))
+        assertNull(EditValueText.error(SpecValidation.NotANumber, "", spec))
+        assertNotNull(EditValueText.error(SpecValidation.NotANumber, "1a", spec))
     }
 }
 
@@ -356,7 +357,7 @@ class SettingsContentTest {
         rule.setContent { KtmTheme(darkTheme = false) { EditNumberSheet("Alert at", 80, SettingSpecs.overspeedLimit, "km/h", { saved += it }, {}) } }
         rule.onNode(hasText("Save") and hasClickAction()).assertIsEnabled()
         rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextReplacement("5")
-        rule.onNodeWithText("At least ${SettingSpecs.overspeedLimit.min}").assertIsDisplayed()
+        rule.onNodeWithText("Enter a number from ${SettingSpecs.overspeedLimit.min} to ${SettingSpecs.overspeedLimit.max}").assertIsDisplayed()
         rule.onNode(hasText("Save") and hasClickAction()).assertIsNotEnabled()
         rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextReplacement("90")
         rule.onNode(hasText("Save") and hasClickAction()).assertIsEnabled().performClick()

@@ -7,9 +7,23 @@ import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.data.permissions.PermissionsState
 
 /** Why the app is about to leave for an Android screen; each has a sheet that explains it first. */
-enum class Explainer(@StringRes val title: Int, @StringRes val body: Int, @StringRes val go: Int) {
-    BACKGROUND_LOCATION(R.string.perm_background_title, R.string.perm_background_body, R.string.perm_background_go),
-    NOTIFICATION_ACCESS(R.string.perm_access_title, R.string.perm_access_body, R.string.perm_access_go),
+enum class Explainer(
+    @StringRes val title: Int,
+    @StringRes val body: Int,
+    @StringRes val go: Int,
+    /** DL10: what to do on Android's screen, as numbered steps. */
+    val steps: List<Int> = emptyList(),
+    /** What is said after the steps or the app row: why it is needed. */
+    @StringRes val note: Int? = null,
+    /** DL11: shows the app's own row with a switch, as Android's list will. */
+    val appRow: Boolean = false,
+) {
+    BACKGROUND_LOCATION(
+        R.string.perm_background_title, R.string.perm_background_body, R.string.perm_background_go,
+        steps = listOf(R.string.perm_background_step1, R.string.perm_background_step2, R.string.perm_background_step3),
+        note = R.string.perm_background_note,
+    ),
+    NOTIFICATION_ACCESS(R.string.perm_access_title, R.string.perm_access_body, R.string.perm_access_go, note = R.string.perm_access_note, appRow = true),
 }
 
 /** What tapping Allow on a permission does next. */
