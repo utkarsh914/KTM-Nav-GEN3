@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import com.navigator.app.R
+import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmCheckIndicator
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmRadioRow
@@ -23,6 +24,7 @@ import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.components.SkeletonRow
+import com.navigator.app.ui.components.StateAction
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -52,9 +54,9 @@ fun AppPickerContent(ui: AppPickerUi, actions: AppPickerActions, modifier: Modif
         Crossfade(targetState = ui.loading, animationSpec = KtmTheme.motion.effectsDefault(), label = "loading") { loading ->
             when {
                 loading -> Column { repeat(5) { SkeletonRow(announce = it == 0) } }
-                ui.sections.isEmpty() -> Text(
-                    stringResource(R.string.picker_none_found), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                    modifier = Modifier.padding(KtmSpacing.edge),
+                ui.sections.isEmpty() -> EmptyState(
+                    KtmIcons.Search, stringResource(R.string.picker_none_found), stringResource(R.string.picker_none_found_message),
+                    primary = if (ui.query.isNotEmpty()) StateAction(stringResource(R.string.picker_search_clear)) { actions.onQuery("") } else null,
                 )
                 else -> LazyColumn(Modifier.pageInsets()) {
                     ui.sections.forEachIndexed { index, section ->
@@ -92,9 +94,10 @@ fun AudioPickerContent(ui: AudioPickerUi, actions: AudioPickerActions, modifier:
             }
             ui.devices.forEach { KtmRadioRow(it.name, selected = it.address == ui.selected, onSelect = { actions.onChoose(it.address) }) }
             if (ui.devices.isEmpty()) {
-                Text(
+                EmptyState(
+                    KtmIcons.Headset,
+                    stringResource(if (ui.permissionDenied) R.string.picker_audio_permission_title else R.string.picker_audio_empty_title),
                     stringResource(if (ui.permissionDenied) R.string.picker_audio_permission else R.string.picker_audio_empty),
-                    style = MaterialTheme.typography.bodyMedium, color = c.fg2, modifier = Modifier.padding(KtmSpacing.edge),
                 )
             }
         }

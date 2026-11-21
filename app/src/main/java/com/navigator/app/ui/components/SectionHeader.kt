@@ -2,8 +2,7 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -41,14 +40,15 @@ fun SectionHeader(
         if (trailing != null) {
             Text(
                 trailing, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.sm),
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.sm).widthIn(max = KtmLayout.sectionTrailingMax),
             )
         }
         if (action != null && onAction != null) {
             Text(
                 action, style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.text, maxLines = 1,
-                modifier = Modifier.defaultMinSize(minHeight = KtmLayout.targetRest).clickable(role = Role.Button, onClick = onAction)
-                    .wrapContentHeight(Alignment.CenterVertically).padding(start = KtmSpacing.md),
+                // The header keeps one rhythm with or without a link: the text is its natural height, and Compose widens
+                // the touch area of a clickable to 48 dp (the minimum touch target) around it.
+                modifier = Modifier.clickable(role = Role.Button, onClick = onAction).padding(start = KtmSpacing.md),
             )
         }
     }

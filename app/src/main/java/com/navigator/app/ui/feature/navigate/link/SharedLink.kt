@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import com.navigator.app.nav.destination.LinkFailure
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.KtmSheetContent
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.Skeleton
@@ -160,10 +162,11 @@ fun SharedLinkCard(
             .widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth()
             .onSizeChanged { heightPx = it.height }
             .shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(c.surf, KtmShapes.SheetTop).consumeMapTouches()
-            .padding(horizontal = KtmSpacing.lg).pageInsets()
-            .semantics { liveRegion = LiveRegionMode.Polite },
+            .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         SheetHandle()
+        // The shared anatomy (gutters, the gesture-area spacer); a short card, so it does not scroll.
+        KtmSheetContent(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, scrollable = false, imePadding = false) {
         when (state) {
             SharedLinkState.Loading -> {
                 Title(R.string.shared_link_loading)
@@ -199,6 +202,7 @@ fun SharedLinkCard(
             }
             SharedLinkState.Idle -> Unit
         }
+        }
     }
     }
 }
@@ -214,5 +218,5 @@ private fun Body(res: Int) = Text(
 
 @Composable
 private fun Buttons(content: @Composable () -> Unit) {
-    Column(Modifier.padding(top = KtmSpacing.lg, bottom = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) { content() }
+    Column(Modifier.padding(top = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) { content() }
 }

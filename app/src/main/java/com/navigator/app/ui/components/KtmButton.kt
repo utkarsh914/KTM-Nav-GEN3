@@ -134,12 +134,12 @@ fun KtmButton(
             .drawBehind {
                 // Focus ring: 3 dp, 3 dp outside the button.
                 if (focused) {
-                    val gap = 3.dp.toPx()
+                    val gap = KtmLayout.focusRingGap.toPx()
                     val r = if (shape === KtmShapes.Card) 16.dp.toPx() else 12.dp.toPx()
                     drawRoundRect(
-                        ringColor, Offset(-gap - 1.5.dp.toPx(), -gap - 1.5.dp.toPx()),
-                        Size(this.size.width + 2 * (gap + 1.5.dp.toPx()), this.size.height + 2 * (gap + 1.5.dp.toPx())),
-                        CornerRadius(r + gap), style = Stroke(3.dp.toPx()),
+                        ringColor, Offset(-gap - (KtmLayout.focusRingWidth / 2).toPx(), -gap - (KtmLayout.focusRingWidth / 2).toPx()),
+                        Size(this.size.width + 2 * (gap + (KtmLayout.focusRingWidth / 2).toPx()), this.size.height + 2 * (gap + (KtmLayout.focusRingWidth / 2).toPx())),
+                        CornerRadius(r + gap), style = Stroke(KtmLayout.focusRingWidth.toPx()),
                     )
                 }
             }

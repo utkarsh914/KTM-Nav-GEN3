@@ -31,7 +31,7 @@ fun KtmFab(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modi
     Row(
         modifier.shadow(KtmElevation.sheet, KtmShapes.Pill).height(KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(a.fill)
             .clickable(role = Role.Button) { haptics.tap(); onClick() }
-            .padding(horizontal = KtmSpacing.xl),
+            .padding(start = KtmSpacing.lg, end = KtmLayout.buttonPaddingH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {

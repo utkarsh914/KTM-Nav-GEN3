@@ -18,9 +18,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.down
 import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
@@ -55,6 +57,15 @@ class ComponentInteractionTest {
         val number = rule.onNodeWithText("80").getUnclippedBoundsInRoot()
         val gap = ((button.top + button.bottom) / 2 - (number.top + number.bottom) / 2).value
         assertTrue("the number's centre is $gap dp off the buttons'", kotlin.math.abs(gap) < 4f)
+    }
+
+    @Test fun theLinkInASectionHeaderIsTappableWithin48DpNotOnlyOnItsText() {
+        var taps = 0
+        rule.setContent { KtmTheme(darkTheme = false) { SectionHeader("Saved", action = "See all", onAction = { taps++ }) } }
+        val bounds = rule.onNodeWithText("See all").getUnclippedBoundsInRoot()
+        assertTrue("the text is its natural height, not a 48 dp box", (bounds.bottom - bounds.top).value < 48f)
+        rule.onNodeWithText("See all").performTouchInput { click(androidx.compose.ui.geometry.Offset(center.x, center.y + 20.dp.toPx())) }
+        assertEquals(1, taps)
     }
 
     @Test fun aTapStepsOnceOnTheGrid() {

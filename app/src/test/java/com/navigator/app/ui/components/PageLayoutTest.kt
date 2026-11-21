@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -98,5 +99,31 @@ class PageLayoutTest {
             }
         }
         rule.onNodeWithText("Nothing saved").assertIsDisplayed()
+    }
+
+    @Test fun aListLeavesRoomForExactlyTheKeyboardThatCoversIt() {
+        rule.runOnUiThread { WindowCompat.setDecorFitsSystemWindows(rule.activity.window, false) }
+        rule.setContent {
+            KtmTheme(darkTheme = false) {
+                // A page with something under it (a tab bar) that the keyboard also covers.
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().padding(bottom = 80.dp).keyboardClearance()) { Box(Modifier.fillMaxSize().testTag("list")) }
+                }
+            }
+        }
+        val before = rule.onNodeWithTag("list").getUnclippedBoundsInRoot()
+        val density = rule.activity.resources.displayMetrics.density
+        val keyboardPx = (400 * density).toInt()
+        rule.runOnUiThread {
+            val ime = WindowInsetsCompat.Builder()
+                .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, keyboardPx))
+                .setVisible(WindowInsetsCompat.Type.ime(), true)
+                .build()
+            ViewCompat.dispatchApplyWindowInsets(rule.activity.window.decorView, ime)
+        }
+        rule.waitForIdle()
+        val after = rule.onNodeWithTag("list").getUnclippedBoundsInRoot()
+        // The 80 dp under the list is already out of the keyboard's way: only the rest of the keyboard's height is taken.
+        assertEquals(400f - 80f, (before.bottom - after.bottom).value, 1f)
     }
 }

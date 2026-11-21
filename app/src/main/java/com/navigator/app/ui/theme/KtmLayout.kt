@@ -188,6 +188,9 @@ object KtmLayout {
     /** Save beside Directions on the place sheet (PL1). */
     val placeSaveMinWidth = 116.dp
 
+    /** The most a section header's chosen value ("Orange") may take, so a long one cannot squeeze the title. */
+    val sectionTrailingMax = 160.dp
+
     /** The drag handle (the mock's `.hdl`: 36 x 4). */
     val sheetHandleWidth = 36.dp
     val sheetHandleHeight = 4.dp
@@ -198,6 +201,10 @@ object KtmLayout {
 
     /** Side padding of a 56/64 dp button (48 dp and text buttons use less). */
     val buttonPaddingH = 20.dp
+
+    /** The focus ring: 3 dp thick, 3 dp outside the control. */
+    val focusRingGap = 3.dp
+    val focusRingWidth = 3.dp
 
     /** A Where-to tile's two lines of text at font scale 1 (title and caption), before they scale. */
     val tileTextBlock = 40.dp

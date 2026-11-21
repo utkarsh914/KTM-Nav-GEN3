@@ -5,12 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +27,7 @@ import com.navigator.app.nav.providers.StartFailure
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.KtmSheetContent
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
@@ -56,38 +55,41 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
     val r = KtmTheme.riding
     Column(
         modifier.fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = KtmSpacing.lg).pageInsets().padding(bottom = KtmSpacing.lg),
-        verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+            .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         SheetHandle()
-        // A 56 dp alert tile says "something went wrong" before the words do.
-        Box(Modifier.size(KtmLayout.targetPrimary).clip(KtmShapes.Card).background(KtmTheme.colors.badContainer), contentAlignment = Alignment.Center) {
-            Icon(KtmIcons.Warning, null, tint = KtmTheme.colors.bad, modifier = Modifier.size(KtmLayout.iconRiding))
-        }
-        Text(
-            stringResource(R.string.start_failed_title), style = MaterialTheme.typography.headlineSmall, color = r.onSurface,
-            modifier = Modifier.semantics { heading() },
-        )
-        Text(
-            stringResource(ui.message), style = MaterialTheme.typography.bodyLarge, color = r.onSurfaceVariant,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        )
-        if (ui.canRetry && canRetry) {
-            KtmButton(stringResource(R.string.start_failed_retry), actions.onRetry, Modifier.fillMaxWidth(), size = ButtonSize.Riding, icon = KtmIcons.Refresh)
-        }
-        if (ui.offerMirror) {
-            KtmButton(stringResource(R.string.start_failed_mirror), actions.onMirror, Modifier.fillMaxWidth(), size = ButtonSize.Riding)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            KtmButton(
-                stringResource(R.string.start_failed_back), actions.onBack, Modifier.weight(1f),
-                style = ButtonStyle.Outline, size = ButtonSize.Rest,
-            )
-            KtmButton(
-                stringResource(R.string.common_close), actions.onClose, Modifier.weight(1f),
-                style = ButtonStyle.Outline, size = ButtonSize.Rest,
-            )
+        // The shared anatomy (gutters, the gesture-area spacer); it scrolls when the window is short or the font large.
+        KtmSheetContent(imePadding = false) {
+            Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                // A 56 dp alert tile says "something went wrong" before the words do.
+                Box(Modifier.size(KtmLayout.targetPrimary).clip(KtmShapes.Card).background(KtmTheme.colors.badContainer), contentAlignment = Alignment.Center) {
+                    Icon(KtmIcons.Warning, null, tint = KtmTheme.colors.bad, modifier = Modifier.size(KtmLayout.iconRiding))
+                }
+                Text(
+                    stringResource(R.string.start_failed_title), style = MaterialTheme.typography.headlineSmall, color = r.onSurface,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    stringResource(ui.message), style = MaterialTheme.typography.bodyLarge, color = r.onSurfaceVariant,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                if (ui.canRetry && canRetry) {
+                    KtmButton(stringResource(R.string.start_failed_retry), actions.onRetry, Modifier.fillMaxWidth(), size = ButtonSize.Riding, icon = KtmIcons.Refresh)
+                }
+                if (ui.offerMirror) {
+                    KtmButton(stringResource(R.string.start_failed_mirror), actions.onMirror, Modifier.fillMaxWidth(), size = ButtonSize.Riding)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                    KtmButton(
+                        stringResource(R.string.start_failed_back), actions.onBack, Modifier.weight(1f),
+                        style = ButtonStyle.Outline, size = ButtonSize.Rest,
+                    )
+                    KtmButton(
+                        stringResource(R.string.common_close), actions.onClose, Modifier.weight(1f),
+                        style = ButtonStyle.Outline, size = ButtonSize.Rest,
+                    )
+                }
+            }
         }
     }
 }

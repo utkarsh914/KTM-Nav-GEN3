@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.AccentScheme
 import com.navigator.app.ui.theme.KtmColors
 import com.navigator.app.ui.theme.KtmShapes
+import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
 enum class BadgeTone { Ok, Warn, Bad, Info, Accent, Neutral }
@@ -35,6 +36,6 @@ fun KtmBadge(text: String, modifier: Modifier = Modifier, tone: BadgeTone = Badg
         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
         color = content,
         maxLines = 1,
-        modifier = modifier.background(container, KtmShapes.Badge).padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = modifier.background(container, KtmShapes.Badge).padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs),
     )
 }

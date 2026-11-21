@@ -789,6 +789,9 @@
     <string name="picker_suggested">Messaging and phone</string>
     <string name="picker_all">All apps</string>
     <string name="picker_none_found">Nothing matches</string>
+    <string name="picker_none_found_message">Try another name.</string>
+    <string name="picker_audio_empty_title">No paired headsets</string>
+    <string name="picker_audio_permission_title">Nearby devices is off</string>
     <string name="picker_apps_title">Apps on your dash</string>
     <string name="picker_apps_hint">Notifications from these apps show on the dash.</string>
     <string name="picker_audio_title">Call audio device</string>

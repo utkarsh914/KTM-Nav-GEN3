@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.Role
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.fullBleed
+import com.navigator.app.ui.components.keyboardClearance
 import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.shell.rideContainer
 import androidx.compose.runtime.setValue
@@ -140,7 +141,7 @@ fun RidesContent(
                     )
                     is RidesBody.Items -> LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().pageInsets(WindowInsetsSides.Horizontal),
+                        modifier = Modifier.fillMaxSize().pageInsets(WindowInsetsSides.Horizontal).keyboardClearance(),
                         contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
                         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
                     ) {
