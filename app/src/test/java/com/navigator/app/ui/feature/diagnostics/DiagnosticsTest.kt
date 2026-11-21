@@ -92,7 +92,7 @@ class DiagnosticsViewModelsTest {
         assertEquals("earlier lines keep their keys when one is added", keys, vm.ui.value.entries.map { it.key }.take(3))
     }
 
-    @Test fun theErrorsChipKeepsOnlyWarningLines() = runTest(UnconfinedTestDispatcher()) {
+    @Test fun theProblemsChipKeepsOnlyWarningLines() = runTest(UnconfinedTestDispatcher()) {
         val lines = MutableStateFlow(listOf("[t] [BLE] connected", "[t] [BLE] !! write failed", "[t] [Nav] fine"))
         val vm = LogsViewModel(lines, UnconfinedTestDispatcher()).also { it.ui.launchIn(backgroundScope) }
         vm.setErrorsOnly(true)
@@ -256,7 +256,7 @@ class DiagnosticsContentTest {
         assertTrue(shared)
     }
 
-    @Test fun searchOpensFromTheTopBarAndErrorsIsAChip() {
+    @Test fun searchOpensFromTheTopBarAndProblemsIsAChip() {
         var errors: Boolean? = null
         val ui = LogsUi(entries = listOf(LogEntries.parse("[12:30:01.123] [BLE] Scanning").copy(key = "a")), tags = listOf("BLE"))
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, LogsActions({}, {}, {}, {}, { errors = it })) } }

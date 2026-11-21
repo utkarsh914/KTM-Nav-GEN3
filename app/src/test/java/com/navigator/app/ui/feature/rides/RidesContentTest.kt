@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.rides
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -164,5 +167,16 @@ class RidesContentTest {
     @Test fun loadingShowsNoEmptyStateFlash() {
         show(null)
         rule.onAllNodesWithText("No rides yet").assertCountEquals(0)
+    }
+
+    @Test fun whileSelectingACardReportsItsToggleState() {
+        show(ui(selecting = true, selected = setOf("a")))
+        rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On)).assertCountEquals(1)
+        rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off)).assertCountEquals(2) // the other card and the selection bar's toggle
+    }
+
+    @Test fun outsideSelectionACardIsNotAToggle() {
+        show(ui())
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).assertCountEquals(0)
     }
 }

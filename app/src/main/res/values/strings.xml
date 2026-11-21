@@ -410,7 +410,6 @@
     <string name="rides_search_hint">Search rides</string>
     <string name="rides_search_open">Search rides</string>
     <string name="rides_search_close">Close search</string>
-    <string name="rides_search_clear">Clear search</string>
     <string name="rides_sort_open">Sort rides</string>
     <string name="rides_more">More</string>
     <string name="rides_menu_select">Select rides</string>
@@ -1171,7 +1170,7 @@
     <string name="logs_share_failed">Couldn\'t share the log</string>
     <string name="logs_search">Search the log</string>
     <string name="logs_all">All</string>
-    <string name="logs_errors">Problems</string>
+    <string name="logs_problems">Problems</string>
     <string name="logs_following">Following live</string>
     <string name="logs_paused">Paused</string>
     <string name="logs_empty_title">Nothing logged yet</string>

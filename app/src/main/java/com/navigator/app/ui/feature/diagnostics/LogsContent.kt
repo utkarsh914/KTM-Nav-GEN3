@@ -123,7 +123,7 @@ fun LogsContent(ui: LogsUi, actions: LogsActions, modifier: Modifier = Modifier)
         ) {
             item { KtmFilterChip(stringResource(R.string.logs_all), ui.tag == null && !ui.errorsOnly, { actions.onTag(null); actions.onErrors(false) }) }
             items(ui.tags, key = { it }) { tag -> KtmFilterChip(tag, ui.tag == tag, { actions.onTag(if (ui.tag == tag) null else tag); actions.onErrors(false) }) }
-            item(key = "\u0000errors") { KtmFilterChip(stringResource(R.string.logs_errors), ui.errorsOnly, { actions.onErrors(!ui.errorsOnly); if (!ui.errorsOnly) actions.onTag(null) }) }
+            item(key = "\u0000errors") { KtmFilterChip(stringResource(R.string.logs_problems), ui.errorsOnly, { actions.onErrors(!ui.errorsOnly); if (!ui.errorsOnly) actions.onTag(null) }) }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {

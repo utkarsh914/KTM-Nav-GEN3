@@ -272,7 +272,7 @@ private fun SearchBar(query: String, actions: RidesActions) {
         KtmSearchField(
             query, actions.onQuery, stringResource(R.string.rides_search_hint), Modifier.weight(1f), focusRequester = focus,
             trailing = {
-                if (query.isNotEmpty()) KtmIconButton(KtmIcons.Close, stringResource(R.string.rides_search_clear), { actions.onQuery("") })
+                if (query.isNotEmpty()) KtmIconButton(KtmIcons.Close, stringResource(R.string.rides_clear_search), { actions.onQuery("") })
             },
         )
     }
