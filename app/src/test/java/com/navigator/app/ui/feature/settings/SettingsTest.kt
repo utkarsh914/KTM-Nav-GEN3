@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -187,10 +188,17 @@ class SettingsSummaryTest {
         assertTrue(UiText.Res(R.string.settings_sum_alert_off) in off.parts)
     }
 
-    @Test fun theBikeSummaryReadsTheLinkStateAndMessages() {
-        val s = summary(SettingsPage.BIKE_DASH, snap { mirrorEnabled = false }, BikeStatus.Connected("KTM"))
-        assertEquals(UiText.Res(BikePillMapper.map(BikeStatus.Connected("KTM")).state), s.parts[0])
-        assertEquals(UiText.Res(R.string.settings_sum_messages_off), s.parts[1])
+    @Test fun theBikeSummaryReadsTheNameAndNotifications() {
+        val unset = summary(SettingsPage.BIKE_DASH, snap { mirrorEnabled = false; userName = null }, BikeStatus.Connected("KTM"))
+        assertEquals(UiText.Res(R.string.settings_sum_name_unset), unset.parts[0])
+        assertEquals(UiText.Res(R.string.settings_sum_messages_off), unset.parts[1])
+        val named = summary(SettingsPage.BIKE_DASH, snap { userName = " Arjun " }, BikeStatus.Connected("KTM"))
+        assertEquals(UiText.Raw("Arjun"), named.parts[0])
+    }
+
+    @Test fun theSoundsSummaryNamesTheBeepVolume() {
+        val s = summary(SettingsPage.SOUNDS, snap { turnBeepEnabled = true; beepVolumePercent = 35 })
+        assertEquals(UiText.Res(R.string.settings_sum_beeps_at, listOf(35)), s.parts[0])
     }
 
     @Test fun appearanceNamesTheThemeAndTheAccent() {
@@ -276,19 +284,19 @@ class SettingsContentTest {
 
     @Test fun testSendsNeedALiveLink() {
         bikeDash(connected = false)
-        rule.onNode(hasText("Send test message") and hasClickAction()).performScrollTo().assertIsNotEnabled()
+        rule.onNode(hasText("Test message") and hasClickAction()).performScrollTo().assertIsNotEnabled()
         rule.onNodeWithText("Connect your bike to send a test.").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun testSendsWorkWhenConnected() {
         bikeDash(connected = true)
-        rule.onNode(hasText("Send test turn") and hasClickAction()).performScrollTo().assertIsEnabled().performClick()
+        rule.onNode(hasText("Test turn") and hasClickAction()).performScrollTo().assertIsEnabled().performClick()
         assertEquals(listOf("turn"), log)
     }
 
     @Test fun missingNotificationAccessLinksToPermissions() {
         bikeDash(connected = true, access = false)
-        rule.onNodeWithText("Notification access").performClick()
+        rule.onNodeWithText("Notification access").performScrollTo().performClick()
         assertEquals(listOf("perms"), log)
     }
 
@@ -327,8 +335,8 @@ class SettingsContentTest {
 
     @Test fun previewsSitUnderWhatTheyPreview() {
         sounds(on)
-        rule.onNode(hasText("Hear turn beeps") and hasClickAction()).performClick()
-        rule.onNode(hasText("Hear speed alert") and hasClickAction()).performClick()
+        rule.onNode(hasContentDescription("Hear turn beeps") and hasClickAction()).performClick()
+        rule.onNode(hasContentDescription("Hear speed alert") and hasClickAction()).performClick()
         assertEquals(listOf("hearBeeps", "hearAlert"), log)
     }
 

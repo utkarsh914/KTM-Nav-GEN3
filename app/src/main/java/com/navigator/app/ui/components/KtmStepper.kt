@@ -5,6 +5,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -57,6 +59,7 @@ object RepeatSchedule {
  * ([onEditValue], which opens the edit-value sheet). The range shows below; a button dims at its end.
  * [onValueChange] must update [value] synchronously: a hold steps every 40 ms at full speed.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun KtmStepper(
     value: Int,
@@ -70,12 +73,17 @@ fun KtmStepper(
     onEditValue: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** Sits after the + button (a Play for the value); it wraps under the stepper on a narrow screen. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val c = KtmTheme.colors
     val current by rememberUpdatedState(value)
     val change by rememberUpdatedState(onValueChange)
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+        FlowRow(
+            verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm), itemVerticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md, Alignment.CenterHorizontally),
+        ) {
             StepButton(KtmIcons.Remove, decreaseDescription, enabled && current > spec.min) { change(spec.stepDown(current)) }
             Row(
                 // Wide enough for the largest value, so − and + stay put while the digits change.
@@ -90,6 +98,7 @@ fun KtmStepper(
                 Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.padding(bottom = 3.dp))
             }
             StepButton(KtmIcons.Add, increaseDescription, enabled && current < spec.max) { change(spec.stepUp(current)) }
+            trailing?.invoke()
         }
         Text(rangeText, style = MaterialTheme.typography.labelSmall, color = c.fg3, modifier = Modifier.padding(top = KtmSpacing.xs))
     }

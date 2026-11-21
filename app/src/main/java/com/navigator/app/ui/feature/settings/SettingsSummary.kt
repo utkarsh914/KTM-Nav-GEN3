@@ -18,7 +18,8 @@ object SettingsSummary {
         when (page) {
             SettingsPage.BIKE_DASH -> CategorySummary(
                 listOf(
-                    UiText.Res(BikePillMapper.map(bike).state),
+                    // The link state is on the card above; here, what the page holds.
+                    UiText.Res(R.string.settings_sum_name_unset).takeIf { snap.userName.isNullOrBlank() } ?: UiText.Raw(snap.userName.orEmpty().trim()),
                     UiText.Res(if (snap.mirrorEnabled) R.string.settings_sum_messages_on else R.string.settings_sum_messages_off),
                 ),
             )
@@ -30,7 +31,7 @@ object SettingsSummary {
             )
             SettingsPage.SOUNDS -> CategorySummary(
                 listOf(
-                    UiText.Res(if (snap.turnBeepEnabled) R.string.settings_sum_beeps_on else R.string.settings_sum_beeps_off),
+                    if (snap.turnBeepEnabled) UiText.Res(R.string.settings_sum_beeps_at, listOf(snap.beepVolumePercent)) else UiText.Res(R.string.settings_sum_beeps_off),
                     if (snap.overspeedEnabled) UiText.Res(R.string.settings_sum_alert_at, listOf(snap.overspeedLimitKmh))
                     else UiText.Res(R.string.settings_sum_alert_off),
                 ),

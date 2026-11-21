@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +59,24 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             style = if (ui.repairSuggested) ButtonStyle.Danger else ButtonStyle.Tonal,
         )
 
+        // ST2: who the dash greets, what it spells out, which phone notifications it shows, then the test sends.
+        SectionHeader(stringResource(R.string.bikedash_section_greeting))
+        ListRow(
+            title = stringResource(R.string.bikedash_name),
+            supporting = ui.userName.ifBlank { stringResource(R.string.bikedash_name_unset) },
+            leadingIcon = KtmIcons.User, onClick = actions.onEditName, trailing = { RowChevron() },
+        )
+
+        SectionHeader(stringResource(R.string.bikedash_section_text))
+        KtmSwitchRow(
+            stringResource(R.string.bikedash_latin), ui.latinOnly, actions.onLatinOnly,
+            supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3, leadingIcon = KtmIcons.TextSize,
+        )
+        KtmSwitchRow(
+            stringResource(R.string.bikedash_marquee), ui.marquee, actions.onMarquee,
+            supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2, leadingIcon = KtmIcons.Dash,
+        )
+
         SectionHeader(stringResource(R.string.bikedash_section_dash))
         KtmSwitchRow(
             stringResource(R.string.bikedash_show), ui.showOnDash, actions.onShowOnDash,
@@ -77,26 +96,19 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             onClick = if (ui.accessGranted) null else actions.onOpenPermissions,
             trailing = { if (ui.accessGranted) KtmBadge(stringResource(R.string.bikedash_access_on), tone = BadgeTone.Ok) else RowChevron() },
         )
-        KtmSwitchRow(
-            stringResource(R.string.bikedash_marquee), ui.marquee, actions.onMarquee,
-            supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2, leadingIcon = KtmIcons.Dash,
-        )
-        KtmSwitchRow(
-            stringResource(R.string.bikedash_latin), ui.latinOnly, actions.onLatinOnly,
-            supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3, leadingIcon = KtmIcons.TextSize,
-        )
-
-        SectionHeader(stringResource(R.string.bikedash_section_you))
-        ListRow(
-            title = stringResource(R.string.bikedash_name),
-            supporting = ui.userName.ifBlank { stringResource(R.string.bikedash_name_unset) },
-            leadingIcon = KtmIcons.User, onClick = actions.onEditName, trailing = { RowChevron() },
-        )
 
         SectionHeader(stringResource(R.string.bikedash_section_test))
         Column(Modifier.padding(horizontal = KtmSpacing.edge), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            KtmButton(stringResource(R.string.bikedash_test_message), actions.onTestMessage, Modifier.fillMaxWidth(), style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected)
-            KtmButton(stringResource(R.string.bikedash_test_turn), actions.onTestTurn, Modifier.fillMaxWidth(), style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected)
+            Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                KtmButton(
+                    stringResource(R.string.bikedash_test_message), actions.onTestMessage, Modifier.weight(1f),
+                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected, icon = KtmIcons.Message,
+                )
+                KtmButton(
+                    stringResource(R.string.bikedash_test_turn), actions.onTestTurn, Modifier.weight(1f),
+                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected, icon = KtmIcons.Navigation,
+                )
+            }
             if (!ui.connected) {
                 Text(stringResource(R.string.bikedash_test_offline), style = MaterialTheme.typography.bodySmall, color = c.fg2)
             }

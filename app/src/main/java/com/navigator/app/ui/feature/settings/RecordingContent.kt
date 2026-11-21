@@ -62,6 +62,7 @@ fun RecordingContent(ui: RecordingUi, actions: RecordingActions, modifier: Modif
     @Composable
     fun Stepper(field: RecordingField) = SettingStepper(
         field.label(), ui.valueOf(field), field.spec, field.unit(), { actions.onChange(field, it) }, { actions.onEdit(field) },
+        supporting = if (field == RecordingField.HISTORY) stringResource(R.string.rec_history_note) else null,
     )
     SettingsPageScaffold(stringResource(R.string.rec_title), actions.onBack, modifier) {
         KtmSwitchRow(
@@ -83,9 +84,9 @@ fun RecordingContent(ui: RecordingUi, actions: RecordingActions, modifier: Modif
 
         SectionHeader(stringResource(R.string.rec_section_colors))
         Note(stringResource(R.string.rec_colors_note))
-        SpeedBandLegend(ui.bandBase, ui.bandStep, ui.bandCount)
         Stepper(RecordingField.BAND_BASE)
         Stepper(RecordingField.BAND_STEP)
         Stepper(RecordingField.BAND_COUNT)
+        SpeedBandLegend(ui.bandBase, ui.bandStep, ui.bandCount, Modifier.padding(top = KtmSpacing.sm))
     }
 }

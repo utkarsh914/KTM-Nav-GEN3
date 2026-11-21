@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.navigator.app.R
 import com.navigator.app.data.settings.IntSpec
 import com.navigator.app.ui.components.KtmStepper
@@ -23,11 +24,18 @@ fun SettingStepper(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    supporting: String? = null,
 ) {
     Text(
         label, style = MaterialTheme.typography.titleSmall, color = KtmTheme.colors.fg2,
-        modifier = Modifier.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+        modifier = Modifier.padding(horizontal = KtmSpacing.lg).padding(top = KtmSpacing.sm, bottom = if (supporting == null) KtmSpacing.sm else 0.dp),
     )
+    if (supporting != null) {
+        Text(
+            supporting, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2,
+            modifier = Modifier.padding(horizontal = KtmSpacing.lg).padding(bottom = KtmSpacing.sm),
+        )
+    }
     KtmStepper(
         value = value, spec = spec, onValueChange = onChange, unit = unit,
         rangeText = stringResource(R.string.stepper_range, spec.min, spec.max, unit).trim(),

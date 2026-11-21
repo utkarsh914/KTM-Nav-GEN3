@@ -41,6 +41,7 @@
     <string name="tab_needs_attention">Needs attention</string>
     <string name="intent_map_needs_in_app">Map view needs in-app navigation</string>
     <string name="settings_quit">Quit KTM Navigator</string>
+    <string name="settings_quit_supporting">Stops the dash link until you reopen the app</string>
     <string name="quit_title">Quit KTM Navigator?</string>
     <string name="quit_message">Stops sending to your dash and closes the app. Guidance and recording stop too.</string>
     <string name="quit_confirm">Quit</string>
@@ -668,13 +669,14 @@
     <string name="settings_cat_permissions">Permissions</string>
     <string name="settings_cat_backup">Backup &amp; restore</string>
     <string name="settings_cat_about">About &amp; diagnostics</string>
-    <string name="settings_sum_messages_on">Messages on</string>
-    <string name="settings_sum_messages_off">Messages off</string>
+    <string name="settings_sum_messages_on">Notifications on</string>
+    <string name="settings_sum_messages_off">Notifications off</string>
     <string name="settings_sum_in_app">In-app maps</string>
     <string name="settings_sum_mirror">Mirror mode</string>
     <string name="settings_sum_vehicle_bike">Bike</string>
     <string name="settings_sum_vehicle_car">Car</string>
-    <string name="settings_sum_beeps_on">Beeps on</string>
+    <string name="settings_sum_beeps_at">Beeps %1$d %%</string>
+    <string name="settings_sum_name_unset">Name not set</string>
     <string name="settings_sum_beeps_off">Beeps off</string>
     <string name="settings_sum_alert_at">Alert at %1$d km/h</string>
     <string name="settings_sum_alert_off">Speed alert off</string>
@@ -695,7 +697,9 @@
     <!-- Bike & dash (ST2) -->
     <string name="bikedash_title">Bike &amp; dash</string>
     <string name="bikedash_repair">Re-pair</string>
-    <string name="bikedash_section_dash">On the dash</string>
+    <string name="bikedash_section_dash">Phone notifications on the dash</string>
+    <string name="bikedash_section_greeting">Dash greeting</string>
+    <string name="bikedash_section_text">Dash text</string>
     <string name="bikedash_show">Show on dash</string>
     <string name="bikedash_show_hint">Phone notifications appear on the dash. Also in the trip sheet.</string>
     <string name="bikedash_apps">Apps on your dash</string>
@@ -711,12 +715,11 @@
     <string name="bikedash_access">Notification access</string>
     <string name="bikedash_access_on">Allowed</string>
     <string name="bikedash_access_off">Needed to show phone notifications. Tap to fix.</string>
-    <string name="bikedash_section_you">You</string>
     <string name="bikedash_name">Your name</string>
     <string name="bikedash_name_unset">Not set</string>
     <string name="bikedash_section_test">Check your dash</string>
-    <string name="bikedash_test_message">Send test message</string>
-    <string name="bikedash_test_turn">Send test turn</string>
+    <string name="bikedash_test_message">Test message</string>
+    <string name="bikedash_test_turn">Test turn</string>
     <string name="bikedash_test_offline">Connect your bike to send a test.</string>
     <string name="bikedash_test_sent">Sent to the dash</string>
 
@@ -732,6 +735,8 @@
     <string name="sounds_volume_max">Max</string>
     <string name="sounds_swap">Swap left and right</string>
     <string name="sounds_swap_hint">If your headset sides are reversed.</string>
+    <string name="sounds_play_beeps">Play L · R · L</string>
+    <string name="sounds_play">Play</string>
     <string name="sounds_hear_beeps">Hear turn beeps</string>
     <string name="sounds_hear_alert">Hear speed alert</string>
     <string name="sounds_section_speed">Speed alert</string>
@@ -820,6 +825,7 @@
     <string name="rec_keep_note">A recording shorter than both limits is dropped when it ends. This applies to manual recordings too.</string>
     <string name="rec_min_distance">Minimum distance</string>
     <string name="rec_min_duration">Minimum time</string>
+    <string name="rec_history_note">Starred rides are never removed</string>
     <string name="rec_history">Rides to keep</string>
     <string name="rec_unit_m">m</string>
     <string name="rec_unit_s">s</string>

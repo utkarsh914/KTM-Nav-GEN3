@@ -43,17 +43,6 @@ fun AppearanceContent(ui: AppearanceUi, actions: AppearanceActions, modifier: Mo
     val ridingLabels = mapOf(NavThemeMode.DAY_NIGHT to stringResource(R.string.look_riding_day_night), NavThemeMode.APP to stringResource(R.string.look_riding_app))
     val fontLabels = mapOf(FontMode.BRAND to stringResource(R.string.look_font_brand), FontMode.SYSTEM to stringResource(R.string.look_font_system))
     SettingsPageScaffold(stringResource(R.string.look_title), actions.onBack, modifier) {
-        KtmCard(Modifier.padding(horizontal = KtmSpacing.edge)) {
-            Text(stringResource(R.string.look_preview_title), style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg)
-            Row(
-                Modifier.padding(top = KtmSpacing.md).clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-            ) {
-                KtmButton(stringResource(R.string.look_preview_button), {}, size = ButtonSize.Small)
-                KtmBadge(stringResource(R.string.look_preview_badge), tone = BadgeTone.Accent)
-            }
-        }
-
         SectionHeader(stringResource(R.string.look_theme))
         KtmSegmented(
             ThemeMode.entries, ui.theme, actions.onTheme, { themeLabels.getValue(it) }, Modifier.padding(horizontal = KtmSpacing.lg),
@@ -69,16 +58,24 @@ fun AppearanceContent(ui: AppearanceUi, actions: AppearanceActions, modifier: Mo
             modifier = Modifier.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
         )
 
+        SectionHeader(stringResource(R.string.look_accent), trailing = stringResource(AccentNames.res(ui.accentId)))
+        AccentSwatches(ui.accentId, actions.onAccent, actions.onCustom)
+
         SectionHeader(stringResource(R.string.look_font))
         KtmSegmented(
             FontMode.entries, ui.font, actions.onFont, { fontLabels.getValue(it) }, Modifier.padding(horizontal = KtmSpacing.lg),
         )
 
-        SectionHeader(stringResource(R.string.look_accent))
-        AccentSwatches(ui.accentId, actions.onAccent, actions.onCustom)
-        Text(
-            stringResource(AccentNames.res(ui.accentId)), style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg2,
-            modifier = Modifier.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
-        )
+        KtmCard(Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.xl)) {
+            Text(stringResource(R.string.look_preview_title), style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg)
+            Row(
+                Modifier.padding(top = KtmSpacing.md).clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+            ) {
+                KtmButton(stringResource(R.string.look_preview_button), {}, size = ButtonSize.Small)
+                KtmBadge(stringResource(R.string.look_preview_badge), tone = BadgeTone.Accent)
+            }
+        }
+
     }
 }

@@ -7,8 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.data.settings.SettingSpecs
+import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSegmented
@@ -71,9 +74,11 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
             stringResource(R.string.sounds_swap), ui.swapChannels, actions.onSwap,
             supporting = stringResource(R.string.sounds_swap_hint), enabled = ui.beeps,
         )
+        val hearBeeps = stringResource(R.string.sounds_hear_beeps)
         KtmButton(
-            stringResource(R.string.sounds_hear_beeps), actions.onHearBeeps,
-            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm), style = ButtonStyle.Tonal, icon = KtmIcons.Play,
+            stringResource(R.string.sounds_play_beeps), actions.onHearBeeps,
+            Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm).semantics { contentDescription = hearBeeps },
+            style = ButtonStyle.Tonal, size = ButtonSize.Small, icon = KtmIcons.Play,
         )
 
         SectionHeader(stringResource(R.string.sounds_section_speed))
@@ -90,10 +95,14 @@ fun SoundsContent(ui: SoundsUi, actions: SoundsActions, modifier: Modifier = Mod
             rangeText = stringResource(R.string.sounds_range, spec.min, spec.max),
             decreaseDescription = stringResource(R.string.sounds_dec_alert), increaseDescription = stringResource(R.string.sounds_inc_alert),
             editDescription = stringResource(R.string.sounds_edit_alert), onEditValue = actions.onEditAlertAt, enabled = ui.speedAlert,
-        )
-        KtmButton(
-            stringResource(R.string.sounds_hear_alert), actions.onHearAlert,
-            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.md), style = ButtonStyle.Tonal, icon = KtmIcons.Play,
+            modifier = Modifier.padding(horizontal = KtmSpacing.edge),
+            trailing = {
+                val hearAlert = stringResource(R.string.sounds_hear_alert)
+                KtmButton(
+                    stringResource(R.string.sounds_play), actions.onHearAlert, Modifier.semantics { contentDescription = hearAlert },
+                    style = ButtonStyle.Tonal, size = ButtonSize.Small, icon = KtmIcons.Play,
+                )
+            },
         )
 
         SectionHeader(stringResource(R.string.sounds_section_calls))

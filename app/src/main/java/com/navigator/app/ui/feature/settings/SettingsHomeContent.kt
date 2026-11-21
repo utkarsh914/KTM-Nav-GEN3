@@ -82,7 +82,8 @@ fun SettingsHomeContent(ui: SettingsHomeUi, actions: SettingsHomeActions, modifi
             }
             HorizontalDivider(Modifier.padding(vertical = KtmSpacing.sm), color = c.line)
             ListRow(
-                title = stringResource(R.string.settings_quit), leadingIcon = KtmIcons.Quit, destructive = true,
+                title = stringResource(R.string.settings_quit), supporting = stringResource(R.string.settings_quit_supporting),
+                leadingIcon = KtmIcons.Quit, destructive = true,
                 onClick = actions.onQuit,
             )
         }
@@ -104,6 +105,7 @@ internal fun BikeCardView(bike: BikeCard, onClick: (() -> Unit)?) {
             color = KtmTheme.accent.text, maxLines = 1,
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+            androidx.compose.material3.Icon(KtmIcons.Bike, null, tint = c.fg2)
             Text(
                 bike.name ?: stringResource(R.string.settings_no_bike), style = MaterialTheme.typography.titleLarge, color = c.fg,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),

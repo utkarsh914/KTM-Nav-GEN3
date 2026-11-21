@@ -39,8 +39,12 @@ fun SpeedBandLegend(base: Int, step: Int, count: Int, modifier: Modifier = Modif
                 Box(Modifier.weight(1f).fillMaxHeight().background(Color(bandColor(i, bands.bandCount))))
             }
         }
+        // Every band's edge: 0, where each colour starts, and the last colour's start with "+" (ST5).
         Row(Modifier.fillMaxWidth().padding(top = KtmSpacing.xs), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(stringResource(R.string.rec_legend_start), style = MaterialTheme.typography.labelSmall, color = c.fg2)
+            for (i in 0 until bands.bandCount - 1) {
+                Text((base + step * i).toString(), style = MaterialTheme.typography.labelSmall, color = c.fg2)
+            }
             Text(stringResource(R.string.rec_legend_end, top), style = MaterialTheme.typography.labelSmall, color = c.fg2)
         }
     }

@@ -113,7 +113,7 @@ fun MainShell(
                     label = { Text(label, maxLines = 1) },
                     navigationSuiteType = type,
                     badge = when {
-                        dot -> ({ Badge(containerColor = c.bad) })
+                        dot -> ({ Badge(containerColor = c.warn) })
                         bikeDot != null -> ({ Badge(containerColor = pillDotColor(bikeDot.tone, c)) })
                         else -> null
                     },
