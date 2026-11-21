@@ -1,9 +1,28 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import com.navigator.app.ui.components.ButtonSize
+import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.KtmStep
+import com.navigator.app.ui.components.ListDivider
+import com.navigator.app.ui.components.StepState
 import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.feature.pairing.HavingTroubleSheet
+import com.navigator.app.ui.shell.LocalOpenBikeSettings
 import com.navigator.app.ui.shell.LocalOpenLogs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -33,6 +52,8 @@ import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.settings.RePairDialog
 import com.navigator.app.ui.shell.openBluetoothSettings
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -87,47 +108,72 @@ fun BikeSheet(
     val offline = DashPreviewState.NotConnected(stringResource(R.string.dash_preview_offline_title), stringResource(R.string.dash_preview_offline_hint))
     val preview = DashPreviewMapper.map(state.dash, connected, dashTime, idle, offline, stringResource(R.string.dash_preview_banner_app))
 
-    KtmModalSheet(
-        onDismiss = onDismiss,
-        title = name,
-        actions = {
-            if (status is BikeStatus.NeedsRepair) {
-                KtmButton(stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.fillMaxWidth())
-            } else {
-                // The test turn would replace the live guidance on the dash.
-                if (tripRunning) {
-                    Text(
-                        stringResource(R.string.bike_sheet_test_on_trip), style = MaterialTheme.typography.bodyMedium,
-                        color = KtmTheme.colors.fg2, modifier = Modifier.padding(bottom = KtmSpacing.sm),
-                    )
-                }
-                KtmButton(
-                    stringResource(R.string.bike_sheet_test), { onSendTest(testMessage) }, Modifier.fillMaxWidth(),
-                    style = ButtonStyle.Tonal, enabled = connected && !tripRunning,
+    val openSettings = LocalOpenBikeSettings.current
+    KtmModalSheet(onDismiss = onDismiss) {
+        BikeHeader(name, title, connected, status, onDismiss)
+        Spacer(Modifier.height(KtmSpacing.lg))
+        if (connected) {
+            Text(
+                stringResource(R.string.mirror_on_dash), style = MaterialTheme.typography.labelMedium, color = KtmTheme.colors.fg2,
+                modifier = Modifier.semantics { heading() },
+            )
+            Spacer(Modifier.height(KtmSpacing.sm))
+        }
+        DashPreview(preview, if (connected) Modifier else Modifier.alpha(OFFLINE_PREVIEW_ALPHA))
+        Spacer(Modifier.height(KtmSpacing.lg))
+        if (connected) {
+            Column(Modifier.fillMaxWidth().clip(KtmShapes.Card).background(KtmTheme.colors.surf2)) {
+                KtmSwitchRow(
+                    stringResource(R.string.bike_sheet_messages), state.messagesOn, onMessages,
+                    supporting = stringResource(R.string.bike_sheet_messages_hint), leadingIcon = KtmIcons.Message,
                 )
-                if (!connected) {
-                    KtmButton(stringResource(R.string.pair_trouble), { trouble = true }, Modifier.fillMaxWidth(), style = ButtonStyle.Text)
+                ListDivider()
+                KtmSwitchRow(
+                    stringResource(R.string.bike_sheet_beeps), state.beepsOn, onBeeps,
+                    supporting = stringResource(R.string.bike_sheet_beeps_hint), leadingIcon = KtmIcons.Sound,
+                )
+            }
+            Spacer(Modifier.height(KtmSpacing.lg))
+            // The test turn would replace the live guidance on the dash.
+            if (tripRunning) {
+                Text(
+                    stringResource(R.string.bike_sheet_test_on_trip), style = MaterialTheme.typography.bodyMedium,
+                    color = KtmTheme.colors.fg2, modifier = Modifier.padding(bottom = KtmSpacing.sm),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                KtmButton(
+                    stringResource(R.string.bike_sheet_test), { onSendTest(testMessage) }, Modifier.weight(1f),
+                    style = ButtonStyle.Tonal, enabled = !tripRunning,
+                )
+                KtmButton(stringResource(R.string.bike_sheet_trouble), { trouble = true }, Modifier.weight(1f), style = ButtonStyle.Outline, icon = KtmIcons.Help)
+            }
+            if (openSettings != null) {
+                ListRow(
+                    modifier = Modifier.fullBleed(), title = stringResource(R.string.bike_sheet_settings), leadingIcon = KtmIcons.Settings,
+                    onClick = { onDismiss(); openSettings() },
+                    trailing = { Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg2) },
+                )
+            }
+        } else {
+            // HM6: say what to check, then the one way out. Re-pair leads only when the app thinks the keys are lost.
+            if (status is BikeStatus.NeedsRepair || status == BikeStatus.BluetoothOff) {
+                text.hint?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg2) }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
+                    KtmStep(1, stringResource(R.string.bike_check_ignition), StepState.Active)
+                    KtmStep(2, stringResource(R.string.bike_check_bluetooth), StepState.Active)
+                    KtmStep(3, stringResource(R.string.bike_check_retry), StepState.Active)
                 }
             }
-        },
-    ) {
-        ListRow(
-            modifier = Modifier.fullBleed(),
-            title = title,
-            supporting = text.hint?.let { stringResource(it) },
-            leading = { TonalIconBadge(text.icon) },
-        )
-        Spacer(Modifier.height(KtmSpacing.md))
-        DashPreview(preview)
-        Spacer(Modifier.height(KtmSpacing.md))
-        Column {
-            KtmSwitchRow(
-                stringResource(R.string.bike_sheet_beeps), state.beepsOn, onBeeps,
-                supporting = stringResource(R.string.bike_sheet_beeps_hint), leadingIcon = KtmIcons.Sound, modifier = Modifier.fullBleed(),
+            Spacer(Modifier.height(KtmSpacing.lg))
+            KtmButton(
+                stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.fillMaxWidth(),
+                style = if (status is BikeStatus.NeedsRepair) ButtonStyle.Primary else ButtonStyle.Outline,
             )
-            KtmSwitchRow(
-                stringResource(R.string.bike_sheet_messages), state.messagesOn, onMessages,
-                supporting = stringResource(R.string.bike_sheet_messages_hint), leadingIcon = KtmIcons.Message, modifier = Modifier.fullBleed(),
+            KtmButton(
+                stringResource(R.string.pair_trouble), { trouble = true }, Modifier.align(Alignment.CenterHorizontally),
+                style = ButtonStyle.Text, size = ButtonSize.Small, icon = KtmIcons.Help,
             )
         }
     }
@@ -145,5 +191,29 @@ fun BikeSheet(
 
     if (confirmRePair) {
         RePairDialog(onConfirm = { confirmRePair = false; onRePair() }, onDismiss = { confirmRePair = false })
+    }
+}
+
+private const val OFFLINE_PREVIEW_ALPHA = 0.9f
+
+/** HM5/HM6: a 48 dp tile (green when connected, amber otherwise), the bike's name and its state in words, and the ✕. */
+@Composable
+private fun BikeHeader(name: String, status: String, connected: Boolean, bike: BikeStatus, onClose: () -> Unit) {
+    val c = KtmTheme.colors
+    val working = bike is BikeStatus.Connecting || bike is BikeStatus.Reconnecting
+    val tone = if (connected) c.okText else c.warn
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+        Box(
+            Modifier.size(KtmLayout.targetRest).background(if (connected) c.okContainer else c.warnContainer, KtmShapes.Control),
+            contentAlignment = Alignment.Center,
+        ) { Icon(KtmIcons.Bike, null, tint = if (connected) c.okText else c.warn) }
+        Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            Text(name, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                if (working) CircularProgressIndicator(Modifier.size(KtmSpacing.md), color = c.warn, strokeWidth = KtmLayout.outline)
+                Text(status, style = MaterialTheme.typography.bodyMedium, color = tone, maxLines = 2)
+            }
+        }
+        KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onClose)
     }
 }
