@@ -73,8 +73,11 @@ internal fun TripFinishedStage(
                 onReplay = { ride?.let { onOpenReplay(it.id) } },
                 onSavePlace = {
                     selected?.let {
-                        scope.launch(Dispatchers.IO) { store.saveFavorite(it, FavoriteSlot.OTHER) }
-                        placeSaved = true
+                        // "Saved" only once the write is done.
+                        scope.launch {
+                            withContext(Dispatchers.IO) { store.saveFavorite(it, FavoriteSlot.OTHER) }
+                            placeSaved = true
+                        }
                     }
                 },
                 onRideBack = onRideBack,

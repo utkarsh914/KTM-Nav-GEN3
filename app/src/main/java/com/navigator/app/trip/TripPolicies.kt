@@ -47,9 +47,9 @@ data class RideBackPlan(val origin: Pair<Double, Double>, val tripStops: List<St
 internal object TripPolicies {
 
     /**
-     * Whether a stop may be added to the running trip. [forSearch] is the earlier check made when
-     * opening the stop search (needs a connection, says "start navigating first"); the later one
-     * made on the pick says the trip "has already ended". [ahead] is read lazily, last, because
+     * Whether a stop may be added to (or removed from) the running trip. [forSearch] is the earlier check made when
+     * opening the stop search (says "start navigating first"); the later one made on the pick says the trip
+     * "has already ended". Both need a connection. [ahead] is read lazily, last, because
      * asking the SDK for the current target is not free.
      */
     fun checkAddStop(
@@ -67,10 +67,11 @@ internal object TripPolicies {
         if (!hasTrip) return StopAddCheck.Rejected(StopAddProblem.NOT_NAVIGATING)
         if (forSearch) {
             if (!sessionActive) return StopAddCheck.Rejected(StopAddProblem.NOT_NAVIGATING)
-            if (!online) return StopAddCheck.Rejected(StopAddProblem.OFFLINE)
         } else if (arrivalLatched || !sessionActive) {
             return StopAddCheck.Rejected(StopAddProblem.ENDED)
         }
+        // Every re-plan needs a connection: offline it fails and would tear down a route the SDK can still guide.
+        if (!online) return StopAddCheck.Rejected(StopAddProblem.OFFLINE)
         if (nowMs - lastAddMs < STOP_ADD_SETTLE_MS) return StopAddCheck.Rejected(StopAddProblem.SETTLING)
         val remaining = ahead() ?: return StopAddCheck.Rejected(StopAddProblem.UNKNOWN_NEXT)
         if (!removing && remaining.size >= MAX_STOPS) return StopAddCheck.Rejected(StopAddProblem.MAX_STOPS)

@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.LaneInfo
 import com.navigator.app.nav.model.LaneShape
 import com.navigator.app.nav.model.NavSessionState
@@ -31,6 +32,13 @@ class RidingModelsTest {
     )
 
     private val lanes = listOf(LaneInfo(listOf(LaneShape.STRAIGHT), false), LaneInfo(listOf(LaneShape.RIGHT), true))
+
+    @Test fun distancesAreMetricWhateverTheDeviceRegionSays() {
+        val us = nav().copy(units = DistanceUnits.IMPERIAL)
+        val card = ManeuverModel.from(us) as ManeuverUi.Active
+        assertEquals("800 m", card.distance)
+        assertEquals("12 km", TripBarModel.from(us, null, null, null, 0L, "Toit").distance)
+    }
 
     @Test fun beforeTheFirstInstructionTheCardHoldsItsPlace() {
         assertEquals(ManeuverUi.Starting, ManeuverModel.from(nav(NavSessionState.IDLE)))

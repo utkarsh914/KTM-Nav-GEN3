@@ -14,6 +14,7 @@ import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.shell.KtmApp
 import kotlinx.coroutines.launch
@@ -125,11 +126,14 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Fully quit: stop the foreground service (removes its ongoing notification),
-     * cancel any of our notifications, then remove the app task entirely. Invoked
+     * Fully quit: end the in-app trip, stop the ride recording, stop the dash-link foreground service
+     * (removes its ongoing notification), cancel any of our notifications, then remove the app task entirely. Invoked
      * from the Quit confirm (Settings' Quit row or the notification's Quit).
      */
     private fun exitApp() {
+        // What the Quit dialog promises: guidance and recording stop too, not just the dash link.
+        appContainer.trip.cancel()
+        RideRecordingService.stop(this)
         appContainer.connection.quit()
         finishAndRemoveTask()
     }

@@ -57,7 +57,7 @@ class MirrorViewModel(private val repo: MirrorRepository) : ViewModel() {
     }
 }
 
-private const val CLOCK_TICK_MS = 15_000L
+private const val MINUTE_MS = 60_000L
 
 /** The Navigate tab when the engine is Mirror: wires [MirrorContent] to the repository and to Android's settings. */
 @Composable
@@ -75,8 +75,10 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
     // The dash's clock: it moves on even while nothing else on the screen changes.
     val time by produceState("") {
         while (true) {
-            value = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            delay(CLOCK_TICK_MS)
+            val now = System.currentTimeMillis()
+            value = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(now))
+            // To the next minute boundary, so the shown time is never up to a tick behind.
+            delay(MINUTE_MS - now % MINUTE_MS + 50)
         }
     }
 

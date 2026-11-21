@@ -80,11 +80,13 @@ private fun Chip(text: String, tone: ChipTone, onTap: (() -> Unit)?) {
         ChipTone.Bad -> r.overspeed to r.onOverspeed
         ChipTone.Info -> r.surfaceHigh to r.onSurface
     }
-    Text(
-        text, style = KtmTheme.type.ridingLabel, color = fg, textAlign = TextAlign.Center, maxLines = 2,
-        modifier = Modifier.padding(top = KtmSpacing.sm).heightIn(min = KtmLayout.targetRest).clip(KtmShapes.Pill).background(bg)
+    Box(
+        Modifier.padding(top = KtmSpacing.sm).heightIn(min = KtmLayout.targetRest).clip(KtmShapes.Pill).background(bg)
             .then(if (onTap != null) Modifier.clickable(role = Role.Button, onClick = onTap) else Modifier)
             .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm)
             .semantics { liveRegion = LiveRegionMode.Polite },
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = KtmTheme.type.ridingLabel, color = fg, textAlign = TextAlign.Center, maxLines = 2)
+    }
 }

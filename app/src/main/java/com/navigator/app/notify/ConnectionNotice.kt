@@ -18,6 +18,12 @@ data class ConnectionContent(
 )
 
 object ConnectionNoticeContent {
+    /**
+     * Whether the ongoing notification is re-posted for the one-liner: when the line changed, including back to
+     * none (a trip or recording ended), so the old line does not stay. Never off a connected link.
+     */
+    fun repostForLine(connected: Boolean, line: String?, last: String?): Boolean = connected && line != last
+
     /** [mirrorLine] is the "Mirroring to dash · 350 m · Turn right · ● Rec" one-liner; only a connected link shows it. */
     fun of(notice: ConnectionNotice, mirrorLine: String?, res: Resources): ConnectionContent = when (notice) {
         ConnectionNotice.CONNECTING -> ConnectionContent(

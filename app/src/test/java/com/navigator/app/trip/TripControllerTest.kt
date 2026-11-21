@@ -295,11 +295,12 @@ class TripControllerTest {
         runCurrent()
         e.guidance.startFailure.value = StartFailure.ROUTE
         runCurrent()
-        assertEquals(dest, e.controller.state.value.dest)
         assertTrue(e.controller.state.value.allStops.isEmpty())
         assertTrue(events.contains(TripEvent.StopAddFailed))
         val restored = e.guidance.started.last()
         assertTrue(restored.continuesRide)
+        assertEquals("the state holds what guidance got, so Retry continues the same ride", restored, e.controller.state.value.dest)
+        assertNull(restored.routeToken)
         assertNull(e.guidance.startFailure.value)
     }
 
@@ -314,7 +315,7 @@ class TripControllerTest {
         e.guidance.enroute(4_800); runCurrent()
         e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent()
         assertTrue(events.contains(TripEvent.StopAddFailed))
-        assertEquals(dest, e.controller.state.value.dest)
+        assertEquals("the trip the rider had, as guidance got it back (same ride, no token)", dest.copy(continuesRide = true), e.controller.state.value.dest)
     }
 
     @Test fun addingAStopWithNoTripSaysNothing() = runTest {
@@ -430,14 +431,39 @@ class TripControllerTest {
         assertTrue(events.contains(TripEvent.StopAddRejected(StopAddProblem.OFFLINE)))
     }
 
+    @Test fun addingOrRemovingAStopOfflineIsRefusedAndTheRouteIsLeftAlone() = runTest {
+        val e = Env(backgroundScope)
+        val events = mutableListOf<TripEvent>()
+        backgroundScope.launch { e.controller.events.toList(events) }
+        e.liveTripWithStops(); runCurrent()
+        val startsBefore = e.guidance.started.size
+        e.online.value = false
+        assertFalse(e.controller.addStop(SavedPlace(12.5, 77.1, "Fuel")))
+        assertFalse(e.controller.removeNextStop())
+        runCurrent()
+        assertEquals("no re-plan was started", startsBefore, e.guidance.started.size)
+        assertEquals(2, events.count { it == TripEvent.StopAddRejected(StopAddProblem.OFFLINE) })
+    }
+
     @Test fun retryStartsTheLastDestinationAgain() = runTest {
         val e = Env(backgroundScope)
         e.controller.start(dest, null, null)
         e.controller.end()
+        e.now += START_DEBOUNCE_MS
         e.controller.retry()
         assertEquals(2, e.guidance.started.size)
         assertFalse(e.controller.state.value.arrivalLatched)
         assertNull(e.controller.state.value.finished)
+    }
+
+    @Test fun aDoubleTapOnRetryStartsOnlyOnce() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null)
+        e.now += START_DEBOUNCE_MS
+        e.controller.retry()
+        e.now += 100
+        e.controller.retry()
+        assertEquals(2, e.guidance.started.size)
     }
 
     @Test fun rideBackUsesTheOriginAndTheStopsInOrder() = runTest {

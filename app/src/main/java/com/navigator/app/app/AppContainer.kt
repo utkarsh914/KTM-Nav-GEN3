@@ -83,6 +83,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
             guidance = SdkGuidanceSource { activityHolder.current },
             isOnline = ConnectivityMonitor.isOnline,
+            unnamedDestination = appContext.getString(R.string.trip_destination_unnamed),
         ).also { startTurnBeeps(it) }
     }
 

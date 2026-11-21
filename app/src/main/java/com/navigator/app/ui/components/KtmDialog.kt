@@ -77,7 +77,7 @@ fun KtmDialog(
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,
-            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(motion.spatialDefault(), initialScale = DIALOG_SCALE)),
+            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(if (riding) motion.ridingSpatial() else motion.spatialDefault(), initialScale = DIALOG_SCALE)),
         ) {
         Box(
             Modifier.fillMaxSize().safeDrawingPadding()

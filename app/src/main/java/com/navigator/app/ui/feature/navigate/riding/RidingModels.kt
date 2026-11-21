@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.navigate.riding
 
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.DistanceFormatter
+import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.LaneInfo
@@ -60,7 +61,7 @@ object ManeuverModel {
         }
         return ManeuverUi.Active(
             icon = KtmManeuverMapping.resolveIcon(nav.maneuver, nav.roundaboutRotation, nav.drivingSide, nav.fullInstruction),
-            distance = nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, nav.units) },
+            distance = nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) },
             instruction = instruction,
             road = road,
             exit = exit,
@@ -143,7 +144,7 @@ object TripBarModel {
             overspeed = over,
             alert = if (over) limitKmh else null,
             timeLeft = seconds?.let(TimeLeft::of),
-            distance = nav.remainingDistanceMeters?.let { DistanceFormatter.format(it, nav.units) },
+            distance = nav.remainingDistanceMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) },
             arrival = seconds?.let { EtaFormatter.format(it, nowMs, zone) },
             progress = progress(nav.remainingDistanceMeters, initialRemainingMeters),
             destination = destination,

@@ -16,4 +16,16 @@ internal class RidingOverlayState {
     var showBike by mutableStateOf(false)
     var showEndConfirm by mutableStateOf(false)
     var mapButton by mutableStateOf(MapButtonState())
+
+    /**
+     * The stage changed: sheets close. The end-trip confirm only outlives a change *into* the riding stage (a
+     * request opens it as it brings the stage up); on any other stage (arrival, cancel) it would sit over the
+     * trip summary and end a trip that is already over.
+     */
+    fun onStageChanged(stage: NavStage, openAddStop: Boolean) {
+        showTripSheet = false
+        showTripStops = openAddStop && stage == NavStage.NAVIGATING
+        showBike = false
+        if (stage == NavStage.NAVIGATING) mapButton = MapButtonState() else showEndConfirm = false
+    }
 }

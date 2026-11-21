@@ -71,7 +71,7 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
         )
         KtmButton(
             stringResource(R.string.common_close), actions.onClose, Modifier.fillMaxWidth(),
-            style = ButtonStyle.Text, size = ButtonSize.Small,
+            style = ButtonStyle.Text, size = ButtonSize.Rest,
         )
     }
 }

@@ -33,6 +33,8 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
     // Read when the sheet opens: stops left to add as it was then (an add closes the sheet).
     val left = remember { TripStopRules.left(trip.stopsAhead()?.size, trip.state.value.allStops.size) }
 
+    // A second tap before the sheet closes must not re-plan again (and replace "Stop added" with "Still updating").
+    var adding by remember { mutableStateOf(false) }
     var retry by remember { mutableStateOf(0) }
     LaunchedEffect(category, online, retry) {
         val picked = category ?: run { loading = false; return@LaunchedEffect }
@@ -47,7 +49,9 @@ fun TripStopSheetHost(trip: TripController, onSearchByName: () -> Unit, onDismis
         ui = TripStopUi(left, online, category, loading, failed, results),
         actions = TripStopActions(
             onCategory = { category = if (category == it) null else it },
-            onAdd = { r -> if (trip.addStop(SavedPlace(r.lat, r.lng, r.name, r.address))) onDismiss() },
+            onAdd = { r ->
+                if (!adding && trip.addStop(SavedPlace(r.lat, r.lng, r.name, r.address))) { adding = true; onDismiss() }
+            },
             onSearchByName = onSearchByName,
             onRetry = { retry++ },
             onDismiss = onDismiss,

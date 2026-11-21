@@ -51,7 +51,7 @@ data class TripState(
 )
 
 sealed interface TripEvent {
-    /** The trip ended (arrival, stall fallback or the rider ending it). */
+    /** The trip ended (arrival or the rider ending it). */
     data class Finished(val trip: FinishedTrip) : TripEvent
     data class StopAdded(val label: String) : TripEvent
     data class StopAddRejected(val problem: StopAddProblem) : TripEvent
@@ -70,7 +70,7 @@ sealed interface TripEvent {
 
 /**
  * The single owner of the active in-app trip: start, retry, add a stop (with rollback), end, the
- * arrival detectors (SDK arrival, proximity, stall) and "Ride back". Decisions are in
+ * arrival detectors (SDK arrival, proximity dwell) and "Ride back". Decisions are in
  * [TripPolicies]; this holds the state and talks to [guidance]. Call from the main thread.
  */
 class TripController(
@@ -78,6 +78,8 @@ class TripController(
     private val guidance: GuidanceSource,
     private val isOnline: StateFlow<Boolean>,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Names a destination that has no label, in the finished summary. */
+    private val unnamedDestination: String = "Destination",
 ) {
     private val _state = MutableStateFlow(TripState())
     val state: StateFlow<TripState> = _state.asStateFlow()
@@ -160,6 +162,10 @@ class TripController(
     /** Start the last destination again (the failure card's Retry). */
     fun retry() {
         val dest = _state.value.dest ?: return
+        val now = clock()
+        // A double tap would supersede the first start mid-compute, as with start().
+        if (now - lastStartAtMs < START_DEBOUNCE_MS) return
+        lastStartAtMs = now
         _state.update { it.copy(arrivalLatched = false, minimised = false, finished = null) }
         nearSince = null
         RideEvents.clear()
@@ -206,7 +212,10 @@ class TripController(
         val dest = trip.dest ?: return false
         val ahead = (check(forSearch = false, removing = true) as? StopAddCheck.Ok)?.ahead ?: return false
         // The rider saw one stop: if it was passed meanwhile, the next one is another stop and is left alone.
-        if (expected != null && ahead.firstOrNull() != expected) return false
+        if (expected != null && ahead.firstOrNull() != expected) {
+            _events.tryEmit(TripEvent.StopRemoveFailed)
+            return false
+        }
         val plan = TripPolicies.planRemoveNext(dest, trip.allStops, ahead) ?: return false
         val removed = ahead.first()
         allStopsBefore = trip.allStops
@@ -231,7 +240,7 @@ class TripController(
             return
         }
         val finished = FinishedTrip(
-            SavedPlace(dest.lat, dest.lng, dest.label ?: "Destination"),
+            SavedPlace(dest.lat, dest.lng, dest.label ?: unnamedDestination),
             // Frozen now: computing it while drawing kept growing it.
             if (trip.startMs > 0L) ((clock() - trip.startMs) / 1000).toInt() else 0,
         )
@@ -291,7 +300,8 @@ class TripController(
         lastStopAddMs = 0L
         guidance.clearStartFailure()
         val restored = before.copy(continuesRide = true, routeToken = null)
-        _state.update { it.copy(dest = before, allStops = allStopsBefore ?: it.allStops) }
+        // The state holds what guidance was given, so a later Retry continues the same ride with no stale token.
+        _state.update { it.copy(dest = restored, allStops = allStopsBefore ?: it.allStops) }
         allStopsBefore = null
         nearSince = null
         guidance.start(restored)

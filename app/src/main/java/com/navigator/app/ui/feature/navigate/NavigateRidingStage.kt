@@ -89,6 +89,14 @@ internal fun NavigatingStage(
             val narrow = maxWidth.value < KtmLayout.panelNarrowBelow.value
             // Landscape has no sheet to take Back: it flips the controls panel back to guidance.
             BackHandler(enabled = landscape && riding.showTripSheet) { riding.showTripSheet = false }
+            val backFromFailure = {
+                GoogleNavSdkProvider.clearStartFailure()
+                trip.cancel()
+                trip.resetStartDebounce()
+                actions.onBackToPreview()
+            }
+            // System Back is the sheet's Back: without it the host would minimise a trip that never started.
+            BackHandler(enabled = startFailure != null, onBack = backFromFailure)
             startFailure?.let { failure ->
                 StartFailedSheet(
                     failure = failure,
@@ -98,12 +106,7 @@ internal fun NavigatingStage(
                             GoogleNavSdkProvider.clearStartFailure()
                             actions.onRetryStart()
                         },
-                        onBack = {
-                            GoogleNavSdkProvider.clearStartFailure()
-                            trip.cancel()
-                            trip.resetStartDebounce()
-                            actions.onBackToPreview()
-                        },
+                        onBack = backFromFailure,
                         onClose = {
                             GoogleNavSdkProvider.clearStartFailure()
                             trip.cancel()

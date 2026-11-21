@@ -112,7 +112,7 @@ fun RidingLandscape(
     // With a screen reader running, the controls stay until dismissed: a panel that flips away while it is being read is worse than one left open.
     val context = androidx.compose.ui.platform.LocalContext.current
     val screenReader by rememberTouchExploration(context)
-    LaunchedEffect(open) {
+    LaunchedEffect(open, screenReader) {
         if (!open || screenReader) return@LaunchedEffect
         idleMs.longValue = 0L
         while (true) {

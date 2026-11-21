@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideFinish
 import com.navigator.app.ride.RidePoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -73,7 +74,9 @@ class TripFinishedViewModel(
                 .distinctUntilChanged()
                 .collect { ui ->
                     // A track that can't be read leaves the stats without a map line, not a crash.
-                    val points = (ui as? FinishUi.Recorded)?.let { runCatching { loadPoints(it.ride.id) }.getOrNull() }
+                    val points = (ui as? FinishUi.Recorded)?.let {
+                        try { loadPoints(it.ride.id) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+                    }
                     _state.value = FinishState(ui, points)
                 }
         }

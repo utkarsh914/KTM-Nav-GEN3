@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
+import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSheetContent
 import com.navigator.app.ui.components.SheetHandle
@@ -207,7 +208,7 @@ private fun SheetPane(
                 title, style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg, maxLines = 1,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
-            KtmIconButton(KtmIcons.ChevronDown, close, onDismiss)
+            KtmIconButton(KtmIcons.ChevronDown, close, onDismiss, size = IconButtonSize.Map)
         }
         KtmSheetContent(content = content)
     }

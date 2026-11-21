@@ -807,6 +807,7 @@ class BccuConnectionService : LifecycleService() {
             .setContentText(content.text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             // Tapping fronts the existing task (launchMode=singleTask) and shows the active navigation screen.
             .setContentIntent(NotificationActions.open(this, 0))
         content.actions.forEach { action ->
@@ -880,8 +881,8 @@ class BccuConnectionService : LifecycleService() {
             while (true) {
                 delay(MIRROR_LINE_MS)
                 val line = if (notice == ConnectionNotice.CONNECTED) mirrorLine(notice) else null
-                // Re-post only when the line changed: an identical notification is churn.
-                if (line != null && line != lastMirrorLine) updateForegroundNotification(notice)
+                // Re-post only when the line changed (also back to none): an identical notification is churn.
+                if (ConnectionNoticeContent.repostForLine(notice == ConnectionNotice.CONNECTED, line, lastMirrorLine)) updateForegroundNotification(notice)
                 lastMirrorLine = line
             }
         }

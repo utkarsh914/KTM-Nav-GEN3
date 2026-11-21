@@ -18,9 +18,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
-import android.app.Activity
-import android.content.ContextWrapper
 
 internal val LocalAccentScheme = staticCompositionLocalOf { KtmOrange.forTheme(dark = true) }
 
@@ -51,16 +48,7 @@ fun KtmTheme(
 
     val view = LocalView.current
     if (!view.isInEditMode) {
-        SideEffect {
-            var ctx = view.context
-            while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
-            val window = (ctx as? Activity)?.window ?: return@SideEffect
-            // Edge-to-edge is enforced, so only the icon appearance needs setting.
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
-        }
+        SideEffect { SystemBarIcons.apply(view, SystemBarIcons.resolve(darkTheme)) }
     }
 
     CompositionLocalProvider(

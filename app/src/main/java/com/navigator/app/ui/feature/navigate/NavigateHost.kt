@@ -122,9 +122,6 @@ private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMoti
 }
 
 
-/** Label of the synthetic destination built by "Ride back". */
-private const val RIDE_BACK_LABEL = "Trip start"
-
 /**
  * Phone-first map home (see docs/architecture.md §3).
  *
@@ -323,6 +320,7 @@ fun NavigateHost(
     val rideStore = remember { RideStore(context) }
     var recordingTurnedOn by remember { mutableStateOf(false) }
     val stopFallback = resources.getString(R.string.trip_stop_unnamed)
+    val rideBackLabel = resources.getString(R.string.ride_back_label)
     // The just-finished ride (route + stats) and what the recorder made of it; what the panel covers of the map.
     val finished: TripFinishedViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = androidx.lifecycle.viewmodel.viewModelFactory {
@@ -377,7 +375,7 @@ fun NavigateHost(
         // reaching this screen is a strong signal of intent, even if they don't
         // hit Start. addRecent de-dupes by coords, so re-adding at Start is safe.
         // ("Ride back" destinations are synthetic: they shouldn't litter the recents.)
-        if (p.label != RIDE_BACK_LABEL) {
+        if (p.label != rideBackLabel) {
             store.addRecent(p)
         }
         routeVm.load(p, stops)
@@ -532,7 +530,7 @@ fun NavigateHost(
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         // False for a double tap: a second start would supersede the first mid-compute.
         if (!trip.start(dest, origin, sel?.points?.map { it.latitude to it.longitude })) return
-        if (p.label != RIDE_BACK_LABEL) {
+        if (p.label != rideBackLabel) {
             store.addRecent(p)
         }
         stage = NavStage.NAVIGATING
@@ -557,7 +555,7 @@ fun NavigateHost(
         val plan = trip.rideBackPlan(finishState.points?.firstOrNull()?.let { it.lat to it.lng }) ?: return
         val tripStops = plan.tripStops.map { SavedPlace(it.lat, it.lng, it.label ?: stopFallback) }
         backToBrowse()
-        flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, RIDE_BACK_LABEL), tripStops) }
+        flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, rideBackLabel), tripStops) }
     }
 
     /** DL3 "Add as a stop instead" and PL1 "Add as stop": the place becomes a stop of the running trip. */
@@ -572,7 +570,7 @@ fun NavigateHost(
         stage = NavStage.NAVIGATING
     }
 
-    // The trip ended (arrival, stall fallback or the rider): show "Trip finished" instead of
+    // The trip ended (arrival or the rider): show "Trip finished" instead of
     // dropping straight back to the map. Keeps `selected` so the screen can name the destination;
     // clears the transient search/preview state and resets the finished-ride state so the screen
     // loads this trip's result. Also adopts a trip that ended while this screen was away.
@@ -708,11 +706,8 @@ fun NavigateHost(
     }
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
-        showTripSheet = false
-        showTripStops = addStopOnResume && stage == NavStage.NAVIGATING
+        riding.onStageChanged(stage, openAddStop = addStopOnResume)
         addStopOnResume = false
-        showBike = false
-        if (stage == NavStage.NAVIGATING) mapButton = MapButtonState()
     }
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
     LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }

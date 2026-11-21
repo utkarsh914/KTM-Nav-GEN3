@@ -168,6 +168,7 @@ class RideRecordingService : Service() {
             .setContentText(content.text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(open)
         if (content.showActions) {
             // Visible without expanding: Pause / Stop are the point of the promoted notification (SY4).

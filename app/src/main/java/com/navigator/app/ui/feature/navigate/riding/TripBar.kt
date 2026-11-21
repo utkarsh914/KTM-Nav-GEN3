@@ -39,6 +39,10 @@ import com.navigator.app.ui.theme.rememberHaptics
 private val PROGRESS_H = KtmLayout.progressLine
 
 @Composable
+fun shortDurationText(seconds: Int): String =
+    if (seconds in 1..59) stringResource(R.string.riding_time_s, seconds) else timeLeftText(TimeLeft.of(seconds))
+
+@Composable
 fun timeLeftText(t: TimeLeft): String = when (t.kind) {
     TimeLeft.Kind.Minutes -> stringResource(R.string.riding_time_min, t.minutes)
     TimeLeft.Kind.HoursMinutes -> stringResource(R.string.riding_time_hm, t.hours, t.minutes)

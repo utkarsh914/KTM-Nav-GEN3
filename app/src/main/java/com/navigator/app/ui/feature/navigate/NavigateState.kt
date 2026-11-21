@@ -132,7 +132,7 @@ object ActivityCard {
         if (!trip.minimised || trip.arrivalLatched || !nav.sessionState.isActiveNav()) return null
         return ActivityCardModel(
             distance = nav.preformattedDistance
-                ?: nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, nav.units) },
+                ?: nav.distanceToManeuverMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) },
             road = nav.roadName?.takeIf { it.isNotBlank() },
             destination = dest.label ?: "",
             eta = nav.preformattedEta

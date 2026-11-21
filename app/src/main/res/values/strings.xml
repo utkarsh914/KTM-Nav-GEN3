@@ -243,6 +243,7 @@
     <string name="riding_speed_description">%1$s km/h</string>
     <string name="riding_speed_over_description">%1$s km/h, over your limit of %2$d</string>
     <string name="riding_speed_no_fix">No GPS speed yet</string>
+    <string name="riding_time_s">%1$d s</string>
     <string name="riding_time_min">%1$d min</string>
     <string name="riding_time_hm">%1$d h %2$02d min</string>
     <string name="riding_time_h">%1$d h</string>
@@ -259,6 +260,8 @@
     <string name="riding_chip_stop_removed">Stop removed · %1$s</string>
     <string name="riding_chip_stop_remove_failed">Couldn\'t remove the stop · trip continues</string>
     <string name="trip_stop_unnamed">Stop</string>
+    <string name="trip_destination_unnamed">Destination</string>
+    <string name="ride_back_label">Trip start</string>
     <string name="riding_chip_stop_failed">Couldn\'t add the stop · trip continues</string>
     <string name="riding_chip_not_navigating">Start navigating first</string>
     <string name="riding_chip_ended">That trip has already ended</string>

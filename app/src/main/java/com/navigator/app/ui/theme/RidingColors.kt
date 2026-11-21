@@ -3,16 +3,14 @@ package com.navigator.app.ui.theme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
-import android.app.Activity
-import android.content.ContextWrapper
-import android.view.View
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -89,9 +87,15 @@ fun RidingTheme(
     val appIsDark = LocalKtmColors.current.isDark
     val view = LocalView.current
     if (!view.isInEditMode && controlSystemBars) {
-        DisposableEffect(night, appIsDark) {
-            setStatusBarIcons(view, dark = night)
-            onDispose { setStatusBarIcons(view, dark = appIsDark) }
+        val token = remember { Any() }
+        val appDark by rememberUpdatedState(appIsDark)
+        DisposableEffect(night) {
+            SystemBarIcons.push(token, night)
+            SystemBarIcons.apply(view, night)
+            onDispose {
+                SystemBarIcons.pop(token)
+                SystemBarIcons.apply(view, SystemBarIcons.resolve(appDark))
+            }
         }
     }
     CompositionLocalProvider(
@@ -107,15 +111,5 @@ fun RidingTheme(
             typography = MaterialTheme.typography,
             content = content,
         )
-    }
-}
-
-private fun setStatusBarIcons(view: View, dark: Boolean) {
-    var ctx = view.context
-    while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
-    val window = (ctx as? Activity)?.window ?: return
-    WindowCompat.getInsetsController(window, view).apply {
-        isAppearanceLightStatusBars = !dark
-        isAppearanceLightNavigationBars = !dark
     }
 }

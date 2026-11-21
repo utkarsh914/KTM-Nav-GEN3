@@ -38,6 +38,7 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.components.StatTile
 import com.navigator.app.ui.feature.navigate.riding.TimeLeft
+import com.navigator.app.ui.feature.navigate.riding.shortDurationText
 import com.navigator.app.ui.feature.navigate.riding.timeLeftText
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -130,7 +131,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
             }
             KtmButton(
                 stringResource(R.string.finished_done), actions.onDone, Modifier.weight(1f),
-                size = if (landscape) ButtonSize.Rest else ButtonSize.Riding,
+                size = ButtonSize.Rest,
             )
         }
     }
@@ -192,7 +193,7 @@ private fun WhyNoRecording(model: TripFinishedModel, reason: NoRecordingReason, 
     val limits = stringResource(
         R.string.finished_limits,
         DistanceFormatter.format(model.minDistanceM, DistanceUnits.METRIC),
-        timeLeftText(TimeLeft.of(model.minDurationS)),
+        shortDurationText(model.minDurationS),
     )
     val turnedOn = model.recordingNowOn && reason == NoRecordingReason.RecordingOff
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {

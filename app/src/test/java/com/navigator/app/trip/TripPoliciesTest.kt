@@ -28,9 +28,10 @@ class TripPoliciesTest {
         assertEquals(StopAddProblem.ENDED, problem(check(latched = true)))
     }
 
-    @Test fun openingTheSearchNeedsAConnectionButPickingDoesNot() {
+    @Test fun everyStopChangeNeedsAConnection() {
         assertEquals(StopAddProblem.OFFLINE, problem(check(online = false, forSearch = true)))
-        assertTrue(check(online = false, forSearch = false) is StopAddCheck.Ok)
+        assertEquals("pick, remove and add-as-stop re-plan too", StopAddProblem.OFFLINE, problem(check(online = false, forSearch = false)))
+        assertEquals("an ended trip is still reported as ended", StopAddProblem.ENDED, problem(check(online = false, latched = true)))
     }
 
     @Test fun aSecondStopWaitsForTheRouteToSettle() {

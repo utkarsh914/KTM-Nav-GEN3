@@ -64,7 +64,7 @@
   failed guidance writes trigger a resync, and guidance is refreshed every 15 s while navigating.
   The connect greeting no longer overwrites or blanks live guidance.
 - Text is truncated on whole characters (no broken emoji or Kannada conjuncts), 9.95–9.99 km reads
-  "10 km", in-app navigation uses miles in US/UK, and the ETA follows time-zone changes.
+  "10 km", the app shows kilometres everywhere (the dash path is unchanged), and the ETA follows time-zone changes.
 
 ### Under the hood
 - Build toolchain: Gradle 9.9.1, Android Gradle Plugin 9.5.1 (built-in Kotlin), Kotlin 2.4.21. The

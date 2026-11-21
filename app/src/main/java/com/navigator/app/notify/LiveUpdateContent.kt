@@ -4,6 +4,7 @@ import android.content.res.Resources
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.DistanceFormatter
+import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
@@ -54,8 +55,8 @@ object LiveUpdateBuilder {
         val state = input.nav
         val etaMs = state.remainingTimeSeconds?.takeIf { it >= 0 }?.let { input.nowMs + it * 1000L }
         val etaClock = etaMs?.let { CLOCK.format(Instant.ofEpochMilli(it).atZone(zone)) }
-        val toTurn = state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, state.units) }
-        val remaining = state.remainingDistanceMeters?.let { DistanceFormatter.format(it, state.units) }
+        val toTurn = state.distanceToManeuverMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) }
+        val remaining = state.remainingDistanceMeters?.let { DistanceFormatter.format(it, DistanceUnits.METRIC) }
         val instruction = state.fullInstruction?.takeIf { it.isNotBlank() } ?: state.roadName?.takeIf { it.isNotBlank() }
         val enroute = state.sessionState == NavSessionState.ENROUTE
         val rerouting = state.sessionState == NavSessionState.REROUTING

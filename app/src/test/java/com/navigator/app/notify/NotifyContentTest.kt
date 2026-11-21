@@ -44,6 +44,20 @@ class LiveUpdateContentTest {
         assertEquals(TurnIcon.QUITE_LEFT, c.turn)
     }
 
+    @Test fun imperialRegionsStillGetKilometres() {
+        val c = build(LiveInput(enroute().copy(units = DistanceUnits.IMPERIAL), now, destination = "Toit"))
+        assertEquals("220 m \u00b7 Turn left onto MG Road", c.title)
+        assertEquals("Toit \u00b7 ETA 22:23 \u00b7 5.2 km", c.text)
+    }
+
+    @Test fun theMirrorLineIsRepostedWhenItChangesAndWhenItGoesAway() {
+        assertTrue(ConnectionNoticeContent.repostForLine(true, "350 m", null))
+        assertTrue("trip ended: the old line must not stay", ConnectionNoticeContent.repostForLine(true, null, "350 m"))
+        assertFalse(ConnectionNoticeContent.repostForLine(true, "350 m", "350 m"))
+        assertFalse(ConnectionNoticeContent.repostForLine(true, null, null))
+        assertFalse("not off a link that is not connected", ConnectionNoticeContent.repostForLine(false, null, "350 m"))
+    }
+
     @Test fun fallsBackToRoadNameThenContinue() {
         assertEquals("220 m \u00b7 MG Road", build(LiveInput(enroute(instr = null), now)).title)
         assertEquals("220 m \u00b7 Continue", build(LiveInput(enroute(instr = " ", road = null), now)).title)
