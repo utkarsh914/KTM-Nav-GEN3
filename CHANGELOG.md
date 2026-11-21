@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.0.0
+
+The redesign release: the version moves from 0.6 to 1.0.
 
 ### Redesign (UI and UX, all screens)
 - A new design system across the app: one set of colours, type, shapes and components, light and dark, with your choice of accent colour (any colour, with contrast checked). The riding screens have their own Day/Night mode.

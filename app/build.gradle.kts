@@ -52,11 +52,11 @@ android {
         val commitCount = if (shallow) null else gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
         versionCode = if (commitCount != null) 100_000 + commitCount
         else maxOf(100_000, (System.currentTimeMillis() / 86_400_000L).toInt())
-        // Public beta line + the commit it was built from (and "-dirty" for uncommitted
+        // The release line + the commit it was built from (and "-dirty" for uncommitted
         // changes), so the installed build can be identified (Settings > Diagnostics).
         val shortHash = gitOutput("rev-parse", "--short", "HEAD")
         val dirty = gitOutput("status", "--porcelain")?.isNotBlank() == true
-        versionName = "0.6.0+" + (shortHash?.plus(if (dirty) "-dirty" else "")
+        versionName = "1.0.0+" + (shortHash?.plus(if (dirty) "-dirty" else "")
             ?: SimpleDateFormat("MMdd-HHmm").format(Date()))
 
         // Navigation SDK / Places API key, read from local.properties (gitignored).
