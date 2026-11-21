@@ -44,7 +44,7 @@ class FakeMapController : MapController {
         calls += "clear"; place = null; preview = null; track = null; userMarker = null
     }
 
-    override fun showPlace(place: MapPoint, title: String?) { calls += "place"; this.place = place }
+    override fun showPlace(place: MapPoint, title: String?, moveCamera: Boolean) { calls += "place"; this.place = place }
     override fun showTripPreview(scene: TripPreviewScene) { calls += "preview"; preview = scene }
     override fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands) { calls += "track"; track = points }
     var clicksOn = false

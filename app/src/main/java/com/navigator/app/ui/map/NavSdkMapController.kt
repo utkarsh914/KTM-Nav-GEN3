@@ -188,11 +188,11 @@ class NavSdkMapController(
         userMarker.remove()
     }
 
-    override fun showPlace(place: MapPoint, title: String?) {
+    override fun showPlace(place: MapPoint, title: String?, moveCamera: Boolean) {
         val gm = map ?: return
         val ll = LatLng(place.lat, place.lng)
         gm.addMarker(MarkerOptions().position(ll).title(title))
-        gm.glide(CameraUpdateFactory.newLatLngZoom(ll, 15f), KtmMotionSpecs.CAMERA_FIT_MS)
+        if (moveCamera) gm.glide(CameraUpdateFactory.newLatLngZoom(ll, 15f), KtmMotionSpecs.CAMERA_FIT_MS)
     }
 
     override fun showTripPreview(scene: TripPreviewScene) {

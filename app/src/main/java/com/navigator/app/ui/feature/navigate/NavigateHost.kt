@@ -384,10 +384,13 @@ fun NavigateHost(
         accent = KtmTheme.accent.fill.toArgb(), onAccent = KtmTheme.accent.onFill.toArgb(),
         surface = KtmTheme.colors.surf.toArgb(), onSurface = KtmTheme.colors.fg.toArgb(), outline = KtmTheme.colors.line2.toArgb(),
     )
-    LaunchedEffect(planInsets) {
+    LaunchedEffect(planInsets, stage) {
         // The card measures after the stage arrives: frame again once its size is known (the pin goes to the open map's middle).
         val framed = (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) || stage == NavStage.CONFIRM
-        if (framed) { delay(250); fitKey++ }
+        if (framed) {
+            delay(250)
+            if (stage == NavStage.CONFIRM || stage == NavStage.PREVIEW) fitKey++
+        }
     }
     LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate) {
         if (!mapReady) return@LaunchedEffect
@@ -410,7 +413,8 @@ fun NavigateHost(
         val reframe = !pickingStop && frameKey != lastFit[0] && !(stage == NavStage.PREVIEW && routePreview.routes.isEmpty())
         lastFit[0] = frameKey
         when (stage) {
-            NavStage.CONFIRM -> if (p != null) map.showPlace(MapPoint(p.lat, p.lng), p.label)
+            // Only the camera waits for a change of what is framed: a card that grows must not re-centre a panned map.
+            NavStage.CONFIRM -> if (p != null) map.showPlace(MapPoint(p.lat, p.lng), p.label, moveCamera = reframe)
             NavStage.PREVIEW -> if (p != null) {
                 map.showTripPreview(
                     TripPreviewScene(
@@ -646,6 +650,8 @@ fun NavigateHost(
     val linkController = remember { context.appContainer.sharedLink }
     val linkState by linkController.state.collectAsState()
     val linkFailure by linkController.failure.collectAsState()
+    // Searching is the answer to a link card too ("Search instead"): leave no card behind it that Back would meet.
+    LaunchedEffect(stage) { if (stage == NavStage.SEARCH) linkController.dismiss() }
 
     // Home / Work chip or launcher shortcut -> straight to the route preview for that place.
     fun rideTo(place: SavedPlace) {
@@ -708,6 +714,7 @@ fun NavigateHost(
         }
     }
     // A question about the place being looked at is void once the stage moves on (the trip finished meanwhile).
+    // (A Replace confirmed from CONFIRM calls trip.cancel() and goes to PREVIEW at once, before any stage change.)
     LaunchedEffect(stage) { replaceRequest = null }
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
@@ -770,7 +777,8 @@ fun NavigateHost(
     BackHandler(enabled = pickingStop || stopCandidate != null) {
         if (pickingStop) pickingStop = false else stopCandidate = null
     }
-    // Registered last, so it is first to get Back: a card on screen is dismissed before the flow steps back.
+    // Registered after the host's own Back handlers, so a card on screen is dismissed before the flow steps back
+    // (the browse sheet's and overlays' own handlers are composed later and still go first).
     SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, { flow.stage }, feedback, onResolved = ::choose)
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
     com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)

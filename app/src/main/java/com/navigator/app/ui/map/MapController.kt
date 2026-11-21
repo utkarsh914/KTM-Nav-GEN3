@@ -81,7 +81,7 @@ interface MapController {
     fun clearOverlays()
 
     /** A pin on the picked place, with the camera zoomed to it. */
-    fun showPlace(place: MapPoint, title: String?)
+    fun showPlace(place: MapPoint, title: String?, moveCamera: Boolean = true)
     fun showTripPreview(scene: TripPreviewScene)
 
     /** The speed-coloured track of a ride, framed in the visible map. */
