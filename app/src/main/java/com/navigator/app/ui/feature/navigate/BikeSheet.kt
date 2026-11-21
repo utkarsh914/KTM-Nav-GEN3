@@ -50,7 +50,6 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
-import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.settings.RePairDialog
 import com.navigator.app.ui.shell.openBluetoothSettings
 import com.navigator.app.ui.theme.KtmIcons

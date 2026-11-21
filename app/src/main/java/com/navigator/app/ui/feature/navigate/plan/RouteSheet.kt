@@ -65,7 +65,6 @@ import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmRadio
-import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout

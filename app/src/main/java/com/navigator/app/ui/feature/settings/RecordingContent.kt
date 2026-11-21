@@ -11,7 +11,6 @@ import com.navigator.app.ride.AvgSpeedMode
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.SectionHeader
-import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 

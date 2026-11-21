@@ -3,7 +3,6 @@ package com.navigator.app.ui.components
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmSpacing
 
 /** A banner that names what is missing and gives the one button that fixes it (Allow, Turn on, Re-pair). */

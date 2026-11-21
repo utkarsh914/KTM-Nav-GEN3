@@ -167,13 +167,13 @@ private fun Portrait(
     Box(Modifier.fillMaxSize()) {
         Row(
             Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .fillMaxWidth().padding(KtmSpacing.sm),
+                .fillMaxWidth().padding(KtmSpacing.lg),
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically,
         ) {
             MapControlButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             Box(Modifier.weight(1f))
             MapControlButton(KtmIcons.Share, stringResource(R.string.replay_share), actions.onShare)
-            OverflowMenu(actions, IconButtonSize.Map)
+            OverflowMenu(actions, overMap = true)
         }
         MapButtons(
             bearing, actions,
@@ -281,7 +281,7 @@ private fun Landscape(
                 Box(Modifier.weight(1f)) { Title(ui.ride, ui.parts, actions.onEdit, compact = true) }
                 StarButton(ui.ride.saved, actions.onToggleStar)
                 KtmIconButton(KtmIcons.Share, stringResource(R.string.replay_share), actions.onShare)
-                OverflowMenu(actions, IconButtonSize.Rest)
+                OverflowMenu(actions, overMap = false)
             }
             // RP6: the chart (and, scrolling, the stats) above; the readout, seek bar and play row stay at the foot.
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
@@ -307,11 +307,11 @@ private fun MapButtons(bearing: Float, actions: ReplayActions, modifier: Modifie
 }
 
 @Composable
-private fun OverflowMenu(actions: ReplayActions, size: IconButtonSize) {
+private fun OverflowMenu(actions: ReplayActions, overMap: Boolean) {
     var open by remember { mutableStateOf(false) }
     Box {
-        if (size == IconButtonSize.Map) MapControlButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true })
-        else KtmIconButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true }, size = size)
+        if (overMap) MapControlButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true })
+        else KtmIconButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = KtmTheme.colors.surf) {
             KtmMenuItem(stringResource(R.string.replay_menu_edit)) { open = false; actions.onEdit() }
             KtmMenuItem(stringResource(R.string.replay_menu_trim)) { open = false; actions.onTrim() }

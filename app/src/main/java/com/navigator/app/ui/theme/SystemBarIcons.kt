@@ -1,7 +1,5 @@
 package com.navigator.app.ui.theme
 
-import android.app.Activity
-import android.content.ContextWrapper
 import android.view.View
 import androidx.core.view.WindowCompat
 import com.navigator.app.ui.findHostActivity

@@ -15,13 +15,11 @@ import androidx.compose.foundation.layout.Arrangement
 import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.settings.DrivingSidePreference
-import com.navigator.app.ui.components.KtmRadioRow
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.RowChevron
 import com.navigator.app.ui.components.SectionHeader
-import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme

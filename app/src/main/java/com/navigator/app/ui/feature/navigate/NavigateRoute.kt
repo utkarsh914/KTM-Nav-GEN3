@@ -2,7 +2,6 @@ package com.navigator.app.ui.feature.navigate
 
 import android.Manifest
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings

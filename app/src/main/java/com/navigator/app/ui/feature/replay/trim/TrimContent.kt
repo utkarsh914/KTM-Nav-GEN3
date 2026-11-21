@@ -117,7 +117,7 @@ fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit,
                 Box(Modifier.fillMaxSize()) {
                     MapControlButton(
                         KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack,
-                        Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(KtmSpacing.sm),
+                        Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(KtmSpacing.lg),
                     )
                     Column(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth()

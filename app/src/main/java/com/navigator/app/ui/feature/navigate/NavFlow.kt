@@ -8,7 +8,6 @@ import androidx.lifecycle.ViewModel
 import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.SavedPlace
-import com.navigator.app.nav.model.NavDestination
 import org.json.JSONObject
 
 internal enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }
