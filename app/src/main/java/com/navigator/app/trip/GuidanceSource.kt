@@ -1,5 +1,6 @@
 package com.navigator.app.trip
 
+import android.app.Activity
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NormalizedNavigationState
@@ -30,7 +31,7 @@ interface GuidanceSource {
 }
 
 /** The in-app engine: the Navigation SDK behind [GoogleNavSdkProvider] and [GoogleNavSdkController]. */
-class SdkGuidanceSource(private val activity: () -> android.app.Activity?) : GuidanceSource {
+class SdkGuidanceSource(private val activity: () -> Activity?) : GuidanceSource {
     override val state get() = GoogleNavSdkProvider.state
     override val startFailure get() = GoogleNavSdkProvider.startFailure
     override val arrivals: Flow<Unit> = GoogleNavSdkProvider.tripEnded.map { }

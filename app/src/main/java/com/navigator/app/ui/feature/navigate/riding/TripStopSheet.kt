@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -72,7 +75,7 @@ class TripStopActions(
  * with "Needs internet". Free-text search is one tap away (the full search). On success the host closes the sheet
  * and a riding chip confirms.
  */
-@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
     val c = KtmTheme.colors
@@ -128,10 +131,10 @@ private fun SearchPill(onClick: () -> Unit) {
 }
 
 @Composable
-private fun Hint(@androidx.annotation.StringRes res: Int) {
+private fun Hint(@StringRes res: Int) {
     Text(
         stringResource(res), style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg2,
-        modifier = Modifier.padding(vertical = KtmSpacing.md).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+        modifier = Modifier.padding(vertical = KtmSpacing.md).semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 

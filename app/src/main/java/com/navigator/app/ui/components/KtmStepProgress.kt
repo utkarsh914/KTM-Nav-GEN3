@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -56,7 +57,7 @@ fun KtmStepHeader(
     total: Int,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    trailing: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
+    trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Column(modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).fillMaxWidth()) {
         KtmStepProgress(position, total, Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.lg))

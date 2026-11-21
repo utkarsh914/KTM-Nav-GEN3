@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.places
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.saveable.Saver
 import androidx.core.net.toUri
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
@@ -19,7 +20,7 @@ sealed interface PlaceTarget {
 
     companion object {
         /** Survives the process being killed while the sheet is open. */
-        val Saver: androidx.compose.runtime.saveable.Saver<PlaceTarget?, List<Any?>> = androidx.compose.runtime.saveable.Saver(
+        val Saver: Saver<PlaceTarget?, List<Any?>> = Saver(
             save = { t ->
                 if (t == null) emptyList()
                 else listOf((t as? Slot)?.slot?.name, t.place.lat, t.place.lng, t.place.label, t.place.address)

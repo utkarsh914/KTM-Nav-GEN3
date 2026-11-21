@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ContextWrapper
 import android.view.View
 import androidx.core.view.WindowCompat
+import com.navigator.app.ui.findHostActivity
 
 /**
  * The one owner of the status/navigation-bar icon colour. The app theme sets it from the app's Day/Night; a
@@ -28,9 +29,7 @@ object SystemBarIcons {
     }
 
     internal fun apply(view: View, dark: Boolean) {
-        var ctx = view.context
-        while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
-        val window = (ctx as? Activity)?.window ?: return
+        val window = view.context.findHostActivity()?.window ?: return
         // Edge-to-edge is enforced, so only the icon appearance needs setting.
         WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = !dark

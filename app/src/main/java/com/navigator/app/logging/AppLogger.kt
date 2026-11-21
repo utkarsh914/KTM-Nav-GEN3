@@ -2,7 +2,9 @@ package com.navigator.app.logging
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
@@ -38,7 +40,7 @@ object AppLogger {
     // file I/O and a MediaStore openOutputStream() per line on those threads was
     // a real source of UI jank and callback latency.
     private val ioHandler: Handler by lazy {
-        val thread = android.os.HandlerThread("OpenDashLogIO").apply { start() }
+        val thread = HandlerThread("OpenDashLogIO").apply { start() }
         Handler(thread.looper)
     }
 
@@ -148,7 +150,7 @@ object AppLogger {
         }
     }
 
-    @Volatile private var mediaStoreUri: android.net.Uri? = null
+    @Volatile private var mediaStoreUri: Uri? = null
     @Volatile private var mediaStoreUriResolved = false
 
     @Synchronized

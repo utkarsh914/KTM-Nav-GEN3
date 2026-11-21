@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -64,7 +65,7 @@ class SoundsViewModel(private val settings: SettingsRepository, private val devi
     fun setAlertAt(kmh: Int) = settings.update { overspeedLimitKmh = SettingSpecs.overspeedLimit.clamp(kmh) }
 
     companion object {
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             private val app = context.applicationContext
 
             @Suppress("UNCHECKED_CAST")

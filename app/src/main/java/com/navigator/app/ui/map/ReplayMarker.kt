@@ -1,6 +1,7 @@
 package com.navigator.app.ui.map
 
 import android.content.Context
+import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -22,7 +23,7 @@ internal fun replayMarkerIcon(context: Context, ringColor: Int): BitmapDescripto
     // A white halo keeps the ring readable on any map colour; the centre stays open over the start marker.
     paint.style = Paint.Style.STROKE
     paint.strokeWidth = ring + 2 * density
-    paint.color = android.graphics.Color.WHITE
+    paint.color = Color.WHITE
     canvas.drawCircle(centre, centre, centre - ring, paint)
     paint.strokeWidth = ring
     paint.color = ringColor

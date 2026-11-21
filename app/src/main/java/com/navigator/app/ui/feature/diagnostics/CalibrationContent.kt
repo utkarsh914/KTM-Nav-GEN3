@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -101,7 +102,7 @@ private fun CalibrationCard(row: CalibrationRow, ui: CalibrationUi, actions: Cal
     val a = KtmTheme.accent
     val stateText = stringResource(if (row.expanded) R.string.calib_expanded else R.string.calib_collapsed)
     // A file decode: off the main thread, the tile shows its "?" until it is ready.
-    val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, row.path) {
+    val image by produceState<ImageBitmap?>(null, row.path) {
         value = withContext(Dispatchers.IO) { runCatching { BitmapFactory.decodeFile(row.path)?.asImageBitmap() }.getOrNull() }
     }
     KtmCard(

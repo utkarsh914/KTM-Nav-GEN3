@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
@@ -29,6 +30,9 @@ import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.feature.record.rememberStartRecording
 import com.navigator.app.ui.shell.LocalFeedback
+import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 /** The Rides tab: wires [RidesContent] to the repository, the file picker and the snackbars. */
 @Composable
@@ -100,16 +104,16 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
         onTurnOnAutoRecord = { container.settings.update { rideRecordingEnabled = true } },
     )
     var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose { } }
+    LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose { } }
     // "Today" and "Yesterday" move on at midnight even if the tab stays open.
-    val today by androidx.compose.runtime.produceState(java.time.LocalDate.now(), resumes) {
+    val today by androidx.compose.runtime.produceState(LocalDate.now(), resumes) {
         // Coming back to the app also refreshes it: a timer doesn't tick while the phone sleeps, or across a DST or clock change.
-        value = java.time.LocalDate.now()
+        value = LocalDate.now()
         while (true) {
-            val now = java.time.LocalDateTime.now()
-            val untilMidnight = java.time.Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).toMillis()
+            val now = LocalDateTime.now()
+            val untilMidnight = Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).toMillis()
             kotlinx.coroutines.delay(untilMidnight + MIDNIGHT_SLACK_MS)
-            value = java.time.LocalDate.now()
+            value = LocalDate.now()
         }
     }
     RidesContent(

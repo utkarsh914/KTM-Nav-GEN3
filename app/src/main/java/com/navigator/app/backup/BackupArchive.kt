@@ -2,6 +2,7 @@ package com.navigator.app.backup
 
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideJson
+import java.io.ByteArrayOutputStream
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -92,7 +93,7 @@ object BackupArchive {
                     when {
                         trackId != null && !withTracks -> {
                             // Only counting: read through (capped), keep nothing.
-                            val n = copyCapped(zip, java.io.OutputStream.nullOutputStream(), MAX_TRACK_BYTES, MAX_TOTAL_BYTES - total) ?: return null
+                            val n = copyCapped(zip, OutputStream.nullOutputStream(), MAX_TRACK_BYTES, MAX_TOTAL_BYTES - total) ?: return null
                             total += n
                             seenTrackIds += trackId
                         }
@@ -103,7 +104,7 @@ object BackupArchive {
                             tracks[trackId] = f
                         }
                         name == "manifest.json" || name == "rides.json" || name == "places.json" || name == "prefs.json" -> {
-                            val bos = java.io.ByteArrayOutputStream()
+                            val bos = ByteArrayOutputStream()
                             val n = copyCapped(zip, bos, MAX_SMALL_BYTES, MAX_TOTAL_BYTES - total) ?: return null
                             total += n
                             val body = bos.toString(Charsets.UTF_8.name())

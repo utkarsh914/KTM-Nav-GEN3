@@ -2,6 +2,8 @@ package com.navigator.app.ui.feature.navigate.search
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.ui.components.ButtonSize
@@ -305,14 +307,14 @@ private fun NoMatches(query: String) {
     Text(
         if (query.isBlank()) stringResource(R.string.search_no_matches) else stringResource(R.string.search_nothing_for, query.trim()),
         style = MaterialTheme.typography.bodyLarge, color = KtmTheme.colors.fg2,
-        modifier = Modifier.padding(KtmSpacing.lg).semantics { this.liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+        modifier = Modifier.padding(KtmSpacing.lg).semantics { this.liveRegion = LiveRegionMode.Polite },
     )
 }
 
 @Composable
 private fun PlaceRow(
     place: SavedPlace,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     origin: Pair<Double, Double>?,
     onPlace: (SavedPlace) -> Unit,
     onRemove: (() -> Unit)? = null,

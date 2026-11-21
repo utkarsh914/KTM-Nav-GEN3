@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.places
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -109,7 +110,7 @@ class PlacesViewModel(
     fun undoAssign(event: PlacesEvent.Assigned) = repo.undoAssign(event.place, event.slot, event.previous)
 
     companion object {
-        fun factory(container: AppContainer, context: android.content.Context): ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context): ViewModelProvider.Factory {
             // Not the activity: the view model outlives it.
             val app = context.applicationContext
             return object : ViewModelProvider.Factory {

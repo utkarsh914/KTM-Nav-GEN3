@@ -1,10 +1,11 @@
-@file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+@file:OptIn(ExperimentalTextApi::class)
 
 package com.navigator.app.ui.theme
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle

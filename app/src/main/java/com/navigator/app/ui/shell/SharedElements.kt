@@ -8,6 +8,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -60,7 +61,7 @@ fun Modifier.tripStripBounds(): Modifier {
             enter = fadeIn(motion.effectsFast()),
             exit = fadeOut(motion.effectsFast()),
             // On the riding stage: at most 250 ms, no overshoot.
-            boundsTransform = { _, _ -> motion.ridingSpatial<androidx.compose.ui.geometry.Rect>() },
+            boundsTransform = { _, _ -> motion.ridingSpatial<Rect>() },
             resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
             clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
         )

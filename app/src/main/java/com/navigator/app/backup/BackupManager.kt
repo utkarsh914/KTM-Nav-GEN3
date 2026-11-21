@@ -2,8 +2,10 @@ package com.navigator.app.backup
 
 import android.content.Context
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.ride.RideStore
+import com.navigator.app.settings.AppSettings
 import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
@@ -48,8 +50,8 @@ class BackupManager(context: Context) {
             c.placesJson?.let { json ->
                 runCatching {
                     val o = JSONObject(json)
-                    placeCount = com.navigator.app.nav.destination.PlacesJson.parseFavorites(o.optString("favorites")).items.size +
-                        com.navigator.app.nav.destination.PlacesJson.parsePlaces(o.optString("recents")).items.size
+                    placeCount = PlacesJson.parseFavorites(o.optString("favorites")).items.size +
+                        PlacesJson.parsePlaces(o.optString("recents")).items.size
                 }
             }
             Preview(usable.size, usable.count { it.id !in have }, placeCount, PrefsBackup.decode(c.prefsJson).size)
@@ -79,7 +81,7 @@ class BackupManager(context: Context) {
                 PrefsBackup.applyTo(e, entries)
                 // A smaller history limit from the backup must not prune the rides just restored.
                 val have = rides.list().size
-                val limit = (entries["ride_history_limit"] as? Int) ?: com.navigator.app.settings.AppSettings.DEFAULT_RIDE_HISTORY_LIMIT
+                val limit = (entries["ride_history_limit"] as? Int) ?: AppSettings.DEFAULT_RIDE_HISTORY_LIMIT
                 if (limit < have) e.putInt("ride_history_limit", have.coerceAtMost(1_000))
                 e.commit()
             }

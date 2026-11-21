@@ -29,6 +29,7 @@ import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.mirror.MirrorStatus
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.notifications.AppNotificationListener
+import com.navigator.app.ride.RideSession
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.feature.navigate.BikeSheetHost
@@ -68,7 +69,7 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
     val pill = BikePillMapper.map(bikeStatus)
     val bike = MirrorBike(pill, stringResource(pill.label, pill.labelArg.orEmpty()), stringResource(pill.state))
     var showBike by remember { mutableStateOf(false) }
-    val recording by com.navigator.app.ride.RideSession.state.collectAsState()
+    val recording by RideSession.state.collectAsState()
     val startRecording = rememberStartRecording()
     // The dash's clock: it moves on even while nothing else on the screen changes.
     val time by produceState("") {

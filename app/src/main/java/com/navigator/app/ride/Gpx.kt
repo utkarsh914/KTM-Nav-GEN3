@@ -1,5 +1,13 @@
 package com.navigator.app.ride
 
+import java.io.ByteArrayOutputStream
+import java.io.StringReader
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import org.xml.sax.Attributes
 import org.xml.sax.InputSource
 import org.xml.sax.helpers.DefaultHandler
@@ -51,7 +59,7 @@ object Gpx {
     }
 
     /** Plain decimal (never scientific notation, which xsd:decimal readers reject). */
-    private fun num(v: Double, decimals: Int): String = String.format(java.util.Locale.ROOT, "%.${decimals}f", v)
+    private fun num(v: Double, decimals: Int): String = String.format(Locale.ROOT, "%.${decimals}f", v)
 
     private fun escape(s: String) = s
         .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
@@ -60,8 +68,8 @@ object Gpx {
 
     /** Filesystem-safe base name for an exported ride. */
     fun fileName(label: String?, startMs: Long): String {
-        val date = java.time.ZonedDateTime.ofInstant(Instant.ofEpochMilli(startMs), java.time.ZoneId.systemDefault())
-            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm"))
+        val date = ZonedDateTime.ofInstant(Instant.ofEpochMilli(startMs), ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm"))
         val slug = (label ?: "ride").lowercase()
             .replace(Regex("[^a-z0-9]+"), "-").trim('-').take(32).ifEmpty { "ride" }
         return "$slug-$date.gpx"
@@ -93,7 +101,7 @@ object Gpx {
             reader.contentHandler = handler
             reader.errorHandler = handler
             // Never fetch an external DTD / entity, whatever the parser's feature support.
-            reader.entityResolver = org.xml.sax.EntityResolver { _, _ -> InputSource(java.io.StringReader("")) }
+            reader.entityResolver = org.xml.sax.EntityResolver { _, _ -> InputSource(StringReader("")) }
             reader.parse(InputSource(ByteArrayInputStream(bytes)))
         } catch (e: Exception) {
             // Keep whatever parsed before a late syntax error only if it is clearly a track.
@@ -105,7 +113,7 @@ object Gpx {
     }
 
     private fun readCapped(input: InputStream): ByteArray? {
-        val out = java.io.ByteArrayOutputStream()
+        val out = ByteArrayOutputStream()
         val buf = ByteArray(16 * 1024)
         var total = 0
         while (true) {
@@ -131,7 +139,7 @@ object Gpx {
         return runCatching { Instant.parse(t).toEpochMilli() }.getOrNull()
             ?: runCatching { OffsetDateTime.parse(t).toInstant().toEpochMilli() }.getOrNull()
             // No zone given: GPX times are UTC by definition.
-            ?: runCatching { java.time.LocalDateTime.parse(t).toInstant(java.time.ZoneOffset.UTC).toEpochMilli() }.getOrNull()
+            ?: runCatching { LocalDateTime.parse(t).toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull()
     }
 
     private class Raw(val lat: Double, val lng: Double, var timeMs: Long?, var speedMs: Float?, val newSegment: Boolean, var altM: Float? = null)

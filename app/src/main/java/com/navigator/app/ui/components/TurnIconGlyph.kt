@@ -2,6 +2,7 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -51,7 +52,7 @@ fun TurnIconRef(
 ) {
     val res = TurnIconArt.drawableFor(icon)
     if (res != null) {
-        androidx.compose.material3.Icon(
+        Icon(
             painter = androidx.compose.ui.res.painterResource(res),
             contentDescription = contentDescription,
             tint = color,

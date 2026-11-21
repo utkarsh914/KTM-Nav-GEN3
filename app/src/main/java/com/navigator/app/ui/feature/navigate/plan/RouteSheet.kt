@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import com.navigator.app.R
@@ -162,7 +164,7 @@ private fun StopsList(state: RouteSheetState, actions: RouteSheetActions) {
     var slotPx by remember { mutableFloatStateOf(0f) }
     // The stop that was just moved lights up for a moment, so a reorder is visible even between similar names.
     var lit by remember { mutableStateOf<Int?>(null) }
-    androidx.compose.runtime.LaunchedEffect(lit) {
+    LaunchedEffect(lit) {
         if (lit != null) { kotlinx.coroutines.delay(LIT_MS); lit = null }
     }
     val moving = RouteSheetActions(
@@ -234,7 +236,7 @@ private fun AddStopRow(state: RouteSheetState, onAdd: () -> Unit) {
 private fun StopLine(
     text: String,
     legLine: String?,
-    style: androidx.compose.ui.text.TextStyle,
+    style: TextStyle,
     color: Color,
     marker: @Composable () -> Unit,
 ) {
@@ -251,7 +253,7 @@ private fun StopLine(
 @Composable
 private fun NameAndLeg(
     name: String,
-    style: androidx.compose.ui.text.TextStyle,
+    style: TextStyle,
     color: Color,
     legLine: String?,
     modifier: Modifier = Modifier,

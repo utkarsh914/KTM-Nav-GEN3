@@ -41,7 +41,7 @@ import com.navigator.app.ui.map.MapSurface
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
-import com.navigator.app.ui.feature.navigate.findHostActivity
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull

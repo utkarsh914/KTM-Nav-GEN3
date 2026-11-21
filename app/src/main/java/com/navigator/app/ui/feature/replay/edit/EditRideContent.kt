@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +67,7 @@ private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
     val c = KtmTheme.colors
     Column(
         Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.edge),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(KtmSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         KtmTextField(ui.name, actions.onName, stringResource(R.string.edit_ride_name), Modifier.fillMaxWidth())
         KtmTextField(
@@ -77,7 +79,7 @@ private fun Form(ui: EditUi.Ready, actions: EditRideActions) {
             modifier = Modifier.fullBleed(),
             title = stringResource(R.string.edit_ride_trim), supporting = stringResource(R.string.edit_ride_trim_supporting),
             leadingIcon = KtmIcons.Trim, onClick = actions.onTrim,
-            trailing = { androidx.compose.material3.Icon(KtmIcons.ChevronRight, null, tint = c.fg2) },
+            trailing = { Icon(KtmIcons.ChevronRight, null, tint = c.fg2) },
         )
         ListDivider(Modifier.fullBleed())
         KtmSwitchRow(

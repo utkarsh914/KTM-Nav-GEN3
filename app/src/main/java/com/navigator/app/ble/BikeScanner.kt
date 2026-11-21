@@ -5,7 +5,10 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.ui.OpenDashPermissions
 import com.navigator.app.settings.AppSettings
@@ -82,7 +85,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
     private val _scanError = MutableStateFlow<Int?>(null)
     override val scanError: StateFlow<Int?> = _scanError.asStateFlow()
 
-    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     private val stopRunnable = Runnable { stop() }
 
     private val callback = object : ScanCallback() {
@@ -119,7 +122,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
         try {
             scanner.startScan(
                 null,
-                android.bluetooth.le.ScanSettings.Builder().setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
+                ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
                 callback,
             )
             _scanning.value = true

@@ -1,6 +1,7 @@
 package com.navigator.app.ble
 
 import java.util.ArrayDeque
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -36,7 +37,7 @@ internal class SerialGattQueue(
     private val onOpFailed: (reason: String) -> Unit = {},
 ) {
 
-    private class Op(val coalesceKey: java.util.UUID?, val target: java.util.UUID?, val run: () -> Unit)
+    private class Op(val coalesceKey: UUID?, val target: UUID?, val run: () -> Unit)
 
     private val lock = Any()
     private val queue = ArrayDeque<Op>()
@@ -46,14 +47,14 @@ internal class SerialGattQueue(
     private var nextId = 0L
     private var cancelTimeout: (() -> Unit)? = null
     /** Characteristic the in-flight op targets (null = unknown / not matchable). */
-    private var inFlightTarget: java.util.UUID? = null
+    private var inFlightTarget: UUID? = null
 
     /**
      * @param target the characteristic this op reads/writes, used to recognise its
      * completion callback; defaults to [coalesceKey] (which is the target uuid for
      * display writes).
      */
-    fun enqueue(coalesceKey: java.util.UUID? = null, target: java.util.UUID? = coalesceKey, op: () -> Unit) {
+    fun enqueue(coalesceKey: UUID? = null, target: UUID? = coalesceKey, op: () -> Unit) {
         synchronized(lock) {
             if (coalesceKey != null) {
                 queue.removeAll { it.coalesceKey == coalesceKey }
@@ -108,7 +109,7 @@ internal class SerialGattQueue(
      * from inside an op that failed synchronously pass null and always release.
      * Returns false when the completion was ignored as a late one.
      */
-    fun finish(completedUuid: java.util.UUID? = null): Boolean {
+    fun finish(completedUuid: UUID? = null): Boolean {
         synchronized(lock) {
             val target = inFlightTarget
             if (completedUuid != null && target != null && completedUuid != target) return false

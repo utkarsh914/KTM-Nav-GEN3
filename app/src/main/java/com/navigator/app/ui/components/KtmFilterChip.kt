@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,7 @@ fun KtmFilterChip(
         Row(
             Modifier.height(if (riding) KtmLayout.targetPrimary - 4.dp else 44.dp)
                 .clip(KtmShapes.Control)
-                .background(if (selected) a.container else androidx.compose.ui.graphics.Color.Transparent, KtmShapes.Control)
+                .background(if (selected) a.container else Color.Transparent, KtmShapes.Control)
                 .let { if (selected) it else it.border(1.dp, c.line2, KtmShapes.Control) }
                 .padding(horizontal = KtmSpacing.lg),
             verticalAlignment = Alignment.CenterVertically,

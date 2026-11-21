@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -9,6 +10,7 @@ import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.ride.AvgSpeedMode
+import com.navigator.app.ride.RideStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -89,11 +91,11 @@ class RecordingViewModel(
     override fun onCleared() = commit()
 
     companion object {
-        fun factory(container: AppContainer, appContext: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, appContext: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = RecordingViewModel(
                 container.settings,
-                prune = { limit -> kotlin.concurrent.thread { runCatching { com.navigator.app.ride.RideStore(appContext).pruneToLimit(limit) } } },
+                prune = { limit -> kotlin.concurrent.thread { runCatching { RideStore(appContext).pruneToLimit(limit) } } },
             ) as T
         }
     }

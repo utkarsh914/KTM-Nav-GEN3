@@ -1,5 +1,6 @@
 package com.navigator.app.ui.map
 
+import android.view.ViewGroup
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
@@ -45,7 +46,7 @@ fun MapSurface(
         // The retained view may still be attached to a previous parent when we re-enter; detach
         // before AndroidView re-adds it to avoid an IllegalArgumentException.
         factory = {
-            (navView.parent as? android.view.ViewGroup)?.removeView(navView)
+            (navView.parent as? ViewGroup)?.removeView(navView)
             navView
         },
         modifier = Modifier.fillMaxSize(),

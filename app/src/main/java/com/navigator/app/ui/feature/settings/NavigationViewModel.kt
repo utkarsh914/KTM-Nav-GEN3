@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -69,7 +70,7 @@ class NavigationViewModel(
     companion object {
         val MARKERS = listOf(AppSettings.LOCATION_MARKER_CHEVRON, AppSettings.LOCATION_MARKER_BEAM)
 
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             private val app = context.applicationContext
 
             @Suppress("UNCHECKED_CAST")

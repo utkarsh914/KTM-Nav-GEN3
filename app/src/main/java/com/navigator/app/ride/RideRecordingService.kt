@@ -145,7 +145,7 @@ class RideRecordingService : Service() {
         }
     }
 
-    private fun buildNotification(): android.app.Notification {
+    private fun buildNotification(): Notification {
         val open = NotificationActions.open(this, NotificationRequestCodes.OPEN_APP)
         val stop = PendingIntent.getService(
             this, NotificationRequestCodes.RECORDING_STOP,

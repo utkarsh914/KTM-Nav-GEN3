@@ -8,9 +8,12 @@ import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.libraries.navigation.NavigationApi
 import com.google.android.libraries.navigation.Navigator
 import com.navigator.app.BuildConfig
+import com.navigator.app.app.AppIntents
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
+import com.navigator.app.settings.AppSettings
+import com.navigator.app.ui.MainActivity
 
 /**
  * Orchestrates the Activity-side handshake the Navigation SDK requires (API key,
@@ -38,8 +41,8 @@ object GoogleNavSdkController {
         if (navNotificationInit) return
         runCatching {
             val app = activity.application
-            val resumeIntent = Intent(app, com.navigator.app.ui.MainActivity::class.java).apply {
-                putExtra(com.navigator.app.app.AppIntents.EXTRA_OPEN_NAV, true)
+            val resumeIntent = Intent(app, MainActivity::class.java).apply {
+                putExtra(AppIntents.EXTRA_OPEN_NAV, true)
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             var live: NavLiveUpdate? = null
@@ -68,7 +71,7 @@ object GoogleNavSdkController {
 
     /** True when the in-app Nav SDK engine is both available and selected in Settings
      *  (the single source of truth for notification mirroring vs in-app guidance). */
-    fun isActive(context: Context, settings: com.navigator.app.settings.AppSettings): Boolean =
+    fun isActive(context: Context, settings: AppSettings): Boolean =
         settings.googleNavEnabled && isAvailable(context)
 
     /** Set the Nav SDK API key once (idempotent). Safe to call before showing the map. */

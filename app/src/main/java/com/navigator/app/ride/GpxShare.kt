@@ -1,5 +1,6 @@
 package com.navigator.app.ride
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -31,7 +32,7 @@ object GpxShare {
                 type = "application/gpx+xml"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, ride.destinationLabel ?: "Ride")
-                clipData = android.content.ClipData.newRawUri("", uri)
+                clipData = ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             Intent.createChooser(send, "Share ride as GPX").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

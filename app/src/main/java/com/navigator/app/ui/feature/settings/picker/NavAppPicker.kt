@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings.picker
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -49,7 +50,7 @@ class NavAppPickerViewModel(private val settings: SettingsRepository, labels: Ap
     fun choose(packageName: String) = settings.update { navAppOverride = packageName }
 
     companion object {
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             private val app = context.applicationContext
 
             @Suppress("UNCHECKED_CAST")

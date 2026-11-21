@@ -5,6 +5,7 @@ import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RideSessionState
+import com.navigator.app.ride.RideSource
 import com.navigator.app.ride.formatElapsed
 
 /** Where a recording's notification sits (SY2, SY4). */
@@ -25,7 +26,7 @@ object RecordingNotice {
     /** What decides the mode: a live in-app trip wins, then a mirrored trip, else the recording is on its own. */
     fun mode(tripGuiding: Boolean, source: String?): RecordingMode = when {
         tripGuiding -> RecordingMode.WITH_TRIP
-        source == com.navigator.app.ride.RideSource.MIRROR -> RecordingMode.MIRRORING
+        source == RideSource.MIRROR -> RecordingMode.MIRRORING
         else -> RecordingMode.ALONE
     }
 

@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.rides.merge
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +47,6 @@ fun MergeScreen(
     }
     // Leaving mid-merge would lose the Undo offer: wait for it to finish.
     val merging = (ui as? MergeUi.Ready)?.merging == true
-    androidx.activity.compose.BackHandler(enabled = merging) {}
+    BackHandler(enabled = merging) {}
     MergeContent(ui, { if (!merging) onBack() }, vm::merge, modifier)
 }

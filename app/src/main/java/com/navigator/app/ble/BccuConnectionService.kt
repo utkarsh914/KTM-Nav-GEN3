@@ -12,17 +12,42 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothStatusCodes
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.navigator.app.BuildConfig
 import com.navigator.app.R
+import com.navigator.app.audio.TurnBeeper
+import com.navigator.app.data.connection.ConnectionMapping
+import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.DashOutput
+import com.navigator.app.nav.DashPreview
+import com.navigator.app.nav.DashPreviewTee
+import com.navigator.app.nav.NavigationCoordinator
+import com.navigator.app.nav.NavigationProvider
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.nav.providers.NotificationNavProvider
+import com.navigator.app.ride.RideSession
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.AppForegroundState
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -198,7 +223,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         /** Switch the active navigation provider (used by GoogleNavSdkController). */
-        fun setNavProviderIfRunning(provider: com.navigator.app.nav.NavigationProvider) {
+        fun setNavProviderIfRunning(provider: NavigationProvider) {
             runningInstance?.setNavProvider(provider)
         }
 
@@ -226,7 +251,7 @@ class BccuConnectionService : LifecycleService() {
         set(value) { field = value; publishAttempt() }
     /** Pending scan-found -> connect delay (dash boot grace); active means "we will connect shortly". */
     private var settleJob: Job? = null
-    private var scanCallback: android.bluetooth.le.ScanCallback? = null
+    private var scanCallback: ScanCallback? = null
     /** Ends a scan that hears nothing and falls back to a background connect (see [ReconnectPolicy.SCAN_WINDOW_MS]). */
     private var scanTimeoutJob: Job? = null
     /** True once the current GATT client has actually reached STATE_CONNECTED (vs. a pending connect request). */
@@ -237,8 +262,8 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var scanTargetAddress: String? = null
 
     /** All GATT callbacks run on this thread (serialised, off main and off binder threads). */
-    private var bleThread: android.os.HandlerThread? = null
-    private var bleHandler: android.os.Handler? = null
+    private var bleThread: HandlerThread? = null
+    private var bleHandler: Handler? = null
     /** Held while connect() assigns [gatt], so the first callback never sees a half-published client. */
     private val settingsStore by lazy { AppSettings(this) }
     private val gattLock = Any()
@@ -253,7 +278,7 @@ class BccuConnectionService : LifecycleService() {
         set(value) { field = value; publishAttempt() }
 
     private fun publishAttempt() {
-        _attempt.value = com.navigator.app.data.connection.ConnectionMapping.attempt(handshakeRecoveries, absentFailures)
+        _attempt.value = ConnectionMapping.attempt(handshakeRecoveries, absentFailures)
     }
 
     // Serialises all GATT reads/writes (Android allows one outstanding op at a
@@ -277,7 +302,7 @@ class BccuConnectionService : LifecycleService() {
 
     /** Re-send the full current guidance (rate-limited so a flaky link can't loop). */
     private fun requestGuidanceResync() {
-        val now = android.os.SystemClock.elapsedRealtime()
+        val now = SystemClock.elapsedRealtime()
         if (now - lastResyncRequestMs < RESYNC_MIN_INTERVAL_MS) return
         lastResyncRequestMs = now
         lifecycleScope.launch {
@@ -294,10 +319,10 @@ class BccuConnectionService : LifecycleService() {
      * service's existing send/clear methods. The provider path adds dedup /
      * throttle / state-machine / clear handling that the old direct calls lacked.
      */
-    private var navCoordinator: com.navigator.app.nav.NavigationCoordinator? = null
+    private var navCoordinator: NavigationCoordinator? = null
 
     private fun startNavigationCoordinator() {
-        val output = object : com.navigator.app.nav.DashOutput {
+        val output = object : DashOutput {
             override fun setNavState(guidanceOn: Boolean, gpsIconOn: Boolean) =
                 sendNavigationState(guidanceOn, gpsIconOn)
             override fun turnIcon(icon: BccuProtocol.TurnIcon) = sendTurnIcon(icon)
@@ -307,16 +332,16 @@ class BccuConnectionService : LifecycleService() {
             override fun clearDebounced() = scheduleGuidanceClear()
             override fun offlineBanner(show: Boolean) = showOfflineBanner(show)
         }
-        navCoordinator = com.navigator.app.nav.NavigationCoordinator(
+        navCoordinator = NavigationCoordinator(
             scope = lifecycleScope,
-            fallbackProvider = com.navigator.app.nav.providers.NotificationNavProvider,
-            output = com.navigator.app.nav.DashPreviewTee(output), // read-only mirror of what the dash is told; the status screen shows it
+            fallbackProvider = NotificationNavProvider,
+            output = DashPreviewTee(output), // read-only mirror of what the dash is told; the status screen shows it
         ).also {
             it.start()
             // Service (re)started mid-trip (bike connected after in-app nav began,
             // or the service was recreated): the Nav SDK provider is only selected
             // when a trip STARTS, so pick it up here or the dash gets nothing.
-            val sdk = com.navigator.app.nav.providers.GoogleNavSdkProvider
+            val sdk = GoogleNavSdkProvider
             if (sdk.isTripInProgress) {
                 AppLogger.log("Nav", "In-app trip already in progress - driving dash from Nav SDK")
                 it.setProvider(sdk)
@@ -325,7 +350,7 @@ class BccuConnectionService : LifecycleService() {
     }
 
     /** Switch the active navigation provider (notification <-> Google Nav SDK). */
-    fun setNavProvider(provider: com.navigator.app.nav.NavigationProvider) {
+    fun setNavProvider(provider: NavigationProvider) {
         navCoordinator?.setProvider(provider)
     }
 
@@ -342,18 +367,18 @@ class BccuConnectionService : LifecycleService() {
             stopSelf()
             return
         }
-        bleThread = android.os.HandlerThread("BccuGatt").apply { start() }
-        bleHandler = android.os.Handler(bleThread!!.looper)
+        bleThread = HandlerThread("BccuGatt").apply { start() }
+        bleHandler = Handler(bleThread!!.looper)
         runningInstance = this
         startReconnectWatchdog()
         registerAdapterStateReceiver()
         startNavigationCoordinator()
-        speedMonitor = com.navigator.app.location.SpeedMonitor(this).also { it.start() }
+        speedMonitor = SpeedMonitor(this).also { it.start() }
         // Keep the live GPS speed flowing to the beeper's stationary duck
         // continuously, not just when a guidance update happens to arrive.
         lifecycleScope.launch {
-            com.navigator.app.location.SpeedMonitor.speedKmh.collect { kmh ->
-                com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = kmh
+            SpeedMonitor.speedKmh.collect { kmh ->
+                TurnBeeper.gpsSpeedKmh = kmh
             }
         }
     }
@@ -375,7 +400,7 @@ class BccuConnectionService : LifecycleService() {
         disconnectFirst: Boolean = true,
     ) {
         AppLogger.log("BLE", "teardownLink: $reason")
-        com.navigator.app.nav.DashPreview.reset() // the link is gone: nothing is on the dash any more
+        DashPreview.reset() // the link is gone: nothing is on the dash any more
         val g = synchronized(gattLock) { gatt.also { gatt = null } }
         try {
             if (disconnectFirst) g?.disconnect()
@@ -439,8 +464,8 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    private var adapterStateReceiver: android.content.BroadcastReceiver? = null
-    private var speedMonitor: com.navigator.app.location.SpeedMonitor? = null
+    private var adapterStateReceiver: BroadcastReceiver? = null
+    private var speedMonitor: SpeedMonitor? = null
         private set
 
     /**
@@ -452,17 +477,17 @@ class BccuConnectionService : LifecycleService() {
      * Safe to call again later to UPGRADE the type once permissions arrive.
      */
     private fun startForegroundWithTypes(status: ConnectionNotice) {
-        var fgsType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-        val fine = androidx.core.content.ContextCompat.checkSelfPermission(
+        var fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        val fine = ContextCompat.checkSelfPermission(
             this, android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        val background = androidx.core.content.ContextCompat.checkSelfPermission(
+        ) == PackageManager.PERMISSION_GRANTED
+        val background = ContextCompat.checkSelfPermission(
             this, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) == PackageManager.PERMISSION_GRANTED
         if (fine && (background || AppForegroundState.isForeground)) {
-            fgsType = fgsType or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+            fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
-        androidx.core.app.ServiceCompat.startForeground(
+        ServiceCompat.startForeground(
             this, NOTIFICATION_ID, buildForegroundNotification(status), fgsType
         )
     }
@@ -493,7 +518,7 @@ class BccuConnectionService : LifecycleService() {
      * where this service isn't running).
      */
     private fun registerAdapterStateReceiver() {
-        val r = object : android.content.BroadcastReceiver() {
+        val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, i: Intent?) {
                 when (i?.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
                     BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> {
@@ -515,7 +540,7 @@ class BccuConnectionService : LifecycleService() {
                 }
             }
         }
-        registerReceiver(r, android.content.IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        registerReceiver(r, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
         adapterStateReceiver = r
     }
 
@@ -537,7 +562,7 @@ class BccuConnectionService : LifecycleService() {
                     if (_connectionState.value == ConnectionState.AUTHENTICATED) {
                         // The dash heartbeats ~1 Hz after auth; long silence = a dead link that
                         // never produced a disconnect callback.
-                        val silentMs = android.os.SystemClock.elapsedRealtime() - lastAuthMsgMs
+                        val silentMs = SystemClock.elapsedRealtime() - lastAuthMsgMs
                         if (lastAuthMsgMs != 0L && silentMs > LIVENESS_TIMEOUT_MS && !livenessLogged) {
                             livenessLogged = true
                             AppLogger.log("BLE", "Watchdog: no dash message for ${silentMs / 1000}s while authenticated (log only, link kept)")
@@ -559,7 +584,7 @@ class BccuConnectionService : LifecycleService() {
                             startBleScan(address)
                         }
                     } else if (_connectionState.value == ConnectionState.CONNECTING &&
-                        android.os.SystemClock.elapsedRealtime() - connectingSinceMs > stuckLimit
+                        SystemClock.elapsedRealtime() - connectingSinceMs > stuckLimit
                     ) {
                         if (tempIv != null && !AppSettings(this@BccuConnectionService).hasPairedBefore(address)) {
                             // A FIRST-pair handshake is genuinely in progress (m1
@@ -606,8 +631,8 @@ class BccuConnectionService : LifecycleService() {
             return
         }
         val target = address.uppercase()
-        val cb = object : android.bluetooth.le.ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: android.bluetooth.le.ScanResult) {
+        val cb = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val dev = result.device ?: return
                 if (dev.address?.uppercase() != target) return
                 AppLogger.log("BLE", "Scan: found bike ${dev.address} (rssi=${result.rssi}) - settling ${CONNECT_SETTLE_MS / 1000}s before connect (dash boot grace)")
@@ -629,10 +654,10 @@ class BccuConnectionService : LifecycleService() {
             }
         }
         val filters = listOf(
-            android.bluetooth.le.ScanFilter.Builder().setDeviceAddress(target).build()
+            ScanFilter.Builder().setDeviceAddress(target).build()
         )
-        val settings = android.bluetooth.le.ScanSettings.Builder()
-            .setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_BALANCED)
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
             .build()
         try {
             scanner.startScan(filters, settings, cb)
@@ -652,7 +677,7 @@ class BccuConnectionService : LifecycleService() {
                 // failed attempt falls back to scanning via the watchdog. An
                 // unbonded one gets a background connect that waits for it.
                 val bonded = runCatching {
-                    adapter.getRemoteDevice(target).bondState == android.bluetooth.BluetoothDevice.BOND_BONDED
+                    adapter.getRemoteDevice(target).bondState == BluetoothDevice.BOND_BONDED
                 }.getOrDefault(false)
                 AppLogger.log("BLE", "Scan heard nothing in ${ReconnectPolicy.SCAN_WINDOW_MS / 1000}s - falling back to a ${if (bonded) "direct" else "background"} connect")
                 scanTimeoutJob = null
@@ -736,7 +761,7 @@ class BccuConnectionService : LifecycleService() {
         AppLogger.log("BLE", "Connecting to $address (autoConnect=$autoConnect)")
         currentDeviceAddress = address
         _connectionState.value = ConnectionState.CONNECTING
-        connectingSinceMs = android.os.SystemClock.elapsedRealtime()
+        connectingSinceMs = SystemClock.elapsedRealtime()
         pendingAutoConnect = autoConnect
         linkUp = false
         // getSystemService(BluetoothManager) is the non-deprecated path (getDefaultAdapter()
@@ -794,7 +819,7 @@ class BccuConnectionService : LifecycleService() {
         _attempt.value = 0
         _lastError.value = null
         _repairHint.value = false
-        com.navigator.app.nav.DashPreview.reset() // nothing on the dash any more, and no banner text kept
+        DashPreview.reset() // nothing on the dash any more, and no banner text kept
         if (runningInstance === this) runningInstance = null
         super.onDestroy()
     }
@@ -843,8 +868,8 @@ class BccuConnectionService : LifecycleService() {
     private fun mirrorLine(status: ConnectionNotice): String? {
         if (status != ConnectionNotice.CONNECTED) return null
         if (GoogleNavSdkController.isActive(this, AppSettings(this))) return null
-        val nav = com.navigator.app.nav.providers.NotificationNavProvider.state.value
-        val session = com.navigator.app.ride.RideSession.state.value
+        val nav = NotificationNavProvider.state.value
+        val session = RideSession.state.value
         val toTurn = nav.preformattedDistance?.takeIf { nav.sessionState == NavSessionState.ENROUTE }
         // Idle and connected is just Dash connected: the one-liner is for a trip or a recording.
         if (toTurn == null && !session.active) return null
@@ -923,7 +948,7 @@ class BccuConnectionService : LifecycleService() {
                 if (newState == BluetoothGatt.STATE_CONNECTED) {
                     linkUp = true
                     absentFailures = 0
-                    connectingSinceMs = android.os.SystemClock.elapsedRealtime()
+                    connectingSinceMs = SystemClock.elapsedRealtime()
                     // Arm the handshake watchdog NOW, not when m1 arrives: a link
                     // where the BCCU never restarts auth (reused ACL) would
                     // otherwise sit silent with no timer guarding it at all.
@@ -1065,7 +1090,7 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    private fun handleIncoming(uuid: java.util.UUID, value: ByteArray) {
+    private fun handleIncoming(uuid: UUID, value: ByteArray) {
         when (uuid) {
             BccuProtocol.AUTH_REQUEST -> handleAuthMessage(value)
             BccuProtocol.BASE_VIN -> {
@@ -1125,7 +1150,7 @@ class BccuConnectionService : LifecycleService() {
     }
 
     private fun handleAuthMessage(value: ByteArray) {
-        lastAuthMsgMs = android.os.SystemClock.elapsedRealtime()
+        lastAuthMsgMs = SystemClock.elapsedRealtime()
         val iv = tempIv
         val secret = tempSecret
 
@@ -1224,7 +1249,7 @@ class BccuConnectionService : LifecycleService() {
                     absentFailures = 0
                     _repairHint.value = false
                     _lastError.value = null
-                    lastAuthMsgMs = android.os.SystemClock.elapsedRealtime()
+                    lastAuthMsgMs = SystemClock.elapsedRealtime()
                     livenessLogged = false
                     stopBleScan()
                     _connectionState.value = ConnectionState.AUTHENTICATED
@@ -1316,7 +1341,7 @@ class BccuConnectionService : LifecycleService() {
      * so the dash-write methods below don't each repeat the key/iv null-guard and
      * the `BccuCrypto.encryptData(payload, key, iv)` call.
      */
-    private fun sendEncrypted(uuid: java.util.UUID, payload: ByteArray, coalesce: Boolean = false): Boolean {
+    private fun sendEncrypted(uuid: UUID, payload: ByteArray, coalesce: Boolean = false): Boolean {
         if (activeSessionKey == null || tempIv == null) return false
         // Encrypted when the op actually runs, with the key/IV live THEN: a frame that waited in
         // the queue across a re-auth must not go out under the previous session's key.
@@ -1359,7 +1384,7 @@ class BccuConnectionService : LifecycleService() {
             AppLogger.log("Dash", "!! Cannot send NOTIFICATION ${AppLogger.sensitive(text)} - not authenticated yet (state=${_connectionState.value})")
             return
         }
-        com.navigator.app.nav.DashPreview.banner(text)
+        DashPreview.banner(text)
         clearJob?.cancel()
         marqueeJob?.cancel()
         lastNotificationIcon = icon
@@ -1418,7 +1443,7 @@ class BccuConnectionService : LifecycleService() {
         if (bannerOwnedByMessage && (marqueeJob?.isActive == true || clearJob?.isActive == true)) {
             return // a message is on the banner - let it finish its scroll/clear
         }
-        com.navigator.app.nav.DashPreview.banner(text)
+        DashPreview.banner(text)
         bannerOwnedByMessage = false
         marqueeJob?.cancel()
         clearJob?.cancel()
@@ -1465,7 +1490,7 @@ class BccuConnectionService : LifecycleService() {
      * stuck on screen. Text is blanked too for good measure.
      */
     private fun clearNotificationDisplay() {
-        com.navigator.app.nav.DashPreview.clearBanner()
+        DashPreview.clearBanner()
         bannerOwnedByMessage = false
         offlineBannerShown = false
         val payload = BccuProtocol.buildNotificationPayload(lastNotificationIcon, "", BccuProtocol.Visibility.OFF)
@@ -1568,7 +1593,7 @@ class BccuConnectionService : LifecycleService() {
     private fun clearGuidance() {
         // Navigation genuinely ended (this call is debounced past Maps' routine
         // remove+repost) - let the next route's first approach beep fire again.
-        com.navigator.app.audio.TurnBeeper.reset()
+        TurnBeeper.reset()
         if (!hasSession()) return
         AppLogger.log("Dash", "Clearing center guidance (navigation ended)")
         val off = BccuProtocol.Visibility.OFF
@@ -1602,7 +1627,7 @@ class BccuConnectionService : LifecycleService() {
         AppLogger.log("GATT", "=== end GATT dump ===")
     }
 
-    private fun findCharacteristic(g: BluetoothGatt, uuid: java.util.UUID): BluetoothGattCharacteristic? {
+    private fun findCharacteristic(g: BluetoothGatt, uuid: UUID): BluetoothGattCharacteristic? {
         for (service in g.services) {
             val c = service.getCharacteristic(uuid)
             if (c != null) return c
@@ -1610,10 +1635,10 @@ class BccuConnectionService : LifecycleService() {
         return null
     }
 
-    private fun enableIndication(uuid: java.util.UUID) = enableCccd(uuid, indication = true)
-    private fun enableNotification(uuid: java.util.UUID) = enableCccd(uuid, indication = false)
+    private fun enableIndication(uuid: UUID) = enableCccd(uuid, indication = true)
+    private fun enableNotification(uuid: UUID) = enableCccd(uuid, indication = false)
 
-    private fun enableCccd(uuid: java.util.UUID, indication: Boolean) {
+    private fun enableCccd(uuid: UUID, indication: Boolean) {
         gattOps.enqueue(target = uuid) {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }
@@ -1642,7 +1667,7 @@ class BccuConnectionService : LifecycleService() {
     }
 
     /** Queue a read of a single characteristic (result surfaces in onCharacteristicRead -> logProbeValue). */
-    private fun readCharacteristic(uuid: java.util.UUID) {
+    private fun readCharacteristic(uuid: UUID) {
         gattOps.enqueue(target = uuid) {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }
@@ -1716,11 +1741,11 @@ class BccuConnectionService : LifecycleService() {
      * a slow link. Never set for control-plane writes (auth replies, PRPC
      * requests) where every message matters.
      */
-    private fun writeCharacteristic(uuid: java.util.UUID, data: ByteArray, coalesce: Boolean = false) =
+    private fun writeCharacteristic(uuid: UUID, data: ByteArray, coalesce: Boolean = false) =
         writeCharacteristic(uuid, coalesce) { data }
 
     /** [payload] is evaluated inside the queued op (null = nothing to send any more). */
-    private fun writeCharacteristic(uuid: java.util.UUID, coalesce: Boolean = false, payload: () -> ByteArray?) {
+    private fun writeCharacteristic(uuid: UUID, coalesce: Boolean = false, payload: () -> ByteArray?) {
         gattOps.enqueue(if (coalesce) uuid else null, target = uuid) {
             val g = gatt
             val characteristic = g?.let { findCharacteristic(it, uuid) }

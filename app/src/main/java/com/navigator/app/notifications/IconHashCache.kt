@@ -8,6 +8,7 @@ import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Exact-match icon cache. A decompiled third-party app for this same dash
@@ -40,7 +41,7 @@ object IconHashCache {
 
     private const val MAX_SAVED_ICONS = 120
 
-    private val seenHashesThisSession = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+    private val seenHashesThisSession = ConcurrentHashMap.newKeySet<Int>()
 
     fun lookup(bitmap: Bitmap, context: Context): BccuProtocol.TurnIcon? {
         val hash = bitmapPixelHash(bitmap)

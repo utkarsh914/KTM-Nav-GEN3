@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.navigator.app.ui.shell.tripStripBounds
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -92,7 +93,7 @@ fun WhereToSheetContent(
     actions: WhereToActions,
     modifier: Modifier = Modifier,
     /** Left and right; a card that pads itself (the landscape panel) passes 0. */
-    horizontalPadding: androidx.compose.ui.unit.Dp = KtmSpacing.lg,
+    horizontalPadding: Dp = KtmSpacing.lg,
     /** False while the map failed or is not available: Pick on map says so and dims (HM4). */
     mapUsable: Boolean = true,
 ) {
@@ -222,10 +223,10 @@ private fun TileCell(tile: WhereToTile, mapUsable: Boolean, onTile: (TileAction)
 
 /** HM1: an accent-container circle with a 20 dp glyph. */
 @Composable
-private fun TileBadge(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+private fun TileBadge(icon: ImageVector) {
     val a = KtmTheme.accent
     Box(Modifier.size(KtmLayout.appIcon).background(a.container, KtmShapes.Pill), contentAlignment = Alignment.Center) {
-        androidx.compose.material3.Icon(icon, null, tint = a.onContainer, modifier = Modifier.size(KtmLayout.tileIcon))
+        Icon(icon, null, tint = a.onContainer, modifier = Modifier.size(KtmLayout.tileIcon))
     }
 }
 
@@ -253,7 +254,7 @@ private fun tileIcon(kind: TileKind) = when (kind) {
 @Composable
 private fun PlaceRow(
     place: SavedPlace,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     origin: Pair<Double, Double>?,
     onPlace: (SavedPlace) -> Unit,
     onRemove: ((SavedPlace) -> Unit)? = null,

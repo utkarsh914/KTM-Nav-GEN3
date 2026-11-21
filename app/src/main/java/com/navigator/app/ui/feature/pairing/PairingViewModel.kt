@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.pairing
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -154,7 +155,7 @@ class PairingViewModel(
     companion object {
         private const val TICK_MS = 1_000L
 
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = PairingViewModel(
                 container.bikeScanner, container.permissions.state, container.permissions::refresh, container.connection.detail,

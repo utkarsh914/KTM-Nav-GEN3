@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The time of day the rider reads (arrival times, leg lines, the Live Update, ride times). It follows the phone's
@@ -26,7 +27,7 @@ object ClockFormat {
     }
 
     private data class Key(val locale: Locale, val h24: Boolean, val seconds: Boolean, val date: String?)
-    private val formatters = java.util.concurrent.ConcurrentHashMap<Key, DateTimeFormatter>()
+    private val formatters = ConcurrentHashMap<Key, DateTimeFormatter>()
 
     /** Cached: a list of rides asks for the same one on every row and every recomposition. */
     fun formatter(locale: Locale = Locale.getDefault(), seconds: Boolean = false, date: String? = null): DateTimeFormatter =

@@ -33,7 +33,7 @@ internal fun ResumeNavPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 internal fun rememberLocationReady(): Boolean {
     val context = LocalContext.current
-    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val owner = LocalLifecycleOwner.current
     fun check(): Boolean {
         if (!hasLocationPermission(context)) return false
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return true
@@ -41,8 +41,8 @@ internal fun rememberLocationReady(): Boolean {
     }
     var ready by remember { mutableStateOf(check()) }
     DisposableEffect(owner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) ready = check()
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) ready = check()
         }
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer) }

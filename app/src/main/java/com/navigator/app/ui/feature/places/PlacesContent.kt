@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -193,7 +194,7 @@ private fun SavedRow(place: SavedPlace, ui: PlacesUi, selected: Boolean, actions
             title = name, supporting = place.address,
             // PC2: the checkbox leads, and a ticked row is tinted.
             leading = { KtmCheckIndicator(selected) },
-            modifier = modifier.background(if (selected) KtmTheme.accent.container else androidx.compose.ui.graphics.Color.Transparent)
+            modifier = modifier.background(if (selected) KtmTheme.accent.container else Color.Transparent)
                 .toggleable(selected, role = Role.Checkbox, onValueChange = { haptics.toggle(it); actions.onToggle(key) }),
         )
     } else {

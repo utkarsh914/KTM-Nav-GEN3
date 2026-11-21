@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.rides
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
 import com.navigator.app.data.rides.ThumbPoint
@@ -48,8 +51,10 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberHaptics
 import java.time.Instant
+import java.time.Year
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** One ride on the list: a route thumbnail, what it is and how it began, one stats line, and the star. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -136,24 +141,24 @@ private fun rideStats(ride: RecordedRide, short: Boolean = false): String {
 }
 
 private val DAY: DateTimeFormatter by lazy {
-    DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMM"))
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM"))
 }
 
 private val DAY_YEAR: DateTimeFormatter by lazy {
-    DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMMyyyy"))
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMMyyyy"))
 }
 
 /** With no day headers the card names its day, and the year when it is not this one. */
 private fun rideDay(ms: Long): String {
     val day = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
-    return (if (day.year == java.time.Year.now().value) DAY else DAY_YEAR).format(day)
+    return (if (day.year == Year.now().value) DAY else DAY_YEAR).format(day)
 }
 
 private fun rideTime(ms: Long): String = ClockFormat.formatter().format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /** A 72 dp (60 while selecting) route preview drawn from the stored points: speed-coloured, a neutral line for rides with no speed (GPX). */
 @Composable
-private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>, peek: (RecordedRide) -> List<ThumbPoint>?, thumb: androidx.compose.ui.unit.Dp) {
+private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>, peek: (RecordedRide) -> List<ThumbPoint>?, thumb: Dp) {
     val c = KtmTheme.colors
     val points by produceState(peek(ride), ride.id, ride.pointCount) {
         value = runCatching { thumbnail(ride) }.getOrDefault(emptyList())
@@ -182,6 +187,6 @@ fun RoundCheck(checked: Boolean, modifier: Modifier = Modifier) {
             .then(if (checked) Modifier.background(a.fill, KtmShapes.Pill) else Modifier.border(KtmLayout.outline, c.fg3, KtmShapes.Pill)),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) androidx.compose.material3.Icon(KtmIcons.Done, null, tint = a.onFill, modifier = Modifier.size(KtmSpacing.lg))
+        if (checked) Icon(KtmIcons.Done, null, tint = a.onFill, modifier = Modifier.size(KtmSpacing.lg))
     }
 }

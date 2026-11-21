@@ -4,6 +4,7 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.nav.NavigationProvider
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
+import com.navigator.app.notifications.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,7 +53,7 @@ object NotificationNavProvider : NavigationProvider {
             endJob?.cancel()
             endJob = null
             _state.value = NormalizedNavigationState.IDLE
-            com.navigator.app.notifications.NotificationRepository.clearNav()
+            NotificationRepository.clearNav()
         }
     }
 
@@ -72,7 +73,7 @@ object NotificationNavProvider : NavigationProvider {
             endJob?.cancel()
             endJob = null
             _state.value = NormalizedNavigationState.IDLE
-            com.navigator.app.notifications.NotificationRepository.clearNav()
+            NotificationRepository.clearNav()
         }
     }
 
@@ -126,7 +127,7 @@ object NotificationNavProvider : NavigationProvider {
                     producedAtMs = System.currentTimeMillis(),
                 )
                 // Guidance really ended: the phone-side mirror clears with the dash.
-                com.navigator.app.notifications.NotificationRepository.clearNav()
+                NotificationRepository.clearNav()
             }
         }
         synchronized(lock) { endJob = job }

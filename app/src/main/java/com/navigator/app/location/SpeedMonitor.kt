@@ -9,11 +9,19 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
+import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.nav.providers.NavLiveUpdate
+import com.navigator.app.notify.LargeIcons
+import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 class SpeedMonitor(private val context: Context) : LocationListener {
 
     companion object {
-        private const val CHANNEL_ID = com.navigator.app.notify.NotificationChannels.OVERSPEED
+        private const val CHANNEL_ID = NotificationChannels.OVERSPEED
         private const val NOTIFICATION_ID = 42
         private const val HYSTERESIS_KMH = 10
         private const val STALE_FIX_MS = 15_000L
@@ -53,7 +61,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
     // One long-lived ToneGenerator: creating one per beep leaks native
     // AudioTracks (finalizer-reliant) and can exhaust AudioFlinger's track cap.
     private var toneGenerator: ToneGenerator? = null
-    private val staleHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val staleHandler = Handler(Looper.getMainLooper())
     // If GPS fixes stop while alerting (tunnel, provider off), the ongoing
     // notification would otherwise be stuck with a frozen speed forever.
     private val staleClear = Runnable {
@@ -143,14 +151,14 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         val nm = context.getSystemService(NotificationManager::class.java)
         _overspeedKmh.value = kmh.toInt()
         // While a trip is guiding, overspeed is a state of its Live Update (SY3), not a notification of its own.
-        if (com.navigator.app.nav.providers.GoogleNavSdkProvider.state.value.sessionState.isActiveNav() && com.navigator.app.nav.providers.NavLiveUpdate.isShowing) {
+        if (GoogleNavSdkProvider.state.value.sessionState.isActiveNav() && NavLiveUpdate.isShowing) {
             nm.cancel(NOTIFICATION_ID)
         } else {
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.live_overspeed, kmh.toInt()))
                 .setContentText(context.getString(R.string.overspeed_limit, limit))
                 .setSmallIcon(R.drawable.ic_notification)
-                .setLargeIcon(com.navigator.app.notify.LargeIcons.speed(kmh.toInt()))
+                .setLargeIcon(LargeIcons.speed(kmh.toInt()))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -168,7 +176,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
             lastDashSentAtMs = now
             // Low-priority banner write: yields to any mirrored message that is
             // currently scrolling, instead of cancelling it every second.
-            com.navigator.app.ble.BccuConnectionService.sendSpeedBannerIfRunning("OVERSPEED $speedInt")
+            BccuConnectionService.sendSpeedBannerIfRunning("OVERSPEED $speedInt")
         }
         // Re-arm the staleness watchdog on every fix while alerting.
         staleHandler.removeCallbacks(staleClear)
@@ -184,10 +192,10 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
     }
 
-    private fun createChannel() = com.navigator.app.notify.NotificationChannels.ensure(context, CHANNEL_ID)
+    private fun createChannel() = NotificationChannels.ensure(context, CHANNEL_ID)
 
     @Deprecated("Deprecated in API 29 but still called on older devices")
-    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
     override fun onProviderEnabled(provider: String) {}
     override fun onProviderDisabled(provider: String) {
         _speedKmh.value = null

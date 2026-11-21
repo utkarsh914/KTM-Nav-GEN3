@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.onboarding
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -53,7 +54,7 @@ class ReadyViewModel(container: AppContainer, engineAvailable: Boolean) : ViewMo
     )
 
     companion object {
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 ReadyViewModel(container, GoogleNavSdkController.isAvailable(context.applicationContext)) as T

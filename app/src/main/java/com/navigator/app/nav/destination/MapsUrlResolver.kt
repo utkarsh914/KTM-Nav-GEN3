@@ -2,6 +2,7 @@ package com.navigator.app.nav.destination
 
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -88,7 +89,7 @@ object MapsUrlResolver {
 
         val resolvedUrl = try {
             fetchResolvedUrl(url)
-        } catch (e: java.io.IOException) {
+        } catch (e: IOException) {
             // Timeout, no route, or a name that does not resolve (some networks block Google's short-link host).
             AppLogger.log("MapsUrl", "could not reach ${hostOf(url)}: ${e.javaClass.simpleName} ${e.message}")
             return@withContext LinkResolution.Failed(LinkFailure.NO_CONNECTION)

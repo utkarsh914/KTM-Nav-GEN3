@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmColors
 import com.navigator.app.ui.theme.KtmElevation
@@ -65,8 +66,8 @@ fun BikeStatusPill(
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(20.dp))
-        Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-        androidx.compose.foundation.layout.Box(
+        Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(
             Modifier.size(8.dp).background(pillDotColor(tone, c), CircleShape),
         )
     }

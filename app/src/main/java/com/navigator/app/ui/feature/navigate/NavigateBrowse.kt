@@ -1,7 +1,11 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
@@ -54,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -69,6 +74,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
@@ -249,11 +255,11 @@ private fun Overlays(
         ) {
             // MO7: the pill pulses once as the greeting grows out of it.
             val motion = KtmTheme.motion
-            val pulse = remember { androidx.compose.animation.core.Animatable(1f) }
+            val pulse = remember { Animatable(1f) }
             val greeted = state.greeting != null
             // ...and once more as the greeting shrinks back into it.
             var wasGreeted by remember { androidx.compose.runtime.mutableStateOf(false) }
-            androidx.compose.runtime.LaunchedEffect(greeted) {
+            LaunchedEffect(greeted) {
                 val pulses = greeted || wasGreeted
                 wasGreeted = greeted
                 if (pulses && !motion.reduced) {
@@ -378,7 +384,7 @@ private fun MapStateCard(mapState: MapState, actions: NavigateBrowseActions, mod
 
 /** HM4: the cause, what still works and one way on, centred in the part of the map the sheet leaves open. */
 @Composable
-private fun MapErrorCard(title: String, message: String, action: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onAction: () -> Unit, modifier: Modifier) {
+private fun MapErrorCard(title: String, message: String, action: String, icon: ImageVector, onAction: () -> Unit, modifier: Modifier) {
     val c = KtmTheme.colors
     Column(
         modifier.widthIn(max = KtmLayout.errorCardMax).fillMaxWidth().shadow(KtmElevation.sheet, KtmShapes.Card).background(c.surf, KtmShapes.Card).padding(KtmSpacing.xl)
@@ -386,16 +392,16 @@ private fun MapErrorCard(title: String, message: String, action: String, icon: a
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(KtmLayout.errorTile).background(c.warnContainer, KtmShapes.Card), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(KtmIcons.Map, null, tint = c.warn)
+            Icon(KtmIcons.Map, null, tint = c.warn)
         }
-        androidx.compose.material3.Text(
-            title, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        Text(
+            title, style = MaterialTheme.typography.headlineSmall, color = c.fg,
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = KtmSpacing.md).semantics { heading() },
         )
-        androidx.compose.material3.Text(
-            message, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = c.fg2,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = KtmSpacing.sm),
+        Text(
+            message, style = MaterialTheme.typography.bodyMedium, color = c.fg2,
+            textAlign = TextAlign.Center, modifier = Modifier.padding(top = KtmSpacing.sm),
         )
         KtmButton(action, onAction, Modifier.fillMaxWidth().padding(top = KtmSpacing.lg), style = ButtonStyle.Outline, icon = icon)
     }
@@ -406,15 +412,15 @@ private fun ConnectGreeting(greeting: GreetingUi) {
     val c = KtmTheme.colors
     val text = if (greeting.name.isBlank()) stringResource(R.string.navigate_greeting_anonymous)
     else stringResource(R.string.navigate_greeting, greeting.name)
-    androidx.compose.foundation.layout.Row(
+    Row(
         Modifier.shadow(KtmElevation.onMap, KtmShapes.Pill).background(c.surf, KtmShapes.Pill)
             .semantics { liveRegion = LiveRegionMode.Polite }
             .padding(horizontal = KtmSpacing.xl, vertical = KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        androidx.compose.material3.Icon(KtmIcons.Bike, null, tint = KtmTheme.accent.text)
-        androidx.compose.material3.Text(text, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
+        Icon(KtmIcons.Bike, null, tint = KtmTheme.accent.text)
+        Text(text, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1)
     }
 }
 

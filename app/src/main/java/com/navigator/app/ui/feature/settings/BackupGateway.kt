@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.settings
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import com.navigator.app.backup.BackupManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -37,7 +38,7 @@ class AndroidBackupGateway(context: Context) : BackupGateway {
 
     override suspend fun displayName(uri: Uri): String? = withContext(io) {
         runCatching {
-            app.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                 if (c.moveToFirst()) c.getString(0) else null
             }
         }.getOrNull()

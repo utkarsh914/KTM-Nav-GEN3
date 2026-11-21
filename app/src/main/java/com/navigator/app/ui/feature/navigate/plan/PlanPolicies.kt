@@ -1,5 +1,8 @@
 package com.navigator.app.ui.feature.navigate.plan
 
+import com.navigator.app.nav.destination.FavoritePlace
+import com.navigator.app.nav.destination.FavoriteSlot
+import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.ui.map.MapPoint
@@ -111,11 +114,11 @@ object NewStop {
 
 object PlaceSaving {
     /** Whether [place] is in the plain saved list (Home and Work are separate slots and do not count). */
-    fun isSaved(favorites: List<com.navigator.app.nav.destination.FavoritePlace>, place: SavedPlace): Boolean {
-        val key = com.navigator.app.nav.destination.PlacesJson.coordKey(place.lat, place.lng)
+    fun isSaved(favorites: List<FavoritePlace>, place: SavedPlace): Boolean {
+        val key = PlacesJson.coordKey(place.lat, place.lng)
         return favorites.any {
-            it.slot == com.navigator.app.nav.destination.FavoriteSlot.OTHER &&
-                com.navigator.app.nav.destination.PlacesJson.coordKey(it.place.lat, it.place.lng) == key
+            it.slot == FavoriteSlot.OTHER &&
+                PlacesJson.coordKey(it.place.lat, it.place.lng) == key
         }
     }
 }

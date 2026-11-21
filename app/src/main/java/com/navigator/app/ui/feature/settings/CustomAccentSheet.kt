@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,7 +53,7 @@ import com.navigator.app.ui.theme.hexOf
  * ST12: pick any colour with the shade panel and hue slider, or type its hex. A live check shows how text in the colour
  * will read; when the colour itself is too close to the background the app quietly shifts the text tone and says so.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     val c = KtmTheme.colors
@@ -105,7 +107,7 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
                 Text(stringResource(R.string.custom_adjusted, ratio), style = MaterialTheme.typography.bodySmall, color = c.fg2)
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                    androidx.compose.material3.Icon(KtmIcons.Done, null, tint = c.okText, modifier = Modifier.size(KtmSpacing.lg))
+                    Icon(KtmIcons.Done, null, tint = c.okText, modifier = Modifier.size(KtmSpacing.lg))
                     Text(
                         stringResource(R.string.custom_ok_both, "%.1f".format(onDark.textContrast), "%.1f".format(onLight.textContrast)),
                         style = MaterialTheme.typography.bodySmall, color = c.okText,

@@ -1,5 +1,7 @@
 package com.navigator.app.ble
 
+import android.icu.text.Transliterator
+
 /**
  * Free text for the dash (road names, secondary maneuver text, banner messages) in a script its font
  * can show. The dash font is believed to be Latin-only (BACKLOG): a Kannada / Devanagari / Arabic road
@@ -37,7 +39,7 @@ object DashText {
 
     /** ICU "Any-Latin; Latin-ASCII" when the platform has it, else null (pass-through). */
     fun icuTransliterator(): ((String) -> String)? = runCatching {
-        val tr = android.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII")
+        val tr = Transliterator.getInstance("Any-Latin; Latin-ASCII")
         val f: (String) -> String = { s -> tr.transliterate(s) }
         f
     }.getOrNull()

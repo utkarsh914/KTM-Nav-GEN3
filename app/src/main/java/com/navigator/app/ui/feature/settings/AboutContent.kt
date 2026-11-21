@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,7 +47,7 @@ fun AboutContent(ui: AboutUi, actions: AboutActions, modifier: Modifier = Modifi
                 Box(
                     Modifier.size(KtmLayout.actionTile).background(KtmTheme.accent.container, KtmShapes.Control),
                     contentAlignment = Alignment.Center,
-                ) { androidx.compose.material3.Icon(KtmIcons.Navigation, null, tint = KtmTheme.accent.onContainer) }
+                ) { Icon(KtmIcons.Navigation, null, tint = KtmTheme.accent.onContainer) }
                 Column {
                     Text(stringResource(R.string.about_app_name), style = MaterialTheme.typography.titleMedium, color = c.fg)
                     Text(ui.version, style = MaterialTheme.typography.bodySmall, color = c.fg2)

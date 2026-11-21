@@ -1,11 +1,13 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
@@ -58,7 +60,7 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
 /** What the status block of the Bike sheet says. */
-data class BikeStatusText(val icon: ImageVector, @androidx.annotation.StringRes val title: Int, val arg: Int?, @androidx.annotation.StringRes val hint: Int?)
+data class BikeStatusText(val icon: ImageVector, @StringRes val title: Int, val arg: Int?, @StringRes val hint: Int?)
 
 object BikeSheetMapper {
     fun status(status: BikeStatus): BikeStatusText = when (status) {
@@ -79,7 +81,7 @@ object BikeSheetMapper {
  * "Is my dash OK?" in one place: status in words, what the dash was last told, the two riding
  * toggles and a test send. Re-pair is the primary action only when the app thinks the keys are lost.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BikeSheet(
     state: NavigateUiState,

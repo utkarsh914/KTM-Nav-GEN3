@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.onboarding
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.google.android.libraries.navigation.NavigationApi
 import com.google.android.libraries.navigation.TermsAndConditionsCheckOption
@@ -17,7 +18,7 @@ object GoogleTerms {
         return NavigationApi.areTermsAccepted(context.applicationContext as Application)
     }
 
-    fun show(activity: Activity, appName: String, colors: KtmColors, accentText: androidx.compose.ui.graphics.Color, onAnswer: (Boolean) -> Unit) {
+    fun show(activity: Activity, appName: String, colors: KtmColors, accentText: Color, onAnswer: (Boolean) -> Unit) {
         GoogleNavSdkController.ensureApiKey()
         val params = TermsAndConditionsUIParams.builder()
             .setBackgroundColor(colors.surf.toArgb())

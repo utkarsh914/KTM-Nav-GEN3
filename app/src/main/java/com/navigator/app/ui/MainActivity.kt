@@ -1,7 +1,13 @@
 package com.navigator.app.ui
 
 import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,7 +20,9 @@ import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.destination.AppShortcuts
+import com.navigator.app.notifications.MapsIconExporter
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.shell.KtmApp
@@ -58,7 +66,7 @@ class MainActivity : ComponentActivity() {
         settings = appContainer.settings.legacy
         appContainer.activityHolder.current = this
         if (com.navigator.app.BuildConfig.DEBUG) {
-            com.navigator.app.nav.DashPreview.setOverlayEnabled(settings.dashPreviewOverlay)
+            DashPreview.setOverlayEnabled(settings.dashPreviewOverlay)
         }
 
         // First-run users grant permissions with context in the onboarding flow;
@@ -85,16 +93,16 @@ class MainActivity : ComponentActivity() {
         // renders Google Maps' own labeled maneuver icons to files/maneuver_dataset/
         // to build a training set for an independent classifier. Stripped from release.
         if (com.navigator.app.BuildConfig.DEBUG) {
-            maneuverExportReceiver = object : android.content.BroadcastReceiver() {
-                override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+            maneuverExportReceiver = object : BroadcastReceiver() {
+                override fun onReceive(c: Context?, i: Intent?) {
                     lifecycleScope.launch {
-                        val msg = com.navigator.app.notifications.MapsIconExporter.exportAll(this@MainActivity)
+                        val msg = MapsIconExporter.exportAll(this@MainActivity)
                         AppLogger.log("Dataset", msg)
                     }
                 }
             }
-            val filter = android.content.IntentFilter("com.navigator.app.EXPORT_MANEUVERS")
-            registerReceiver(maneuverExportReceiver, filter, android.content.Context.RECEIVER_EXPORTED)
+            val filter = IntentFilter("com.navigator.app.EXPORT_MANEUVERS")
+            registerReceiver(maneuverExportReceiver, filter, Context.RECEIVER_EXPORTED)
         }
     }
 
@@ -114,7 +122,7 @@ class MainActivity : ComponentActivity() {
             .forEach { appContainer.intents.post(it) }
     }
 
-    private var maneuverExportReceiver: android.content.BroadcastReceiver? = null
+    private var maneuverExportReceiver: BroadcastReceiver? = null
 
     override fun onDestroy() {
         if (appContainer.activityHolder.current === this) appContainer.activityHolder.current = null
@@ -153,14 +161,14 @@ class MainActivity : ComponentActivity() {
      */
     private fun maybePromptEnableBluetooth() {
         if (btPrompted) return
-        val adapter = getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return
         if (adapter.isEnabled) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED
+            PackageManager.PERMISSION_GRANTED
         ) return
         btPrompted = true
         runCatching {
-            enableBtLauncher.launch(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
+            enableBtLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
         }
     }
 

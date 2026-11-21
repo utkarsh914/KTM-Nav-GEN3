@@ -20,8 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -53,7 +57,7 @@ fun ListRow(
     supporting: String? = null,
     supportingLines: Int = if (supporting == null) 0 else 1,
     /** Replaces [title] when set: for a name with the matched text in bold (see [highlightedText]). */
-    annotatedTitle: androidx.compose.ui.text.AnnotatedString? = null,
+    annotatedTitle: AnnotatedString? = null,
     leadingIcon: ImageVector? = null,
     leading: (@Composable () -> Unit)? = null,
     hasThumbnail: Boolean = false,
@@ -94,7 +98,7 @@ fun ListRow(
         }
         Column(Modifier.weight(1f)) {
             Text(
-                annotatedTitle ?: androidx.compose.ui.text.AnnotatedString(title),
+                annotatedTitle ?: AnnotatedString(title),
                 style = if (accentTitle) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                 color = if (destructive) c.bad else if (accentTitle) KtmTheme.accent.text else c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
@@ -111,7 +115,7 @@ fun ListRow(
 
 /** The 40 dp tonal square that leads a row (an icon on the second container tone). */
 @Composable
-fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: androidx.compose.ui.graphics.Color = KtmTheme.accent.text) {
+fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: Color = KtmTheme.accent.text) {
     Box(
         modifier.size(40.dp).background(KtmTheme.colors.surf3, KtmShapes.Control),
         contentAlignment = Alignment.Center,
@@ -146,11 +150,11 @@ fun ListDivider(modifier: Modifier = Modifier, inset: Dp = KtmLayout.dividerInse
 }
 
 /** [text] with the characters in [match] in bold; the style lives here so feature code sets none. */
-fun highlightedText(text: String, match: IntRange?): androidx.compose.ui.text.AnnotatedString =
+fun highlightedText(text: String, match: IntRange?): AnnotatedString =
     androidx.compose.ui.text.buildAnnotatedString {
         if (match == null) { append(text); return@buildAnnotatedString }
         append(text.substring(0, match.first))
-        withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) {
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
             append(text.substring(match.first, match.last + 1))
         }
         append(text.substring(match.last + 1))

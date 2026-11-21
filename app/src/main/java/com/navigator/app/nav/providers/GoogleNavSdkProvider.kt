@@ -1,6 +1,8 @@
 package com.navigator.app.nav.providers
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavInfo
 import com.google.android.libraries.mapsplatform.turnbyturn.model.NavState
 import com.google.android.libraries.navigation.Navigator
@@ -17,6 +19,10 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.TravelMode
+import com.navigator.app.notify.GeoLength
+import com.navigator.app.notify.RouteMarks
+import com.navigator.app.ui.AppForegroundState
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -90,19 +96,19 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     private fun clearTrip() {
         _activeTrip.value = null
         _currentDestination.value = null
-        _routeMarks.value = com.navigator.app.notify.RouteMarks()
+        _routeMarks.value = RouteMarks()
     }
 
     /** Where the stops sit along the route and how long it is, for the notification's progress bar. */
-    private val _routeMarks = MutableStateFlow(com.navigator.app.notify.RouteMarks())
-    val routeMarks: StateFlow<com.navigator.app.notify.RouteMarks> = _routeMarks.asStateFlow()
+    private val _routeMarks = MutableStateFlow(RouteMarks())
+    val routeMarks: StateFlow<RouteMarks> = _routeMarks.asStateFlow()
 
     private fun publishRouteMarks(nav: Navigator) {
         runCatching {
             val legs = nav.routeSegments.map { seg ->
-                com.navigator.app.notify.GeoLength.polyline(seg.latLngs.map { it.latitude to it.longitude })
+                GeoLength.polyline(seg.latLngs.map { it.latitude to it.longitude })
             }
-            _routeMarks.value = com.navigator.app.notify.GeoLength.marks(legs)
+            _routeMarks.value = GeoLength.marks(legs)
         }.onFailure { AppLogger.log("Nav", "route marks unavailable: ${it.javaClass.simpleName}") }
     }
 
@@ -116,7 +122,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** Generation of the trip in progress; every async callback checks it. See [TripGeneration]. */
     private val trips = TripGeneration()
-    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     /** Why the last requested trip couldn't start (null while fine). Drives the
      *  route-failure card; cleared when a new trip starts or the rider dismisses it. */
@@ -149,7 +155,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     /** Run [block] on the main thread (SDK callbacks may arrive on other threads;
      *  all trip state transitions are serialised on main). */
     private fun onMain(block: () -> Unit) {
-        if (android.os.Looper.myLooper() === android.os.Looper.getMainLooper()) block() else mainHandler.post(block)
+        if (Looper.myLooper() === Looper.getMainLooper()) block() else mainHandler.post(block)
     }
 
     private val arrivalListener = Navigator.ArrivalListener { event ->
@@ -401,7 +407,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         // trip - and its ride recording - alive forever.
         val expiry = Runnable {
             if (_startFailure.value != null && _activeTrip.value?.id == trip) {
-                if (com.navigator.app.ui.AppForegroundState.isForeground) {
+                if (AppForegroundState.isForeground) {
                     // The rider may still be reading the card: don't pull it away.
                     failureExpiry?.let { mainHandler.postDelayed(it, FAILED_TRIP_TIMEOUT_MS) }
                     return@Runnable
@@ -559,7 +565,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
 
     /** Road distances in miles for the countries that use them; metric elsewhere. */
     private fun deviceUnits(): DistanceUnits =
-        if (java.util.Locale.getDefault().country.uppercase() in IMPERIAL_COUNTRIES) DistanceUnits.IMPERIAL
+        if (Locale.getDefault().country.uppercase() in IMPERIAL_COUNTRIES) DistanceUnits.IMPERIAL
         else DistanceUnits.METRIC
 
     private val IMPERIAL_COUNTRIES = setOf("US", "GB", "LR", "MM")

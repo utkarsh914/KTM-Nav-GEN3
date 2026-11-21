@@ -1,5 +1,9 @@
 package com.navigator.app.notifications
 
+import android.graphics.Bitmap
+import com.navigator.app.audio.BeepSourcePolicy
+import com.navigator.app.audio.TurnBeeper
+import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import android.app.Notification
@@ -11,6 +15,11 @@ import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
+import java.io.File
+import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * Captures notifications from user-selected apps (WhatsApp/SMS/etc, see
@@ -45,7 +54,7 @@ class AppNotificationListener : NotificationListenerService() {
     // Rendering the maneuver icon, hashing, TFLite and disk writes are far too heavy for
     // the main thread (this callback is delivered there). One worker keeps strict ordering,
     // and removals go through the SAME queue so a removal can never overtake the post it follows.
-    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+    private val worker = Executors.newSingleThreadExecutor { r ->
         Thread(r, "notif-worker").apply { isDaemon = true }
     }
 
@@ -56,7 +65,7 @@ class AppNotificationListener : NotificationListenerService() {
                     AppLogger.log("Notif", "!! $what failed: ${e.javaClass.simpleName}: ${e.message}")
                 }
             }
-        } catch (e: java.util.concurrent.RejectedExecutionException) {
+        } catch (e: RejectedExecutionException) {
             // Service already destroyed.
         }
     }
@@ -90,7 +99,7 @@ class AppNotificationListener : NotificationListenerService() {
 
     // Last text mirrored per notification key, so repeated updates of the same message
     // (progress, re-posts) aren't sent to the dash again.
-    private val lastMessageText = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val lastMessageText = ConcurrentHashMap<String, String>()
 
     private fun handlePosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
@@ -117,7 +126,7 @@ class AppNotificationListener : NotificationListenerService() {
             // Google Nav SDK is the selected engine, it owns the dash - don't also
             // mirror another nav app's turn notifications to it.
             if (GoogleNavSdkController.isActive(this, settings) ||
-                com.navigator.app.nav.providers.GoogleNavSdkProvider.isTripInProgress
+                GoogleNavSdkProvider.isTripInProgress
             ) return
             val navText = if (title.isNotBlank()) "$title $text" else text
             // The title is only the dash's distance field when it looks like a distance.
@@ -161,14 +170,14 @@ class AppNotificationListener : NotificationListenerService() {
             // (GPS says stationary).
             // One source at a time: while the app's own guidance runs, its adapter drives the beeper.
             if (settings.turnBeepEnabled && !NotificationNavProvider.paused.value &&
-                com.navigator.app.audio.BeepSourcePolicy.listenerMayBeep(
+                BeepSourcePolicy.listenerMayBeep(
                     GoogleNavSdkProvider.state.value.sessionState.isActiveNav(),
                 )
             ) {
-                com.navigator.app.audio.TurnBeeper.swapChannels = settings.swapBeepChannels
-                com.navigator.app.audio.TurnBeeper.volumePercent = settings.beepVolumePercent
-                com.navigator.app.audio.TurnBeeper.gpsSpeedKmh = com.navigator.app.location.SpeedMonitor.speedKmh.value
-                com.navigator.app.audio.TurnBeeper.onGuidance(distanceTitle, guessedIcon)
+                TurnBeeper.swapChannels = settings.swapBeepChannels
+                TurnBeeper.volumePercent = settings.beepVolumePercent
+                TurnBeeper.gpsSpeedKmh = SpeedMonitor.speedKmh.value
+                TurnBeeper.onGuidance(distanceTitle, guessedIcon)
             }
             NotificationRepository.updateNavGuidance(
                 NotificationRepository.NavGuidance(
@@ -285,16 +294,16 @@ class AppNotificationListener : NotificationListenerService() {
     private fun captureManeuverIconIfEnabled(sbn: StatusBarNotification, title: String, text: String) {
         try {
             val dir = filesDir
-            val marker = java.io.File(dir, "CAPTURE_MANEUVERS")
+            val marker = File(dir, "CAPTURE_MANEUVERS")
             if (!marker.exists()) return
             val bitmap = TurnIconHeuristic.loadManeuverBitmap(this, sbn) ?: return
             val hash = bitmapPixelHash(bitmap)
             val label = (text.ifBlank { title }).lowercase()
                 .replace(Regex("[^a-z0-9]+"), "_").trim('_').take(40).ifBlank { "unlabeled" }
-            val outDir = java.io.File(dir, "maps_capture").apply { mkdirs() }
-            val file = java.io.File(outDir, "${label}__${hash}.png")
+            val outDir = File(dir, "maps_capture").apply { mkdirs() }
+            val file = File(outDir, "${label}__${hash}.png")
             if (file.exists()) return
-            java.io.FileOutputStream(file).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             AppLogger.log("Capture", "Saved maneuver icon: text=${redact(text)} hash=$hash -> ${file.name}")
         } catch (e: Exception) {
             AppLogger.log("Capture", "!! capture failed: $e")
@@ -312,7 +321,7 @@ class AppNotificationListener : NotificationListenerService() {
 
     // Keys of notifications accepted as navigation guidance, so a removal is only
     // treated as "guidance ended" for those (not for Maps' traffic/sharing alerts).
-    private val navKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val navKeys = ConcurrentHashMap.newKeySet<String>()
 
     // Any notification from a known nav app counts (several apps don't reliably set
     // CATEGORY_NAVIGATION - requiring it dropped real updates), except for Google

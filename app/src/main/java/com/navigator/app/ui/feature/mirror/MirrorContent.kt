@@ -56,6 +56,7 @@ import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.BikeStatusDot
 import com.navigator.app.ui.components.BikeStatusPill
 import com.navigator.app.ui.components.DashPalette
+import com.navigator.app.ui.components.TurnIconNames
 import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
@@ -355,7 +356,7 @@ private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
             t.icon?.let {
                 TurnIconRef(
                     it, size = KtmLayout.mirrorGlyph, color = DashPalette.text,
-                    contentDescription = if (t.instruction.isNullOrBlank()) com.navigator.app.ui.components.TurnIconNames.human(it) else null,
+                    contentDescription = if (t.instruction.isNullOrBlank()) TurnIconNames.human(it) else null,
                 )
             }
             Column {

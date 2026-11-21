@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.ui.theme.KtmShapes
@@ -80,7 +81,7 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
                 if (state.eta != null && state.remaining != null) Footer(state.eta, state.remaining)
             }
             is DashPreviewState.Prompt -> {
-                Text(state.title, style = MaterialTheme.typography.headlineSmall, color = DashPalette.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(state.title, style = MaterialTheme.typography.headlineSmall, color = DashPalette.text, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md, Alignment.CenterHorizontally)) {
                     Text(
                         state.yes, style = MaterialTheme.typography.titleMedium, color = DashPalette.bg,

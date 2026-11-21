@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import android.content.res.Resources
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
@@ -22,7 +23,7 @@ sealed interface UiText {
     }
 
     /** The same text outside composition (a snackbar raised from an event). */
-    fun text(resources: android.content.res.Resources): String = when (this) {
+    fun text(resources: Resources): String = when (this) {
         is Res -> resources.getString(id, *args.toTypedArray())
         is Plural -> resources.getQuantityString(id, count, *args.toTypedArray())
         is Raw -> text

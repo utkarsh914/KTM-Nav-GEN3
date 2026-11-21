@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.pairing
 
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -168,7 +169,7 @@ private fun Scanning(ui: PairingUi, actions: PairingActions, onTrouble: () -> Un
                     title = pluralStringResource(R.plurals.pair_others, ui.others.size, ui.others.size),
                     supporting = stringResource(R.string.pair_others_hint), supportingLines = 1,
                     leadingIcon = KtmIcons.Bluetooth,
-                    trailing = { androidx.compose.material3.Icon(if (othersOpen) KtmIcons.ChevronUp else KtmIcons.ChevronDown, null, tint = c.fg2) },
+                    trailing = { Icon(if (othersOpen) KtmIcons.ChevronUp else KtmIcons.ChevronDown, null, tint = c.fg2) },
                     onClick = { othersOpen = !othersOpen },
                     modifier = Modifier.padding(top = KtmSpacing.sm).semantics { stateDescription = othersState },
                 )
@@ -266,7 +267,7 @@ private fun Confirming(phase: PairingPhase.Confirming, actions: PairingActions) 
             )
             // ON7: what the dash is showing, so the rider knows which button to press on it.
             DashPreview(
-                DashPreviewState.Prompt(stringResource(R.string.pair_prompt, android.os.Build.MODEL), stringResource(R.string.pair_yes), stringResource(R.string.pair_no)),
+                DashPreviewState.Prompt(stringResource(R.string.pair_prompt, Build.MODEL), stringResource(R.string.pair_yes), stringResource(R.string.pair_no)),
                 Modifier.padding(vertical = KtmSpacing.lg),
             )
             KtmStep(1, stringResource(R.string.pair_found, bikeName), StepState.Done)

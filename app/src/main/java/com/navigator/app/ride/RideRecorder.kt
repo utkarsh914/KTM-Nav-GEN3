@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import androidx.core.content.ContextCompat
@@ -54,7 +55,7 @@ class RideRecorder(private val context: Context) {
         override fun onLocationChanged(location: Location) = onFix(location)
 
         @Deprecated("Deprecated in API 29 but still called on older devices")
-        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
         override fun onProviderDisabled(provider: String) {}
     }

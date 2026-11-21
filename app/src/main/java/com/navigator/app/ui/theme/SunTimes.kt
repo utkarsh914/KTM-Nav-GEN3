@@ -1,5 +1,6 @@
 package com.navigator.app.ui.theme
 
+import java.time.LocalDate
 import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sin
@@ -36,7 +37,7 @@ object SunTimes {
         // The sun's day may straddle a UTC midnight far from Greenwich: test the neighbours too.
         for (offset in -1L..1L) {
             val day = utcDay + offset
-            val doy = java.time.LocalDate.ofEpochDay(day).dayOfYear
+            val doy = LocalDate.ofEpochDay(day).dayOfYear
             val rs = riseSetUtcMinutes(doy, latDeg, lngDeg)
             if (rs == null) {
                 // Polar: decide by the sign of the declination term (summer hemisphere = midnight sun).

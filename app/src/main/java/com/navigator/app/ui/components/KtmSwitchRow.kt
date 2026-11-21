@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
@@ -7,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.rememberHaptics
 
 /** A [ListRow] with a switch: the whole row toggles. */
@@ -36,7 +38,7 @@ fun KtmSwitchRow(
         trailing = {
             if (badge != null) {
                 KtmBadge(badge, tone = BadgeTone.Neutral)
-                androidx.compose.foundation.layout.Spacer(Modifier.width(com.navigator.app.ui.theme.KtmSpacing.sm))
+                Spacer(Modifier.width(KtmSpacing.sm))
             }
             KtmSwitch(checked, onCheckedChange = null, enabled = enabled)
         },

@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.onboarding
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -197,7 +199,7 @@ private fun Welcome(actions: OnboardingActions) {
 }
 
 @Composable
-private fun Promise(icon: androidx.compose.ui.graphics.vector.ImageVector, @androidx.annotation.StringRes text: Int) {
+private fun Promise(icon: ImageVector, @StringRes text: Int) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = KtmLayout.promiseRow).padding(horizontal = KtmSpacing.edge),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
@@ -229,11 +231,11 @@ private fun Engine(engine: NavEngine, actions: OnboardingActions) {
 /** ON2: a choice as a card: what it is called, a line on it, how it works, and a radio. The chosen one is outlined in the accent. */
 @Composable
 private fun EngineCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    @androidx.annotation.StringRes title: Int,
-    @androidx.annotation.StringRes tag: Int,
-    @androidx.annotation.StringRes body: Int,
-    @androidx.annotation.StringRes note: Int?,
+    icon: ImageVector,
+    @StringRes title: Int,
+    @StringRes tag: Int,
+    @StringRes body: Int,
+    @StringRes note: Int?,
     selected: Boolean,
     onSelect: () -> Unit,
 ) {

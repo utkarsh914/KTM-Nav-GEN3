@@ -25,9 +25,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.data.rides.ThumbPoint
+import com.navigator.app.ride.RidePoint
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
@@ -65,7 +70,7 @@ fun ReplayScreen(
     val resources = LocalResources.current
     val feedback = LocalFeedback.current
     val scope = rememberCoroutineScope()
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val vm: ReplayViewModel = viewModel(factory = ReplayViewModel.factory(rideId, container))
     val ui by vm.ui.collectAsState()
     val position = vm.position.collectAsState()
@@ -79,7 +84,7 @@ fun ReplayScreen(
     val ready = ui as? ReplayUi.Ready
     val following by rememberUpdatedState(ready?.following == true)
 
-    fun point(index: Int, points: List<com.navigator.app.ride.RidePoint>) = points.getOrNull(index)?.let { MapPoint(it.lat, it.lng) }
+    fun point(index: Int, points: List<RidePoint>) = points.getOrNull(index)?.let { MapPoint(it.lat, it.lng) }
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -96,7 +101,7 @@ fun ReplayScreen(
     // Playback must not keep walking the marker under a covered page or a backgrounded app.
     DisposableEffect(vm) {
         val owner = lifecycleOwner
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event -> if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) vm.pause() }
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) vm.pause() }
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
@@ -117,7 +122,7 @@ fun ReplayScreen(
         var coverGone by remember { mutableStateOf(false) }
         LaunchedEffect(mapFramed) { if (mapFramed) { kotlinx.coroutines.delay(COVER_HOLD_MS); coverGone = true } }
         LaunchedEffect(Unit) { kotlinx.coroutines.delay(COVER_MAX_MS); coverGone = true }
-        val coverPoints by androidx.compose.runtime.produceState<List<com.navigator.app.data.rides.ThumbPoint>?>(ready?.ride?.let(container.rides::peekThumbnail), ready?.ride?.id) {
+        val coverPoints by androidx.compose.runtime.produceState<List<ThumbPoint>?>(ready?.ride?.let(container.rides::peekThumbnail), ready?.ride?.id) {
             val ride = ready?.ride ?: return@produceState
             value = runCatching { container.rides.thumbnail(ride) }.getOrNull()
         }

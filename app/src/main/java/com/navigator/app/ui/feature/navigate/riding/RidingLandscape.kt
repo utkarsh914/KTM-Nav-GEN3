@@ -1,10 +1,15 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import android.content.Context
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.SizeTransform
 import android.view.accessibility.AccessibilityManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -74,7 +79,7 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberHaptics
 
 /** The values behind the trip controls, shown as the landscape panel's second face (NL4). */
-@androidx.compose.runtime.Immutable
+@Immutable
 class TripControlsUi(
     val beeps: Boolean,
     val messages: Boolean,
@@ -113,7 +118,7 @@ fun RidingLandscape(
     val open = controls != null
     val motion = KtmTheme.motion
     // With a screen reader running, the controls stay until dismissed: a panel that flips away while it is being read is worse than one left open.
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val screenReader by rememberTouchExploration(context)
     LaunchedEffect(open, screenReader) {
         if (!open || screenReader) return@LaunchedEffect
@@ -180,7 +185,7 @@ fun RidingLandscape(
 }
 
 /** MO5: shared axis Y. The guidance slides up and out while the controls rise in; the reverse going back. */
-private fun androidx.compose.animation.AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: KtmMotionSpecs, toControls: Boolean): ContentTransform {
+private fun AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: KtmMotionSpecs, toControls: Boolean): ContentTransform {
     val dir = if (toControls) 1 else -1
     return ((fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
         (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -dir * it / 8 })).using(SizeTransform(clip = true) { _, _ -> snap() })
@@ -239,8 +244,8 @@ private fun CompactGuidance(maneuver: ManeuverUi, onBack: () -> Unit) {
 
 /** Whether a screen reader is running right now; follows it being switched on or off mid-ride. */
 @Composable
-private fun rememberTouchExploration(context: android.content.Context): androidx.compose.runtime.State<Boolean> {
-    val manager = remember { context.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager }
+private fun rememberTouchExploration(context: Context): State<Boolean> {
+    val manager = remember { context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager }
     val on = remember { mutableStateOf(manager?.isTouchExplorationEnabled == true) }
     DisposableEffect(manager) {
         val listener = AccessibilityManager.TouchExplorationStateChangeListener { on.value = it }

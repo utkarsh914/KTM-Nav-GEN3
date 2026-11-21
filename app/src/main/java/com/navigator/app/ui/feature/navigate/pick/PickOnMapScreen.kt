@@ -1,10 +1,14 @@
 package com.navigator.app.ui.feature.navigate.pick
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -88,7 +92,7 @@ fun PickOnMapScreen(
             ) {
                 Text(
                     hint, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -98,11 +102,11 @@ fun PickOnMapScreen(
         val pinLift by androidx.compose.animation.core.animateDpAsState(
             if (state.resolving) PIN_LIFT else 0.dp, motion.spatialFast(), label = "pinLift",
         )
-        val drop = remember { androidx.compose.animation.core.Animatable(if (motion.reduced) 0f else 1f) }
-        androidx.compose.runtime.LaunchedEffect(Unit) { drop.animateTo(0f, motion.spatialDefault()) }
+        val drop = remember { Animatable(if (motion.reduced) 0f else 1f) }
+        LaunchedEffect(Unit) { drop.animateTo(0f, motion.spatialDefault()) }
         Icon(
             if (stopNumber != null) KtmIcons.PinPlus else KtmIcons.Pin, null, tint = KtmTheme.accent.fill,
-            modifier = Modifier.align(Alignment.Center).size(KtmLayout.mapPin).offset { androidx.compose.ui.unit.IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },
+            modifier = Modifier.align(Alignment.Center).size(KtmLayout.mapPin).offset { IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },
         )
         Column(
             Modifier.align(if (cap == Modifier) Alignment.BottomCenter else Alignment.BottomStart).then(cap).fillMaxWidth()

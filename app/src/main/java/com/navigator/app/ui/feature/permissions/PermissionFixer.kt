@@ -20,7 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import com.navigator.app.ble.BccuConnectionService
-import com.navigator.app.ui.feature.navigate.findHostActivity
+import com.navigator.app.ui.findHostActivity
 
 /** Carries out a [FixStep]: Android's dialogs and screens, and the explainer sheet that comes first. */
 class PermissionFixer internal constructor(

@@ -1,9 +1,18 @@
 package com.navigator.app
 
+import android.text.format.DateFormat
+import com.navigator.app.ble.DashText
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.nav.destination.PlacesStore
+import com.navigator.app.nav.ktm.ClockFormat
+import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.notifications.NotificationRepository
+import com.navigator.app.notify.RideSavedNotice
 import com.navigator.app.ride.MirrorAutoRecordController
 import com.navigator.app.ride.MirrorRecordPolicy
+import com.navigator.app.ride.RideSession
+import com.navigator.app.ride.RideSource
+import com.navigator.app.ui.theme.AppFonts
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -37,18 +46,18 @@ class OpenDashApplication : Application() {
         // Apply the persisted app-font choice before any UI composes so a
         // system-font user doesn't see a first brand-font frame.
         runCatching {
-            com.navigator.app.ui.theme.AppFonts.apply(AppSettings(this).fontMode)
+            AppFonts.apply(AppSettings(this).fontMode)
         }
-        com.navigator.app.nav.ktm.ClockFormat.use24h = { android.text.format.DateFormat.is24HourFormat(this) }
+        ClockFormat.use24h = { DateFormat.is24HourFormat(this) }
         // Dash text: ICU transliterator (null = pass-through) + the rider's switch.
-        com.navigator.app.ble.DashText.transliterate = com.navigator.app.ble.DashText.icuTransliterator()
-        com.navigator.app.ble.DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)
+        DashText.transliterate = DashText.icuTransliterator()
+        DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)
         recoverOrphanRides()
         container.trip // start watching for arrival even before any screen is shown
         startAutoRecording()
-        com.navigator.app.notify.RideSavedNotice.start(this, appScope)
+        RideSavedNotice.start(this, appScope)
         appScope.launch(Dispatchers.IO) {
-            runCatching { com.navigator.app.nav.destination.PlacesStore(this@OpenDashApplication).syncShortcuts() }
+            runCatching { PlacesStore(this@OpenDashApplication).syncShortcuts() }
         }
     }
 
@@ -81,7 +90,7 @@ class OpenDashApplication : Application() {
         AutoRecordController(
             scope = appScope,
             trips = GoogleNavSdkProvider.activeTrip,
-            session = { com.navigator.app.ride.RideSession.state.value },
+            session = { RideSession.state.value },
             recordingEnabled = { AppSettings(this).rideRecordingEnabled },
             locationGranted = ::hasLocationPermission,
             startRecording = { trip ->
@@ -94,7 +103,7 @@ class OpenDashApplication : Application() {
             var last = false
             combine(
                 NotificationRepository.navGuidance, NotificationRepository.currentNavText, NotificationRepository.currentNavPackage,
-                com.navigator.app.nav.providers.NotificationNavProvider.paused,
+                NotificationNavProvider.paused,
             ) { g, t, pkg, paused ->
                 MirrorRecordPolicy.guiding(pkg != null && (g != null || t != null), paused, last).also { last = it }
             }.collect { emit(it) }
@@ -103,10 +112,10 @@ class OpenDashApplication : Application() {
             scope = appScope,
             phase = combine(container.settings.snapshot.map { it.engine == NavEngine.MIRROR }, guiding, MirrorRecordPolicy::phase)
                 .distinctUntilChanged(),
-            session = { com.navigator.app.ride.RideSession.state.value },
+            session = { RideSession.state.value },
             recordingEnabled = { AppSettings(this).rideRecordingEnabled },
             locationGranted = ::hasLocationPermission,
-            startRecording = { RideRecordingService.start(this, null, null, null, com.navigator.app.ride.RideSource.MIRROR) },
+            startRecording = { RideRecordingService.start(this, null, null, null, RideSource.MIRROR) },
             stopRecording = { RideRecordingService.stop(this) },
         ).start()
     }

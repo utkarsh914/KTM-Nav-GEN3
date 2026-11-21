@@ -1,7 +1,9 @@
 package com.navigator.app.ui.feature.rides
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.semantics.Role
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSegmented
@@ -69,6 +71,7 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberHaptics
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class RidesActions(
     val onOpenRide: (String) -> Unit,
@@ -94,7 +97,7 @@ class RidesActions(
  * RD1-RD6: the Rides tab. A top bar with search, sort and a menu; the list with sticky day headers; a contextual bar
  * while selecting; the empty and no-match states. Stateless.
  */
-@OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RidesContent(
     ui: RidesUi?,
@@ -191,7 +194,7 @@ fun RidesContent(
 }
 
 /** RD2: the four fields as radios, the direction in the field's own words, and Show rides. Nothing changes until then. */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SortSheet(current: RideSort, onDismiss: () -> Unit, onShow: (RideSort) -> Unit) {
     var draft by remember { mutableStateOf(current) }
@@ -238,7 +241,7 @@ private fun SelectAllRow(allSelected: Boolean, count: Int, onSelectAll: (Boolean
 /** Room under the last card for the Record button. */
 private val FAB_CLEARANCE = KtmLayout.targetPrimary + KtmSpacing.lg * 2
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RidesBar(actions: RidesActions, hasRides: Boolean, onSort: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
@@ -319,7 +322,7 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
 }
 
 private fun dayFormatter(skeleton: String): DateTimeFormatter =
-    DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), skeleton))
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton))
 
 private val DAY: DateTimeFormatter by lazy { dayFormatter("EEEdMMM") }
 private val DAY_YEAR: DateTimeFormatter by lazy { dayFormatter("dMMMyyyy") }

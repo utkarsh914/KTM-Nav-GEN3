@@ -2,6 +2,7 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +27,7 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
 /** A button in an empty or error state. */
-@androidx.compose.runtime.Immutable
+@Immutable
 class StateAction(val label: String, val onClick: () -> Unit)
 
 /**

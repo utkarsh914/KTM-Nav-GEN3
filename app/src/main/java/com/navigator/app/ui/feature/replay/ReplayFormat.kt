@@ -1,8 +1,11 @@
 package com.navigator.app.ui.feature.replay
 
+import android.text.format.DateFormat
 import com.navigator.app.nav.ktm.ClockFormat
 import java.time.Instant
+import java.time.Year
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -13,8 +16,8 @@ object ReplayFormat {
         val clock: DateTimeFormatter = ClockFormat.formatter(locale, seconds = true)
         val clockShort: DateTimeFormatter = ClockFormat.formatter(locale)
         val dateTime: DateTimeFormatter = ClockFormat.formatter(locale, date = "EEEdMMM")
-        val day: DateTimeFormatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale)
-        val dayYear: DateTimeFormatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMMyyyy"), locale)
+        val day: DateTimeFormatter = DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale)
+        val dayYear: DateTimeFormatter = DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEdMMMyyyy"), locale)
         val dateTimeYear: DateTimeFormatter = ClockFormat.formatter(locale, date = "EEEdMMMyyyy")
     }
 
@@ -41,5 +44,5 @@ object ReplayFormat {
     fun rideDate(ms: Long): String = if (ms <= 0L) "" else at(ms).let { (if (thisYear(it)) current().dateTime else current().dateTimeYear).format(it) }
 
     /** The year is left out for this year's rides, as on the list. */
-    private fun thisYear(t: java.time.ZonedDateTime) = t.year == java.time.Year.now(t.zone).value
+    private fun thisYear(t: ZonedDateTime) = t.year == Year.now(t.zone).value
 }

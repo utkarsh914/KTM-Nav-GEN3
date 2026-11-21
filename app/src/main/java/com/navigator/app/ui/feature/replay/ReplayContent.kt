@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.replay
 
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -40,6 +41,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -50,7 +53,9 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
@@ -61,7 +66,6 @@ import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.IconButtonSize
-import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.KtmIconButton
@@ -155,7 +159,7 @@ private fun Portrait(
     avgMode: AvgSpeedMode,
     actions: ReplayActions,
     onInsets: (MapInsets) -> Unit,
-    sheetMax: androidx.compose.ui.unit.Dp,
+    sheetMax: Dp,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var sheetHeight by remember { mutableIntStateOf(0) }
@@ -166,9 +170,9 @@ private fun Portrait(
                 .fillMaxWidth().padding(KtmSpacing.sm),
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically,
         ) {
-            KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack, style = IconButtonStyle.Tonal, size = IconButtonSize.Map)
+            MapControlButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             Box(Modifier.weight(1f))
-            KtmIconButton(KtmIcons.Share, stringResource(R.string.replay_share), actions.onShare, style = IconButtonStyle.Tonal, size = IconButtonSize.Map)
+            MapControlButton(KtmIcons.Share, stringResource(R.string.replay_share), actions.onShare)
             OverflowMenu(actions, IconButtonSize.Map)
         }
         MapButtons(
@@ -178,8 +182,8 @@ private fun Portrait(
         )
         // RP1: the sheet rises into place once the page is up.
         val motion = KtmTheme.motion
-        val risen = remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
-        androidx.compose.animation.AnimatedVisibility(
+        val risen = remember { MutableTransitionState(false).apply { targetState = true } }
+        AnimatedVisibility(
             visibleState = risen, modifier = Modifier.align(Alignment.BottomCenter),
             enter = androidx.compose.animation.fadeIn(motion.effectsDefault()) + androidx.compose.animation.slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it / 2 },
         ) {
@@ -203,7 +207,7 @@ private fun Portrait(
 private fun ReplaySheet(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    maxHeight: androidx.compose.ui.unit.Dp,
+    maxHeight: Dp,
     modifier: Modifier,
     pinned: @Composable ColumnScope.() -> Unit,
     details: @Composable ColumnScope.() -> Unit,
@@ -253,7 +257,7 @@ private fun ReplaySheet(
 /** A drag shorter than this many touch slops on the handle is a wobble, not a gesture. */
 private const val HANDLE_DRAG_SLOPS = 4
 
-private fun androidx.compose.ui.input.pointer.PointerInputScope.dragThresholdPx(): Float = viewConfiguration.touchSlop * HANDLE_DRAG_SLOPS
+private fun PointerInputScope.dragThresholdPx(): Float = viewConfiguration.touchSlop * HANDLE_DRAG_SLOPS
 
 // ---- Landscape: the panel on the left --------------------------------------------------------------------------------
 
@@ -306,7 +310,8 @@ private fun MapButtons(bearing: Float, actions: ReplayActions, modifier: Modifie
 private fun OverflowMenu(actions: ReplayActions, size: IconButtonSize) {
     var open by remember { mutableStateOf(false) }
     Box {
-        KtmIconButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true }, style = if (size == IconButtonSize.Map) IconButtonStyle.Tonal else IconButtonStyle.Plain, size = size)
+        if (size == IconButtonSize.Map) MapControlButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true })
+        else KtmIconButton(KtmIcons.More, stringResource(R.string.replay_more), { open = true }, size = size)
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = KtmTheme.colors.surf) {
             KtmMenuItem(stringResource(R.string.replay_menu_edit)) { open = false; actions.onEdit() }
             KtmMenuItem(stringResource(R.string.replay_menu_trim)) { open = false; actions.onTrim() }
@@ -321,7 +326,7 @@ private fun StarButton(saved: Boolean, onToggle: () -> Unit) {
     KtmIconButton(
         if (saved) KtmIcons.StarFilled else KtmIcons.Star,
         stringResource(if (saved) R.string.ride_unstar else R.string.ride_star), onToggle,
-        tint = if (saved) a.text else androidx.compose.ui.graphics.Color.Unspecified,
+        tint = if (saved) a.text else Color.Unspecified,
     )
 }
 
@@ -382,7 +387,7 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
     val note: @Composable () -> Unit = {
         ride.notes?.takeIf { it.isNotBlank() }?.let {
             Text(
-                "\u201c$it\u201d", style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                "\u201c$it\u201d", style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
                 color = c.fg2, modifier = Modifier.fillMaxWidth().padding(top = KtmSpacing.xs),
             )
         }

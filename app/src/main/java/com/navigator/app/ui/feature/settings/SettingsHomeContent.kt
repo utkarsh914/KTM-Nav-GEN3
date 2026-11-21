@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -105,7 +106,7 @@ internal fun BikeCardView(bike: BikeCard, onClick: (() -> Unit)?) {
             color = KtmTheme.accent.text, maxLines = 1,
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-            androidx.compose.material3.Icon(KtmIcons.Bike, null, tint = c.fg2)
+            Icon(KtmIcons.Bike, null, tint = c.fg2)
             Text(
                 bike.name ?: stringResource(R.string.settings_no_bike), style = MaterialTheme.typography.titleLarge, color = c.fg,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),

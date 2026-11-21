@@ -2,6 +2,14 @@ package com.navigator.app.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.telephony.TelephonyManager
+import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.DrivingSide
+import com.navigator.app.nav.model.TravelMode
+import com.navigator.app.ride.AvgSpeedMode
+import com.navigator.app.ui.theme.FontMode
+import com.navigator.app.ui.theme.NavThemeMode
+import com.navigator.app.ui.theme.ThemeMode
 
 /**
  * Single place for all persisted app configuration: bonded bike address,
@@ -59,24 +67,24 @@ class AppSettings(context: Context) {
     /**
      * Light / dark / follow-system appearance. Stored in the plain store.
      */
-    var themeMode: com.navigator.app.ui.theme.ThemeMode
-        get() = com.navigator.app.ui.theme.ThemeMode.fromId(pairingPrefs.getString(KEY_THEME_MODE, null))
+    var themeMode: ThemeMode
+        get() = ThemeMode.fromId(pairingPrefs.getString(KEY_THEME_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_THEME_MODE, value.id).apply()
 
     /**
      * App font: the bundled brand fonts (default) or the phone's system font.
      * Stored in the plain store, like [themeMode].
      */
-    var fontMode: com.navigator.app.ui.theme.FontMode
-        get() = com.navigator.app.ui.theme.FontMode.fromId(pairingPrefs.getString(KEY_FONT_MODE, null))
+    var fontMode: FontMode
+        get() = FontMode.fromId(pairingPrefs.getString(KEY_FONT_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_FONT_MODE, value.id).apply()
 
     /**
      * How the navigation/map screen picks light vs dark: follow the app theme, or
      * auto day/night by local time (default). Independent of [themeMode].
      */
-    var navThemeMode: com.navigator.app.ui.theme.NavThemeMode
-        get() = com.navigator.app.ui.theme.NavThemeMode.fromId(pairingPrefs.getString(KEY_NAV_THEME_MODE, null))
+    var navThemeMode: NavThemeMode
+        get() = NavThemeMode.fromId(pairingPrefs.getString(KEY_NAV_THEME_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_NAV_THEME_MODE, value.id).apply()
 
     /**
@@ -190,7 +198,7 @@ class AppSettings(context: Context) {
         val stored = pairingPrefs.getString(KEY_SESSION_KEYS_PREFIX + deviceAddress.uppercase(), null)
         val keys = SessionKeyCodec.decode(stored)
         if (keys == null && !stored.isNullOrEmpty()) {
-            com.navigator.app.logging.AppLogger.log("Auth", "!! stored session key pool is malformed - ignoring it")
+            AppLogger.log("Auth", "!! stored session key pool is malformed - ignoring it")
         }
         return keys
     }
@@ -223,8 +231,8 @@ class AppSettings(context: Context) {
             .putInt(KEY_OVERSPEED_LIMIT, value.coerceIn(OVERSPEED_LIMIT_MIN, OVERSPEED_LIMIT_MAX)).apply()
 
     /** Which average speed ride screens show (both are always recorded). */
-    var avgSpeedMode: com.navigator.app.ride.AvgSpeedMode
-        get() = com.navigator.app.ride.AvgSpeedMode.fromId(pairingPrefs.getString(KEY_AVG_SPEED_MODE, null))
+    var avgSpeedMode: AvgSpeedMode
+        get() = AvgSpeedMode.fromId(pairingPrefs.getString(KEY_AVG_SPEED_MODE, null))
         set(value) = pairingPrefs.edit().putString(KEY_AVG_SPEED_MODE, value.id).apply()
 
     /** Debug builds only: show the floating "Dash preview" chip (off by default). */
@@ -335,12 +343,12 @@ class AppSettings(context: Context) {
      * The resolved driving side (preference + device region for AUTO). Read live
      * so a settings change or a region change takes effect immediately.
      */
-    fun resolvedDrivingSide(): com.navigator.app.nav.model.DrivingSide =
+    fun resolvedDrivingSide(): DrivingSide =
         DrivingSideResolver.resolve(drivingSidePreference, telephonyCountry())
 
     /** Country the phone is physically in (network, else SIM), before falling back to the UI locale. */
     private fun telephonyCountry(): String? = runCatching {
-        val tm = appContext.getSystemService(android.telephony.TelephonyManager::class.java)
+        val tm = appContext.getSystemService(TelephonyManager::class.java)
         listOf(tm?.networkCountryIso, tm?.simCountryIso)
             .firstOrNull { !it.isNullOrBlank() }?.takeIf { it.length == 2 }
     }.getOrNull()
@@ -351,13 +359,13 @@ class AppSettings(context: Context) {
      * with). Defaults to [com.navigator.app.nav.model.TravelMode.TWO_WHEELER]
      * (bike). Stored by enum name with a safe fallback.
      */
-    var vehicleMode: com.navigator.app.nav.model.TravelMode
+    var vehicleMode: TravelMode
         get() = runCatching {
-            com.navigator.app.nav.model.TravelMode.valueOf(
+            TravelMode.valueOf(
                 pairingPrefs.getString(KEY_VEHICLE_MODE, null)
-                    ?: com.navigator.app.nav.model.TravelMode.TWO_WHEELER.name,
+                    ?: TravelMode.TWO_WHEELER.name,
             )
-        }.getOrDefault(com.navigator.app.nav.model.TravelMode.TWO_WHEELER)
+        }.getOrDefault(TravelMode.TWO_WHEELER)
         set(value) = pairingPrefs.edit().putString(KEY_VEHICLE_MODE, value.name).apply()
 
     /** Manual hardware-calibration result for one icon, from the Symbol Testing screen. "works", "wrong", or null (untested). */

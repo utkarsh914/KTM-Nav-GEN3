@@ -1,11 +1,13 @@
 package com.navigator.app.app
 
+import android.app.Activity
 import android.content.Context
 import com.navigator.app.OpenDashApplication
 import com.navigator.app.audio.TurnBeepAdapter
 import com.navigator.app.audio.TurnBeeperSink
 import com.navigator.app.ble.BikeScanner
 import com.navigator.app.R
+import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.nav.destination.LinkResolution
 import com.navigator.app.nav.destination.MapsUrlResolver
 import com.navigator.app.ui.feature.navigate.link.LinkOutcome
@@ -24,6 +26,7 @@ import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.trip.SdkGuidanceSource
 import com.navigator.app.trip.TripController
+import java.lang.ref.WeakReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -95,7 +98,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
             nav = trip.navState,
             minimised = trip.state.map { it.minimised },
             enabled = settings.snapshot.map { it.turnBeepEnabled },
-            speedKmh = com.navigator.app.location.SpeedMonitor.speedKmh,
+            speedKmh = SpeedMonitor.speedKmh,
             config = { settings.legacy.swapBeepChannels to settings.legacy.beepVolumePercent },
             sink = TurnBeeperSink,
         )
@@ -112,8 +115,8 @@ val Context.appContainer: AppContainer
 
 /** Weak reference to the foreground activity (set by `MainActivity`). */
 class ActivityHolder {
-    private var ref: java.lang.ref.WeakReference<android.app.Activity>? = null
-    var current: android.app.Activity?
+    private var ref: WeakReference<Activity>? = null
+    var current: Activity?
         get() = ref?.get()
-        set(value) { ref = value?.let { java.lang.ref.WeakReference(it) } }
+        set(value) { ref = value?.let { WeakReference(it) } }
 }

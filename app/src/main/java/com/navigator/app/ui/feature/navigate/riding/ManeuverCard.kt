@@ -26,6 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,6 +51,7 @@ import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.model.LaneInfo
 import com.navigator.app.nav.model.LaneShape
 import com.navigator.app.ui.components.TurnIconGlyph
+import com.navigator.app.ui.components.TurnIconNames
 import com.navigator.app.ui.components.TurnIconRef
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -62,7 +64,7 @@ private val LANE_CELL_W = KtmLayout.laneCellWidth
 private val LANE_CELL_H = KtmLayout.laneCellHeight
 
 /** The sizes the card is drawn at: the portrait card, the landscape block (NL1) and its narrow form (NL7). */
-@androidx.compose.runtime.Immutable
+@Immutable
 class ManeuverMetrics(
     val glyph: Dp,
     val distance: TextStyle,
@@ -194,7 +196,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
                 horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
             ) {
                 Text(stringResource(R.string.riding_then), style = KtmTheme.type.ridingLabel, color = on)
-                TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on, contentDescription = com.navigator.app.ui.components.TurnIconNames.human(footer.icon))
+                TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on, contentDescription = TurnIconNames.human(footer.icon))
             }
             is ManeuverFooter.Lanes -> Box(
                 Modifier.fillMaxWidth().background(band).then(if (m.fill) Modifier.height(KtmLayout.lanesHeightLand) else Modifier)

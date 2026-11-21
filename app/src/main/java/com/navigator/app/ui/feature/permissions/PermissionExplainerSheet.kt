@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,7 +60,7 @@ private fun AppRow() {
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         Box(Modifier.size(KtmLayout.appIcon).background(KtmTheme.accent.container, KtmShapes.Control), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(KtmIcons.Navigation, null, tint = KtmTheme.accent.onContainer)
+            Icon(KtmIcons.Navigation, null, tint = KtmTheme.accent.onContainer)
         }
         Text(stringResource(R.string.perm_access_app), style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg, modifier = Modifier.weight(1f))
         KtmSwitch(checked = true, onCheckedChange = null)

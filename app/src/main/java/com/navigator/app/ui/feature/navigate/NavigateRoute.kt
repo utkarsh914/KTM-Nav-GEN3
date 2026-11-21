@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.app.appContainer
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
@@ -43,7 +44,7 @@ import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.shell.LocalFeedback
 
 /** Whether the phone has a speech recogniser to hand the voice button to. */
-internal fun voiceAvailable(context: android.content.Context): Boolean =
+internal fun voiceAvailable(context: Context): Boolean =
     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).resolveActivity(context.packageManager) != null
 
 /**
@@ -178,12 +179,6 @@ fun NavigateRoute(
     if (showBike) {
         BikeSheetHost(tripRunning = state.activity != null, onOpenPairing = onOpenPairing, onDismiss = { showBike = false })
     }
-}
-
-internal tailrec fun Context.findHostActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is ContextWrapper -> baseContext.findHostActivity()
-    else -> null
 }
 
 /** What covers the browse screen while the rider picks something. */

@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import com.navigator.app.R
 import com.navigator.app.nav.ktm.DistanceFormatter
@@ -57,11 +58,10 @@ import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.EmptyState
-import com.navigator.app.ui.components.IconButtonSize
-import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmIconButton
+import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.rideDuration
@@ -115,10 +115,9 @@ fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit,
                 }
             } else {
                 Box(Modifier.fillMaxSize()) {
-                    KtmIconButton(
+                    MapControlButton(
                         KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack,
-                        modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(KtmSpacing.sm),
-                        style = IconButtonStyle.Tonal, size = IconButtonSize.Map,
+                        Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(KtmSpacing.sm),
                     )
                     Column(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -276,7 +275,7 @@ fun TrimRangeBar(
 @Composable
 private fun ThumbNode(
     description: String, state: String, value: Float, range: ClosedFloatingPointRange<Float>,
-    onSet: (Float) -> Unit, enabled: Boolean, x: androidx.compose.ui.unit.Dp, size: androidx.compose.ui.unit.Dp,
+    onSet: (Float) -> Unit, enabled: Boolean, x: Dp, size: Dp,
 ) {
     Box(
         Modifier.offset(x = x).size(size).semantics {

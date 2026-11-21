@@ -1,10 +1,12 @@
 package com.navigator.app.ui.feature.onboarding
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.navigator.app.app.AppContainer
 import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.data.settings.SettingSpecs
@@ -138,11 +140,11 @@ class OnboardingViewModel(
     companion object {
         private const val KEY_STEP = "onboarding_step"
 
-        fun factory(container: AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             private val app = context.applicationContext
 
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>, extras: androidx.lifecycle.viewmodel.CreationExtras): T {
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val available = GoogleNavSdkController.isAvailable(app)
                 return OnboardingViewModel(
                     container.settings, container.permissions, available, termsAcceptedAtStart = !available || GoogleTerms.accepted(app),

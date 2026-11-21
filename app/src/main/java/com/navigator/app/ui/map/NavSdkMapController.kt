@@ -1,5 +1,6 @@
 package com.navigator.app.ui.map
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -16,6 +17,7 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
+import com.navigator.app.ui.feature.navigate.plan.RouteSelection
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -242,7 +244,7 @@ class NavSdkMapController(
             val avoid = scene.frameAlso + scene.stops.map { it.point } + scene.destination
             scene.routes.forEachIndexed { i, points ->
                 val label = scene.routeLabels.getOrNull(i) ?: return@forEachIndexed
-                val at = com.navigator.app.ui.feature.navigate.plan.RouteSelection.calloutPoint(points, i, scene.selectedRoute, avoid)
+                val at = RouteSelection.calloutPoint(points, i, scene.selectedRoute, avoid)
                     ?: return@forEachIndexed
                 gm.addMarker(
                     MarkerOptions().position(LatLng(at.lat, at.lng)).icon(pins.callout(label, i == scene.selectedRoute))
@@ -317,7 +319,7 @@ class NavSdkMapController(
         gm.glide(CameraUpdateFactory.newCameraPosition(north), KtmMotionSpecs.CAMERA_RECENTER_MS)
     }
 
-    @android.annotation.SuppressLint("MissingPermission") // only called while guiding, which needs location
+    @SuppressLint("MissingPermission") // only called while guiding, which needs location
     override fun followMyLocation(mode: FollowMode) {
         val perspective = when (mode) {
             FollowMode.TILTED -> GoogleMap.CameraPerspective.TILTED
@@ -357,7 +359,7 @@ class NavSdkMapController(
     }
 
     /** The SDK puck is only wanted while guiding; the compass-driven marker owns browse and preview. */
-    @android.annotation.SuppressLint("MissingPermission") // the caller checks the permission
+    @SuppressLint("MissingPermission") // the caller checks the permission
     internal fun setPuck(enabled: Boolean) {
         runCatching { map?.isMyLocationEnabled = enabled }
     }

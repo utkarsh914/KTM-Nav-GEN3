@@ -1,5 +1,6 @@
 package com.navigator.app.notifications
 
+import com.navigator.app.ble.BccuProtocol
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -26,7 +27,7 @@ object NotificationRepository {
         val remaining: String?,
         val maneuver: String?,
         /** The classified maneuver icon (same one sent to the dash), for the in-app arrow. */
-        val turnIcon: com.navigator.app.ble.BccuProtocol.TurnIcon? = null,
+        val turnIcon: BccuProtocol.TurnIcon? = null,
     )
 
     private val _navGuidance = MutableStateFlow<NavGuidance?>(null)

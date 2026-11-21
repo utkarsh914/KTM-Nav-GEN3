@@ -13,6 +13,7 @@ import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ui.shell.RidingChipMessage
 import com.navigator.app.ui.theme.SunTimes
 import com.navigator.app.ui.theme.isNightTime
+import java.time.LocalTime
 import java.time.ZoneId
 
 /** What sits under the instruction, inside the same card: lanes near a turn, else the turn after it. */
@@ -211,6 +212,6 @@ object RidingChips {
 
 /** Day or night for the riding surfaces: the sun at the last known place, or the fixed 06:00-18:00 rule without one. */
 object DayNightRule {
-    fun isNight(nowMs: Long, here: Pair<Double, Double>?, hourOfDay: Int = java.time.LocalTime.now().hour): Boolean =
+    fun isNight(nowMs: Long, here: Pair<Double, Double>?, hourOfDay: Int = LocalTime.now().hour): Boolean =
         if (here != null) SunTimes.isNight(nowMs, here.first, here.second) else isNightTime(hourOfDay)
 }

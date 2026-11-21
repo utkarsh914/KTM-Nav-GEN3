@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +27,7 @@ class SpeedSource(private val context: Context) {
 
     private var holders = 0
     private var manager: LocationManager? = null
-    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     private val staleClear = Runnable { _speedKmh.value = null }
 
     // A full listener (not a SAM lambda): before API 30 the other callbacks are abstract.
@@ -37,7 +40,7 @@ class SpeedSource(private val context: Context) {
         }
 
         @Deprecated("Deprecated in API 29 but still abstract on older devices")
-        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
         override fun onProviderDisabled(provider: String) { _speedKmh.value = null }
     }

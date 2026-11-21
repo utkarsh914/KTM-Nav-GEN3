@@ -1,5 +1,10 @@
 package com.navigator.app.ui.map
 
+import android.graphics.RadialGradient
+import android.graphics.Shader
+import android.location.LocationListener
+import android.os.Bundle
+import android.view.WindowManager
 import com.navigator.app.location.hasLocationPermission
 import android.content.Context
 import android.graphics.Bitmap
@@ -110,7 +115,7 @@ internal fun rememberDeviceHeadingState(active: Boolean = true): State<Float?> {
 
         fun displayRotationDegrees(): Int {
             @Suppress("DEPRECATION")
-            val rot = (context.getSystemService(Context.WINDOW_SERVICE) as? android.view.WindowManager)
+            val rot = (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
                 ?.defaultDisplay?.rotation ?: Surface.ROTATION_0
             return when (rot) {
                 Surface.ROTATION_90 -> 90
@@ -206,12 +211,12 @@ internal fun rememberDeviceLatLng(active: Boolean = true): LatLng? {
                 ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             last?.let { latLng = LatLng(it.latitude, it.longitude) }
         }
-        val listener = object : android.location.LocationListener {
+        val listener = object : LocationListener {
             override fun onLocationChanged(loc: Location) {
                 latLng = LatLng(loc.latitude, loc.longitude)
             }
             @Deprecated("Deprecated in API 29 but still abstract on older devices")
-            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
             override fun onProviderEnabled(provider: String) {}
             override fun onProviderDisabled(provider: String) {}
         }
@@ -427,14 +432,14 @@ private fun drawBeam(
     // Bold gradient: strong near the dot, fading toward the tip, but far more
     // opaque than the old beam so it's easy to spot.
     val beamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        shader = android.graphics.RadialGradient(
+        shader = RadialGradient(
             cx, cy, outerR,
             intArrayOf(
                 Color.argb(235, MARKER_R, MARKER_G, MARKER_B),
                 Color.argb(110, MARKER_R, MARKER_G, MARKER_B),
             ),
             floatArrayOf(innerR / outerR, 1f),
-            android.graphics.Shader.TileMode.CLAMP,
+            Shader.TileMode.CLAMP,
         )
     }
     canvas.drawPath(cone, beamPaint)

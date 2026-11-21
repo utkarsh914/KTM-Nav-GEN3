@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
+import com.navigator.app.nav.providers.NavLiveUpdate
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.MainActivity
 
@@ -39,6 +40,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         settings.turnBeepEnabled = !settings.turnBeepEnabled
         // The in-process snapshot is a copy: re-read it so the app and the notification agree at once.
         runCatching { context.appContainer.settings.refresh() }
-        com.navigator.app.nav.providers.NavLiveUpdate.refreshNow()
+        NavLiveUpdate.refreshNow()
     }
 }

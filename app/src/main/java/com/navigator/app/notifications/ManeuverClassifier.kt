@@ -9,6 +9,8 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DrivingSide
+import java.nio.channels.FileChannel
+import java.util.concurrent.ConcurrentHashMap
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -78,10 +80,10 @@ object ManeuverClassifier {
     @Volatile private var unavailable = false
     // Cache by bitmap-pixel hash: the same maneuver bitmap recurs many times per
     // ride, so we only run the model once per distinct icon.
-    private val cache = java.util.concurrent.ConcurrentHashMap<Int, BccuProtocol.TurnIcon>()
+    private val cache = ConcurrentHashMap<Int, BccuProtocol.TurnIcon>()
     // "No confident match" is cached too (same bitmap, same answer): the rejected icon
     // used to be re-run through the model - and re-logged - on every ~1 Hz update.
-    private val noMatch = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+    private val noMatch = ConcurrentHashMap.newKeySet<Int>()
 
     private fun ensureModel(context: Context): Interpreter? {
         interpreter?.let { return it }
@@ -108,7 +110,7 @@ object ManeuverClassifier {
             // channel shares it, and the mapping stays valid after it is closed).
             context.resources.openRawResourceFd(R.raw.maneuver_model).use { afd ->
                 return afd.createInputStream().channel.map(
-                    java.nio.channels.FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength,
+                    FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength,
                 )
             }
         }.onFailure { AppLogger.log("Maneuver", "model mmap unavailable (${it.javaClass.simpleName}); copying") }

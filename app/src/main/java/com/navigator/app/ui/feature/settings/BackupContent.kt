@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -72,7 +75,7 @@ fun BackupContent(ui: BackupUi, actions: BackupActions, modifier: Modifier = Mod
 /** A large action: a 48 dp icon tile, what it does and a line on what it covers; the whole card is the target. */
 @Composable
 private fun ActionCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     summary: String,
     onClick: () -> Unit,
@@ -87,12 +90,12 @@ private fun ActionCard(
             Box(
                 Modifier.size(KtmLayout.actionTile).background(if (accent) a.container else c.surf3, KtmShapes.Control),
                 contentAlignment = Alignment.Center,
-            ) { androidx.compose.material3.Icon(icon, null, tint = if (accent) a.onContainer else c.fg) }
+            ) { Icon(icon, null, tint = if (accent) a.onContainer else c.fg) }
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = if (enabled) c.fg else c.fg3)
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = c.fg2)
             }
-            if (loading) androidx.compose.material3.CircularProgressIndicator(Modifier.size(KtmSpacing.xl), color = a.fill, strokeWidth = KtmSpacing.xs / 2)
+            if (loading) CircularProgressIndicator(Modifier.size(KtmSpacing.xl), color = a.fill, strokeWidth = KtmSpacing.xs / 2)
             else RowChevron()
         }
     }
@@ -103,7 +106,7 @@ private fun ActionCard(
 private fun Included(text: String, included: Boolean) {
     val c = KtmTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        androidx.compose.material3.Icon(
+        Icon(
             if (included) KtmIcons.Done else KtmIcons.Close, null, tint = if (included) c.okText else c.fg3, modifier = Modifier.size(KtmSpacing.xl),
         )
         Text(text, style = MaterialTheme.typography.bodyMedium, color = if (included) c.fg else c.fg2)

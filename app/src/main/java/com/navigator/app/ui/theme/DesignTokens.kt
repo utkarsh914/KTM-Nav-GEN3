@@ -1,5 +1,7 @@
 package com.navigator.app.ui.theme
 
+import java.time.LocalTime
+
 /** How the app chooses between the light and dark neutral palettes. */
 enum class ThemeMode(val id: String) {
     SYSTEM("system"),
@@ -25,5 +27,5 @@ enum class NavThemeMode(val id: String) {
 }
 
 /** True when the local wall-clock time is "night" for nav theming (18:00–06:00). */
-fun isNightTime(hourOfDay: Int = java.time.LocalTime.now().hour): Boolean =
+fun isNightTime(hourOfDay: Int = LocalTime.now().hour): Boolean =
     hourOfDay < 6 || hourOfDay >= 18

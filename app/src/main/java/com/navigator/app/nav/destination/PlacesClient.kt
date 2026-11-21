@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.ride.RideMetrics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -298,7 +299,7 @@ object PlacesClient {
                 address = p.optString("formattedAddress").ifBlank { null },
                 lat = lat, lng = lng,
                 distanceMeters = origin?.let {
-                    com.navigator.app.ride.RideMetrics.haversineMeters(it.first, it.second, lat, lng).toInt()
+                    RideMetrics.haversineMeters(it.first, it.second, lat, lng).toInt()
                 },
             )
         }

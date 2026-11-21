@@ -34,8 +34,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
+import com.navigator.app.nav.destination.PolylineCodec
+import com.navigator.app.nav.model.Stop
+import com.navigator.app.ride.RideMetrics
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.app.appContainer
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.location.freshLocation
@@ -84,12 +91,15 @@ import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
 import com.navigator.app.ui.map.MapSurface
+import com.navigator.app.ui.map.PreviewPinStyle
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.TripPreviewScene
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.ChipTone
+import com.navigator.app.ui.shell.ImmersiveEffect
+import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.rememberNightNow
@@ -155,15 +165,15 @@ fun NavigateHost(
     onSearchRequestConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val feedback = com.navigator.app.ui.shell.LocalFeedback.current
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val feedback = LocalFeedback.current
+    val resources = LocalResources.current
     val activity = remember(context) { context.findHostActivity() }
     val scope = rememberCoroutineScope()
 
     val appSettings = remember { context.appContainer.settings.legacy }
     // Speed-band colouring scheme for the trip-finished route (Advanced settings).
     val speedBands = remember {
-        com.navigator.app.ride.RideMetrics.SpeedBands(
+        RideMetrics.SpeedBands(
             appSettings.speedBandBaseKmh, appSettings.speedBandStepKmh, appSettings.speedBandCount,
         )
     }
@@ -272,9 +282,9 @@ fun NavigateHost(
     val appContext = remember(context) { context.applicationContext }
     val routeVm: RoutePreviewViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = remember {
-            object : androidx.lifecycle.ViewModelProvider.Factory {
+            object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = RoutePreviewViewModel(
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = RoutePreviewViewModel(
                     api = RoutesApi { o, d, mode, via -> RoutesClient.computeRoutes(o, d, PlacesClient.androidAuth(appContext), mode, via) },
                     freshLocation = { freshLocation(appContext) },
                     lastKnown = { lastKnownLocation(appContext) },
@@ -381,11 +391,11 @@ fun NavigateHost(
     LaunchedEffect(routePreview.origin) { routePreview.origin?.let { origin = it } }
 
     // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
-    val pinStyle = com.navigator.app.ui.map.PreviewPinStyle(
+    val pinStyle = PreviewPinStyle(
         accent = KtmTheme.accent.fill.toArgb(), onAccent = KtmTheme.accent.onFill.toArgb(),
         surface = KtmTheme.colors.surf.toArgb(), onSurface = KtmTheme.colors.fg.toArgb(), outline = KtmTheme.colors.line2.toArgb(),
-        route = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_LIGHT,
-        routeAlt = if (mapDark) com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_NIGHT else com.navigator.app.ui.map.PreviewPinStyle.ROUTE_ALT_LIGHT,
+        route = if (mapDark) PreviewPinStyle.ROUTE_NIGHT else PreviewPinStyle.ROUTE_LIGHT,
+        routeAlt = if (mapDark) PreviewPinStyle.ROUTE_ALT_NIGHT else PreviewPinStyle.ROUTE_ALT_LIGHT,
     )
     // One frame per change of what is shown: the card measures after it arrives, so frame again once its size is known.
     // A later resize of the card (the rider panned the map meanwhile) must not pull the camera back.
@@ -537,7 +547,7 @@ fun NavigateHost(
         // Carry the mode that produced the token so the SDK consumes it with the
         // same mode (else it rejects the token and silently picks its own route).
         val mode = sel?.travelMode ?: appSettings.vehicleMode
-        val tripStops = stops.map { com.navigator.app.nav.model.Stop(it.lat, it.lng, it.label) }
+        val tripStops = stops.map { Stop(it.lat, it.lng, it.label) }
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         // False for a double tap: a second start would supersede the first mid-compute.
         if (!trip.start(dest, origin, sel?.points?.map { it.latitude to it.longitude })) return
@@ -682,11 +692,11 @@ fun NavigateHost(
     LaunchedEffect(quickRoute) {
         val slot = quickRoute ?: return@LaunchedEffect
         onQuickRouteConsumed()
-        val want = if (slot == "WORK") com.navigator.app.nav.destination.FavoriteSlot.WORK
-        else com.navigator.app.nav.destination.FavoriteSlot.HOME
+        val want = if (slot == "WORK") FavoriteSlot.WORK
+        else FavoriteSlot.HOME
         val place = store.favorites().firstOrNull { it.slot == want }?.place
         if (place != null) rideTo(place) else {
-            val which = if (want == com.navigator.app.nav.destination.FavoriteSlot.WORK) R.string.navigate_tile_work else R.string.navigate_tile_home
+            val which = if (want == FavoriteSlot.WORK) R.string.navigate_tile_work else R.string.navigate_tile_home
             feedback.snackbar(
                 resources.getString(R.string.navigate_slot_unset, resources.getString(which)),
                 actionLabel = resources.getString(R.string.navigate_slot_unset_action),
@@ -793,7 +803,7 @@ fun NavigateHost(
     // (the browse sheet's and overlays' own handlers are composed later and still go first).
     SharedLinkEffects(linkController, linkState, sharedLink, onSharedLinkConsumed, stage, { flow.stage }, feedback, onResolved = ::choose)
     // The tab bar and strip give way inside the planning flow as well as riding (SE3); the browse screen is the one with tabs.
-    com.navigator.app.ui.shell.ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
+    ImmersiveEffect(stage != NavStage.BROWSE && stage != NavStage.TRIP_FINISHED)
 
     // Built where the CONFIRM and PREVIEW stages compose, so its state reads (bearing, routes, favourites) subscribe
     // only those stages, not the whole host.
@@ -878,7 +888,7 @@ fun NavigateHost(
                         when (searchTarget) {
                             SearchTarget.TRIP_STOP -> trip.state.value.let { it.route ?: it.routeHint }?.let { r ->
                                 // Only what is still ahead of the rider.
-                                (origin ?: lastKnownLocation(context))?.let { com.navigator.app.nav.destination.PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
+                                (origin ?: lastKnownLocation(context))?.let { PolylineCodec.aheadOf(r, it.first, it.second) } ?: r
                             }
                             SearchTarget.STOP -> routePreview.selectedRoute?.points?.map { it.latitude to it.longitude }
                             SearchTarget.DESTINATION -> null

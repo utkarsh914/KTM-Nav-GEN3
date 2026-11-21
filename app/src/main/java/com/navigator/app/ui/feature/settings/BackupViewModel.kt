@@ -1,10 +1,12 @@
 package com.navigator.app.ui.feature.settings
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.navigator.app.R
+import com.navigator.app.app.AppContainer
 import com.navigator.app.backup.BackupManager
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -101,7 +103,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
             if (settings) add(UiText.Plural(R.plurals.backup_restored_settings, r.settingsApplied))
         }
 
-        fun factory(container: com.navigator.app.app.AppContainer, context: android.content.Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 BackupViewModel(AndroidBackupGateway(context)) { container.settings.refresh() } as T

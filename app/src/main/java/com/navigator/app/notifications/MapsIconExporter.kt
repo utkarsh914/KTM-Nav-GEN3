@@ -3,7 +3,9 @@ package com.navigator.app.notifications
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.drawable.Drawable
+import androidx.core.graphics.drawable.DrawableCompat
 import com.navigator.app.logging.AppLogger
 import java.io.File
 import java.io.FileOutputStream
@@ -111,8 +113,8 @@ object MapsIconExporter {
                 // Tint white to match how the icon actually appears in the nav
                 // notification (white glyph on transparent) - that's what the
                 // classifier sees at runtime, so the training data must match.
-                val tinted = androidx.core.graphics.drawable.DrawableCompat.wrap(d.mutate())
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, android.graphics.Color.WHITE)
+                val tinted = DrawableCompat.wrap(d.mutate())
+                DrawableCompat.setTint(tinted, Color.WHITE)
                 val bmp = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888)
                 val c = Canvas(bmp)
                 tinted.setBounds(0, 0, RENDER, RENDER)

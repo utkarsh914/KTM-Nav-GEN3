@@ -5,6 +5,9 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.ktm.KtmManeuverMapping
+import com.navigator.app.notifications.NavSubtextParser
+import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,7 +59,7 @@ object TurnBeeper {
     @Volatile var swapChannels: Boolean = true
 
     /** Loudness 5..100 (%), pushed from settings on every guidance update. */
-    @Volatile var volumePercent: Int = com.navigator.app.settings.AppSettings.DEFAULT_BEEP_VOLUME
+    @Volatile var volumePercent: Int = AppSettings.DEFAULT_BEEP_VOLUME
 
     /**
      * Live input for the stationary duck, pushed by whoever owns it (SpeedMonitor
@@ -121,7 +124,7 @@ object TurnBeeper {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                com.navigator.app.logging.AppLogger.log("Beep", "!! preview failed: ${e.javaClass.simpleName}")
+                AppLogger.log("Beep", "!! preview failed: ${e.javaClass.simpleName}")
             }
         }
     }
@@ -163,7 +166,7 @@ object TurnBeeper {
     private fun sideOf(icon: BccuProtocol.TurnIcon?): Side? {
         val name = icon?.name ?: return null
         // Roundabout sections carry no LEFT/RIGHT in their name: use the exit angle.
-        com.navigator.app.nav.ktm.KtmManeuverMapping.roundaboutSectionAngle(icon)?.let { angle ->
+        KtmManeuverMapping.roundaboutSectionAngle(icon)?.let { angle ->
             return when {
                 angle > 0 -> Side.RIGHT
                 angle < 0 -> Side.LEFT
@@ -177,7 +180,7 @@ object TurnBeeper {
         }
     }
 
-    private fun parseMeters(text: String?): Int? = com.navigator.app.notifications.NavSubtextParser.distanceMeters(text)
+    private fun parseMeters(text: String?): Int? = NavSubtextParser.distanceMeters(text)
 
     private fun playBeep(side: Side, ducked: Boolean = duckedNow()) {
         // Volume: user setting, cut way down while the bike is provably waiting

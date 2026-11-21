@@ -1,5 +1,6 @@
 package com.navigator.app.ble
 
+import java.text.BreakIterator
 import java.util.UUID
 
 /**
@@ -175,11 +176,11 @@ object BccuProtocol {
      */
     fun safePrefix(text: String, maxUnits: Int): String {
         if (text.length <= maxUnits) return text
-        val it = java.text.BreakIterator.getCharacterInstance()
+        val it = BreakIterator.getCharacterInstance()
         it.setText(text)
         val bounds = ArrayList<Int>()
         var next = it.next()
-        while (next != java.text.BreakIterator.DONE && next <= maxUnits) {
+        while (next != BreakIterator.DONE && next <= maxUnits) {
             bounds += next
             next = it.next()
         }
@@ -195,12 +196,12 @@ object BccuProtocol {
 
     /** Split [text] into user-perceived characters (grapheme clusters). */
     fun graphemes(text: String): List<String> {
-        val it = java.text.BreakIterator.getCharacterInstance()
+        val it = BreakIterator.getCharacterInstance()
         it.setText(text)
         val out = ArrayList<String>(text.length)
         var start = it.first()
         var end = it.next()
-        while (end != java.text.BreakIterator.DONE) {
+        while (end != BreakIterator.DONE) {
             out += text.substring(start, end)
             start = end
             end = it.next()

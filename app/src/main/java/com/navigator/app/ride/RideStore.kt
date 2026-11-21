@@ -2,6 +2,9 @@ package com.navigator.app.ride
 
 import android.content.Context
 import com.navigator.app.logging.AppLogger
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -198,9 +201,9 @@ class RideStore(context: Context) {
                     tmp.delete()
                     return MergeResult.Refused(MergeRefusal.Failed)
                 }
-                java.nio.file.Files.move(
+                Files.move(
                     tmp.toPath(), trackFile(newId).toPath(),
-                    java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.ATOMIC_MOVE,
                 )
                 moved = true
                 val at = System.currentTimeMillis()
@@ -423,7 +426,7 @@ class RideStore(context: Context) {
         try {
             val meta = readMetaLine(id)
             FileOutputStream(tmp).use { fos ->
-                java.io.BufferedWriter(java.io.OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
+                BufferedWriter(OutputStreamWriter(fos, Charsets.UTF_8)).let { w ->
                     meta?.let { w.write(it); w.write("\n") }
                     kept.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
                     w.flush()
@@ -438,9 +441,9 @@ class RideStore(context: Context) {
                     tmp.delete()
                     return null
                 }
-                java.nio.file.Files.move(
+                Files.move(
                     tmp.toPath(), trackFile(id).toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE,
                 )
                 var updated: RecordedRide? = null
                 writeIndex(readIndex().map { r ->
@@ -481,7 +484,7 @@ class RideStore(context: Context) {
         val last = points.last()
         ACTIVE_TRACKS.add(rideId) // keep orphan recovery away until the index entry exists
         try {
-            java.io.BufferedWriter(java.io.OutputStreamWriter(FileOutputStream(trackFile(rideId)), Charsets.UTF_8)).use { w ->
+            BufferedWriter(OutputStreamWriter(FileOutputStream(trackFile(rideId)), Charsets.UTF_8)).use { w ->
                 RideJson.metaLine(label, last.lat, last.lng, RideSource.GPX)?.let { w.write(it); w.write("\n") }
                 points.forEach { w.write(RideJson.pointLine(it)); w.write("\n") }
             }
@@ -654,6 +657,6 @@ class RideStore(context: Context) {
         /** Process-wide: one lock for every RideStore instance (history, recorder, replay all create their own). */
         private val LOCK = Any()
         /** Track files currently being written by a live recorder; recovery must not touch them. */
-        private val ACTIVE_TRACKS: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        private val ACTIVE_TRACKS: MutableSet<String> = ConcurrentHashMap.newKeySet()
     }
 }

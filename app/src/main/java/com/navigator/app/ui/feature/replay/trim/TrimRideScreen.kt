@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.replay.trim
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,7 +58,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
 
     // Leaving mid-write would lose the end of a merge's Undo offer: wait for the write.
     val applying = ready?.applying == true
-    androidx.activity.compose.BackHandler(enabled = applying) {}
+    BackHandler(enabled = applying) {}
 
     Box(modifier.fillMaxSize()) {
         MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
