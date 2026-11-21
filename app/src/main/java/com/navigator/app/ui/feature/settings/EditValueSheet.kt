@@ -81,7 +81,7 @@ private fun SheetFrame(title: String, onDismiss: () -> Unit, canSave: Boolean, o
         Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             field(focus)
             Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                KtmButton(stringResource(R.string.edit_value_cancel), onDismiss, Modifier.weight(1f), style = ButtonStyle.Outline)
+                KtmButton(stringResource(R.string.common_cancel), onDismiss, Modifier.weight(1f), style = ButtonStyle.Outline)
                 KtmButton(stringResource(R.string.edit_value_save), onSave, Modifier.weight(1f), enabled = canSave)
             }
         }

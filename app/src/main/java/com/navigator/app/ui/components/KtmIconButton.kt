@@ -62,5 +62,5 @@ fun KtmIconButton(
                 onClick()
             },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription, tint = content, modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, contentDescription, tint = content, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }

@@ -41,7 +41,7 @@ class BikeSheetTest {
         show(BikeStatus.Connected("KTM 7F21"))
         rule.onNodeWithText("KTM 7F21").assertIsDisplayed()
         rule.onNodeWithText("On your dash now").assertIsDisplayed()
-        rule.onNodeWithText("Turn beeps").assertIsDisplayed()
+        rule.onNodeWithText("Beeps").assertIsDisplayed()
         rule.onNodeWithText("Trouble?").assertIsDisplayed()
         rule.onNodeWithText("Send a test").performClick()
         rule.onNodeWithText("Bike & dash settings").performClick()
@@ -58,7 +58,7 @@ class BikeSheetTest {
         rule.onNodeWithText("Reconnecting · attempt 3").assertIsDisplayed()
         rule.onNodeWithText("Is the ignition on?").assertIsDisplayed()
         rule.onNodeWithText("Yes").assertIsDisplayed()
-        rule.onAllNodesWithText("Turn beeps").assertCountEquals(0)
+        rule.onAllNodesWithText("Beeps").assertCountEquals(0)
         rule.onNodeWithText("Re-pair…").performClick()
         assertEquals("a confirmation comes first", emptyList<String>(), log)
     }

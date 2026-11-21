@@ -116,7 +116,7 @@ class RidingUiTest {
         rule.onAllNodes(hasContentDescription("North up")).assertCountEquals(0)
         recenter.value = true
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Recenter").performClick()
+        rule.onNodeWithContentDescription("Recentre").performClick()
         rule.onNodeWithContentDescription("North up").performClick()
         assertEquals(listOf("tap", "tap", "north"), log)
     }

@@ -58,7 +58,7 @@ fun KtmFilterChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
-            if (leadingIcon != null) Icon(leadingIcon, null, tint = content, modifier = Modifier.size(18.dp))
+            if (leadingIcon != null) Icon(leadingIcon, null, tint = content, modifier = Modifier.size(KtmLayout.iconSmall))
             // A gloved rider reads it at a glance: the riding label size, with the 56 dp target.
             Text(label, style = if (riding) KtmTheme.type.ridingLabel else MaterialTheme.typography.labelMedium, color = content, maxLines = 1)
         }

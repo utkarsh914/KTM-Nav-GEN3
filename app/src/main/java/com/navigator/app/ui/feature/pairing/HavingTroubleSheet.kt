@@ -4,17 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.InfoBanner
-import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmStep
 import com.navigator.app.ui.components.StepState
-import com.navigator.app.ui.theme.KtmTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -42,6 +36,8 @@ fun HavingTroubleSheet(
 ) {
     KtmModalSheet(
         onDismiss = onDismiss,
+        title = stringResource(R.string.pair_trouble),
+        onClose = onDismiss,
         actions = {
             Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 if (onTryAgain != null) KtmButton(stringResource(R.string.pair_try_again), { onDismiss(); onTryAgain() }, Modifier.fillMaxWidth())
@@ -59,13 +55,6 @@ fun HavingTroubleSheet(
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.pair_trouble), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onDismiss)
-            }
             KtmStep(1, stringResource(R.string.pair_help_ignition), StepState.Active)
             KtmStep(2, stringResource(R.string.pair_help_forget), StepState.Active)
             KtmStep(3, stringResource(R.string.pair_help_close), StepState.Active)

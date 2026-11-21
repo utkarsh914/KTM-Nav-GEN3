@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.navigator.app.R
 import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmFilterChip
@@ -160,8 +162,15 @@ private fun LogRow(entry: LogEntry, modifier: Modifier = Modifier) {
         LogLevel.Info -> c.fg
     }
     val shape = KtmShapes.Badge
+    // A colour alone does not say it: a warning or a success is also read as such.
+    val level = when (entry.level) {
+        LogLevel.Warn -> stringResource(R.string.logs_level_warning)
+        LogLevel.Ok -> stringResource(R.string.logs_level_ok)
+        LogLevel.Info -> null
+    }
     Row(
         modifier.fillMaxWidth().padding(vertical = KtmLayout.hairline)
+            .semantics(mergeDescendants = true) { if (level != null) stateDescription = level }
             .then(if (entry.level == LogLevel.Warn) Modifier.background(c.warnContainer, shape) else Modifier)
             .padding(horizontal = KtmSpacing.xs, vertical = KtmLayout.logRowPadding),
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),

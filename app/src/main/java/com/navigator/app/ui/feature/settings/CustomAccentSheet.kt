@@ -2,12 +2,10 @@ package com.navigator.app.ui.feature.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -25,16 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.Hsv
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmColorPicker
-import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmModalSheet
 import com.navigator.app.ui.components.KtmTextField
 import com.navigator.app.ui.theme.KtmDarkColors
@@ -44,6 +39,7 @@ import com.navigator.app.ui.theme.KtmLightColors
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.LocalAccentScheme
 import com.navigator.app.ui.theme.customAccent
 import com.navigator.app.ui.theme.hexOf
 
@@ -73,15 +69,8 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
     // What was typed is saved as typed: the HSV round trip can land one step off.
     val save = { HexInput.parse(hex)?.let { onSave(hexOf(it)) }; Unit }
 
-    KtmModalSheet(onDismiss = onDismiss) {
+    KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.custom_title), onClose = onDismiss) {
         Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.custom_title), style = MaterialTheme.typography.headlineSmall, color = c.fg,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                KtmIconButton(KtmIcons.Close, stringResource(R.string.common_close), onDismiss)
-            }
             KtmColorPicker(
                 Hsv(hue, sat, value),
                 onChange = { hue = it.hue; sat = it.sat; value = it.value; hex = hexOf(it.toColor()).removePrefix("#") },
@@ -115,13 +104,8 @@ fun CustomAccentSheet(initial: Color, dark: Boolean, onSave: (String) -> Unit, o
             Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 KtmButton(stringResource(R.string.common_cancel), onDismiss, Modifier.weight(1f), style = ButtonStyle.Outline)
                 // Filled with the chosen colour, so the rider sees what the app's buttons will be.
-                Box(
-                    Modifier.weight(1f).height(KtmLayout.targetPrimary)
-                        .background(if (valid) scheme.fill else c.surf3, KtmShapes.Control)
-                        .clickable(enabled = valid, role = Role.Button) { haptics.tap(); save() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(stringResource(R.string.custom_save), style = MaterialTheme.typography.titleMedium, color = if (valid) scheme.onFill else c.fg3)
+                CompositionLocalProvider(LocalAccentScheme provides scheme) {
+                    KtmButton(stringResource(R.string.custom_save), save, Modifier.weight(1f), enabled = valid)
                 }
             }
         }

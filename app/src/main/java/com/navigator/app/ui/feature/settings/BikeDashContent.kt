@@ -81,7 +81,7 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             stringResource(R.string.bikedash_latin), ui.latinOnly, actions.onLatinOnly,
             supporting = stringResource(R.string.bikedash_latin_hint), supportingLines = 3,
         )
-        ListDivider()
+        ListDivider(withIcon = false)
         KtmSwitchRow(
             stringResource(R.string.bikedash_marquee), ui.marquee, actions.onMarquee,
             supporting = stringResource(R.string.bikedash_marquee_hint), supportingLines = 2,
@@ -92,14 +92,14 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
             stringResource(R.string.bikedash_show), ui.showOnDash, actions.onShowOnDash,
             supporting = stringResource(R.string.bikedash_show_hint), supportingLines = 2,
         )
-        ListDivider()
+        ListDivider(withIcon = false)
         ListRow(
             title = stringResource(R.string.bikedash_apps),
             supporting = if (ui.appCount == 0) stringResource(R.string.bikedash_apps_none)
             else pluralStringResource(R.plurals.bikedash_apps_count, ui.appCount, ui.appCount),
             onClick = actions.onOpenApps, trailing = { RowChevron() },
         )
-        ListDivider()
+        ListDivider(withIcon = false)
         ListRow(
             title = stringResource(R.string.bikedash_access),
             // Granted: the badge says it, once.

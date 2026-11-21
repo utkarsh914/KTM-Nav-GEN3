@@ -64,7 +64,7 @@ fun BikeStatusPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(20.dp))
+        Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(KtmLayout.iconInline))
         Text(label, style = KtmTheme.type.buttonCompact, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Box(
             Modifier.size(8.dp).background(pillDotColor(tone, c), CircleShape),
@@ -95,7 +95,7 @@ fun BikeStatusDot(
             .clickable(role = Role.Button) { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(20.dp))
-        Box(Modifier.align(Alignment.TopEnd).padding(KtmSpacing.sm).size(8.dp).background(pillDotColor(tone, c), CircleShape))
+        Icon(KtmIcons.Bike, null, tint = c.fg, modifier = Modifier.size(KtmLayout.iconInline))
+        Box(Modifier.align(Alignment.TopEnd).padding(KtmSpacing.xs).size(8.dp).background(pillDotColor(tone, c), CircleShape))
     }
 }

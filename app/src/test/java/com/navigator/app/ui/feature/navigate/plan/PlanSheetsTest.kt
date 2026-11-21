@@ -140,7 +140,7 @@ class PlanSheetsTest {
     @Test fun withNoStopsThereIsAStopButtonAndWithStopsAListRowThatCountsWhatIsLeft() {
         var state by mutableStateOf(routeState())
         rule.setContent { KtmTheme(darkTheme = true) { RouteSheet(state, routeActions()) } }
-        rule.onNodeWithText("Stop").performClick()
+        rule.onNodeWithText("Add stop").performClick()
         assertEquals(listOf("addStop"), log)
         state = routeState(stops = listOf("Fuel", "Cafe"), options = listOf(option("40 min", RouteBadge.Only)))
         rule.waitForIdle()

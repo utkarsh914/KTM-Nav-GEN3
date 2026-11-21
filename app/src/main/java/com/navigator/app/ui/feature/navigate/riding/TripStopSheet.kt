@@ -171,7 +171,7 @@ private fun ResultRow(result: CategoryResult, canAdd: Boolean, divided: Boolean,
     val supporting = listOfNotNull(distance, result.address).joinToString(" · ")
     val addDescription = stringResource(R.string.trip_stop_add_description, result.name)
     Column(Modifier.fillMaxWidth().fullBleed()) {
-    if (divided) ListDivider(inset = KtmSpacing.lg)
+    if (divided) ListDivider(withIcon = false)
     Row(
         Modifier.fillMaxWidth().heightIn(min = KtmLayout.rowStop).padding(horizontal = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,

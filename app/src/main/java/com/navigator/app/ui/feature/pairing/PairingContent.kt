@@ -58,6 +58,7 @@ import com.navigator.app.ui.components.SkeletonRow
 import com.navigator.app.ui.components.StateAction
 import com.navigator.app.ui.components.StepState
 import com.navigator.app.ui.components.TonalIconBadge
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -156,7 +157,7 @@ private fun Scanning(ui: PairingUi, actions: PairingActions, onTrouble: () -> Un
             Column(Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.md), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 when {
                     ui.bikes.isNotEmpty() -> ui.bikes.forEachIndexed { i, bike -> BikeCard(bike, best = i == 0 && (bike.pairedBefore || bike.signal == SignalStrength.VERY_CLOSE), actions.onPick) }
-                    ui.scanning -> { SkeletonRow(); SkeletonRow() }
+                    ui.scanning -> { SkeletonRow(Modifier.fullBleed(KtmSpacing.edge)); SkeletonRow(Modifier.fullBleed(KtmSpacing.edge)) }
                     else -> Text(stringResource(R.string.pair_none), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
                 }
             }

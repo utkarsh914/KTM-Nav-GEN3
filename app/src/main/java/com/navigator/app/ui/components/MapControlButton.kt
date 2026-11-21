@@ -56,5 +56,5 @@ fun MapControlButton(
                 onClick()
             },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription, tint = if (tinted) content else Color.Unspecified, modifier = Modifier.size(24.dp).rotate(rotationDegrees)) }
+    ) { Icon(icon, contentDescription, tint = if (tinted) content else Color.Unspecified, modifier = Modifier.size(KtmLayout.iconMedium).rotate(rotationDegrees)) }
 }

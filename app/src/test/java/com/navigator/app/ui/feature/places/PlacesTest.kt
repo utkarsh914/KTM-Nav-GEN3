@@ -245,7 +245,7 @@ class PlacesContentTest {
         rule.onNodeWithText("Home").assertDoesNotExist()
         rule.onNodeWithText("Add place").assertDoesNotExist()
         rule.onNodeWithContentDescription("Select all").performClick()
-        rule.onNodeWithContentDescription("Delete selected places").performClick()
+        rule.onNodeWithContentDescription("Remove selected places").performClick()
         assertEquals(listOf("alltrue", "delete"), log)
     }
 
@@ -257,7 +257,7 @@ class PlacesContentTest {
     @Test fun theTopBarMenuStartsSelecting() {
         show(ui(saved = listOf(toit)))
         rule.onNodeWithContentDescription("More").performClick()
-        rule.onNodeWithText("Select").performClick()
+        rule.onNodeWithText("Select places").performClick()
         assertEquals(listOf("selectnull"), log)
     }
 

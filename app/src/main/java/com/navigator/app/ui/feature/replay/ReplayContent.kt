@@ -315,7 +315,7 @@ private fun OverflowMenu(actions: ReplayActions, overMap: Boolean) {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = KtmTheme.colors.surf) {
             KtmMenuItem(stringResource(R.string.replay_menu_edit)) { open = false; actions.onEdit() }
             KtmMenuItem(stringResource(R.string.replay_menu_trim)) { open = false; actions.onTrim() }
-            KtmMenuItem(stringResource(R.string.replay_menu_delete)) { open = false; actions.onDelete() }
+            KtmMenuItem(stringResource(R.string.replay_menu_delete), destructive = true) { open = false; actions.onDelete() }
         }
     }
 }

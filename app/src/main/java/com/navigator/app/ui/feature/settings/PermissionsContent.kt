@@ -25,7 +25,7 @@ fun PermissionsContent(ui: PermissionsUi, actions: PermissionsActions, modifier:
     SettingsPageScaffold(stringResource(R.string.perm_title), actions.onBack, modifier) {
         val bannerModifier = Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.md)
         when {
-            ui.requiredMissing.isNotEmpty() -> InfoBanner(consequences, bannerModifier, title = title, tone = BannerTone.Warn)
+            ui.requiredMissing.isNotEmpty() -> InfoBanner(consequences, bannerModifier, title = title, tone = BannerTone.Bad)
             ui.optionalMissing.isNotEmpty() -> InfoBanner(consequences, bannerModifier, title = title, tone = BannerTone.Warn)
             else -> InfoBanner(stringResource(R.string.perm_banner_ok), bannerModifier, tone = BannerTone.Info)
         }

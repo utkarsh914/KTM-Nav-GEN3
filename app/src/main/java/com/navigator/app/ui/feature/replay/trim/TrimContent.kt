@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -106,7 +107,7 @@ fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit,
                 LandscapePanel(onFootprint = { onInsets(MapInsets(left = it)) }, gap = KtmSpacing.md) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
-                        Text(stringResource(R.string.trim_title), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg)
+                        Text(stringResource(R.string.trim_title), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg, modifier = Modifier.semantics { heading() })
                     }
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
                         Body(ui, actions)
@@ -126,7 +127,7 @@ fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit,
                             .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.lg),
                         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
                     ) {
-                        Text(stringResource(R.string.trim_title), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg)
+                        Text(stringResource(R.string.trim_title), style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg, modifier = Modifier.semantics { heading() })
                         Body(ui, actions)
                         Box(Modifier.windowInsetsPadding(WindowInsets.navigationBars))
                     }
@@ -165,7 +166,7 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
     if (ui.failed) InfoBanner(message = stringResource(R.string.trim_failed), tone = BannerTone.Bad)
     Text(stringResource(R.string.trim_permanent), style = MaterialTheme.typography.bodySmall, color = c.fg2)
     Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        KtmButton(stringResource(R.string.trim_cancel), actions.onBack, Modifier.weight(1f), style = ButtonStyle.Outline, size = ButtonSize.Rest, enabled = !ui.applying)
+        KtmButton(stringResource(R.string.common_cancel), actions.onBack, Modifier.weight(1f), style = ButtonStyle.Outline, size = ButtonSize.Rest, enabled = !ui.applying)
         KtmButton(
             stringResource(R.string.trim_action), actions.onApply, Modifier.weight(1f), style = ButtonStyle.Danger, size = ButtonSize.Rest,
             enabled = ui.canApply, loading = ui.applying, icon = KtmIcons.Trim,

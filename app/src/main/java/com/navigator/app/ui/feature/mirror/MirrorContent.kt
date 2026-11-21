@@ -42,7 +42,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.data.mirror.Freshness
 import com.navigator.app.data.mirror.MirrorSetupKind
@@ -55,6 +57,7 @@ import com.navigator.app.ui.components.BikeStatusDot
 import com.navigator.app.ui.components.BikeStatusPill
 import com.navigator.app.ui.components.DashPalette
 import com.navigator.app.ui.components.TurnIconNames
+import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
@@ -111,7 +114,7 @@ fun MirrorContent(
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                     Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
                     if (status.stale) StaleBanner(status.freshness)
-                    PauseRow(status.paused, actions.onSending)
+                    PauseRow(status.paused, actions.onSending, KtmSpacing.ridingEdge)
                 }
                 // Google Maps stays at the foot, where the thumb rests on the mount.
                 OpenMapsButton(actions, ButtonSize.Riding)
@@ -124,7 +127,7 @@ fun MirrorContent(
                 Spacer(Modifier.height(KtmSpacing.md))
                 when (status) {
                     is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = true)
-                    is MirrorStatus.Setup -> Checklist(status.rows, actions)
+                    is MirrorStatus.Setup -> Checklist(status.rows, actions, KtmSpacing.ridingEdge)
                     is MirrorStatus.Live -> Unit // handled by the mounted panel above
                 }
             }
@@ -140,7 +143,7 @@ fun MirrorContent(
         ) {
             Header(status, bike, actions)
             when (status) {
-                is MirrorStatus.Setup -> Checklist(status.rows, actions)
+                is MirrorStatus.Setup -> Checklist(status.rows, actions, KtmSpacing.lg)
                 is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = false)
                 is MirrorStatus.Live -> {
                     DashPreview(
@@ -206,7 +209,8 @@ private fun StaleBanner(f: Freshness) {
 
 /** The setup checklist: each row says why, with a 48 dp button; a done row is green. */
 @Composable
-private fun Checklist(rows: List<MirrorSetupRow>, actions: MirrorActions) {
+/** [bleed] is the padding of the page around it: rows pad themselves, so they run out to the edge of it (fullBleed). */
+private fun Checklist(rows: List<MirrorSetupRow>, actions: MirrorActions, bleed: Dp) {
     val c = KtmTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
         // The listener can only be reconnected once access is granted: until then it is not a row of its own.
@@ -214,6 +218,7 @@ private fun Checklist(rows: List<MirrorSetupRow>, actions: MirrorActions) {
         rows.filter { it.kind != MirrorSetupKind.Listener || accessDone }.forEach { row ->
             val (title, why, action) = rowText(row.kind)
             ListRow(
+                modifier = Modifier.fullBleed(bleed),
                 title = stringResource(title),
                 supporting = if (row.done) null else stringResource(why),
                 supportingLines = 3,
@@ -254,6 +259,7 @@ private fun rowText(kind: MirrorSetupKind) = when (kind) {
 private fun ReadyArea(status: MirrorStatus.Ready, time: String, actions: MirrorActions, compact: Boolean) {
     val c = KtmTheme.colors
     var details by remember { mutableStateOf(false) }
+    val detailsState = stringResource(if (details) R.string.mirror_details_expanded else R.string.mirror_details_collapsed)
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         if (!compact) {
             DashPreview(DashPreviewState.NotConnected(stringResource(R.string.mirror_ready_title), stringResource(R.string.mirror_ready_hint)))
@@ -262,7 +268,8 @@ private fun ReadyArea(status: MirrorStatus.Ready, time: String, actions: MirrorA
             Text(stringResource(R.string.mirror_ready_hint), style = MaterialTheme.typography.bodyLarge, color = c.fg2)
         }
         Row(
-            Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest).clickable(role = Role.Button) { details = !details },
+            Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest).clickable(role = Role.Button) { details = !details }
+                .semantics { stateDescription = detailsState },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
@@ -270,7 +277,7 @@ private fun ReadyArea(status: MirrorStatus.Ready, time: String, actions: MirrorA
             Text(stringResource(R.string.mirror_ready_line), style = MaterialTheme.typography.bodyMedium, color = c.okText, modifier = Modifier.weight(1f))
             Icon(if (details) KtmIcons.ChevronUp else KtmIcons.ChevronDown, null, tint = c.fg2)
         }
-        if (details) Checklist(status.rows, actions)
+        if (details) Checklist(status.rows, actions, if (compact) KtmSpacing.ridingEdge else KtmSpacing.lg)
     }
 }
 
@@ -278,10 +285,12 @@ private fun ReadyArea(status: MirrorStatus.Ready, time: String, actions: MirrorA
 @Composable
 private fun Controls(status: MirrorStatus, actions: MirrorActions, landscape: Boolean, recording: Boolean) {
     val size = if (landscape) ButtonSize.Riding else ButtonSize.Rest
+    // The page's own padding, which a row runs out to: the landscape column and the portrait page differ.
+    val bleed = if (landscape) KtmSpacing.ridingEdge else KtmSpacing.lg
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         when {
-            status is MirrorStatus.Live -> PauseRow(status.paused, actions.onSending)
-            status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending)
+            status is MirrorStatus.Live -> PauseRow(status.paused, actions.onSending, bleed)
+            status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending, bleed)
         }
         // Also during setup (MR1): Maps is where the trip starts, and the checklist does not block opening it.
         OpenMapsButton(actions, size)
@@ -304,7 +313,7 @@ private fun OpenMapsButton(actions: MirrorActions, size: ButtonSize) {
 
 /** The pause switch with its reason; amber-outlined while paused so the state is plain at a glance (MR4). */
 @Composable
-private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit) {
+private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit, bleed: Dp) {
     val c = KtmTheme.colors
     KtmSwitchRow(
         title = stringResource(R.string.mirror_sending_title),
@@ -313,7 +322,7 @@ private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit) {
         supporting = stringResource(if (paused) R.string.mirror_sending_paused else R.string.mirror_sending_on),
         supportingLines = 2,
         leadingIcon = KtmIcons.Dash,
-        modifier = if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier,
+        modifier = Modifier.fullBleed(bleed).then(if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier),
     )
 }
 

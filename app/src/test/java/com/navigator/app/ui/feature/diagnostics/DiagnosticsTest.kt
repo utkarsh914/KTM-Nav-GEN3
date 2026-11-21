@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.diagnostics
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -267,6 +269,12 @@ class DiagnosticsContentTest {
         assertEquals(true, errors)
         rule.onNodeWithContentDescription("Search the log").performClick()
         rule.onNodeWithText("Search the log").assertDoesNotExist()
+    }
+
+    @Test fun aWarningLineIsAnnouncedAsOneNotOnlyTinted() {
+        val ui = LogsUi(entries = listOf(LogEntries.parse("[12:30:02.000] [BLE] !! write failed").copy(key = "b")), tags = listOf("BLE"))
+        rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, LogsActions({}, {}, {}, {})) } }
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Warning")).assertExists()
     }
 
     @Test fun logsSaySoWhenTheFilterHidesEverything() {

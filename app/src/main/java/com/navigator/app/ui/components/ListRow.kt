@@ -119,7 +119,7 @@ fun TonalIconBadge(icon: ImageVector, modifier: Modifier = Modifier, tint: Color
     Box(
         modifier.size(40.dp).background(KtmTheme.colors.surf3, KtmShapes.Control),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }
 
 /** The 40 dp outlined circle that leads an empty slot (Home or Work not set yet): an outlined "+". */
@@ -128,7 +128,7 @@ fun OutlinedIconBadge(icon: ImageVector, modifier: Modifier = Modifier) {
     Box(
         modifier.size(40.dp).border(1.dp, KtmTheme.colors.line2, KtmShapes.Pill),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = KtmTheme.accent.text, modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, null, tint = KtmTheme.accent.text, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }
 
 /** A secondary value on the right of a row. */
@@ -140,13 +140,13 @@ fun RowValue(text: String) {
 /** Chevron marking a row that opens something. */
 @Composable
 fun RowChevron() {
-    Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg3, modifier = Modifier.size(24.dp))
+    Icon(KtmIcons.ChevronRight, null, tint = KtmTheme.colors.fg3, modifier = Modifier.size(KtmLayout.iconMedium))
 }
 
-/** Divider inset to the text, past the leading icon. */
+/** Divider inset to the text: past the leading icon, or ([withIcon] false, rows with no icon) flush with the row's own padding. */
 @Composable
-fun ListDivider(modifier: Modifier = Modifier, inset: Dp = KtmLayout.dividerInset) {
-    HorizontalDivider(modifier.padding(start = inset), color = KtmTheme.colors.line)
+fun ListDivider(modifier: Modifier = Modifier, withIcon: Boolean = true) {
+    HorizontalDivider(modifier.padding(start = if (withIcon) KtmLayout.dividerInset else KtmSpacing.lg), color = KtmTheme.colors.line)
 }
 
 /** [text] with the characters in [match] in bold; the style lives here so feature code sets none. */

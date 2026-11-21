@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
@@ -210,7 +211,7 @@ private fun AddStopRow(state: RouteSheetState, onAdd: () -> Unit) {
     val tint = if (enabled) a.text else c.fg3
     Row(
         Modifier.fillMaxWidth().heightIn(min = KtmLayout.row1).clip(KtmShapes.Control)
-            .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onAdd) else Modifier),
+            .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onAdd) else Modifier.semantics(mergeDescendants = true) { disabled() }),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         Box(

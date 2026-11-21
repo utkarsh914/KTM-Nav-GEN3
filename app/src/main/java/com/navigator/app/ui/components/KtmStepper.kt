@@ -144,5 +144,5 @@ private fun StepButton(icon: ImageVector, description: String, enabled: Boolean,
                 onClick(label = description) { if (stepEnabled) { step(); true } else false }
             },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = if (enabled) c.fg else c.fg3, modifier = Modifier.size(24.dp)) }
+    ) { Icon(icon, null, tint = if (enabled) c.fg else c.fg3, modifier = Modifier.size(KtmLayout.iconMedium)) }
 }

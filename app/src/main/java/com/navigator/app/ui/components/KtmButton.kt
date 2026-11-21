@@ -124,7 +124,7 @@ fun KtmButton(
     val reduced = KtmTheme.motion.reduced
     val scale by animateFloatAsState(if (pressed && !reduced) 0.97f else 1f, KtmTheme.motion.effectsFast(), label = "press")
     val ringColor = if (style == ButtonStyle.Primary) KtmTheme.colors.fg else KtmTheme.accent.text
-    val outline = palette.border?.let { BorderStroke(1.5.dp, it) }
+    val outline = palette.border?.let { BorderStroke(KtmLayout.outlineThin, it) }
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = size.height)

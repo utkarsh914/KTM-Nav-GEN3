@@ -94,7 +94,7 @@
     <string name="navigate_sheet_expand">Show saved and recent places</string>
     <string name="navigate_sheet_collapse">Hide saved and recent places</string>
     <string name="navigate_needs_location">Needs location</string>
-    <string name="navigate_recenter">Recenter</string>
+    <string name="navigate_recenter">Recentre</string>
     <string name="navigate_resume">Resume navigation</string>
     <string name="navigate_resume_short">Resume</string>
     <string name="navigate_reset_north">Reset orientation to north</string>
@@ -134,7 +134,7 @@
     <string name="bike_sheet_bluetooth_off_hint">Turn on Bluetooth to reconnect.</string>
     <string name="bike_sheet_disconnected">Not connected</string>
     <string name="bike_sheet_disconnected_hint">Switch the bike on and keep the phone close.</string>
-    <string name="bike_sheet_beeps">Turn beeps</string>
+    <string name="bike_sheet_beeps">Beeps</string>
     <string name="bike_sheet_beeps_hint">Sound for each turn</string>
     <string name="bike_sheet_messages">Messages on dash</string>
     <string name="bike_sheet_messages_hint">Notifications from your phone</string>
@@ -228,7 +228,7 @@
     <string name="route_on_time">no delays</string>
     <string name="route_delay">+%1$d min traffic</string>
     <string name="route_option_description">%1$s, %2$s, %3$s, %4$s</string>
-    <string name="route_add_stop_button">Stop</string>
+    <string name="route_add_stop_button">Add stop</string>
     <string name="route_add_stop_row">Add a stop</string>
     <plurals name="route_stops_left">
         <item quantity="one">%1$d left</item>
@@ -283,7 +283,7 @@
     <string name="riding_trip_menu">Trip menu</string>
     <string name="riding_controls_back">Back to guidance</string>
     <string name="riding_overview">Overview</string>
-    <string name="riding_recenter">Recenter</string>
+    <string name="riding_recenter">Recentre</string>
     <string name="riding_north_up">North up</string>
     <string name="riding_chip_offline">Offline · guidance continues</string>
     <string name="riding_chip_offline_reroute">Offline · reroutes when back online</string>
@@ -618,7 +618,6 @@
     <string name="trim_keeps">Keeps %1$s · %2$s</string>
     <string name="trim_permanent">This permanently removes the rest of the track.</string>
     <string name="trim_action">Trim ride</string>
-    <string name="trim_cancel">Cancel</string>
     <string name="trim_failed">Couldn\'t trim this ride. It may have changed: go back and try again.</string>
     <string name="trim_range_description">Part of the ride to keep</string>
     <string name="trim_start_handle">Start of the part to keep</string>
@@ -634,7 +633,7 @@
     <!-- Places tab (PC1-PC5) -->
     <string name="places_title">Places</string>
     <string name="places_more">More</string>
-    <string name="places_menu_select">Select</string>
+    <string name="places_menu_select">Select places</string>
     <string name="places_home_unset">Set home</string>
     <string name="places_work_unset">Set work</string>
     <string name="places_home_hint">One tap to ride home</string>
@@ -645,10 +644,10 @@
     <string name="places_empty">Save places from search, a dropped pin, or the end of a trip.</string>
     <string name="places_add">Add place</string>
     <string name="places_row_more">More actions for %1$s</string>
-    <string name="places_selection_close">Stop selecting</string>
+    <string name="places_selection_close">Cancel selection</string>
     <string name="places_select_all">Select all</string>
     <string name="places_select_none">Select none</string>
-    <string name="places_delete_selected">Delete selected places</string>
+    <string name="places_delete_selected">Remove selected places</string>
     <plurals name="places_selected_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
@@ -779,7 +778,6 @@
 
     <!-- Edit value sheet (DL9) -->
     <string name="edit_value_save">Save</string>
-    <string name="edit_value_cancel">Cancel</string>
     <string name="edit_value_range">Enter a number from %1$d to %2$d</string>
     <string name="edit_value_name_label">Name</string>
 
@@ -935,11 +933,17 @@
     <string name="backup_action_restore">Restore from a file</string>
     <string name="backup_action_backup_hint">Rides, places and settings in one file</string>
     <string name="backup_action_restore_hint">Choose what to bring back</string>
+    <string name="backup_row_included">Included</string>
+    <string name="backup_row_not_included">Not included</string>
+    <string name="logs_level_warning">Warning</string>
+    <string name="logs_level_ok">Done</string>
+    <string name="mirror_details_expanded">Expanded</string>
+    <string name="mirror_details_collapsed">Collapsed</string>
     <string name="backup_included">What\'s in a backup</string>
     <string name="backup_inc_rides">Rides, with tracks and notes</string>
     <string name="backup_inc_places">Saved places, Home and Work</string>
     <string name="backup_inc_settings">All settings</string>
-    <string name="backup_inc_pairing">Bike pairing. Pair again on a new phone</string>
+    <string name="backup_inc_pairing">Bike pairing. Re-pair on a new phone</string>
     <string name="backup_restore_rule">Restoring adds rides and places and never deletes any. Settings in the backup replace the current ones, and any setting not in the file goes back to its default.</string>
     <plurals name="backup_done">
         <item quantity="one">Backed up %1$d ride, your places and settings</item>
@@ -948,7 +952,7 @@
     <string name="backup_share">Share</string>
     <string name="backup_share_title">Share backup</string>
     <string name="backup_failed">Backup failed</string>
-    <string name="backup_retry">Retry</string>
+    <string name="backup_retry">Try again</string>
     <string name="backup_restored">Restored %1$s</string>
     <plurals name="backup_restored_rides">
         <item quantity="one">%1$d ride</item>

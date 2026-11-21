@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.AccentScheme
 import com.navigator.app.ui.theme.KtmColors
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -50,11 +51,11 @@ fun InfoBanner(
 ) {
     val (container, text, iconColor) = bannerColors(tone, KtmTheme.colors, KtmTheme.accent)
     Row(
-        modifier.fillMaxWidth().background(container, KtmShapes.Card).padding(horizontal = 14.dp, vertical = KtmSpacing.md),
+        modifier.fillMaxWidth().background(container, KtmShapes.Card).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         verticalAlignment = Alignment.Top,
     ) {
-        Icon(icon, null, tint = iconColor, modifier = Modifier.size(24.dp))
+        Icon(icon, null, tint = iconColor, modifier = Modifier.size(KtmLayout.iconMedium))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
             if (title != null) Text(title, style = MaterialTheme.typography.titleLarge, color = text)
             Text(message, style = MaterialTheme.typography.bodySmall, color = text)

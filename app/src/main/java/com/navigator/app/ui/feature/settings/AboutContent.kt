@@ -59,7 +59,7 @@ fun AboutContent(ui: AboutUi, actions: AboutActions, modifier: Modifier = Modifi
             title = stringResource(R.string.about_logs), supporting = stringResource(R.string.about_logs_hint), supportingLines = 2,
             onClick = actions.onLogs, trailing = { RowChevron() },
         )
-        ListDivider()
+        ListDivider(withIcon = false)
         KtmSwitchRow(
             stringResource(R.string.about_copy_logs), ui.copyLogs, actions.onCopyLogs,
             supporting = stringResource(R.string.about_copy_logs_hint), supportingLines = 2,
@@ -70,13 +70,13 @@ fun AboutContent(ui: AboutUi, actions: AboutActions, modifier: Modifier = Modifi
             title = stringResource(R.string.about_symbols), supporting = stringResource(R.string.about_symbols_hint), supportingLines = 2,
             onClick = actions.onSymbols, trailing = { RowChevron() },
         )
-        ListDivider()
+        ListDivider(withIcon = false)
         ListRow(
             title = stringResource(R.string.about_calibration), supporting = stringResource(R.string.about_calibration_hint), supportingLines = 2,
             onClick = actions.onCalibration, trailing = { RowChevron() },
         )
         if (ui.showOverlayToggle) {
-            ListDivider()
+            ListDivider(withIcon = false)
             KtmSwitchRow(
                 stringResource(R.string.about_overlay), ui.overlay, actions.onOverlay,
                 supporting = stringResource(R.string.about_overlay_hint), supportingLines = 2,

@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
@@ -34,7 +35,7 @@ fun KtmSelectionBar(title: String, closeLabel: String, onClose: () -> Unit, acti
     ) {
         KtmIconButton(KtmIcons.Close, closeLabel, onClose, tint = a.onContainer)
         Text(
-            title, style = MaterialTheme.typography.titleLarge, color = a.onContainer,
+            title, style = MaterialTheme.typography.titleLarge, color = a.onContainer, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         actions()

@@ -56,11 +56,11 @@ fun KtmSearchField(
         // The whole pill is the target, not only the text line.
         modifier.height(KtmLayout.targetPrimary).background(c.surf2, KtmShapes.Pill)
             .clickable(interactionSource = null, indication = null) { requester.requestFocus() }
-            .padding(start = KtmSpacing.lg, end = KtmSpacing.xs),
+            .padding(start = KtmSpacing.lg, end = if (trailing == null) KtmSpacing.lg else KtmSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Icon(KtmIcons.Search, null, tint = c.fg2, modifier = Modifier.size(24.dp))
+        Icon(KtmIcons.Search, null, tint = c.fg2, modifier = Modifier.size(KtmLayout.iconMedium))
         // Merged, so the empty field reads its placeholder as the label and a filled one reads what was typed.
         Box(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
             if (value.isEmpty()) Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = c.fg3, maxLines = 1)

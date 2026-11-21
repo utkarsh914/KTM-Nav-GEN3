@@ -70,7 +70,7 @@ fun SymbolTestContent(ui: SymbolTestUi, actions: SymbolTestActions, modifier: Mo
             item {
                 Text(
                     stringResource(R.string.symbols_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                    modifier = Modifier.padding(horizontal = KtmSpacing.edge, vertical = KtmSpacing.sm),
+                    modifier = Modifier.padding(vertical = KtmSpacing.sm),
                 )
             }
             item {

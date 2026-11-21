@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
@@ -105,7 +106,9 @@ private fun ActionCard(
 @Composable
 private fun Included(text: String, included: Boolean) {
     val c = KtmTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+    val state = stringResource(if (included) R.string.backup_row_included else R.string.backup_row_not_included)
+    // The tick or cross is a picture: the state is also said in words.
+    Row(Modifier.semantics(mergeDescendants = true) { stateDescription = state }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Icon(
             if (included) KtmIcons.Done else KtmIcons.Close, null, tint = if (included) c.okText else c.fg3, modifier = Modifier.size(KtmSpacing.xl),
         )

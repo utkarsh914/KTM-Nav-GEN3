@@ -3,6 +3,8 @@ package com.navigator.app.ui.feature.settings
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -272,6 +274,14 @@ class SettingsB16cContentTest {
         rule.onNode(hasText("Restore from a file") and hasClickAction()).performClick()
         rule.onNodeWithText("Rides, with tracks and notes").performScrollTo().assertIsDisplayed()
         assertEquals(listOf("backup", "restore"), log)
+    }
+
+    @Test fun theChecklistSaysInWordsWhatIsAndIsNotInABackup() {
+        backup(BackupUi())
+        rule.onNodeWithText("Rides, with tracks and notes").performScrollTo()
+        for (state in listOf("Included", "Not included")) {
+            assertTrue(state, rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, state)).fetchSemanticsNodes().isNotEmpty())
+        }
     }
 
     @Test fun restoreIsOffWhileBackingUp() {
