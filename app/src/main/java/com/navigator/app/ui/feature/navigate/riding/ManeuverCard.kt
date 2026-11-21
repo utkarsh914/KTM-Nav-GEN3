@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,15 +30,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.model.LaneInfo
@@ -62,7 +69,10 @@ class ManeuverMetrics(
     val instruction: TextStyle,
     val instructionLines: Int,
     val laneArrow: Dp,
-    /** The card fills the height it is given, with its band at the foot (the landscape panel). */
+    /**
+     * The landscape block (NL1): it fills the height it is given with its band at the foot, runs flush with square corners
+     * (the panel clips them), puts the instruction under the glyph and distance, and shrinks "km" next to the number.
+     */
     val fill: Boolean,
 ) {
     companion object {
@@ -124,7 +134,7 @@ private fun StartingCard(m: ManeuverMetrics, destination: String?) {
     val r = KtmTheme.riding
     val text = stringResource(R.string.riding_starting)
     Row(
-        Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier).clip(KtmShapes.Card).background(r.surfaceHigh).padding(KtmSpacing.lg)
+        Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier.clip(KtmShapes.Card)).background(r.surfaceHigh).padding(KtmSpacing.lg)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite; contentDescription = text },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
@@ -143,60 +153,109 @@ private fun StartingCard(m: ManeuverMetrics, destination: String?) {
 }
 
 @Composable
-private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: androidx.compose.ui.graphics.Color, band: androidx.compose.ui.graphics.Color, on: androidx.compose.ui.graphics.Color) {
+private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, band: Color, on: Color) {
     val dim = if (ui.rerouting) 0.6f else 1f
-    val rerouting = stringResource(R.string.riding_rerouting)
     // The band switching between Then and lanes grows the card smoothly, so the map below moves rather than jumps.
-    Column(Modifier.fillMaxWidth().then(if (m.fill) Modifier.fillMaxHeight() else Modifier.animateContentSize(KtmTheme.motion.ridingSpatial())).clip(KtmShapes.Card).background(bg)) {
-        Row(
-            Modifier.fillMaxWidth().then(if (m.fill) Modifier.weight(1f) else Modifier).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
-        ) {
-            Box(Modifier.size(m.glyph), contentAlignment = Alignment.Center) {
-                if (ui.rerouting) {
-                    CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
-                } else {
-                    TurnIconRef(ui.icon, size = m.glyph, color = on)
+    Column(
+        Modifier.fillMaxWidth()
+            .then(if (m.fill) Modifier.fillMaxHeight() else Modifier.animateContentSize(KtmTheme.motion.ridingSpatial()).clip(KtmShapes.Card))
+            .background(bg),
+    ) {
+        if (m.fill) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+                    .padding(start = KtmSpacing.md, top = KtmSpacing.lg, end = KtmSpacing.lg),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+                    ManeuverGlyph(ui, m, on)
+                    DistanceLine(ui, m, on, dim, Modifier.weight(1f, fill = false))
                 }
+                Column(Modifier.padding(start = KtmSpacing.xs, top = KtmSpacing.sm)) { InstructionLines(ui, m, on, dim) }
             }
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                    if (ui.rerouting) {
-                        Text(
-                            rerouting, style = MaterialTheme.typography.headlineSmall, color = on,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                        )
-                    } else if (ui.distance != null) {
-                        Text(ui.distance, style = m.distance, color = on, maxLines = 1, modifier = Modifier.alpha(dim))
-                    }
-                    if (ui.exit != null && !ui.rerouting) ExitBadge(ui.exit)
-                }
-                if (ui.instruction.isNotBlank()) {
-                    Text(if (ui.rerouting) stringResource(R.string.riding_last_instruction, ui.instruction) else ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
-                }
-                if (ui.road != null) {
-                    Text(
-                        ui.road, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = on,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim),
-                    )
+        } else {
+            Row(
+                Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+            ) {
+                ManeuverGlyph(ui, m, on)
+                Column(Modifier.weight(1f)) {
+                    DistanceLine(ui, m, on, dim)
+                    InstructionLines(ui, m, on, dim)
                 }
             }
         }
         when (val footer = ui.footer) {
             ManeuverFooter.None -> {}
             is ManeuverFooter.Then -> Row(
-                Modifier.fillMaxWidth().background(band).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+                Modifier.fillMaxWidth().background(band).then(if (m.fill) Modifier.height(KtmLayout.bandHeightLand) else Modifier.padding(vertical = KtmSpacing.sm))
+                    .padding(horizontal = KtmSpacing.lg),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
             ) {
                 Text(stringResource(R.string.riding_then), style = KtmTheme.type.ridingLabel, color = on)
                 TurnIconRef(footer.icon, size = KtmLayout.iconRiding, color = on, contentDescription = com.navigator.app.ui.components.TurnIconNames.human(footer.icon))
             }
-            is ManeuverFooter.Lanes -> Box(Modifier.fillMaxWidth().background(band).padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs)) {
+            is ManeuverFooter.Lanes -> Box(
+                Modifier.fillMaxWidth().background(band).then(if (m.fill) Modifier.height(KtmLayout.lanesHeightLand) else Modifier)
+                    .padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs),
+                contentAlignment = Alignment.Center,
+            ) {
                 LaneBand(footer.lanes, arrow = m.laneArrow)
             }
         }
+    }
+}
+
+@Composable
+private fun ManeuverGlyph(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color) {
+    Box(Modifier.size(m.glyph), contentAlignment = Alignment.Center) {
+        if (ui.rerouting) CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
+        else TurnIconRef(ui.icon, size = m.glyph, color = on)
+    }
+}
+
+/** The distance (or "Rerouting…") and the exit badge. On the landscape block a "km" unit is smaller, so the number stays the shape you read. */
+@Composable
+private fun DistanceLine(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color, dim: Float, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        if (ui.rerouting) {
+            Text(
+                stringResource(R.string.riding_rerouting), style = MaterialTheme.typography.headlineSmall, color = on,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        } else if (ui.distance != null) {
+            Text(
+                if (m.fill) withSmallUnit(ui.distance, m.distance.fontSize) else AnnotatedString(ui.distance),
+                style = m.distance, color = on, maxLines = 1, modifier = Modifier.alpha(dim),
+            )
+        }
+        if (ui.exit != null && !ui.rerouting) ExitBadge(ui.exit)
+    }
+}
+
+/** "12 km" reads as a big 12 and a smaller km (NL3); metres keep one size. */
+internal fun withSmallUnit(distance: String, size: TextUnit): AnnotatedString {
+    val at = distance.lastIndexOf(' ')
+    if (at < 0 || !distance.endsWith(" km")) return AnnotatedString(distance)
+    return buildAnnotatedString {
+        append(distance.substring(0, at + 1))
+        withStyle(SpanStyle(fontSize = size * SMALL_UNIT)) { append(distance.substring(at + 1)) }
+    }
+}
+
+private const val SMALL_UNIT = 0.56f
+
+@Composable
+private fun InstructionLines(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color, dim: Float) {
+    if (ui.instruction.isNotBlank()) {
+        Text(if (ui.rerouting) stringResource(R.string.riding_last_instruction, ui.instruction) else ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
+    }
+    if (ui.road != null) {
+        Text(
+            ui.road, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = on,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim),
+        )
     }
 }
 

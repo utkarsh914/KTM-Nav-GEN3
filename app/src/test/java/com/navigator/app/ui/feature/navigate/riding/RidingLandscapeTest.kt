@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.map.MapInsets
@@ -21,6 +22,21 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+
+class LandscapeDistanceTest {
+    @Test fun aKilometreUnitIsSmallerThanTheNumber() {
+        val text = withSmallUnit("12 km", 64.sp)
+        assertEquals("12 km", text.text)
+        assertEquals(1, text.spanStyles.size)
+        assertEquals("km", text.text.substring(text.spanStyles[0].start, text.spanStyles[0].end))
+        assertTrue(text.spanStyles[0].item.fontSize < 64.sp)
+    }
+
+    @Test fun metresAndUnknownTextKeepOneSize() {
+        assertTrue(withSmallUnit("450 m", 64.sp).spanStyles.isEmpty())
+        assertTrue(withSmallUnit("–", 64.sp).spanStyles.isEmpty())
+    }
+}
 
 class LandscapePanelSpecTest {
     @Test fun theWidePanelIs352AndTheNarrowOneIs320() {

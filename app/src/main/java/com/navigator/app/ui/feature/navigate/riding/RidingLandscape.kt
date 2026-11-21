@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -136,7 +137,8 @@ fun RidingLandscape(
         }
         LandscapePanel(
             color = KtmTheme.riding.surface,
-            gap = KtmLayout.panelPadding,
+            gap = 0.dp,
+            contentPadding = 0.dp,
             panelModifier = Modifier.pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -156,10 +158,16 @@ fun RidingLandscape(
             ) { shown ->
                 // Each face is a pane of its own, so a screen reader announces the flip and moves to it.
                 val paneName = stringResource(if (shown == null) R.string.riding_guidance_pane else R.string.trip_sheet_title)
-                Column(Modifier.fillMaxSize().semantics { paneTitle = paneName }, verticalArrangement = Arrangement.spacedBy(KtmLayout.panelPadding)) {
+                Column(
+                    Modifier.fillMaxSize().semantics { paneTitle = paneName }.then(if (shown == null) Modifier else Modifier.padding(KtmLayout.panelPadding)),
+                    verticalArrangement = Arrangement.spacedBy(if (shown == null) 0.dp else KtmLayout.panelPadding),
+                ) {
                     if (shown == null) {
                         ManeuverCard(maneuver, Modifier.weight(1f), ManeuverMetrics.landscape(narrow), destination = bar.destination)
-                        TripBar(bar, actions.onOpenSheet)
+                        TripBar(
+                            bar, actions.onOpenSheet, flush = true,
+                            minHeight = if (narrow) KtmLayout.tripBarHeightLandNarrow else KtmLayout.tripBarHeightLand,
+                        )
                     } else {
                         TripControlsPanelBody(maneuver, shown, controlActions)
                     }

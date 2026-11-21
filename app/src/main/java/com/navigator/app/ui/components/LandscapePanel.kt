@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.runtime.remember
 import androidx.compose.animation.slideInHorizontally
@@ -78,6 +79,8 @@ fun LandscapePanel(
     panelModifier: Modifier = Modifier,
     /** Space between the panel's children; the plan sheets bring their own spacing. */
     gap: Dp = 0.dp,
+    /** Inside the card; riding blocks run flush to its edge (0) and the card clips them to its corners. */
+    contentPadding: Dp = KtmLayout.panelPadding,
     onFootprint: (leftPx: Int) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -108,7 +111,8 @@ fun LandscapePanel(
                 // Touches on the card never fall through to the map beneath it.
                 .consumeMapTouches()
                 .then(panelModifier)
-                .padding(KtmLayout.panelPadding),
+                .clip(KtmShapes.Card)
+                .padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(gap),
             content = content,
         )

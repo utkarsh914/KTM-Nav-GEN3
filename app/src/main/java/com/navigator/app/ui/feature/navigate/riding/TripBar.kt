@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -65,7 +66,14 @@ fun timeLeftText(t: TimeLeft): String = when (t.kind) {
  * the limit, in one 100 ms colour change; the number itself is plain text that never animates.
  */
 @Composable
-fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun TripBar(
+    ui: TripBarUi,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Fixed to the foot of the landscape panel: square corners (the panel clips them) and its own height. */
+    flush: Boolean = false,
+    minHeight: Dp = KtmLayout.tripBarHeight,
+) {
     val r = KtmTheme.riding
     val haptics = rememberHaptics()
     val speedBg by animateColorAsState(if (ui.overspeed) r.overspeed else Color.Transparent, KtmTheme.motion.ridingColor(), label = "overspeed")
@@ -79,10 +87,10 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     // The rider's accent, unless it would vanish against this surface (a near-white or near-black custom colour).
     val accent = KtmTheme.accent.fill.takeIf { contrastRatio(it, r.surface) >= PROGRESS_MIN_CONTRAST } ?: r.onSurface
     Box(
-        modifier.fillMaxWidth().clip(KtmShapes.Card).background(r.surface)
+        modifier.fillMaxWidth().then(if (flush) Modifier else Modifier.clip(KtmShapes.Card)).background(r.surface)
             .clickable(role = Role.Button, onClickLabel = menu) { haptics.tap(); onOpen() },
     ) {
-        Row(Modifier.heightIn(min = KtmLayout.tripBarHeight).height(IntrinsicSize.Min).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = minHeight).height(IntrinsicSize.Min).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(
                 Modifier.fillMaxHeight().width(KtmLayout.tripBarSpeed).background(speedBg)
                     // A 1 px divider, drawn only while the block has no fill of its own.

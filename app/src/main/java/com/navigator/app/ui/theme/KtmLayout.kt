@@ -141,6 +141,12 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The trip bar fixed at the foot of the landscape panel (NL1), and on a 320 dp panel (NL7). */
+    val tripBarHeightLand = 84.dp
+    val tripBarHeightLandNarrow = 76.dp
+    /** The band under the landscape guidance: Then, and the lanes (NL1, NL2). */
+    val bandHeightLand = 48.dp
+    val lanesHeightLand = 60.dp
     /** One promise line on the welcome (ON1). */
     val promiseRow = 40.dp
     /** The disc of a checklist step (ON6, ON7). */
