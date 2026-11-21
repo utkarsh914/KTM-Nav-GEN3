@@ -4,8 +4,8 @@ import android.content.res.Resources
 import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.DistanceFormatter
-import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.KtmManeuverMapping
+import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ride.RideSessionState

@@ -81,7 +81,7 @@ private fun Chip(text: String, tone: ChipTone, onTap: (() -> Unit)?) {
         ChipTone.Info -> r.surfaceHigh to r.onSurface
     }
     Box(
-        Modifier.padding(top = KtmSpacing.sm).heightIn(min = KtmLayout.targetRest).clip(KtmShapes.Pill).background(bg)
+        Modifier.padding(top = KtmSpacing.sm).heightIn(min = if (onTap != null) KtmLayout.targetPrimary else KtmLayout.targetRest).clip(KtmShapes.Pill).background(bg)
             .then(if (onTap != null) Modifier.clickable(role = Role.Button, onClick = onTap) else Modifier)
             .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm)
             .semantics { liveRegion = LiveRegionMode.Polite },

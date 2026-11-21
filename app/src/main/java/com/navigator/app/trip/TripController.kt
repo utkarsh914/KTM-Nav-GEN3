@@ -136,7 +136,11 @@ class TripController(
         }
 
         guidance.startFailure.onEach { failure ->
-            if (failure != null) rollBackStop()
+            if (failure != null) {
+                // The start is over: a Retry right now is not a double tap and must not be swallowed.
+                lastStartAtMs = 0L
+                rollBackStop()
+            }
         }.launchIn(scope)
     }
 

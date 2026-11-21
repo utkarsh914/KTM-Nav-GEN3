@@ -456,6 +456,17 @@ class TripControllerTest {
         assertNull(e.controller.state.value.finished)
     }
 
+    @Test fun retryRightAfterAFailureIsNotSwallowed() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null)
+        runCurrent()
+        e.now += 200
+        e.guidance.startFailure.value = StartFailure.ROUTE
+        runCurrent()
+        e.controller.retry()
+        assertEquals(2, e.guidance.started.size)
+    }
+
     @Test fun aDoubleTapOnRetryStartsOnlyOnce() = runTest {
         val e = Env(backgroundScope)
         e.controller.start(dest, null, null)

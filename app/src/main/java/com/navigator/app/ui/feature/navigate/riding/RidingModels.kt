@@ -2,9 +2,9 @@ package com.navigator.app.ui.feature.navigate.riding
 
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.DistanceFormatter
-import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.ktm.KtmManeuverMapping
+import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.LaneInfo
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
