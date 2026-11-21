@@ -100,7 +100,10 @@ object KtmLayout {
     val routeStroke = 3.dp
 
     /** The route preview on a ride card. */
-    val rideThumb = 64.dp
+    val rideThumb = 72.dp
+    /** The thumbnail while selecting, beside the round check (RD3). */
+    val rideThumbSelecting = 60.dp
+    val roundCheck = 28.dp
 
     /** Border of a flat card. */
     val hairline = 1.dp

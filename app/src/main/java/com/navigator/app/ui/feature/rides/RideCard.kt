@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,7 +93,8 @@ fun RideCard(
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RideThumbnailView(ride, thumbnail, thumbnailPeek)
+        if (selecting) RoundCheck(selected)
+        RideThumbnailView(ride, thumbnail, thumbnailPeek, if (selecting) KtmLayout.rideThumbSelecting else KtmLayout.rideThumb)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
             Text(
                 highlightedText(title, item.titleMatch.takeIf { ride.destinationLabel?.isNotBlank() == true }),
@@ -113,16 +112,9 @@ fun RideCard(
                     if (ride.source == RideSource.GPX) KtmBadge(stringResource(R.string.ride_badge_gpx), tone = BadgeTone.Neutral)
                 }
             }
-            Text(rideStats(ride), style = MaterialTheme.typography.bodyMedium, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(rideStats(ride, short = selecting), style = MaterialTheme.typography.bodyMedium, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (selecting) {
-            Box(Modifier.size(KtmLayout.targetRest), contentAlignment = Alignment.Center) {
-                Checkbox(
-                    checked = selected, onCheckedChange = null,
-                    colors = CheckboxDefaults.colors(checkedColor = a.fill, checkmarkColor = a.onFill, uncheckedColor = c.line2),
-                )
-            }
-        } else {
+        if (!selecting) {
             KtmIconButton(
                 if (ride.saved) KtmIcons.StarFilled else KtmIcons.Star,
                 stringResource(if (ride.saved) R.string.ride_unstar else R.string.ride_star),
@@ -135,11 +127,11 @@ fun RideCard(
 }
 
 @Composable
-private fun rideStats(ride: RecordedRide): String {
+private fun rideStats(ride: RecordedRide, short: Boolean = false): String {
     val distance = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC)
     val duration = rideDuration(ride.durationSeconds)
     val top = ride.maxSpeedKmh.toInt()
-    return if (top >= 1) stringResource(R.string.ride_stats_three, distance, duration, stringResource(R.string.ride_speed_kmh, top))
+    return if (top >= 1 && !short) stringResource(R.string.ride_stats_three, distance, duration, stringResource(R.string.ride_speed_kmh, top))
     else stringResource(R.string.ride_stats_two, distance, duration)
 }
 
@@ -159,23 +151,37 @@ private fun rideDay(ms: Long): String {
 
 private fun rideTime(ms: Long): String = ClockFormat.formatter().format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
-/** A 64 dp route preview drawn from the stored points: speed-coloured, a neutral line for rides with no speed (GPX). */
+/** A 72 dp (60 while selecting) route preview drawn from the stored points: speed-coloured, a neutral line for rides with no speed (GPX). */
 @Composable
-private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>, peek: (RecordedRide) -> List<ThumbPoint>?) {
+private fun RideThumbnailView(ride: RecordedRide, thumbnail: suspend (RecordedRide) -> List<ThumbPoint>, peek: (RecordedRide) -> List<ThumbPoint>?, thumb: androidx.compose.ui.unit.Dp) {
     val c = KtmTheme.colors
     val points by produceState(peek(ride), ride.id, ride.pointCount) {
         value = runCatching { thumbnail(ride) }.getOrDefault(emptyList())
     }
     val stroke = KtmLayout.outline
     // Decorative: the card's text already says everything a screen reader needs.
-    Box(Modifier.size(KtmLayout.rideThumb).background(c.surf3, KtmShapes.Control).clearAndSetSemantics {}) {
+    Box(Modifier.size(thumb).background(c.surf3, KtmShapes.Control).clearAndSetSemantics {}) {
         val pts = points
         if (!pts.isNullOrEmpty()) {
             val neutral = c.fg2
-            Canvas(Modifier.size(KtmLayout.rideThumb)) {
+            Canvas(Modifier.size(thumb)) {
                 val px = ThumbnailGeometry.project(pts, size.width, size.height, pad = KtmSpacing.sm.toPx())
                 drawRoute(px, stroke.toPx(), neutral)
             }
         }
+    }
+}
+
+/** The round 28 dp check that leads a card while selecting (RD3): an accent disc with a tick, or an empty ring. */
+@Composable
+fun RoundCheck(checked: Boolean, modifier: Modifier = Modifier) {
+    val c = KtmTheme.colors
+    val a = KtmTheme.accent
+    Box(
+        modifier.size(KtmLayout.roundCheck)
+            .then(if (checked) Modifier.background(a.fill, KtmShapes.Pill) else Modifier.border(KtmLayout.outline, c.fg3, KtmShapes.Pill)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) androidx.compose.material3.Icon(KtmIcons.Done, null, tint = a.onFill, modifier = Modifier.size(KtmSpacing.lg))
     }
 }

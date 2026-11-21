@@ -62,7 +62,11 @@ import java.time.ZoneId
 fun MergeContent(ui: MergeUi, onBack: () -> Unit, onMerge: () -> Unit, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     Column(modifier.fillMaxSize().background(c.bg)) {
-        KtmTopBar(title = stringResource(R.string.merge_title), onBack = onBack)
+        val count = (ui as? MergeUi.Ready)?.plan?.parts?.size
+        KtmTopBar(
+            title = if (count != null) pluralStringResource(R.plurals.merge_title_count, count, count) else stringResource(R.string.merge_title),
+            onBack = onBack,
+        )
         val motionSpecs = KtmTheme.motion
         AnimatedContent(targetState = ui, contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
             when (shown) {
@@ -107,7 +111,7 @@ private fun Ready(ui: MergeUi.Ready, onMerge: () -> Unit) {
                     supportingLines = 2,
                     trailing = { Text(rideName(plan.name, RideSource.MERGED), style = MaterialTheme.typography.bodyMedium, color = KtmTheme.colors.fg2, maxLines = 1) },
                 )
-                Text(stringResource(R.string.merge_note_replace), style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2)
+                Text(pluralStringResource(R.plurals.merge_note_replace, plan.parts.size, plan.parts.size), style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2)
             }
         }
         KtmButton(

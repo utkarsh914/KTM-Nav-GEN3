@@ -1,5 +1,10 @@
 package com.navigator.app.ui.feature.rides
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import com.navigator.app.ui.components.KtmButton
+import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.shell.rideContainer
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -61,6 +66,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.rememberHaptics
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -135,14 +141,20 @@ fun RidesContent(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
-                        verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
                     ) {
+                        if (shown.query.isNotBlank()) {
+                            item(key = "search-count") {
+                                val count = body.items.count { it is RideListItem.Ride }
+                                Text(
+                                    pluralStringResource(R.plurals.rides_search_count, count, count), style = MaterialTheme.typography.bodySmall,
+                                    color = c.fg2, modifier = Modifier.padding(vertical = KtmSpacing.sm),
+                                )
+                            }
+                        }
                         if (shown.selecting) {
                             item(key = "select-all") {
-                                KtmCheckboxRow(
-                                    title = stringResource(if (shown.allSelected) R.string.rides_select_none else R.string.rides_select_all),
-                                    checked = shown.allSelected, onCheckedChange = actions.onSelectAll,
-                                )
+                                SelectAllRow(shown.allSelected, body.items.count { it is RideListItem.Ride }, actions.onSelectAll)
                             }
                         }
                         body.items.forEach { item ->
@@ -174,11 +186,52 @@ fun RidesContent(
         }
     }
     if (showSort && ui != null) {
-        KtmModalSheet(onDismiss = { showSort = false }, title = stringResource(R.string.rides_sort_title)) {
-            RideSort.options.forEach { option ->
-                KtmRadioRow(stringResource(option.label), option == ui.sort, { actions.onSort(option); showSort = false })
-            }
+        SortSheet(ui.sort, onDismiss = { showSort = false }, onShow = { actions.onSort(it); showSort = false })
+    }
+}
+
+/** RD2: the four fields as radios, the direction in the field's own words, and Show rides. Nothing changes until then. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun SortSheet(current: RideSort, onDismiss: () -> Unit, onShow: (RideSort) -> Unit) {
+    var draft by remember { mutableStateOf(current) }
+    val fields = listOf(
+        RideSortField.Date to R.string.rides_field_date, RideSortField.Distance to R.string.rides_field_distance,
+        RideSortField.Duration to R.string.rides_field_duration, RideSortField.TopSpeed to R.string.rides_field_speed,
+    )
+    val directions = listOf(true, false)
+    val labels = directions.associateWith { stringResource(RideSort(draft.field, it).label) }
+    KtmModalSheet(onDismiss = onDismiss, title = stringResource(R.string.rides_sort_title)) {
+        fields.forEach { (field, label) ->
+            KtmRadioRow(stringResource(label), draft.field == field, { draft = draft.copy(field = field) })
         }
+        KtmSegmented(
+            directions, draft.desc, { draft = draft.copy(desc = it) }, { labels.getValue(it) },
+            Modifier.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
+        )
+        KtmButton(
+            stringResource(R.string.rides_sort_show), { onShow(draft) },
+            Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.lg).padding(bottom = KtmSpacing.lg),
+        )
+    }
+}
+
+/** RD3: Select all as the first row, with how many rides there are, so the bar never truncates. */
+@Composable
+private fun SelectAllRow(allSelected: Boolean, count: Int, onSelectAll: (Boolean) -> Unit) {
+    val c = KtmTheme.colors
+    val haptics = rememberHaptics()
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest)
+            .toggleable(allSelected, role = Role.Checkbox) { haptics.toggle(it); onSelectAll(it) },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
+    ) {
+        RoundCheck(allSelected)
+        Text(
+            stringResource(if (allSelected) R.string.rides_select_none else R.string.rides_select_all),
+            style = MaterialTheme.typography.titleMedium, color = c.fg, modifier = Modifier.weight(1f),
+        )
+        Text(pluralStringResource(R.plurals.rides_count, count, count), style = MaterialTheme.typography.bodySmall, color = c.fg2)
     }
 }
 
@@ -197,8 +250,8 @@ private fun RidesBar(actions: RidesActions, hasRides: Boolean, onSort: () -> Uni
         Box {
             KtmIconButton(KtmIcons.More, stringResource(R.string.rides_more), { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = KtmTheme.colors.surf) {
-                if (hasRides) KtmMenuItem(stringResource(R.string.rides_menu_select)) { menu = false; actions.onSelect(null) }
                 KtmMenuItem(stringResource(R.string.rides_menu_import)) { menu = false; actions.onImport() }
+                if (hasRides) KtmMenuItem(stringResource(R.string.rides_menu_select)) { menu = false; actions.onSelect(null) }
                 KtmMenuItem(stringResource(R.string.rides_menu_recording)) { menu = false; actions.onRecordingSettings() }
             }
         }
@@ -278,7 +331,7 @@ private fun EmptyRides(autoRecordOn: Boolean, recording: Boolean, actions: Rides
         title = stringResource(R.string.rides_empty_title),
         message = stringResource(if (autoRecordOn) R.string.rides_empty_message else R.string.rides_empty_message_auto_off),
         // A ride is already being recorded: the strip above the tabs owns it, so no second Record button.
-        primary = if (recording) null else StateAction(stringResource(R.string.rides_record), actions.onRecord),
+        primary = if (recording) null else StateAction(stringResource(R.string.rides_record_ride), actions.onRecord),
         secondary = StateAction(stringResource(R.string.rides_menu_import), actions.onImport),
         tertiary = if (autoRecordOn) null else StateAction(stringResource(R.string.rides_empty_turn_on), actions.onTurnOnAutoRecord),
     )

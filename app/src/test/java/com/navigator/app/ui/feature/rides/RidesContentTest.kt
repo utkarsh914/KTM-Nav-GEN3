@@ -29,7 +29,7 @@ class RidesContentTest {
     private val log = mutableListOf<String>()
     private val actions = RidesActions(
         { log += "open:$it" }, { log += "star:$it" }, { log += "search" }, { log += "closeSearch" }, { log += "q:$it" },
-        { log += "sort" }, { log += "select:$it" }, { log += "toggle:$it" }, { log += "all:$it" }, { log += "stop" },
+        { log += "sort:${it.field}:${it.desc}" }, { log += "select:$it" }, { log += "toggle:$it" }, { log += "all:$it" }, { log += "stop" },
         { log += "starSel" }, { log += "merge" }, { log += "delete" }, { log += "import" }, { log += "recSettings" }, { log += "record" }, { log += "autoOn" },
     )
     private val today = LocalDate.of(2026, 11, 20)
@@ -69,6 +69,7 @@ class RidesContentTest {
         show(ui(selecting = true, selected = setOf("a", "g")))
         rule.onNodeWithText("2 selected").assertIsDisplayed()
         rule.onNodeWithText("Select all").assertIsDisplayed()
+        rule.onNodeWithText("2 rides").assertIsDisplayed()
         rule.onNodeWithContentDescription("Star selected rides").performClick()
         rule.onNodeWithContentDescription("Delete selected rides").performClick()
         rule.onNodeWithContentDescription("Cancel selection").performClick()
@@ -90,7 +91,8 @@ class RidesContentTest {
     @Test fun emptyExplainsAndOffersBothWaysIn() {
         show(ui(body = RidesBody.Empty, items = emptyList()))
         rule.onNodeWithText("No rides yet").assertIsDisplayed()
-        rule.onNodeWithText("Record").performClick()
+        rule.onNodeWithText("Trips you navigate are recorded here automatically.", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Record a ride").performClick()
         rule.onNodeWithText("Import GPX").performClick()
         assertEquals(listOf("record", "import"), log)
         rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Search rides")).assertCountEquals(0)
@@ -125,7 +127,7 @@ class RidesContentTest {
     @Test fun menuHasImportSelectAndRecordingSettings() {
         show(ui())
         rule.onNodeWithContentDescription("More").performClick()
-        rule.onNodeWithText("Select").performClick()
+        rule.onNodeWithText("Select rides").performClick()
         rule.onNodeWithContentDescription("More").performClick()
         rule.onNodeWithText("Recording settings").performClick()
         assertEquals(listOf("select:null", "recSettings"), log)
@@ -134,10 +136,23 @@ class RidesContentTest {
     @Test fun theSortSheetOffersAdaptiveOptionsAndPicksOne() {
         show(ui())
         rule.onNodeWithContentDescription("Sort rides").performClick()
-        rule.onNodeWithText("Longest first").assertIsDisplayed()
-        rule.onNodeWithText("Slowest first").assertIsDisplayed()
-        rule.onNodeWithText("Fastest first").performClick()
-        assertEquals(listOf("sort"), log)
+        rule.onNodeWithText("Top speed").performClick()
+        rule.onNodeWithText("Fastest first").assertIsDisplayed()
+        rule.onNodeWithText("Slowest first").performClick()
+        assertEquals("nothing changes until Show rides", emptyList<String>(), log)
+        rule.onNodeWithText("Show rides").performClick()
+        assertEquals(listOf("sort:TopSpeed:false"), log)
+    }
+
+    @Test fun searchingSaysHowManyRidesMatchAndWhatIsSearched() {
+        show(ui(query = "toit", searchOpen = true, items = RidesListBuilder.build(listOf(a), "toit", RideSort())))
+        rule.onNodeWithText("1 ride · searching names and notes").assertIsDisplayed()
+    }
+
+    @Test fun selectAllIsARowThatTogglesEverything() {
+        show(ui(selecting = true, selected = setOf("a")))
+        rule.onNodeWithText("Select all").performClick()
+        assertEquals(listOf("all:true"), log)
     }
 
     @Test fun loadingShowsNoEmptyStateFlash() {
