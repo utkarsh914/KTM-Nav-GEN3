@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.components.PillTone
+import com.navigator.app.ui.components.windowHeightDp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -196,19 +197,21 @@ private fun AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: Kt
 /** NL4: a compact green row keeps the next turn visible; the actions of NV7 follow; End trip stays at the foot. */
 @Composable
 private fun ColumnScope.TripControlsPanelBody(maneuver: ManeuverUi, bar: TripBarUi, ui: TripControlsUi, actions: TripSheetActions) {
+    // NL8: on a short screen the summary line goes and the tiles shrink, so the actions stay in reach.
+    val short = windowHeightDp(fallback = Float.MAX_VALUE) < SHORT_PANEL_BELOW_DP
     CompactGuidance(maneuver, actions.onDismiss)
     val summary = listOfNotNull(bar.destination?.takeIf { it.isNotBlank() }, tripSubtitle(bar).takeIf { it.isNotEmpty() }).joinToString(" · ")
-    if (summary.isNotEmpty()) {
+    if (summary.isNotEmpty() && !short) {
         Text(
             summary, style = MaterialTheme.typography.bodySmall, color = KtmTheme.riding.onSurfaceVariant,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.xs),
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.md),
         )
     }
     Column(
         Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(KtmSpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone, KtmLayout.panelPadding)
+        TripControlsBody(ui.beeps, ui.messages, ui.dashStatus, ui.canAddStop, ui.nextStop, actions, ui.dashTone, KtmLayout.panelPadding, compact = short)
     }
     EndTripButton(actions.onEnd)
 }
@@ -238,8 +241,8 @@ private fun CompactGuidance(maneuver: ManeuverUi, onBack: () -> Unit) {
                     )
                 } else {
                     TurnIconRef(maneuver.icon, size = KtmLayout.iconRiding, color = r.onGuidance)
-                    maneuver.distance?.let { Text(it, style = MaterialTheme.typography.headlineSmall, color = r.onGuidance, maxLines = 1) }
-                    val line = (maneuver.road ?: maneuver.instruction).orEmpty()
+                    maneuver.distance?.let { Text(it, style = MaterialTheme.typography.headlineSmall, color = r.onGuidance, maxLines = 1, softWrap = false) }
+                    val line = maneuver.road?.takeIf { it.isNotBlank() } ?: maneuver.instruction
                     Text(
                         line, style = MaterialTheme.typography.labelMedium, color = r.onGuidance,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
@@ -267,3 +270,6 @@ private fun rememberTouchExploration(context: Context): State<Boolean> {
     }
     return on
 }
+
+/** Below this window height (dp) the landscape controls drop their summary line and use smaller tiles (NL8). */
+private const val SHORT_PANEL_BELOW_DP = 380f

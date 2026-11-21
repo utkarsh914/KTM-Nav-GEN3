@@ -65,6 +65,13 @@ fun windowWidthDp(fallback: Float): Float {
     return if (widthPx > 0) with(LocalDensity.current) { widthPx.toDp().value } else fallback
 }
 
+/** The window's height, for layouts that give way on a short screen (the 780 x 360 case). */
+@Composable
+fun windowHeightDp(fallback: Float): Float {
+    val heightPx = LocalWindowInfo.current.containerSize.height
+    return if (heightPx > 0) with(LocalDensity.current) { heightPx.toDp().value } else fallback
+}
+
 /**
  * The panel every landscape screen shares: 352 dp (320 below 800 dp wide), 8 dp from the safe area on the cutout
  * side, 12 dp padding and gap. It stays on the left, also in reverse landscape (the inset moves to the right).

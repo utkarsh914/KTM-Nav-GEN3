@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -111,6 +112,25 @@ class RidingLandscapeTest {
         show(controls)
         rule.onNodeWithText("Dr Rajkumar Rd").assertIsDisplayed()
         rule.onNodeWithText("Toit · Arrive 17:42 · 1 h 12 min · 38 km").assertIsDisplayed()
+    }
+
+    @Test fun theCompactRowFallsBackToTheInstructionWithoutARoad() {
+        show(controls, maneuver.copy(road = null))
+        rule.onNodeWithText("Turn right onto").assertIsDisplayed()
+    }
+
+    @Test fun theStartingRowStillHasTheChevron() {
+        show(controls, ManeuverUi.Starting)
+        rule.onNodeWithText("Starting navigation").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Back to guidance").assertIsDisplayed()
+    }
+
+    @Config(sdk = [36], qualifiers = "w780dp-h360dp")
+    @Test fun aShortScreenDropsTheSummaryAndKeepsTheActionsInReach() {
+        show(controls)
+        rule.onAllNodesWithText("Toit · Arrive 17:42 · 1 h 12 min · 38 km").assertCountEquals(0)
+        rule.onNodeWithText("Add stop").assertIsDisplayed()
+        rule.onNodeWithText("End trip").assertIsDisplayed()
     }
 
     @Test fun theMapIsToldHowMuchOfItsLeftThePanelCovers() {

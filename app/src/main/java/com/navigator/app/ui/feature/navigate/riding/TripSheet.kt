@@ -83,19 +83,22 @@ fun ColumnScope.TripControlsBody(
     dashTone: PillTone = PillTone.Connected,
     /** How far the sheet pads its content: the rows run out to its edge. */
     bleed: Dp = KtmSpacing.lg,
+    /** Smaller tiles for a short landscape screen (NL8). */
+    compact: Boolean = false,
 ) {
+    val tile = if (compact) ButtonSize.Tile else ButtonSize.TileLarge
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
             stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.PinPlus, enabled = canAddStop,
+            style = ButtonStyle.Tonal, size = tile, icon = KtmIcons.PinPlus, enabled = canAddStop,
         )
         KtmButton(
             stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
-            style = ButtonStyle.Neutral, size = ButtonSize.TileLarge, icon = KtmIcons.Route,
+            style = ButtonStyle.Neutral, size = tile, icon = KtmIcons.Route,
         )
         KtmButton(
             stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
-            style = ButtonStyle.Neutral, size = ButtonSize.TileLarge, icon = KtmIcons.ChevronDown,
+            style = ButtonStyle.Neutral, size = tile, icon = KtmIcons.ChevronDown,
         )
     }
     if (!canAddStop) {
