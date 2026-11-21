@@ -78,6 +78,7 @@
     <string name="navigate_tile_pick_caption">Drop a pin</string>
     <string name="navigate_tile_pick_needs_map">Needs map</string>
     <string name="navigate_saved_header">Saved</string>
+    <string name="navigate_saved_see_all">See all</string>
     <string name="navigate_recent_header">Recent</string>
     <string name="navigate_empty_hint">Search, or say where you\'re going.</string>
     <string name="navigate_activity_to">To %1$s</string>

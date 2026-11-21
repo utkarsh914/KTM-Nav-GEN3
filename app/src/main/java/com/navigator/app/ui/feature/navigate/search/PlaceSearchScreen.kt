@@ -10,6 +10,7 @@ import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.ListDivider
+import com.navigator.app.ui.shell.LocalOpenPlaces
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.animation.core.tween
@@ -198,7 +199,16 @@ private fun BrowseList(state: PlaceSearchState, mode: SearchMode, actions: Place
         if (useCurrent != null) item { UseCurrentRow(useCurrent) }
         if (pickOnMap != null) item { PickOnMapRow(pickOnMap) }
         if (saved.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.navigate_saved_header)) }
+            item {
+                val openPlaces = LocalOpenPlaces.current
+                // Pick mode already is the Places tab's own flow, so it has no link there.
+                val link = openPlaces.takeIf { mode !is SearchMode.Pick }
+                SectionHeader(
+                    stringResource(R.string.navigate_saved_header),
+                    action = stringResource(R.string.navigate_saved_see_all).takeIf { link != null },
+                    onAction = link?.let { go -> { actions.onBack(); go() } },
+                )
+            }
             itemsIndexed(saved, key = { _, it -> "s-${it.slot}-${it.place.lat},${it.place.lng}" }) { index, it ->
                 if (index > 0) ListDivider()
                 val icon = when (it.slot) {

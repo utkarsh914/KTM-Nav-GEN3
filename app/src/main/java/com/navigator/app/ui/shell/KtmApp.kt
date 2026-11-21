@@ -222,6 +222,7 @@ fun KtmApp(onQuit: () -> Unit) {
         CompositionLocalProvider(
             LocalFeedback provides feedback, LocalShellChrome provides chrome,
             LocalOpenLogs provides { navController.push(Route.Logs) },
+            LocalOpenPlaces provides { navController.openTab(Tab.Places) },
             LocalOpenBikeSettings provides { navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) },
         ) {
             NavWindowEffects()

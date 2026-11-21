@@ -1,7 +1,11 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,12 +15,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
 /** The only section-header style: titleSmall, 24 dp above and 8 dp below. */
 @Composable
-fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: String? = null) {
+fun SectionHeader(
+    text: String,
+    modifier: Modifier = Modifier,
+    trailing: String? = null,
+    /** An accent link at the right ("See all"); a 48 dp target. */
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
     Row(
         modifier.fillMaxWidth().padding(start = KtmSpacing.lg, end = KtmSpacing.lg, top = KtmSpacing.xl, bottom = KtmSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -30,6 +42,13 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: String?
             Text(
                 trailing, style = MaterialTheme.typography.bodySmall, color = KtmTheme.colors.fg2, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.sm),
+            )
+        }
+        if (action != null && onAction != null) {
+            Text(
+                action, style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.text, maxLines = 1,
+                modifier = Modifier.defaultMinSize(minHeight = KtmLayout.targetRest).clickable(role = Role.Button, onClick = onAction)
+                    .wrapContentHeight(Alignment.CenterVertically).padding(start = KtmSpacing.md),
             )
         }
     }
