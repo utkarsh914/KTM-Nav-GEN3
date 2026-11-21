@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.navigator.app.app.AppContainer
 import com.navigator.app.data.connection.BikeStatus
+import com.navigator.app.data.permissions.PermissionsState
 import com.navigator.app.data.settings.NavEngine
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.providers.GoogleNavSdkController
@@ -20,9 +21,11 @@ data class ReadyUi(
     val connected: Boolean,
     val engine: NavEngine,
     val userName: String,
+    /** Optional permissions still off: the row that leads to them (ON10). */
+    val optionalMissing: Int = 0,
 ) {
     companion object {
-        fun of(snap: SettingsSnapshot, status: BikeStatus, engineAvailable: Boolean) = ReadyUi(
+        fun of(snap: SettingsSnapshot, status: BikeStatus, engineAvailable: Boolean, optionalMissing: Int = 0) = ReadyUi(
             bikeName = when (status) {
                 is BikeStatus.Connected -> status.name
                 is BikeStatus.Connecting -> status.name
@@ -34,16 +37,19 @@ data class ReadyUi(
             connected = status is BikeStatus.Connected,
             engine = if (engineAvailable) snap.engine else NavEngine.MIRROR,
             userName = snap.userName.orEmpty().trim(),
+            optionalMissing = optionalMissing,
         )
     }
 }
 
 class ReadyViewModel(container: AppContainer, engineAvailable: Boolean) : ViewModel() {
-    val ui: StateFlow<ReadyUi> = combine(container.settings.snapshot, container.connection.status) { snap, status ->
-        ReadyUi.of(snap, status, engineAvailable)
+    private fun optional(state: PermissionsState) = state.items.count { !it.required && !it.granted }
+
+    val ui: StateFlow<ReadyUi> = combine(container.settings.snapshot, container.connection.status, container.permissions.state) { snap, status, perms ->
+        ReadyUi.of(snap, status, engineAvailable, optional(perms))
     }.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
-        ReadyUi.of(container.settings.snapshot.value, container.connection.status.value, engineAvailable),
+        ReadyUi.of(container.settings.snapshot.value, container.connection.status.value, engineAvailable, optional(container.permissions.state.value)),
     )
 
     companion object {

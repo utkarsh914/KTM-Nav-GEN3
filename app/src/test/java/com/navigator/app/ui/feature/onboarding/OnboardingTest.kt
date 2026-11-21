@@ -156,6 +156,7 @@ class OnboardingViewModelTest {
         assertTrue(ui.connected)
         assertEquals(NavEngine.MIRROR, ui.engine)
         assertFalse(ReadyUi.of(snap, BikeStatus.NotPaired, true).connected)
+        assertEquals(2, ReadyUi.of(snap, BikeStatus.NotPaired, true, optionalMissing = 2).optionalMissing)
     }
 }
 
@@ -234,5 +235,34 @@ class OnboardingContentTest {
         show(OnboardingStep.ENGINE)
         rule.onNodeWithContentDescription("Back").performClick()
         assertEquals(listOf("back"), log)
+    }
+
+    private fun ready(ui: ReadyUi, pages: MutableList<String>, started: MutableList<String>) = rule.setContent {
+        KtmTheme(darkTheme = false) {
+            ReadyContent(ui, ReadyActions({ pages += it.name }, { started += "go" }))
+        }
+    }
+
+    @Test fun theLastScreenNamesTheRiderShowsTheBikeAndLeadsToTheOptionalPermissions() {
+        val pages = mutableListOf<String>()
+        val started = mutableListOf<String>()
+        ready(ReadyUi("KTM 7F21", connected = true, engine = NavEngine.IN_APP, userName = "Arjun", optionalMissing = 1), pages, started)
+        rule.onNodeWithText("You're all set, Arjun").assertIsDisplayed()
+        rule.onNodeWithText("KTM 7F21").assertIsDisplayed()
+        rule.onNodeWithText("Connected").assertIsDisplayed()
+        rule.onNodeWithText("Hi Arjun!").assertIsDisplayed()
+        rule.onNodeWithText("Change").performClick()
+        rule.onNodeWithText("1 optional permission left").performClick()
+        rule.onNode(hasText("Start riding") and hasClickAction()).performClick()
+        assertEquals(listOf("NAVIGATION", "PERMISSIONS"), pages)
+        assertEquals(listOf("go"), started)
+    }
+
+    @Test fun withNothingOptionalLeftTheRowIsGone() {
+        ready(ReadyUi(null, connected = false, engine = NavEngine.MIRROR, userName = ""), mutableListOf(), mutableListOf())
+        rule.onNodeWithText("You're all set").assertIsDisplayed()
+        rule.onNodeWithText("Not connected yet").assertIsDisplayed()
+        rule.onNodeWithText("Mirror Google Maps").assertIsDisplayed()
+        rule.onNodeWithText("1 optional permission left").assertDoesNotExist()
     }
 }

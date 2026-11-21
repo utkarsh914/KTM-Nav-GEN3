@@ -145,6 +145,9 @@ object KtmLayout {
     val promiseRow = 40.dp
     /** The disc of a checklist step (ON6, ON7). */
     val stepDisc = 28.dp
+    /** The tick circle on the last first-run screen (ON10) and the tick in it. */
+    val readyHero = 88.dp
+    val readyGlyph = 44.dp
     /** The page behind a sheet that has taken over (ON9). */
     val dimmedContent = 0.4f
     /** The outline of a chosen card (ON2). */
