@@ -124,4 +124,12 @@ class MirrorContentTest {
         rule.onNodeWithText("Open Google Maps").performClick()
         assertEquals(listOf("maps"), log)
     }
+
+    @Config(sdk = [36], qualifiers = "w874dp-h402dp")
+    @Test fun theMountedPanelKeepsTheEtaAndDistanceLeftAndSaysWhatTheDashShowsOnce() {
+        show(MirrorStatus.Live(turn, Freshness.Seconds(2), paused = false, stale = false), landscape = true)
+        rule.onAllNodesWithText("On your dash now").assertCountEquals(1)
+        rule.onNodeWithText("17:42").assertIsDisplayed()
+        rule.onNodeWithText("12 km").assertIsDisplayed()
+    }
 }

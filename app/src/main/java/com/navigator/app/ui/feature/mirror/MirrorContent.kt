@@ -32,6 +32,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -51,6 +55,7 @@ import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.BikeStatusDot
 import com.navigator.app.ui.components.BikeStatusPill
+import com.navigator.app.ui.components.DashPalette
 import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
@@ -99,15 +104,28 @@ fun MirrorContent(
     /** A recording is running (an auto ride in its grace, or the rider's own): Record a ride gives way to the strip. */
     recording: Boolean = false,
 ) {
-    if (landscape) {
-        Row(modifier.fillMaxSize().padding(KtmSpacing.lg), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
+    if (landscape && status is MirrorStatus.Live) {
+        // MR6/MR7: the dash's own black panel on the left; the bike, the pause switch and Maps in a column beside it.
+        Row(modifier.fillMaxSize().padding(KtmSpacing.ridingEdge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.ridingEdge)) {
+            DashPanel(status, Modifier.weight(1f).fillMaxHeight())
+            Column(
+                Modifier.width(KtmLayout.panelWide).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+            ) {
+                Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
+                if (status.stale) StaleBanner(status.freshness)
+                Controls(status, actions, landscape = true, recording)
+            }
+        }
+    } else if (landscape) {
+        Row(modifier.fillMaxSize().padding(KtmSpacing.ridingEdge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
                 Header(status, bike, actions, dot = isNarrowWindow())
                 Spacer(Modifier.height(KtmSpacing.md))
                 when (status) {
-                    is MirrorStatus.Live -> BigTurn(status)
                     is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = true)
                     is MirrorStatus.Setup -> Checklist(status.rows, actions)
+                    is MirrorStatus.Live -> {}
                 }
             }
             Column(
@@ -141,7 +159,7 @@ fun MirrorContent(
 private const val PAUSED_ALPHA = 0.45f
 
 @Composable
-private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, dot: Boolean = false) {
+private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, dot: Boolean = false, onDashLine: Boolean = true) {
     val c = KtmTheme.colors
     // MR1: the bike on the left, the mode as a badge on the right; what the page is about comes under it.
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
@@ -156,23 +174,7 @@ private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorAction
                 Text(stringResource(R.string.mirror_setup_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
             }
             // MR3/MR5: what the dash shows, and how fresh it is (amber with the gap when it has gone quiet).
-            is MirrorStatus.Live -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                Text(
-                    stringResource(R.string.mirror_on_dash), style = MaterialTheme.typography.labelMedium, color = c.fg2,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                if (status.paused) {
-                    // MR4: paused says so here; there is nothing live to report.
-                    KtmBadge(stringResource(R.string.mirror_paused_badge), tone = BadgeTone.Warn)
-                } else {
-                    Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
-                    // Not a live region: it changes every second. The stale banner announces itself instead.
-                    Text(
-                        freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall,
-                        color = if (status.stale) c.warn else c.fg2,
-                    )
-                }
-            }
+            is MirrorStatus.Live -> if (onDashLine) OnDashLine(status, c.fg2, if (status.stale) c.warn else c.fg2)
             is MirrorStatus.Ready -> {}
         }
     }
@@ -316,31 +318,60 @@ private fun turnPreview(t: MirrorTurn, time: String) = DashPreviewState.Turn(
     eta = t.eta ?: "—", remaining = t.remaining ?: "—",
 )
 
-/** MR6: the mounted display: glyph 96 dp, distance 64 sp, road 28 sp. */
+/** "On your dash now" with how fresh it is: a live dot and age, amber when it has gone quiet, a Paused badge when paused (MR3-MR5). */
 @Composable
-private fun BigTurn(live: MirrorStatus.Live) {
+private fun OnDashLine(status: MirrorStatus.Live, label: Color, age: Color, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Text(
+            stringResource(R.string.mirror_on_dash), style = MaterialTheme.typography.labelMedium, color = label,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        if (status.paused) {
+            // MR4: paused says so here; there is nothing live to report.
+            KtmBadge(stringResource(R.string.mirror_paused_badge), tone = BadgeTone.Warn)
+        } else {
+            Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
+            // Not a live region: it changes every second. The stale banner announces itself instead.
+            Text(freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall, color = age)
+        }
+    }
+}
+
+/** MR6/MR7: the mounted display, drawn as the dash draws it (black, white): glyph 96 dp, distance 64 sp, road 28 sp, ETA and distance left at the foot. */
+@Composable
+private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
     val t = live.turn
     Column(
-        Modifier.alpha(if (live.paused) PAUSED_ALPHA else 1f).semantics(mergeDescendants = true) {},
+        modifier.alpha(if (live.paused) PAUSED_ALPHA else 1f).clip(KtmShapes.Card).background(DashPalette.bg)
+            .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md)
+            .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
-        if (live.stale) StaleBanner(live.freshness)
+        OnDashLine(live, DashPalette.subtle, if (live.stale) KtmTheme.colors.warn else DashPalette.subtle)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             // With no instruction text the glyph is the only thing that says which way to turn.
             t.icon?.let {
                 TurnIconRef(
-                    it, size = KtmLayout.mirrorGlyph, color = c.fg,
+                    it, size = KtmLayout.mirrorGlyph, color = DashPalette.text,
                     contentDescription = if (t.instruction.isNullOrBlank()) com.navigator.app.ui.components.TurnIconNames.human(it) else null,
                 )
             }
             Column {
-                Text(t.distance ?: t.instruction.orEmpty(), style = MaterialTheme.typography.displayLarge, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (t.distance != null) t.instruction?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = c.fg2, maxLines = 1) }
+                Text(t.distance ?: t.instruction.orEmpty(), style = MaterialTheme.typography.displayLarge, color = DashPalette.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (t.distance != null) t.instruction?.let { Text(it, style = MaterialTheme.typography.titleLarge, color = DashPalette.subtle, maxLines = 1) }
             }
         }
-        t.road?.let { Text(it, style = MaterialTheme.typography.headlineMedium, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        val line = listOfNotNull(t.eta, t.remaining).joinToString(" · ")
-        if (line.isNotEmpty()) Text(line, style = MaterialTheme.typography.bodyLarge, color = c.fg2, textAlign = TextAlign.Start)
+        t.road?.let { Text(it, style = MaterialTheme.typography.headlineMedium, color = DashPalette.text, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        Spacer(Modifier.weight(1f))
+        if (t.eta != null || t.remaining != null) {
+            Row(
+                Modifier.fillMaxWidth().drawBehind { drawLine(DashPalette.ring, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1f) }.padding(top = KtmSpacing.sm),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(t.eta.orEmpty(), style = MaterialTheme.typography.titleLarge, color = DashPalette.subtle, maxLines = 1)
+                Text(t.remaining.orEmpty(), style = MaterialTheme.typography.titleLarge, color = DashPalette.subtle, maxLines = 1)
+            }
+        }
     }
 }
