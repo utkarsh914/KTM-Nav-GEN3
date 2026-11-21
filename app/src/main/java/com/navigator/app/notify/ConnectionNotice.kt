@@ -10,8 +10,8 @@ enum class ConnectionAction { TURN_ON, REPAIR, QUIT }
 
 data class ConnectionContent(
     val title: String,
-    /** The second line: the likely fix. */
-    val text: String,
+    /** The second line: the likely fix; none while connected with nothing to add (SY5). */
+    val text: String?,
     val actions: List<ConnectionAction>,
     /** A real problem gets one heads-up on the alert channel; the other states stay silent. */
     val alert: Boolean,
@@ -30,7 +30,7 @@ object ConnectionNoticeContent {
             named(res, R.string.conn_connecting, R.string.conn_connecting_named, bikeName), res.getString(R.string.conn_connecting_fix), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.CONNECTED -> ConnectionContent(
-            named(res, R.string.conn_connected, R.string.conn_connected_named, bikeName), mirrorLine ?: res.getString(R.string.conn_connected_hint), listOf(ConnectionAction.QUIT), alert = false,
+            named(res, R.string.conn_connected, R.string.conn_connected_named, bikeName), mirrorLine, listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.RECONNECTING -> ConnectionContent(
             named(res, R.string.conn_reconnecting, R.string.conn_reconnecting_named, bikeName), res.getString(R.string.conn_reconnecting_fix), listOf(ConnectionAction.QUIT), alert = false,

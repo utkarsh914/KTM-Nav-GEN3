@@ -89,6 +89,8 @@ class LiveUpdateContentTest {
         assertEquals("220 m \u00b7 Turn left onto MG Road", c.text)
         val limited = build(LiveInput(enroute(), now, overspeedKmh = 92, overspeedLimitKmh = 80))
         assertEquals("Alert at 80 \u00b7 220 m \u00b7 Turn left onto MG Road", limited.text)
+        val bare = build(LiveInput(NormalizedNavigationState(NavSessionState.ENROUTE), now, overspeedKmh = 92, overspeedLimitKmh = 80))
+        assertEquals("Alert at 80 \u00b7 Continue", bare.text)
         assertEquals("92 km/h", c.chip)
     }
 
@@ -201,6 +203,7 @@ class ConnectionNoticeTest {
         assertEquals("Dash connected \u00b7 KTM 7F21", named.title)
         assertEquals("Reconnecting to KTM 7F21\u2026", ConnectionNoticeContent.of(ConnectionNotice.RECONNECTING, null, res, "KTM 7F21").title)
         assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, " ").title)
+        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, "").title)
     }
 
     @Test fun actionsMatchTheState() {
@@ -218,7 +221,7 @@ class ConnectionNoticeTest {
         assertEquals("Mirroring to dash \u00b7 350 m \u00b7 Turn right \u00b7 \u25cf Rec 12:30", line)
         assertEquals(line, of(ConnectionNotice.CONNECTED, line).text)
         assertEquals("Mirroring to dash", ConnectionNoticeContent.mirrorLine(null, null, null, res))
-        assertEquals("Guidance and messages go to the dash.", of(ConnectionNotice.CONNECTED).text)
+        assertNull("connected says it once, in the title", of(ConnectionNotice.CONNECTED).text)
     }
 }
 

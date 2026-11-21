@@ -240,6 +240,7 @@ class BccuConnectionService : LifecycleService() {
     private var bleThread: android.os.HandlerThread? = null
     private var bleHandler: android.os.Handler? = null
     /** Held while connect() assigns [gatt], so the first callback never sees a half-published client. */
+    private val settingsStore by lazy { AppSettings(this) }
     private val gattLock = Any()
     /** Last time the dash sent us anything on the auth channel (heartbeat liveness). */
     @Volatile private var lastAuthMsgMs = 0L
@@ -750,7 +751,7 @@ class BccuConnectionService : LifecycleService() {
         }
         try {
             val device = adapter.getRemoteDevice(address)
-            _deviceName.value = AppSettings(this).bondedDeviceName ?: device.name
+            _deviceName.value = settingsStore.bondedDeviceName ?: device.name
             synchronized(gattLock) {
                 // Deprecated in API 37, but its replacement (connectGatt(BluetoothGattConnectionSettings,
                 // Executor, callback)) is API 37-only and minSdk is 36. Revisit when minSdk reaches 37.
@@ -808,7 +809,7 @@ class BccuConnectionService : LifecycleService() {
     private fun createNotificationChannel() = NotificationChannels.ensure(this, NotificationChannels.CONNECTION)
 
     private fun buildForegroundNotification(status: ConnectionNotice): Notification {
-        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources, AppSettings(this).bondedDeviceName)
+        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources, settingsStore.bondedDeviceName)
         val builder = NotificationCompat.Builder(this, NotificationChannels.CONNECTION)
             .setContentTitle(content.title)
             .setContentText(content.text)
@@ -862,7 +863,7 @@ class BccuConnectionService : LifecycleService() {
             if (!alertShown) {
                 alertShown = true
                 NotificationChannels.ensure(this, NotificationChannels.CONNECTION_ALERT)
-                val content = ConnectionNoticeContent.of(status, null, resources, AppSettings(this).bondedDeviceName)
+                val content = ConnectionNoticeContent.of(status, null, resources, settingsStore.bondedDeviceName)
                 manager.notify(
                     ALERT_ID,
                     NotificationCompat.Builder(this, NotificationChannels.CONNECTION_ALERT)

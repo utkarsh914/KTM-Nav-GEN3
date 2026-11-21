@@ -88,6 +88,26 @@ class PairingContentTest {
         rule.onNodeWithText("Scan again").assertDoesNotExist()
     }
 
+    @Test fun namelessOtherDevicesAreToldApartByTheirAddress() {
+        val a = ScannedBike("AA:BB:CC:DD:E1", null, -90, pairedBefore = false)
+        val b = ScannedBike("AA:BB:CC:DD:E2", null, -90, pairedBefore = false)
+        show(PairingUi(PairingPhase.Scanning, others = listOf(a, b)))
+        rule.onNodeWithText("Other devices (2)").performScrollTo().performClick()
+        rule.onNodeWithText("DD:E1", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("DD:E2", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun onlyAVeryCloseOrKnownBikeIsTheOutlinedBest() {
+        show(PairingUi(PairingPhase.Scanning, bikes = listOf(headset)))
+        rule.onNodeWithText("Headset").assertIsDisplayed()
+    }
+
+    @Test fun bluetoothOffAlsoOffersTheSystemSettings() {
+        show(PairingUi(PairingPhase.Blocked(BlockReason.BLUETOOTH_OFF)))
+        rule.onNode(hasText("Open Bluetooth settings") and hasClickAction()).performClick()
+        assertEquals(listOf("bt"), log)
+    }
+
     @Test fun theFirstRunBarShowsItsLastSegment() {
         show(PairingUi(PairingPhase.Scanning), progress = 4 to 4)
         rule.onNodeWithContentDescription("Step 4 of 4").assertIsDisplayed()

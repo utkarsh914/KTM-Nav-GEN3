@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.pairing
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +92,9 @@ fun PairingContent(ui: PairingUi, actions: PairingActions, modifier: Modifier = 
     var failureHelpClosed by rememberSaveable { mutableStateOf(false) }
     val failed = ui.phase is PairingPhase.Failed
     LaunchedEffect(failed) { if (!failed) failureHelpClosed = false }
+    // A second failure straight after a retry must open the help again.
+    val retry = { failureHelpClosed = false; actions.onRetry() }
+    val helpOpen = troubleOpen || (failed && !failureHelpClosed)
 
     Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         val confirming = ui.phase is PairingPhase.Confirming
@@ -101,14 +105,14 @@ fun PairingContent(ui: PairingUi, actions: PairingActions, modifier: Modifier = 
             is PairingPhase.Blocked -> Blocked(phase.reason, actions)
             PairingPhase.Scanning -> Scanning(ui, actions) { troubleOpen = true }
             is PairingPhase.Confirming -> Confirming(phase, actions)
-            PairingPhase.Failed -> Failed(actions, dimmed = !failureHelpClosed) { troubleOpen = true }
+            PairingPhase.Failed -> Failed(actions, retry, dimmed = helpOpen) { troubleOpen = true }
         }
     }
-    if (troubleOpen || (failed && !failureHelpClosed)) {
+    if (helpOpen) {
         HavingTroubleSheet(
             onViewLogs = actions.onViewLogs, onShareLog = actions.onShareLog, onBluetoothSettings = actions.onBluetoothSettings,
             onDismiss = { troubleOpen = false; failureHelpClosed = true },
-            onTryAgain = actions.onRetry.takeIf { failed },
+            onTryAgain = retry.takeIf { failed },
         )
     }
 }
@@ -151,7 +155,7 @@ private fun Scanning(ui: PairingUi, actions: PairingActions, onTrouble: () -> Un
             }
             Column(Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.md), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 when {
-                    ui.bikes.isNotEmpty() -> ui.bikes.forEachIndexed { i, bike -> BikeCard(bike, best = i == 0, actions.onPick) }
+                    ui.bikes.isNotEmpty() -> ui.bikes.forEachIndexed { i, bike -> BikeCard(bike, best = i == 0 && (bike.pairedBefore || bike.signal == SignalStrength.VERY_CLOSE), actions.onPick) }
                     ui.scanning -> { SkeletonRow(); SkeletonRow() }
                     else -> Text(stringResource(R.string.pair_none), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
                 }
@@ -161,8 +165,9 @@ private fun Scanning(ui: PairingUi, actions: PairingActions, onTrouble: () -> Un
                 val othersState = stringResource(if (othersOpen) R.string.pair_others_expanded else R.string.pair_others_collapsed)
                 ListRow(
                     title = pluralStringResource(R.plurals.pair_others, ui.others.size, ui.others.size),
-                    supporting = stringResource(R.string.pair_others_hint), supportingLines = 2,
-                    leadingIcon = if (othersOpen) KtmIcons.ChevronUp else KtmIcons.ChevronDown,
+                    supporting = stringResource(R.string.pair_others_hint), supportingLines = 1,
+                    leadingIcon = KtmIcons.Bluetooth,
+                    trailing = { androidx.compose.material3.Icon(if (othersOpen) KtmIcons.ChevronUp else KtmIcons.ChevronDown, null, tint = c.fg2) },
                     onClick = { othersOpen = !othersOpen },
                     modifier = Modifier.padding(top = KtmSpacing.sm).semantics { stateDescription = othersState },
                 )
@@ -189,7 +194,7 @@ private fun BikeCard(bike: ScannedBike, best: Boolean, onPick: (ScannedBike) -> 
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val name = bike.name ?: stringResource(R.string.pair_unknown_device)
-    val (label, _) = signalBadge(bike)
+    val (label, tone) = signalBadge(bike)
     val pairDescription = stringResource(R.string.pair_action_cd, name)
     Row(
         Modifier.fillMaxWidth().background(c.surf, KtmShapes.Card)
@@ -202,7 +207,10 @@ private fun BikeCard(bike: ScannedBike, best: Boolean, onPick: (ScannedBike) -> 
             Text(name, style = MaterialTheme.typography.titleMedium, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (label != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                    Icon(KtmIcons.Signal, null, tint = c.fg2, modifier = Modifier.size(KtmSpacing.lg))
+                    Icon(
+                        if (bike.pairedBefore) KtmIcons.Done else KtmIcons.Signal, null,
+                        tint = if (tone == BadgeTone.Ok) c.okText else c.fg2, modifier = Modifier.size(KtmSpacing.lg),
+                    )
                     Text(stringResource(label), style = MaterialTheme.typography.bodySmall, color = c.fg2)
                 }
             }
@@ -217,9 +225,11 @@ private fun BikeCard(bike: ScannedBike, best: Boolean, onPick: (ScannedBike) -> 
 /** A device from the folded list: its name and what is known of its signal, one tap to pair. */
 @Composable
 private fun OtherRow(bike: ScannedBike, onPick: (ScannedBike) -> Unit) {
+    // Two nameless devices would read the same: the tail of the address tells them apart.
+    val signal = signalBadge(bike).first?.let { stringResource(it) }
     ListRow(
         title = bike.name ?: stringResource(R.string.pair_unknown_device),
-        supporting = signalBadge(bike).first?.let { stringResource(it) },
+        supporting = if (bike.name == null) listOfNotNull(signal, bike.address.takeLast(ADDRESS_TAIL)).joinToString(" · ") else signal,
         leadingIcon = KtmIcons.Bluetooth,
         onClick = { onPick(bike) },
         trailing = { RowChevron() },
@@ -280,16 +290,20 @@ private fun Blocked(reason: BlockReason, actions: PairingActions) {
         message = stringResource(if (noPermission) R.string.pair_blocked_permission else R.string.pair_blocked_off),
         modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
         primary = StateAction(stringResource(if (noPermission) R.string.pair_allow_nearby else R.string.pair_turn_on)) { actions.onFixBlock(reason) },
-        secondary = actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) },
+        // If the system's "turn on" dialog was refused, the rider needs another way to Bluetooth.
+        secondary = if (noPermission) actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) }
+        else StateAction(stringResource(R.string.pair_open_bluetooth_short), actions.onBluetoothSettings),
+        tertiary = if (noPermission) null else actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) },
     )
 }
 
 /** ON9: the page behind the help sheet (dimmed while it is open), with Try again once the sheet is closed. */
 @Composable
-private fun Failed(actions: PairingActions, dimmed: Boolean, onTrouble: () -> Unit) {
+private fun Failed(actions: PairingActions, onRetry: () -> Unit, dimmed: Boolean, onTrouble: () -> Unit) {
+    val alpha by animateFloatAsState(if (dimmed) KtmLayout.dimmedContent else 1f, KtmTheme.motion.effectsFast(), label = "failed-dim")
     Column(
         Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .alpha(if (dimmed) KtmLayout.dimmedContent else 1f),
+            .alpha(alpha),
     ) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             LargeTitle(stringResource(R.string.pair_failed_title))
@@ -301,10 +315,12 @@ private fun Failed(actions: PairingActions, dimmed: Boolean, onTrouble: () -> Un
         // While the help sheet is up it carries Try again itself.
         if (!dimmed) {
             Column(Modifier.padding(horizontal = KtmSpacing.edge, vertical = KtmSpacing.lg), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                KtmButton(stringResource(R.string.pair_try_again), actions.onRetry, Modifier.fillMaxWidth())
+                KtmButton(stringResource(R.string.pair_try_again), onRetry, Modifier.fillMaxWidth())
                 KtmButton(stringResource(R.string.pair_trouble), onTrouble, Modifier.fillMaxWidth(), style = ButtonStyle.Tonal, icon = KtmIcons.Help)
                 actions.onPairLater?.let { KtmButton(stringResource(R.string.pair_later), it, Modifier.fillMaxWidth(), style = ButtonStyle.Text) }
             }
         }
     }
 }
+
+private const val ADDRESS_TAIL = 5

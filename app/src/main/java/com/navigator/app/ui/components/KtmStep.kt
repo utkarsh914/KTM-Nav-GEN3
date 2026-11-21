@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.ui.theme.KtmIcons
@@ -32,16 +32,13 @@ enum class StepState { Done, Active, Busy, Pending }
 fun KtmStep(number: Int, text: String, state: StepState, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     val a = KtmTheme.accent
-    val spoken = stringResource(
-        when (state) {
-            StepState.Done -> R.string.step_cd_done
-            StepState.Busy -> R.string.step_cd_busy
-            else -> R.string.step_cd
-        },
-        number, text,
-    )
+    val stateText = when (state) {
+        StepState.Done -> stringResource(R.string.step_done)
+        StepState.Busy -> stringResource(R.string.step_busy)
+        else -> null
+    }
     Row(
-        modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest).semantics(mergeDescendants = true) { contentDescription = spoken },
+        modifier.fillMaxWidth().heightIn(min = KtmLayout.targetRest).semantics(mergeDescendants = true) { stateText?.let { stateDescription = it } },
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
         Box(

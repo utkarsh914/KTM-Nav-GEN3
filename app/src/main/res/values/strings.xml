@@ -891,9 +891,8 @@
     <string name="perm_open_cd">Open settings for %1$s</string>
     <string name="perm_background_title">Allow location all the time</string>
     <string name="perm_background_body">Android asks for this on a separate screen:</string>
-    <string name="step_cd">Step %1$d: %2$s</string>
-    <string name="step_cd_done">Step %1$d done: %2$s</string>
-    <string name="step_cd_busy">Step %1$d in progress: %2$s</string>
+    <string name="step_done">Done</string>
+    <string name="step_busy">In progress</string>
     <string name="perm_step_cd">Step %1$d: %2$s</string>
     <string name="perm_background_step1">Tap Open settings</string>
     <string name="perm_background_step2">Permissions › Location</string>
@@ -1039,6 +1038,7 @@
     <string name="pair_step_close">Keep the phone near the dash</string>
     <string name="pair_bikes">Nearby bikes</string>
     <string name="pair_action">Pair</string>
+    <string name="pair_open_bluetooth_short">Open Bluetooth settings</string>
     <string name="pair_action_cd">Pair with %1$s</string>
     <string name="pair_none">No bike found yet. Scan again with the ignition on.</string>
     <plurals name="pair_others">
@@ -1047,7 +1047,7 @@
     </plurals>
     <string name="pair_others_expanded">Expanded</string>
     <string name="pair_others_collapsed">Collapsed</string>
-    <string name="pair_others_hint">Headsets and other Bluetooth devices. Only open this if your dash has an unusual name.</string>
+    <string name="pair_others_hint">Headsets, watches…</string>
     <string name="pair_unknown_device">Unknown device</string>
     <string name="pair_signal_very_close">Very close</string>
     <string name="pair_signal_nearby">Nearby</string>
@@ -1124,7 +1124,6 @@
     <string name="conn_connecting_fix">Keep your phone near the bike.</string>
     <string name="conn_connected">Dash connected</string>
     <string name="conn_connected_named">Dash connected · %1$s</string>
-    <string name="conn_connected_hint">Guidance and messages go to the dash.</string>
     <string name="conn_reconnecting">Reconnecting to the dash</string>
     <string name="conn_reconnecting_named">Reconnecting to %1$s…</string>
     <string name="conn_reconnecting_fix">Is the ignition on? Retrying automatically</string>

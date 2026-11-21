@@ -145,12 +145,14 @@ private fun Header(ui: OnboardingUi, actions: OnboardingActions) {
 @Composable
 private fun StepFrame(
     title: String, message: String? = null, actions: @Composable ColumnScope.() -> Unit, smallMessage: Boolean = false,
+    top: (@Composable ColumnScope.() -> Unit)? = null,
     body: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
     ) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            top?.invoke(this)
             Text(
                 title, style = MaterialTheme.typography.headlineLarge, color = KtmTheme.colors.fg,
                 modifier = Modifier.semantics { heading() }.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm, bottom = KtmSpacing.sm),
@@ -175,14 +177,17 @@ private fun Welcome(actions: OnboardingActions) {
     StepFrame(
         title = stringResource(R.string.onb_welcome_title), message = stringResource(R.string.onb_welcome_message),
         actions = { KtmButton(stringResource(R.string.common_continue), actions.onNext, Modifier.fillMaxWidth()) },
+        // ON1: the picture of the dash first, then what it is for.
+        top = {
+            DashPreview(
+                DashPreviewState.Turn(
+                    rememberDashTime(), TurnIcon.QUITE_RIGHT, stringResource(R.string.onb_demo_distance), stringResource(R.string.onb_demo_road),
+                    stringResource(R.string.onb_demo_eta), stringResource(R.string.onb_demo_remaining),
+                ),
+                Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.sm, bottom = KtmSpacing.lg),
+            )
+        },
     ) {
-        DashPreview(
-            DashPreviewState.Turn(
-                rememberDashTime(), TurnIcon.QUITE_RIGHT, stringResource(R.string.onb_demo_distance), stringResource(R.string.onb_demo_road),
-                stringResource(R.string.onb_demo_eta), stringResource(R.string.onb_demo_remaining),
-            ),
-            Modifier.padding(horizontal = KtmSpacing.edge).padding(bottom = KtmSpacing.lg),
-        )
         // One line each on a 40 dp rhythm: they promise, they are not rows to tap.
         Promise(KtmIcons.Navigation, R.string.onb_promise_dash)
         Promise(KtmIcons.Message, R.string.onb_promise_messages)
