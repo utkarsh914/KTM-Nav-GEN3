@@ -47,6 +47,7 @@ class ConnectionRepository(
     sources: LinkSources,
     private val stopService: () -> Unit,
     private val cancelNotifications: () -> Unit,
+    private val retryService: () -> Unit = {},
 ) {
     val detail: StateFlow<ConnectionDetail> = combine(
         sources.state, sources.bluetoothOn, sources.scanning, combine(sources.attempt, sources.linkUp) { a, up -> a to up },
@@ -88,6 +89,9 @@ class ConnectionRepository(
         settings.refresh()
     }
 
+    /** The rider asked to try the bike now (the bike sheet's Retry now). */
+    fun retryNow() = retryService()
+
     /** Stop the dash link and clear the app's notifications; the caller finishes the activity. */
     fun quit() {
         stopService()
@@ -111,6 +115,7 @@ class ConnectionRepository(
                 scope, settings, LinkSources(bluetoothOn = btOn.asStateFlow()),
                 stopService = { BccuConnectionService.stop(app) },
                 cancelNotifications = { app.getSystemService(NotificationManager::class.java).cancelAll() },
+                retryService = { BccuConnectionService.retryNow(app) },
             )
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -16,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import com.navigator.app.ble.ReconnectPolicy
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmStep
@@ -57,6 +59,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.delay
 
 /** What the status block of the Bike sheet says. */
 data class BikeStatusText(val icon: ImageVector, @StringRes val title: Int, val arg: Int?, @StringRes val hint: Int?)
@@ -90,6 +93,8 @@ fun BikeSheet(
     onSendTest: (message: String) -> Unit,
     onRePair: () -> Unit,
     onDismiss: () -> Unit,
+    /** Try the bike this moment instead of waiting out the reconnect pacing. */
+    onRetryNow: () -> Unit = {},
     /** A trip is guiding (also while riding on screen): the test turn would replace its guidance on the dash. */
     tripRunning: Boolean = state.activity != null,
 ) {
@@ -168,10 +173,25 @@ fun BikeSheet(
                 }
             }
             Spacer(Modifier.height(KtmSpacing.lg))
-            KtmButton(
-                stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.fillMaxWidth(),
-                style = if (status is BikeStatus.NeedsRepair) ButtonStyle.Primary else ButtonStyle.Outline,
-            )
+            // Retry now leads, unless the keys look lost: then Re-pair does and a retry is the quieter choice.
+            val rePairFirst = status is BikeStatus.NeedsRepair
+            val canRetry = status is BikeStatus.Reconnecting || status is BikeStatus.Disconnected || rePairFirst
+            var retried by remember { mutableStateOf(false) }
+            // One tap is one attempt: the button rests for as long as the service ignores a second tap.
+            LaunchedEffect(retried) { if (retried) { delay(ReconnectPolicy.RETRY_NOW_MIN_GAP_MS); retried = false } }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                if (canRetry) {
+                    KtmButton(
+                        stringResource(if (retried) R.string.bike_sheet_retrying else R.string.bike_sheet_retry_now),
+                        { retried = true; onRetryNow() }, Modifier.weight(1f),
+                        style = if (rePairFirst) ButtonStyle.Outline else ButtonStyle.Primary, enabled = !retried,
+                    )
+                }
+                KtmButton(
+                    stringResource(R.string.bike_sheet_repair), { confirmRePair = true }, Modifier.weight(1f),
+                    style = if (rePairFirst) ButtonStyle.Primary else ButtonStyle.Outline,
+                )
+            }
             KtmButton(
                 stringResource(R.string.pair_trouble), { trouble = true }, Modifier.align(Alignment.CenterHorizontally),
                 style = ButtonStyle.Text, size = ButtonSize.Small, icon = KtmIcons.Help,

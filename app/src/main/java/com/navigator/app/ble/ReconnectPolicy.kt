@@ -44,4 +44,30 @@ object ReconnectPolicy {
     fun shouldPreemptBackgroundConnect(
         bikePresent: Boolean, backgroundConnect: Boolean, hasGatt: Boolean, linkUp: Boolean,
     ): Boolean = bikePresent && backgroundConnect && hasGatt && !linkUp
+
+    /** The rider's "Retry now" taps closer together than this are one tap. */
+    const val RETRY_NOW_MIN_GAP_MS = 3_000L
+
+    /** What a "Retry now" tap does. */
+    enum class RetryNow { Ignore, ScanNow, RecycleAndScan }
+
+    /**
+     * An explicit retry skips any wait (the absent-bike backoff, a handshake cooldown) and scans at once. It never
+     * piles onto an attempt already under way: a scan, a pending connect after a find, a handshake or a live link,
+     * nor onto a tap that came a moment ago. A parked background connect request is recycled into the scan.
+     */
+    fun retryNow(
+        authenticated: Boolean,
+        hasGatt: Boolean,
+        linkUp: Boolean,
+        backgroundConnect: Boolean,
+        scanning: Boolean,
+        settling: Boolean,
+        handshaking: Boolean,
+        sinceLastRetryMs: Long,
+    ): RetryNow = when {
+        authenticated || scanning || settling || handshaking || sinceLastRetryMs < RETRY_NOW_MIN_GAP_MS -> RetryNow.Ignore
+        hasGatt -> if (!linkUp && backgroundConnect) RetryNow.RecycleAndScan else RetryNow.Ignore
+        else -> RetryNow.ScanNow
+    }
 }

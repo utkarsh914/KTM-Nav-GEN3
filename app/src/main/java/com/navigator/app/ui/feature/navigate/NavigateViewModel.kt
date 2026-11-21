@@ -112,6 +112,8 @@ class NavigateViewModel(
 
     fun rePair() = connection.rePair()
 
+    fun retryNow() = connection.retryNow()
+
     companion object {
         /** How long the welcome stays (HM8). */
         const val GREETING_MS = 4_000L

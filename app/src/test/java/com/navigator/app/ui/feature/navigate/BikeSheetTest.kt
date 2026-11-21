@@ -30,7 +30,7 @@ class BikeSheetTest {
                 BikeSheet(
                     state = NavigateUiState(bikeStatus = status, bike = BikePillMapper.map(status)),
                     dashTime = "6:12",
-                    onBeeps = {}, onMessages = {}, onSendTest = { log += "test" }, onRePair = { log += "repair" },
+                    onBeeps = {}, onMessages = {}, onSendTest = { log += "test" }, onRePair = { log += "repair" }, onRetryNow = { log += "retry" },
                     onDismiss = { log += "dismiss" }, tripRunning = tripRunning,
                 )
             }
@@ -60,6 +60,25 @@ class BikeSheetTest {
         rule.onAllNodesWithText("Turn beeps").assertCountEquals(0)
         rule.onNodeWithText("Re-pair…").performClick()
         assertEquals("a confirmation comes first", emptyList<String>(), log)
+    }
+
+    @Test fun retryNowSitsBesideRePairAndRestsAfterATap() {
+        show(BikeStatus.Reconnecting("KTM 7F21", 3))
+        rule.onNodeWithText("Re-pair…").assertIsDisplayed()
+        rule.onNodeWithText("Retry now").performClick()
+        assertEquals(listOf("retry"), log)
+        rule.onNodeWithText("Trying…").assertIsNotEnabled()
+    }
+
+    @Test fun retryNowIsOfferedOnlyWhereARetryCanHelp() {
+        show(BikeStatus.BluetoothOff)
+        rule.onAllNodesWithText("Retry now").assertCountEquals(0)
+    }
+
+    @Test fun whenTheKeysLookLostRePairLeadsButRetryIsStillThere() {
+        show(BikeStatus.NeedsRepair("KTM 7F21"))
+        rule.onNodeWithText("Retry now").assertIsDisplayed()
+        rule.onNodeWithText("Re-pair…").assertIsDisplayed()
     }
 
     @Test fun withoutAShellHookThereIsNoSettingsRow() {

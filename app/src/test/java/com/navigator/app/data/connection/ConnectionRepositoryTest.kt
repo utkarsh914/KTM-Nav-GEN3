@@ -32,6 +32,7 @@ class ConnectionRepositoryTest {
     private val hint = MutableStateFlow(false)
     private var stopped = 0
     private var cancelled = 0
+    private var retried = 0
 
     @Before fun setUp() {
         ctx = RuntimeEnvironment.getApplication()
@@ -49,7 +50,16 @@ class ConnectionRepositoryTest {
         ),
         stopService = { stopped++ },
         cancelNotifications = { cancelled++ },
+        retryService = { retried++ },
     )
+
+    @Test fun retryNowAsksTheServiceOnceAndForgetsNothing() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
+        repo().retryNow()
+        assertEquals(1, retried)
+        assertEquals(0, stopped)
+        assertEquals("AA:BB:CC:DD:EE:FF", settings.legacy.bondedDeviceAddress)
+    }
 
     @Test fun rePairForgetsTheBikeItsFlagAndItsKeys() = runTest(UnconfinedTestDispatcher()) {
         val s = settings.legacy

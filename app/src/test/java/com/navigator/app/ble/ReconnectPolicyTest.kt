@@ -32,4 +32,32 @@ class ReconnectPolicyTest {
         assertFalse(ReconnectPolicy.shouldPreemptBackgroundConnect(false, true, hasGatt = true, linkUp = false))
         assertFalse(ReconnectPolicy.shouldPreemptBackgroundConnect(true, true, hasGatt = false, linkUp = false))
     }
+
+    private fun retry(
+        authenticated: Boolean = false, hasGatt: Boolean = false, linkUp: Boolean = false, background: Boolean = false,
+        scanning: Boolean = false, settling: Boolean = false, handshaking: Boolean = false, since: Long = 60_000L,
+    ) = ReconnectPolicy.retryNow(authenticated, hasGatt, linkUp, background, scanning, settling, handshaking, since)
+
+    @Test fun retryNowScansAtOnceWhenNothingIsInFlight() {
+        assertEquals(ReconnectPolicy.RetryNow.ScanNow, retry())
+    }
+
+    @Test fun retryNowRecyclesAParkedBackgroundConnect() {
+        assertEquals(ReconnectPolicy.RetryNow.RecycleAndScan, retry(hasGatt = true, background = true))
+        assertEquals("a direct connect under way is left alone", ReconnectPolicy.RetryNow.Ignore, retry(hasGatt = true, background = false))
+        assertEquals("a live link is left alone", ReconnectPolicy.RetryNow.Ignore, retry(hasGatt = true, linkUp = true, background = true))
+    }
+
+    @Test fun retryNowNeverPilesOntoAnAttemptUnderWay() {
+        val ignore = ReconnectPolicy.RetryNow.Ignore
+        assertEquals(ignore, retry(authenticated = true))
+        assertEquals(ignore, retry(scanning = true))
+        assertEquals(ignore, retry(settling = true))
+        assertEquals(ignore, retry(handshaking = true))
+    }
+
+    @Test fun twoTapsCloseTogetherAreOne() {
+        assertEquals(ReconnectPolicy.RetryNow.Ignore, retry(since = ReconnectPolicy.RETRY_NOW_MIN_GAP_MS - 1))
+        assertEquals(ReconnectPolicy.RetryNow.ScanNow, retry(since = ReconnectPolicy.RETRY_NOW_MIN_GAP_MS))
+    }
 }

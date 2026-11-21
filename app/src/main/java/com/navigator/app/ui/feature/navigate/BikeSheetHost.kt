@@ -23,6 +23,7 @@ fun BikeSheetHost(tripRunning: Boolean, onOpenPairing: () -> Unit, onDismiss: ()
         state = state, dashTime = time,
         onBeeps = vm::setBeeps, onMessages = vm::setMessages, onSendTest = vm::sendTest,
         onRePair = { onDismiss(); vm.rePair(); onOpenPairing() },
+        onRetryNow = vm::retryNow,
         onDismiss = onDismiss,
         tripRunning = tripRunning,
     )

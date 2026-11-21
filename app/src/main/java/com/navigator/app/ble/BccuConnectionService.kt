@@ -209,6 +209,19 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.reevaluateLocationFeatures()
         }
 
+        /**
+         * The rider's "Retry now" (bike sheet): try to reach the bike this moment instead of waiting out the
+         * reconnect pacing. Starts the service when it is not running (the bike was left offline).
+         */
+        fun retryNow(context: Context) {
+            val svc = runningInstance
+            if (svc != null) {
+                svc.lifecycleScope.launch { svc.retryNow() }
+            } else {
+                AppSettings(context).bondedDeviceAddress?.let { start(context, it) }
+            }
+        }
+
         fun sendTurnIconIfRunning(icon: BccuProtocol.TurnIcon) {
             runningInstance?.sendTurnIcon(icon)
         }
@@ -452,6 +465,28 @@ class BccuConnectionService : LifecycleService() {
                 AppSettings(this@BccuConnectionService).bondedDeviceAddress?.let { startBleScan(it) }
             }
         }
+    }
+
+    @Volatile private var lastRetryNowMs = 0L
+
+    /** "Retry now" (main thread): see [ReconnectPolicy.retryNow]. The protocol and the link handling are as they were. */
+    private fun retryNow() {
+        val address = AppSettings(this).bondedDeviceAddress ?: return
+        val now = SystemClock.elapsedRealtime()
+        val action = ReconnectPolicy.retryNow(
+            authenticated = _connectionState.value == ConnectionState.AUTHENTICATED,
+            hasGatt = gatt != null, linkUp = linkUp, backgroundConnect = pendingAutoConnect,
+            scanning = scanning, settling = settleJob?.isActive == true,
+            handshaking = handshakeTimeoutJob?.isActive == true,
+            sinceLastRetryMs = now - lastRetryNowMs,
+        )
+        AppLogger.log("BLE", "Retry now (rider): $action")
+        if (action == ReconnectPolicy.RetryNow.Ignore) return
+        lastRetryNowMs = now
+        absentFailures = 0
+        rescanJob?.cancel(); rescanJob = null
+        if (action == ReconnectPolicy.RetryNow.RecycleAndScan) teardownLink("retry now", state = null)
+        startBleScan(address)
     }
 
     private fun noteHandshakeFailure(addr: String?) {
