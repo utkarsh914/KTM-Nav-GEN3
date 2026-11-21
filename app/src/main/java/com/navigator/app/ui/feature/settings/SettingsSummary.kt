@@ -6,7 +6,6 @@ import com.navigator.app.data.permissions.PermissionsState
 import com.navigator.app.data.settings.NavEngine
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.model.TravelMode
-import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.theme.ThemeMode
 
 /** The line under a category on the Settings home: the values that matter, so most riders never open the page. */

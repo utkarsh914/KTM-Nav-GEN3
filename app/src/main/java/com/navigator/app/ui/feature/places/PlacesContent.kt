@@ -21,8 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,8 +32,8 @@ import androidx.compose.ui.semantics.Role
 import com.navigator.app.R
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.components.EmptyState
 import com.navigator.app.ui.components.KtmCheckIndicator
-import com.navigator.app.ui.components.KtmCheckboxRow
 import com.navigator.app.ui.components.KtmFab
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmMenuItem
@@ -80,24 +78,16 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
             if (ui.selecting) SelectionBar(ui, actions) else PlacesBar(hasSaved = ui.saved.isNotEmpty(), actions)
             if (!ui.selecting) LargeTitle(stringResource(R.string.places_title))
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = FAB_CLEARANCE)) {
-                if (ui.selecting) {
-                    item(key = "select-all") {
-                        KtmCheckboxRow(
-                            title = stringResource(if (ui.allSelected) R.string.places_select_none else R.string.places_select_all),
-                            checked = ui.allSelected, onCheckedChange = actions.onSelectAll,
-                        )
-                    }
-                } else {
+                if (!ui.selecting) {
+                    item(key = "slots-header") { SectionHeader(stringResource(R.string.places_slots_header), Modifier.padding(top = KtmSpacing.xs)) }
                     item(key = "home") { SlotRow(FavoriteSlot.HOME, ui.home, ui.origin, actions) }
                     item(key = "work") { SlotRow(FavoriteSlot.WORK, ui.work, ui.origin, actions) }
-                    item(key = "saved-header") { SectionHeader(stringResource(R.string.places_saved_header)) }
                     if (ui.saved.isEmpty()) {
                         item(key = "empty") {
-                            Text(
-                                stringResource(R.string.places_empty), style = MaterialTheme.typography.bodyMedium, color = c.fg2,
-                                modifier = Modifier.padding(horizontal = KtmSpacing.lg),
-                            )
+                            EmptyState(KtmIcons.Bookmark, stringResource(R.string.places_empty_title), stringResource(R.string.places_empty))
                         }
+                    } else {
+                        item(key = "saved-header") { SectionHeader(stringResource(R.string.places_saved_header, ui.saved.size)) }
                     }
                 }
                 items(ui.saved, key = { PlacesRepository.key(it) }) { place ->
@@ -143,6 +133,11 @@ private fun SelectionBar(ui: PlacesUi, actions: PlacesActions) {
         stringResource(R.string.places_selection_close), actions.onStopSelecting,
     ) {
         val has = ui.selected.isNotEmpty()
+        // PC2: Select all is an icon in the bar, as Delete is.
+        KtmIconButton(
+            KtmIcons.SelectAll, stringResource(if (ui.allSelected) R.string.places_select_none else R.string.places_select_all),
+            { actions.onSelectAll(!ui.allSelected) }, tint = a.onContainer,
+        )
         KtmIconButton(
             KtmIcons.Delete, stringResource(R.string.places_delete_selected), actions.onDelete, enabled = has,
             tint = if (has) a.onContainer else c.fg3,
@@ -166,7 +161,7 @@ private fun SlotRow(slot: FavoriteSlot, place: SavedPlace?, origin: Pair<Double,
             ListRow(
                 title = stringResource(if (home) R.string.places_home_unset else R.string.places_work_unset),
                 supporting = stringResource(if (home) R.string.places_home_hint else R.string.places_work_hint),
-                leading = { OutlinedIconBadge(KtmIcons.Add) },
+                leading = { OutlinedIconBadge(KtmIcons.Add) }, accentTitle = true,
                 onClick = { actions.onSetSlot(slot) },
             )
         } else {
@@ -189,9 +184,11 @@ private fun SavedRow(place: SavedPlace, ui: PlacesUi, selected: Boolean, actions
     val haptics = rememberHaptics()
     if (ui.selecting) {
         ListRow(
-            title = name, supporting = place.address, leadingIcon = KtmIcons.Bookmark,
-            modifier = modifier.toggleable(selected, role = Role.Checkbox, onValueChange = { haptics.toggle(it); actions.onToggle(key) }),
-            trailing = { KtmCheckIndicator(selected) },
+            title = name, supporting = place.address,
+            // PC2: the checkbox leads, and a ticked row is tinted.
+            leading = { KtmCheckIndicator(selected) },
+            modifier = modifier.background(if (selected) KtmTheme.accent.container else androidx.compose.ui.graphics.Color.Transparent)
+                .toggleable(selected, role = Role.Checkbox, onValueChange = { haptics.toggle(it); actions.onToggle(key) }),
         )
     } else {
         ListRow(

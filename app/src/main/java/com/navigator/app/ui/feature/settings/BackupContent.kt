@@ -20,9 +20,7 @@ import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmCard
-import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.RowChevron
-import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes

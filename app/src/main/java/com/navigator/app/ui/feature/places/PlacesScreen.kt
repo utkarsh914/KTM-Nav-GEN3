@@ -18,6 +18,7 @@ import com.navigator.app.R
 import com.navigator.app.app.appContainer
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.ui.feature.navigate.StraightLine
 import com.navigator.app.ui.shell.LocalFeedback
 
 /**
@@ -87,7 +88,7 @@ fun PlacesScreen(
 
     target?.let { t ->
         PlaceActionsSheet(
-            t, inApp, onDismiss = { target = null },
+            t, inApp, onDismiss = { target = null }, distance = StraightLine.label(ui.origin, t.place),
             onAction = { action ->
                 target = null
                 when (action) {

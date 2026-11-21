@@ -1,5 +1,7 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -43,7 +47,10 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        Icon(icon, null, tint = c.fg3, modifier = Modifier.size(48.dp))
+        // An 88 dp tile with a soft corner, the same on every empty page (RD4, PC4).
+        Box(Modifier.size(KtmLayout.emptyTile).background(c.surf3, KtmShapes.Sheet), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = c.fg3, modifier = Modifier.size(KtmLayout.emptyGlyph))
+        }
         Text(title, style = MaterialTheme.typography.headlineSmall, color = c.fg, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
         Text(message, style = MaterialTheme.typography.bodyMedium, color = c.fg2, textAlign = TextAlign.Center)
         if (primary != null) {

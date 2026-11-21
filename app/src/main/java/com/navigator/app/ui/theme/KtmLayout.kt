@@ -141,6 +141,9 @@ object KtmLayout {
     val tripBarSpeed = 86.dp
     val tripBarMore = 56.dp
     val tripBarHeight = 80.dp
+    /** The tile of an empty page (RD4, PC4) and the glyph in it. */
+    val emptyTile = 88.dp
+    val emptyGlyph = 40.dp
     /** The icon tile of a large action card (ST8, ST9). */
     val actionTile = 48.dp
     /** The replay play row uses 56 dp buttons from this width (RP1); narrower, 48 so the speed stepper still fits. */

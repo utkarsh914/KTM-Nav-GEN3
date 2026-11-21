@@ -66,6 +66,8 @@ fun ListRow(
     destructive: Boolean = false,
     /** Something here needs fixing: the icon and the supporting text turn amber. */
     attention: Boolean = false,
+    /** The title in the accent, semibold: an action that sets something up ("Set home"). */
+    accentTitle: Boolean = false,
 ) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
@@ -93,7 +95,8 @@ fun ListRow(
         Column(Modifier.weight(1f)) {
             Text(
                 annotatedTitle ?: androidx.compose.ui.text.AnnotatedString(title),
-                style = MaterialTheme.typography.bodyLarge, color = if (destructive) c.bad else c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = if (accentTitle) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                color = if (destructive) c.bad else if (accentTitle) KtmTheme.accent.text else c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             if (supporting != null) {
                 Text(

@@ -200,15 +200,17 @@ class PlacesContentTest {
 
     @Test fun emptyShowsWhatHomeAndWorkAreForAndWhereSavesComeFrom() {
         show(ui())
-        rule.onNodeWithText("Add Home").assertIsDisplayed()
-        rule.onNodeWithText("Add Work").assertIsDisplayed()
-        rule.onNodeWithText("Places you save show up here", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Home & work").assertIsDisplayed()
+        rule.onNodeWithText("Set home").assertIsDisplayed()
+        rule.onNodeWithText("Set work").assertIsDisplayed()
+        rule.onNodeWithText("No saved places yet").assertIsDisplayed()
+        rule.onNodeWithText("Save places from search, a dropped pin, or the end of a trip.").assertIsDisplayed()
         rule.onNodeWithText("Add place").assertIsDisplayed()
     }
 
     @Test fun anEmptySlotOpensThePicker() {
         show(ui())
-        rule.onNodeWithText("Add Work").performClick()
+        rule.onNodeWithText("Set work").performClick()
         assertEquals(listOf("setWORK"), log)
     }
 
@@ -217,6 +219,11 @@ class PlacesContentTest {
         rule.onNode(hasText("Home") and hasClickAction()).performClick()
         rule.onNodeWithContentDescription("More actions for Home").performClick()
         assertEquals(listOf("rideHOME", "slotMoreHOME"), log)
+    }
+
+    @Test fun theSavedHeaderCountsThePlaces() {
+        show(ui(saved = listOf(toit, park)))
+        rule.onNodeWithText("Saved · 2").assertIsDisplayed()
     }
 
     @Test fun savedPlacesShowAndOpen() {
@@ -237,7 +244,7 @@ class PlacesContentTest {
         rule.onNodeWithText("1 selected").assertIsDisplayed()
         rule.onNodeWithText("Home").assertDoesNotExist()
         rule.onNodeWithText("Add place").assertDoesNotExist()
-        rule.onNodeWithText("Select all").performClick()
+        rule.onNodeWithContentDescription("Select all").performClick()
         rule.onNodeWithContentDescription("Delete selected places").performClick()
         assertEquals(listOf("alltrue", "delete"), log)
     }
