@@ -177,7 +177,7 @@ fun KtmButton(
         val pad = PaddingValues(horizontal = if (style == ButtonStyle.Text) KtmSpacing.md else if (size == ButtonSize.Small) KtmSpacing.lg else 20.dp)
         if (stacked) {
             Column(
-                Modifier.padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.sm), horizontalAlignment = Alignment.CenterHorizontally,
+                Modifier.padding(horizontal = KtmSpacing.sm, vertical = KtmSpacing.xs), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm, Alignment.CenterVertically),
             ) { content() }
         } else {

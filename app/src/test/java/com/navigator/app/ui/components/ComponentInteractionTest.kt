@@ -54,7 +54,7 @@ class ComponentInteractionTest {
         val button = rule.onNodeWithContentDescription("Decrease").getUnclippedBoundsInRoot()
         val number = rule.onNodeWithText("80").getUnclippedBoundsInRoot()
         val gap = ((button.top + button.bottom) / 2 - (number.top + number.bottom) / 2).value
-        assertTrue("the number's centre is $gap dp off the buttons'", kotlin.math.abs(gap) < 6f)
+        assertTrue("the number's centre is $gap dp off the buttons'", kotlin.math.abs(gap) < 4f)
     }
 
     @Test fun aTapStepsOnceOnTheGrid() {

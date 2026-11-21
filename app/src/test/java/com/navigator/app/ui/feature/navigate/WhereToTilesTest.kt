@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +29,14 @@ class WhereToTilesTest {
                 mapUsable = mapUsable,
             )
         }
+    }
+
+    @Test fun theCollapsedSheetKeepsBothTileRowsWholeAtALargeFont() {
+        val normal = WhereToMetrics.peekHeight(hasActivity = false, fontScale = 1f)
+        val large = WhereToMetrics.peekHeight(hasActivity = false, fontScale = 2f)
+        // Unchanged at the usual scale; at 2x each of the two rows holds its two lines of text.
+        assertEquals(WhereToMetrics.peekHeight(hasActivity = false), normal)
+        assertTrue("peek $large vs $normal", (large - normal).value >= 60f)
     }
 
     @Test fun pickOnMapIsOfferedWhileTheMapWorks() {

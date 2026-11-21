@@ -238,21 +238,22 @@ private fun WhyNoRecording(model: TripFinishedModel, reason: NoRecordingReason, 
 @Composable
 private fun FollowUps(model: TripFinishedModel, actions: TripFinishedActions, landscape: Boolean) {
     val size = if (landscape) ButtonSize.Small else ButtonSize.Tile
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+    // One height for the follow-ups: a label that wraps (a large font) makes its neighbours as tall.
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         if (model.canSavePlace) {
             KtmButton(
                 stringResource(if (model.placeSaved) R.string.finished_place_saved else if (landscape) R.string.finished_save_short else R.string.finished_save_place), actions.onSavePlace,
-                Modifier.weight(1f), style = ButtonStyle.Tonal, size = size, enabled = !model.placeSaved,
+                Modifier.weight(1f).fillMaxHeight(), style = ButtonStyle.Tonal, size = size, enabled = !model.placeSaved,
                 icon = if (model.placeSaved) KtmIcons.Done else if (landscape) null else KtmIcons.Bookmark,
             )
         }
         KtmButton(
-            stringResource(R.string.finished_ride_back), actions.onRideBack, Modifier.weight(1f),
+            stringResource(R.string.finished_ride_back), actions.onRideBack, Modifier.weight(1f).fillMaxHeight(),
             style = ButtonStyle.Tonal, size = size, enabled = model.canRideBack, icon = if (landscape) null else KtmIcons.Restart,
         )
         if (model.ui is FinishUi.Recorded) {
             KtmButton(
-                stringResource(R.string.finished_share), actions.onShare, Modifier.weight(1f),
+                stringResource(R.string.finished_share), actions.onShare, Modifier.weight(1f).fillMaxHeight(),
                 style = ButtonStyle.Tonal, size = size, icon = if (landscape) null else KtmIcons.Share,
             )
         }

@@ -2,6 +2,8 @@ package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -90,17 +92,18 @@ fun ColumnScope.TripControlsBody(
     nextStopDistance: String? = null,
 ) {
     val tile = if (compact) ButtonSize.Tile else ButtonSize.TileLarge
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+    // One height for the three tiles: a label that wraps (a large font) makes its neighbours as tall.
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(
-            stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f),
+            stringResource(R.string.trip_add_stop), actions.onAddStop, Modifier.weight(1f).fillMaxHeight(),
             style = ButtonStyle.Tonal, size = tile, icon = KtmIcons.PinPlus, enabled = canAddStop,
         )
         KtmButton(
-            stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
+            stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f).fillMaxHeight(),
             style = ButtonStyle.Neutral, size = tile, icon = KtmIcons.Route,
         )
         KtmButton(
-            stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
+            stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f).fillMaxHeight(),
             style = ButtonStyle.Neutral, size = tile, icon = KtmIcons.ChevronDown,
         )
     }

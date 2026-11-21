@@ -50,7 +50,7 @@ fun KtmFilterChip(
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier.height(if (riding) KtmLayout.targetPrimary - 4.dp else 44.dp)
+            Modifier.heightIn(min = if (riding) KtmLayout.chipRidingHeight else KtmLayout.chipHeight)
                 .clip(KtmShapes.Control)
                 .background(if (selected) a.container else Color.Transparent, KtmShapes.Control)
                 .let { if (selected) it else it.border(1.dp, c.line2, KtmShapes.Control) }

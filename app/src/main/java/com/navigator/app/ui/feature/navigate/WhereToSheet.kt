@@ -63,9 +63,12 @@ object WhereToMetrics {
     private val tileRow = KtmLayout.targetRiding
     private val tileGap = KtmSpacing.sm
 
+    /** A tile is at least [tileHeight]; its two lines of text outgrow that at a large font, so the rows grow with the font scale. */
+    fun tileRowHeight(fontScale: Float): Dp = maxOf(tileRow, KtmLayout.tileTextBlock * fontScale + KtmSpacing.lg)
+
     /** Handle, field, two tile rows and the bottom margin; plus the activity row when a trip runs. */
-    fun peekHeight(hasActivity: Boolean): Dp =
-        KtmLayout.sheetHandleZone + KtmLayout.targetPrimary + KtmSpacing.md + tileRow * 2 + tileGap + KtmSpacing.lg +
+    fun peekHeight(hasActivity: Boolean, fontScale: Float = 1f): Dp =
+        KtmLayout.sheetHandleZone + KtmLayout.targetPrimary + KtmSpacing.md + tileRowHeight(fontScale) * 2 + tileGap + KtmSpacing.lg +
             (if (hasActivity) ACTIVITY_ROW + KtmSpacing.md else 0.dp)
 
     val tileHeight: Dp get() = tileRow

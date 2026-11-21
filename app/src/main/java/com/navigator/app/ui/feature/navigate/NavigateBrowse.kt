@@ -180,7 +180,7 @@ fun NavigateBrowse(
             val containerPx = with(density) { maxHeight.roundToPx() }
             val navBar = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
             val statusTop = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
-            val peek = WhereToMetrics.peekHeight(state.activity != null) + navBar
+            val peek = WhereToMetrics.peekHeight(state.activity != null, density.fontScale) + navBar
             val sheetMaxHeight = maxHeight - statusTop - KtmLayout.sheetHandleZone
             var visiblePx by remember { mutableIntStateOf(with(density) { peek.roundToPx() }) }
             LaunchedEffect(scaffoldState, containerPx) {

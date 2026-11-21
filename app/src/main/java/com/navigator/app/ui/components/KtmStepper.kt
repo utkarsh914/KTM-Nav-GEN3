@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -87,7 +88,7 @@ fun KtmStepper(
             StepButton(KtmIcons.Remove, decreaseDescription, enabled && current > spec.min) { change(spec.stepDown(current)) }
             Box(
                 // Wide enough for the largest value, so − and + stay put while the digits change.
-                Modifier.widthIn(min = (spec.max.toString().length * 14 + 40).dp)
+                Modifier.widthIn(min = ((spec.max.toString().length * 14 + 40) * LocalDensity.current.fontScale).dp)
                     .heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Control)
                     .clickable(enabled = enabled, role = Role.Button, onClickLabel = editDescription, onClick = onEditValue)
                     .padding(horizontal = KtmSpacing.md),

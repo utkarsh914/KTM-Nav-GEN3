@@ -199,7 +199,7 @@ internal fun NavigatingStage(
             }
             if (riding.showBike && startFailure == null) {
                 // Sheets with body text that scrolls follow the rider's font setting, in the riding palette.
-                RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false, clampFont = false) {
+                RidingSheetTheme(ridingDark, settingsSnap.accentColorId) {
                     BikeSheetHost(tripRunning = true, onOpenPairing = actions.onOpenConnect, onDismiss = { riding.showBike = false })
                 }
             }
@@ -224,7 +224,7 @@ internal fun NavigatingStage(
                 )
             }
             if (riding.showTripStops && startFailure == null) {
-                RidingTheme(night = ridingDark, accent = accentFor(settingsSnap.accentColorId), controlSystemBars = false, clampFont = false) {
+                RidingSheetTheme(ridingDark, settingsSnap.accentColorId) {
                     TripStopSheetHost(
                         trip = trip,
                         onSearchByName = { riding.showTripStops = false; actions.onOpenTripStopSearch(it) },
@@ -242,3 +242,8 @@ internal fun NavigatingStage(
         }
     }
 }
+
+/** The riding palette for a sheet with scrolling body text: the rider's own font scale instead of the riding clamp (a theme above is already providing the bars). */
+@Composable
+private fun RidingSheetTheme(night: Boolean, accentId: String?, content: @Composable () -> Unit) =
+    RidingTheme(night = night, accent = accentFor(accentId), controlSystemBars = false, clampFont = false, content = content)

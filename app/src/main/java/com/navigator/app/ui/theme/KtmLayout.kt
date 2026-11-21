@@ -186,7 +186,14 @@ object KtmLayout {
     val timelineStroke = 2.dp
     val pinRing = 2.dp
     /** Save beside Directions on the place sheet (PL1). */
-    val placeSaveWidth = 116.dp
+    val placeSaveMinWidth = 116.dp
+
+    /** A Where-to tile's two lines of text at font scale 1 (title and caption), before they scale. */
+    val tileTextBlock = 40.dp
+
+    /** The filter chip's visible height (its touch target is taller): at rest and on a riding surface. */
+    val chipHeight = 44.dp
+    val chipRidingHeight = 52.dp
     /** The start-failed sheet scrolls beyond this (a short landscape screen, a large font). */
     val startFailedMax = 360.dp
     val laneRecommendedMark = 3.dp
