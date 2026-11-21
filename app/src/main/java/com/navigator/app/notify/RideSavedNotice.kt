@@ -43,12 +43,15 @@ object RideSavedNotice {
                 R.string.rec_saved_text,
                 DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), rideDurationText(context.resources, ride.durationSeconds),
             )
+            val open = NotificationActions.open(context, NotificationRequestCodes.RIDE_SAVED, AppIntents.REQUEST_RIDE, ride.id)
             val n = Notification.Builder(context, NotificationChannels.RIDE_SAVED)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(R.string.rec_saved_title))
                 .setContentText(text)
                 .setAutoCancel(true)
-                .setContentIntent(NotificationActions.open(context, NotificationRequestCodes.RIDE_SAVED, AppIntents.REQUEST_RIDE, ride.id))
+                .setContentIntent(open)
+                // SY4: View as a visible button, not only the tap.
+                .addAction(Notification.Action.Builder(null, context.getString(R.string.ride_saved_view), open).build())
                 .build()
             context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, n)
         }

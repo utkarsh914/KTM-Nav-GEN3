@@ -40,7 +40,7 @@ object RecordingNotice {
             else -> listOf(formatElapsed(session.elapsedMs(nowMs)), distance).joinToString(" \u00b7 ")
         }
         return RecordingContent(
-            title = res.getString(if (paused) R.string.notice_rec_paused else R.string.notice_rec_title),
+            title = if (paused) res.getString(R.string.notice_rec_paused, formatElapsed(session.elapsedMs(nowMs))) else res.getString(R.string.notice_rec_title),
             text = text, promoted = promoted, showActions = promoted, paused = paused,
         )
     }

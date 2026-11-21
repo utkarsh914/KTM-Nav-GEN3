@@ -109,6 +109,7 @@ class NavLiveUpdate(
                 recording = RideSession.state.value,
                 dashConnected = if (paired) BccuConnectionService.connectionState.value == BccuConnectionService.ConnectionState.AUTHENTICATED else null,
                 overspeedKmh = SpeedMonitor.overspeedKmh.value,
+                overspeedLimitKmh = runCatching { settings.overspeedLimitKmh }.getOrNull(),
                 beepsOn = runCatching { settings.turnBeepEnabled }.getOrDefault(true),
                 stopMarks = marks.stops, routeTotalM = marks.total,
             ),

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,10 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -60,12 +56,9 @@ import com.navigator.app.ui.components.DashPreview
 import com.navigator.app.ui.components.DashPreviewState
 import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
-import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmRadio
 import com.navigator.app.ui.components.KtmStepHeader
-import com.navigator.app.ui.components.KtmRadioRow
 import com.navigator.app.ui.components.KtmTextField
-import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.permissions.PermissionRow

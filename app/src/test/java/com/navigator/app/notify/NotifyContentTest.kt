@@ -85,8 +85,10 @@ class LiveUpdateContentTest {
     @Test fun overspeedIsAStateOfTheSameNotification() {
         val c = build(LiveInput(enroute(), now, overspeedKmh = 92))
         assertTrue(c.overspeed)
-        assertEquals("OVERSPEED 92 km/h", c.title)
+        assertEquals("Over your alert \u00b7 92 km/h", c.title)
         assertEquals("220 m \u00b7 Turn left onto MG Road", c.text)
+        val limited = build(LiveInput(enroute(), now, overspeedKmh = 92, overspeedLimitKmh = 80))
+        assertEquals("Alert at 80 \u00b7 220 m \u00b7 Turn left onto MG Road", limited.text)
         assertEquals("92 km/h", c.chip)
     }
 
@@ -175,9 +177,9 @@ class RecordingNoticeTest {
     }
 
     @Test fun pausedSaysHowToResume() {
-        val c = RecordingNotice.build(session.copy(paused = true), now, RecordingMode.ALONE, null, res)
-        assertEquals("Ride paused", c.title)
-        assertEquals("Tap Resume to keep recording", c.text)
+        val c = RecordingNotice.build(session.copy(paused = true, elapsedBeforeMs = 125_000), now, RecordingMode.ALONE, null, res)
+        assertEquals("Ride paused \u00b7 2:05", c.title)
+        assertEquals("Resume to keep recording", c.text)
     }
 }
 
@@ -190,8 +192,15 @@ class ConnectionNoticeTest {
 
     @Test fun theTitleSaysTheStateAndTheSecondLineTheFix() {
         assertEquals("Reconnecting to the dash", of(ConnectionNotice.RECONNECTING).title)
-        assertEquals("Switch the ignition on and stay close.", of(ConnectionNotice.RECONNECTING).text)
+        assertEquals("Is the ignition on? Retrying automatically", of(ConnectionNotice.RECONNECTING).text)
         assertEquals("Bluetooth is off", of(ConnectionNotice.BLUETOOTH_OFF).title)
+    }
+
+    @Test fun theTitleNamesTheBikeWhenItIsKnown() {
+        val named = ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, "KTM 7F21")
+        assertEquals("Dash connected \u00b7 KTM 7F21", named.title)
+        assertEquals("Reconnecting to KTM 7F21\u2026", ConnectionNoticeContent.of(ConnectionNotice.RECONNECTING, null, res, "KTM 7F21").title)
+        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, " ").title)
     }
 
     @Test fun actionsMatchTheState() {

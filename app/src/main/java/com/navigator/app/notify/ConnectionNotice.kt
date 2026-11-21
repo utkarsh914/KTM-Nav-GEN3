@@ -25,15 +25,15 @@ object ConnectionNoticeContent {
     fun repostForLine(connected: Boolean, line: String?, last: String?): Boolean = connected && line != last
 
     /** [mirrorLine] is the "Mirroring to dash · 350 m · Turn right · ● Rec" one-liner; only a connected link shows it. */
-    fun of(notice: ConnectionNotice, mirrorLine: String?, res: Resources): ConnectionContent = when (notice) {
+    fun of(notice: ConnectionNotice, mirrorLine: String?, res: Resources, bikeName: String? = null): ConnectionContent = when (notice) {
         ConnectionNotice.CONNECTING -> ConnectionContent(
-            res.getString(R.string.conn_connecting), res.getString(R.string.conn_connecting_fix), listOf(ConnectionAction.QUIT), alert = false,
+            named(res, R.string.conn_connecting, R.string.conn_connecting_named, bikeName), res.getString(R.string.conn_connecting_fix), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.CONNECTED -> ConnectionContent(
-            res.getString(R.string.conn_connected), mirrorLine ?: res.getString(R.string.conn_connected_hint), listOf(ConnectionAction.QUIT), alert = false,
+            named(res, R.string.conn_connected, R.string.conn_connected_named, bikeName), mirrorLine ?: res.getString(R.string.conn_connected_hint), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.RECONNECTING -> ConnectionContent(
-            res.getString(R.string.conn_reconnecting), res.getString(R.string.conn_reconnecting_fix), listOf(ConnectionAction.QUIT), alert = false,
+            named(res, R.string.conn_reconnecting, R.string.conn_reconnecting_named, bikeName), res.getString(R.string.conn_reconnecting_fix), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.BLUETOOTH_OFF -> ConnectionContent(
             res.getString(R.string.conn_bt_off), res.getString(R.string.conn_bt_off_fix),
@@ -44,6 +44,10 @@ object ConnectionNoticeContent {
             listOf(ConnectionAction.REPAIR, ConnectionAction.QUIT), alert = true,
         )
     }
+
+    /** The title with the bike's name when it is known (SY5): which bike, not just "the dash". */
+    private fun named(res: Resources, plain: Int, withName: Int, name: String?): String =
+        if (name.isNullOrBlank()) res.getString(plain) else res.getString(withName, name)
 
     /** "Mirroring to dash · 350 m · Turn right · ● Rec" from whatever parts are known. */
     fun mirrorLine(toTurn: String?, turn: String?, recording: String?, res: Resources): String =

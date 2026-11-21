@@ -808,7 +808,7 @@ class BccuConnectionService : LifecycleService() {
     private fun createNotificationChannel() = NotificationChannels.ensure(this, NotificationChannels.CONNECTION)
 
     private fun buildForegroundNotification(status: ConnectionNotice): Notification {
-        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources)
+        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources, AppSettings(this).bondedDeviceName)
         val builder = NotificationCompat.Builder(this, NotificationChannels.CONNECTION)
             .setContentTitle(content.title)
             .setContentText(content.text)
@@ -862,7 +862,7 @@ class BccuConnectionService : LifecycleService() {
             if (!alertShown) {
                 alertShown = true
                 NotificationChannels.ensure(this, NotificationChannels.CONNECTION_ALERT)
-                val content = ConnectionNoticeContent.of(status, null, resources)
+                val content = ConnectionNoticeContent.of(status, null, resources, AppSettings(this).bondedDeviceName)
                 manager.notify(
                     ALERT_ID,
                     NotificationCompat.Builder(this, NotificationChannels.CONNECTION_ALERT)

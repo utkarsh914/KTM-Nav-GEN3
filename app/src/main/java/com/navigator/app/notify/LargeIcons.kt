@@ -20,7 +20,9 @@ object LargeIcons {
     private const val SIZE = 128
     private const val CACHED_TURNS = 24
     private const val CACHED_SPEEDS = 40
-    private val DASH_BG = Color.rgb(0x1F, 0x21, 0x25)
+    // SY1: the guidance green, as a rounded square like the other tiles of the shade.
+    private val DASH_BG = Color.rgb(0x0B, 0x6E, 0x59)
+    private const val CORNER = SIZE * 0.28f
     private val ALERT_BG = Color.rgb(0xC6, 0x28, 0x28)
 
     // The same few glyphs and speeds come round on every notification update: draw each once.
@@ -35,7 +37,7 @@ object LargeIcons {
         val drawable = TurnIconArt.drawableFor(icon)?.let { AppCompatResources.getDrawable(context, it) } ?: return null
         val bitmap = createBitmap(SIZE, SIZE)
         val canvas = Canvas(bitmap)
-        canvas.drawCircle(SIZE / 2f, SIZE / 2f, SIZE / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = DASH_BG })
+        canvas.drawRoundRect(0f, 0f, SIZE.toFloat(), SIZE.toFloat(), CORNER, CORNER, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = DASH_BG })
         val inset = SIZE / 5
         drawable.mutate().setTint(Color.WHITE)
         drawable.setBounds(inset, inset, SIZE - inset, SIZE - inset)
@@ -46,7 +48,7 @@ object LargeIcons {
     private fun drawSpeed(kmh: Int): Bitmap {
         val bitmap = createBitmap(SIZE, SIZE)
         val canvas = Canvas(bitmap)
-        canvas.drawCircle(SIZE / 2f, SIZE / 2f, SIZE / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ALERT_BG })
+        canvas.drawRoundRect(0f, 0f, SIZE.toFloat(), SIZE.toFloat(), CORNER, CORNER, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ALERT_BG })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)

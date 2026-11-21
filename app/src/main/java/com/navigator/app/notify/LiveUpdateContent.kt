@@ -26,6 +26,8 @@ data class LiveInput(
     val dashConnected: Boolean? = null,
     /** Km/h while the overspeed alert is on, else null. */
     val overspeedKmh: Int? = null,
+    /** The alert's limit in km/h, to say what the speed is over; null leaves it out. */
+    val overspeedLimitKmh: Int? = null,
     val beepsOn: Boolean = true,
     /** Metres from the start of the route to each intermediate stop. */
     val stopMarks: List<Int> = emptyList(),
@@ -71,7 +73,9 @@ object LiveUpdateBuilder {
             else -> turnLine
         }
         val text = when {
-            overspeed -> turnLine.ifEmpty { tripLine }
+            overspeed -> listOfNotNull(
+                input.overspeedLimitKmh?.let { res.getString(R.string.live_alert_at, it) }, turnLine.ifEmpty { tripLine }.ifEmpty { null },
+            ).joinToString(SEP)
             enroute -> tripLine.ifEmpty { res.getString(R.string.live_guidance_active) }
             rerouting -> tripLine.ifEmpty { res.getString(R.string.live_finding_route) }
             else -> res.getString(R.string.live_calculating)
