@@ -182,7 +182,7 @@ fun ReplayPlayRow(
             val a = KtmTheme.accent
             KtmIconButton(
                 KtmIcons.Navigation, stringResource(if (following) R.string.replay_follow_stop else R.string.replay_follow), onToggleFollow,
-                modifier = Modifier.background(if (following) a.container else Color.Transparent, KtmShapes.Card),
+                modifier = Modifier.background(if (following) a.container else Color.Transparent, if (roomy) KtmShapes.Card else KtmShapes.Control),
                 tint = if (following) a.onContainer else c.fg,
                 style = if (following) IconButtonStyle.Plain else IconButtonStyle.Tonal, size = size,
             )

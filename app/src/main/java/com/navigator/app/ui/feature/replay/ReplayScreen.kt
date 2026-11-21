@@ -31,7 +31,6 @@ import com.navigator.app.app.appContainer
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
-import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
@@ -200,7 +199,7 @@ fun ReplayScreen(
             title = stringResource(R.string.replay_delete_starred_title),
             message = stringResource(
                 R.string.replay_delete_starred_message,
-                ready?.ride?.destinationLabel?.takeIf { it.isNotBlank() } ?: stringResource(RideSourceText.title(ready?.ride?.source)),
+                ready?.ride?.destinationLabel?.takeIf { it.isNotBlank() } ?: stringResource(R.string.replay_delete_unnamed),
             ),
             onDismiss = { confirmDelete = false },
             confirm = DialogAction(stringResource(R.string.rides_delete_confirm), { confirmDelete = false; vm.delete() }, ButtonStyle.Danger),

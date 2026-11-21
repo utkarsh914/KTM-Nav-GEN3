@@ -48,6 +48,9 @@ data class RecordedRide(
     val parts: Int = 1,
 ) {
     val isDeleted: Boolean get() = deletedAtMs != null
+
+    /** The time spent riding (moving); the elapsed time for a ride recorded before that was stored. One number for the list, the replay and the subtitle. */
+    val ridingSeconds: Int get() = if (movingSeconds >= 0) movingSeconds else durationSeconds
 }
 
 const val MOVING_UNKNOWN = -1

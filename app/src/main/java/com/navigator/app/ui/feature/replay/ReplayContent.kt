@@ -352,8 +352,8 @@ private fun Title(ride: RecordedRide, parts: Int, onEdit: () -> Unit, compact: B
         }
         val distance = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC)
         // RP1: "Thu 19 Nov · 5:51 pm · 6.3 km"; the narrow side panel (RP6) says the day, the distance and the time taken.
-        val sub = if (compact) stringResource(R.string.replay_subtitle_compact, ReplayFormat.rideDay(ride.startMs), distance, rideDuration(ride.durationSeconds))
-        else stringResource(R.string.replay_subtitle, ReplayFormat.rideDate(ride.startMs), distance)
+        val sub = (if (compact) listOf(ReplayFormat.rideDay(ride.startMs), distance, rideDuration(ride.ridingSeconds))
+        else listOf(ReplayFormat.rideDate(ride.startMs), distance)).filter { it.isNotBlank() }.joinToString(" \u00b7 ")
         Text(sub, style = MaterialTheme.typography.bodySmall, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -379,12 +379,16 @@ private fun Readouts(ui: ReplayUi.Ready, position: State<Int>) {
 private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedMode, actions: ReplayActions, chartFirst: Boolean = false) {
     val c = KtmTheme.colors
     val ride = ui.ride
-    ride.notes?.takeIf { it.isNotBlank() }?.let {
-        Text(
-            "\u201c$it\u201d", style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-            color = c.fg2, modifier = Modifier.fillMaxWidth().padding(top = KtmSpacing.xs),
-        )
+    val note: @Composable () -> Unit = {
+        ride.notes?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                "\u201c$it\u201d", style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+                color = c.fg2, modifier = Modifier.fillMaxWidth().padding(top = KtmSpacing.xs),
+            )
+        }
     }
+    // The short side panel shows the chart first (RP6), so the note must not push it out of view.
+    if (!chartFirst) note()
     // The side panel is short: the chart (RP6) comes before the stats there.
     if (!chartFirst) Stats(ride, avgMode)
     if (ui.chart != null) {
@@ -400,7 +404,7 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
             ui.showElevation, actions.onSeek, actions.onScrubStart,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-            if (ui.hasElevation && ride.elevGainM != ELEV_UNKNOWN && ride.elevLossM != ELEV_UNKNOWN) {
+            if (ride.elevGainM != ELEV_UNKNOWN && ride.elevLossM != ELEV_UNKNOWN) {
                 Text(stringResource(R.string.replay_climb, ride.elevGainM), style = MaterialTheme.typography.bodySmall, color = c.fg2)
                 Text(stringResource(R.string.replay_descent, ride.elevLossM), style = MaterialTheme.typography.bodySmall, color = c.fg2)
             }
@@ -408,7 +412,7 @@ private fun Details(ui: ReplayUi.Ready, position: State<Int>, avgMode: AvgSpeedM
             Text(stringResource(R.string.replay_chart_tap), style = MaterialTheme.typography.bodySmall, color = c.fg2)
         }
     }
-    if (chartFirst) Stats(ride, avgMode)
+    if (chartFirst) { note(); Stats(ride, avgMode) }
     Smoothing(ui.smoothingMeters, actions.onStepSmoothing)
 }
 
@@ -423,7 +427,7 @@ private fun Stats(ride: RecordedRide, mode: AvgSpeedMode) {
             StatTile(stringResource(R.string.replay_stat_distance), DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), Modifier.weight(1f), valueStyle = valueStyle)
             StatTile(
                 stringResource(if (moving) R.string.replay_stat_riding else R.string.replay_stat_time),
-                rideDuration(if (moving) ride.movingSeconds else ride.durationSeconds), Modifier.weight(1f), valueStyle = valueStyle,
+                rideDuration(ride.ridingSeconds), Modifier.weight(1f), valueStyle = valueStyle,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {

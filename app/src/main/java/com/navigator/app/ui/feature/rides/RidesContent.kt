@@ -147,7 +147,7 @@ fun RidesContent(
                                 val count = body.items.count { it is RideListItem.Ride }
                                 Text(
                                     pluralStringResource(R.plurals.rides_search_count, count, count), style = MaterialTheme.typography.bodySmall,
-                                    color = c.fg2, modifier = Modifier.padding(vertical = KtmSpacing.sm),
+                                    color = c.fg2, modifier = Modifier.padding(bottom = KtmSpacing.xs),
                                 )
                             }
                         }

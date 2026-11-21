@@ -14,6 +14,8 @@ object ReplayFormat {
         val clockShort: DateTimeFormatter = ClockFormat.formatter(locale)
         val dateTime: DateTimeFormatter = ClockFormat.formatter(locale, date = "EEEdMMM")
         val day: DateTimeFormatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale)
+        val dayYear: DateTimeFormatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEdMMMyyyy"), locale)
+        val dateTimeYear: DateTimeFormatter = ClockFormat.formatter(locale, date = "EEEdMMMyyyy")
     }
 
     @Volatile private var formats = Formats(Locale.getDefault(), ClockFormat.use24h())
@@ -33,8 +35,11 @@ object ReplayFormat {
     fun axisTime(ms: Long): String = current().clockShort.format(at(ms))
 
     /** "Thu 19 Nov". */
-    fun rideDay(ms: Long): String = if (ms <= 0L) "" else current().day.format(at(ms))
+    fun rideDay(ms: Long): String = if (ms <= 0L) "" else at(ms).let { (if (thisYear(it)) current().day else current().dayYear).format(it) }
 
     /** "Thu 19 Nov · 5:51 pm" (the date and the time the ride began). */
-    fun rideDate(ms: Long): String = if (ms <= 0L) "" else current().dateTime.format(at(ms))
+    fun rideDate(ms: Long): String = if (ms <= 0L) "" else at(ms).let { (if (thisYear(it)) current().dateTime else current().dateTimeYear).format(it) }
+
+    /** The year is left out for this year's rides, as on the list. */
+    private fun thisYear(t: java.time.ZonedDateTime) = t.year == java.time.Year.now(t.zone).value
 }

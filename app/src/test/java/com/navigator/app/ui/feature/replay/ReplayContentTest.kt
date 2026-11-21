@@ -142,6 +142,11 @@ class ReplayContentTest {
         rule.onNodeWithText("Average (moving)").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun aRideWithoutAStartTimeHasNoDanglingSeparator() {
+        show(ui().copy(ride = ride.copy(startMs = 0)))
+        rule.onNodeWithText("12 km").assertIsDisplayed()
+    }
+
     @Test fun aRideFromBeforeMovingTimeWasStoredSaysTimeNotRidingTime() {
         show(ui())
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Details hidden")).performClick()

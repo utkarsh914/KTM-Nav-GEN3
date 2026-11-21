@@ -129,7 +129,7 @@ fun RideCard(
 @Composable
 private fun rideStats(ride: RecordedRide, short: Boolean = false): String {
     val distance = DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC)
-    val duration = rideDuration(ride.durationSeconds)
+    val duration = rideDuration(ride.ridingSeconds)
     val top = ride.maxSpeedKmh.toInt()
     return if (top >= 1 && !short) stringResource(R.string.ride_stats_three, distance, duration, stringResource(R.string.ride_speed_kmh, top))
     else stringResource(R.string.ride_stats_two, distance, duration)

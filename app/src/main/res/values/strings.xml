@@ -557,8 +557,6 @@
     <string name="replay_stat_distance">Distance</string>
     <string name="replay_stat_time">Time</string>
     <string name="replay_stat_riding">Riding time</string>
-    <string name="replay_subtitle">%1$s · %2$s</string>
-    <string name="replay_subtitle_compact">%1$s · %2$s · %3$s</string>
     <string name="replay_chart_title">Speed · km/h</string>
     <string name="replay_chart_tap">Tap chart to jump</string>
     <string name="replay_climb">↑ %1$d m climb</string>

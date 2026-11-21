@@ -56,6 +56,12 @@ class RidesContentTest {
         rule.onNodeWithText("5 h 10", substring = true).assertIsDisplayed()
     }
 
+    @Test fun theListAndTheReplayAgreeOnTheRidingTime() {
+        val moving = a.copy(movingSeconds = 600)
+        show(ui(items = RidesListBuilder.build(listOf(moving), "", RideSort())))
+        rule.onNodeWithText("6.3 km · 10 min · 61 km/h").assertIsDisplayed()
+    }
+
     @Test fun tapOpensLongPressSelectsAndTheStarIsItsOwnTarget() {
         show(ui())
         rule.onNodeWithText("Toit Brewpub").performClick()
