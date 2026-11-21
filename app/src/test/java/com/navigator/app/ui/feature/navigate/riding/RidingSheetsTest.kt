@@ -181,7 +181,7 @@ class RidingSheetsTest {
             )
         }
         rule.onNodeWithText("2").assertIsDisplayed()
-        rule.onNodeWithText("4.2 km").assertIsDisplayed()
+        rule.onNodeWithText("Next stop · 4.2 km").assertIsDisplayed()
         rule.onNodeWithText("Indian Oil").assertIsDisplayed()
     }
 

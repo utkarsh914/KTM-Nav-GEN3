@@ -199,7 +199,8 @@ internal fun NavigatingStage(
             }
             if (riding.pickingStop && startFailure == null) {
                 val online by ConnectivityMonitor.isOnline.collectAsState()
-                val left = remember { TripStopRules.left(trip.stopsAhead()?.size, tripState.allStops.size) }
+                val ahead = remember { trip.stopsAhead()?.size }
+                val left = remember { TripStopRules.left(ahead, tripState.allStops.size) }
                 // Back to the Add a stop sheet, and the map follows the rider again.
                 val leave = {
                     riding.pickingStop = false
@@ -208,7 +209,7 @@ internal fun NavigatingStage(
                 LaunchedEffect(Unit) { actions.onRidingInsets(MapInsets()) }
                 BackHandler { leave(); riding.showTripStops = true }
                 PickStopOverlay(
-                    map = map, number = tripState.allStops.size + 1, destination = tripState.dest?.label.orEmpty(),
+                    map = map, number = TripStopRules.nextNumber(tripState.allStops.size, ahead ?: 0), destination = tripState.dest?.label.orEmpty(),
                     canAdd = TripStopRules.canAdd(left, online),
                     onBack = { leave(); riding.showTripStops = true },
                     onUse = { place -> leave(); trip.addStop(place) },

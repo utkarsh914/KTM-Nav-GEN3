@@ -37,6 +37,7 @@ import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.IconButtonSize
+import com.navigator.app.ui.components.IconButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmFilterChip
 import com.navigator.app.ui.components.KtmIconButton
@@ -101,12 +102,12 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             SearchPill(actions.onSearchByName, Modifier.weight(1f))
             if (ui.voiceAvailable) {
-                KtmIconButton(KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice, size = IconButtonSize.Map)
+                KtmIconButton(KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice, style = IconButtonStyle.Tonal, size = IconButtonSize.Map, circular = true)
             }
         }
         Spacer(Modifier.height(KtmSpacing.md))
         // One row that scrolls sideways: Pick on map leads it, then the categories.
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        Row(Modifier.fullBleed().horizontalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.lg), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             if (canAdd) {
                 KtmFilterChip(stringResource(R.string.trip_stop_pick_on_map), selected = false, onClick = actions.onPickOnMap, leadingIcon = KtmIcons.PinPlus, riding = true)
             }

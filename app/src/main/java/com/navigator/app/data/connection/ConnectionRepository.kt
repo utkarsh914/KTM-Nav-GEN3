@@ -72,6 +72,8 @@ class ConnectionRepository(
     }
 
     private fun markSeen() {
+        // Re-pair forgets the bike: its drop must not stamp a time on nobody.
+        if (settings.legacy.bondedDeviceAddress == null) return
         val t = now()
         _lastSeenMs.value = t
         settings.legacy.bondedLastSeenMs = t

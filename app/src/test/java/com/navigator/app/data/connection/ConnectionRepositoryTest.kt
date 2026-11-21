@@ -64,6 +64,7 @@ class ConnectionRepositoryTest {
     }
 
     @Test fun lastSeenIsWhenTheBikeWasLastLinkedAndSurvivesARestart() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
         val repo = repo()
         assertEquals(null, repo.lastSeenMs.value)
         clock = 2_000_000L
@@ -78,10 +79,21 @@ class ConnectionRepositoryTest {
     }
 
     @Test fun rePairForgetsWhenTheOldBikeWasSeen() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
         val repo = repo()
         state.value = ConnectionState.AUTHENTICATED
         state.value = ConnectionState.DISCONNECTED
         repo.rePair()
+        assertEquals(null, repo.lastSeenMs.value)
+        assertEquals(0L, settings.legacy.bondedLastSeenMs)
+    }
+
+    @Test fun rePairWhileLinkedLeavesNoLastSeenBehind() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
+        val repo = repo()
+        state.value = ConnectionState.AUTHENTICATED
+        repo.rePair()
+        state.value = ConnectionState.DISCONNECTED
         assertEquals(null, repo.lastSeenMs.value)
         assertEquals(0L, settings.legacy.bondedLastSeenMs)
     }

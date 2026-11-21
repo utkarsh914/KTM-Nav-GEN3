@@ -748,8 +748,8 @@ fun NavigateHost(
     LaunchedEffect(map, reducedMotion) { map.setReducedMotion(reducedMotion) }
     LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }
     // Checked every second while the map is panned: a steady speed emits no new value to react to.
-    LaunchedEffect(mapButton.panned, stage) {
-        while (mapButton.panned && stage == NavStage.NAVIGATING) {
+    LaunchedEffect(mapButton.panned, stage, riding.pickingStop) {
+        while (mapButton.panned && stage == NavStage.NAVIGATING && !riding.pickingStop) {
             navSpeedKmh?.let { applyMapButton(MapButtonEvent.Speed(it, System.currentTimeMillis())) }
             delay(1_000)
         }

@@ -204,7 +204,7 @@ fun BikeSheet(
                 if (canRetry) {
                     KtmButton(
                         stringResource(if (retried) R.string.bike_sheet_retrying else R.string.bike_sheet_retry_now),
-                        { retried = true; onRetryNow() }, Modifier.weight(1f),
+                        { retried = true; onRetryNow() }, Modifier.weight(1f), icon = KtmIcons.Refresh,
                         style = if (rePairFirst) ButtonStyle.Outline else ButtonStyle.Primary, enabled = !retried,
                     )
                 }

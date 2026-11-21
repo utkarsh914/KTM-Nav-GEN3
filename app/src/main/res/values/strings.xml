@@ -346,6 +346,7 @@
     <string name="trip_stop_pick_on_map">Pick on map</string>
     <string name="trip_stop_search_name">Search for a stop</string>
     <string name="trip_next_stop">Next stop</string>
+    <string name="trip_next_stop_distance">Next stop · %1$s</string>
     <string name="trip_remove_next_stop">Remove next stop</string>
     <!-- Trip finished (TF1-TF5) -->
     <string name="finished_arrived">You\'ve arrived</string>

@@ -467,7 +467,7 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    @Volatile private var lastRetryNowMs = 0L
+    private var lastRetryNowMs = 0L
 
     /** "Retry now" (main thread): see [ReconnectPolicy.retryNow]. The protocol and the link handling are as they were. */
     private fun retryNow() {
@@ -482,6 +482,9 @@ class BccuConnectionService : LifecycleService() {
         )
         AppLogger.log("BLE", "Retry now (rider): $action")
         if (action == ReconnectPolicy.RetryNow.Ignore) return
+        // Nothing to scan with: leave any pending wait as it is rather than cancel it for nothing.
+        val adapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+        if (adapter == null || !adapter.isEnabled) return
         lastRetryNowMs = now
         absentFailures = 0
         rescanJob?.cancel(); rescanJob = null

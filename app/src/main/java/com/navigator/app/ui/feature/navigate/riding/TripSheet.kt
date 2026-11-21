@@ -120,13 +120,11 @@ fun ColumnScope.TripControlsBody(
     if (nextStop != null) {
         ListRow(
             modifier = Modifier.fullBleed(bleed),
-            title = nextStop, supporting = stringResource(R.string.trip_next_stop),
+            title = nextStop,
+            supporting = nextStopDistance?.let { stringResource(R.string.trip_next_stop_distance, it) } ?: stringResource(R.string.trip_next_stop),
             leadingIcon = KtmIcons.PinPlus.takeIf { nextStopNumber == null },
             leading = nextStopNumber?.let { n -> { StopPin(n) } },
             trailing = {
-                nextStopDistance?.let {
-                    Text(it, style = MaterialTheme.typography.titleMedium, color = KtmTheme.colors.fg2, maxLines = 1, softWrap = false)
-                }
                 KtmIconButton(
                     KtmIcons.Close, stringResource(R.string.trip_remove_next_stop), actions.onRemoveNextStop,
                     size = IconButtonSize.Map,
