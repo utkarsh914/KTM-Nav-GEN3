@@ -158,7 +158,7 @@ fun RidingLandscape(
                 val paneName = stringResource(if (shown == null) R.string.riding_guidance_pane else R.string.trip_sheet_title)
                 Column(Modifier.fillMaxSize().semantics { paneTitle = paneName }, verticalArrangement = Arrangement.spacedBy(KtmLayout.panelPadding)) {
                     if (shown == null) {
-                        ManeuverCard(maneuver, Modifier.weight(1f), ManeuverMetrics.landscape(narrow))
+                        ManeuverCard(maneuver, Modifier.weight(1f), ManeuverMetrics.landscape(narrow), destination = bar.destination)
                         TripBar(bar, actions.onOpenSheet)
                     } else {
                         TripControlsPanelBody(maneuver, shown, controlActions)

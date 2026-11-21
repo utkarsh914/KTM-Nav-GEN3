@@ -89,7 +89,13 @@ class ManeuverMetrics(
  * Numbers never animate: a new maneuver replaces the card's content with a short fade.
  */
 @Composable
-fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: ManeuverMetrics = ManeuverMetrics.portrait()) {
+fun ManeuverCard(
+    ui: ManeuverUi,
+    modifier: Modifier = Modifier,
+    metrics: ManeuverMetrics = ManeuverMetrics.portrait(),
+    /** Named in the starting card ("Getting your route to X"). */
+    destination: String? = null,
+) {
     val r = KtmTheme.riding
     val motion = KtmTheme.motion
     AnimatedContent(
@@ -100,7 +106,7 @@ fun ManeuverCard(ui: ManeuverUi, modifier: Modifier = Modifier, metrics: Maneuve
         label = "maneuver",
     ) { shown ->
         when (shown) {
-            ManeuverUi.Starting -> StartingCard(metrics)
+            ManeuverUi.Starting -> StartingCard(metrics, destination)
             is ManeuverUi.Active -> ActiveCard(shown, metrics, r.guidance, r.guidanceBand, r.onGuidance)
         }
     }
@@ -114,7 +120,7 @@ private fun maneuverTransition(motion: KtmMotionSpecs): ContentTransform =
         (fadeOut(if (motion.reduced) motion.effectsFast() else motion.ridingQuick()) + slideOutVertically(motion.ridingQuick()) { if (motion.reduced) 0 else it / 12 })
 
 @Composable
-private fun StartingCard(m: ManeuverMetrics) {
+private fun StartingCard(m: ManeuverMetrics, destination: String?) {
     val r = KtmTheme.riding
     val text = stringResource(R.string.riding_starting)
     Row(
@@ -123,8 +129,16 @@ private fun StartingCard(m: ManeuverMetrics) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {
-        CircularProgressIndicator(Modifier.size(m.glyph * 0.6f), color = r.onSurfaceVariant, strokeWidth = KtmSpacing.xs)
-        Text(text, style = MaterialTheme.typography.titleMedium, color = r.onSurface)
+        CircularProgressIndicator(Modifier.size(m.glyph * 0.6f), color = KtmTheme.accent.text, strokeWidth = KtmSpacing.xs)
+        Column {
+            Text(text, style = MaterialTheme.typography.headlineSmall, color = r.onSurface)
+            destination?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    stringResource(R.string.riding_starting_route, it), style = MaterialTheme.typography.titleMedium, color = r.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 

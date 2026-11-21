@@ -34,7 +34,7 @@ fun StatTile(
         Text(label, style = MaterialTheme.typography.labelSmall, color = c.fg2, maxLines = 2)
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs)) {
             Text(value, style = valueStyle, color = c.fg, maxLines = 1)
-            if (unit != null) Text(unit, style = MaterialTheme.typography.labelSmall, color = c.fg2, modifier = Modifier.padding(bottom = 3.dp))
+            if (unit != null) Text(unit, style = MaterialTheme.typography.titleLarge, color = c.fg2, modifier = Modifier.padding(bottom = 2.dp))
         }
     }
 }

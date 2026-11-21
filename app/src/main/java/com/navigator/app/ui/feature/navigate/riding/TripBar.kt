@@ -20,6 +20,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,8 +109,13 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
                     ui.timeLeft?.let {
                         Text(timeLeftText(it), style = MaterialTheme.typography.headlineMedium, color = r.onSurface, maxLines = 1)
                     }
-                    val line = listOfNotNull(ui.distance, ui.arrival).joinToString(" · ")
-                    if (line.isNotEmpty()) Text(line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Too narrow (a small phone, a large font): the arrival is what the rider needs, so the distance goes first.
+                    var arrivalOnly by remember(ui.distance, ui.arrival) { mutableStateOf(false) }
+                    val line = listOfNotNull(ui.distance.takeUnless { arrivalOnly && ui.arrival != null }, ui.arrival).joinToString(" · ")
+                    if (line.isNotEmpty()) Text(
+                        line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { if (it.didOverflowWidth && ui.arrival != null) arrivalOnly = true },
+                    )
                 }
             }
             // The chevron sits in its own tinted 56 dp tile, 12 dp from the edge.

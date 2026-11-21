@@ -52,7 +52,8 @@ class MirrorContentTest {
         rule.onNodeWithText("Notification access").assertIsDisplayed()
         rule.onNodeWithText("Allow").performClick()
         assertEquals(listOf("access"), log)
-        rule.onAllNodesWithText("Open Google Maps").assertCountEquals(0)
+        rule.onNodeWithText("Set up mirror mode").assertIsDisplayed()
+        rule.onNodeWithText("Open Google Maps").assertIsDisplayed() // MR1: Maps stays one tap away during setup
     }
 
     @Test fun theListenerRowWaitsForAccess() {
@@ -109,7 +110,8 @@ class MirrorContentTest {
 
     @Test fun staleUpdatesSayHowLongAndWhatToCheck() {
         show(MirrorStatus.Live(turn, Freshness.Seconds(45), paused = false, stale = true))
-        rule.onNodeWithText("No update for 45 s").assertIsDisplayed()
+        rule.onNodeWithText("Google Maps went quiet").assertIsDisplayed()
+        rule.onNodeWithText("No update · 45 s").assertIsDisplayed()
         rule.onNodeWithText("400 m").assertIsDisplayed() // the last turn stays
     }
 

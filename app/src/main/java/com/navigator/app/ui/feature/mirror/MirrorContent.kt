@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.mirror
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -147,36 +150,54 @@ private const val PAUSED_ALPHA = 0.45f
 @Composable
 private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, dot: Boolean = false) {
     val c = KtmTheme.colors
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.mirror_title), style = MaterialTheme.typography.headlineSmall, color = c.fg, modifier = Modifier.semantics { heading() })
-            if (status is MirrorStatus.Live) {
-                val label = freshnessLabel(status.freshness)
-                // Not a live region: it changes every second. The stale banner announces itself instead.
-                Text(label, style = MaterialTheme.typography.bodySmall, color = if (status.stale) c.warn else c.fg2)
-            }
+    // MR1: the bike on the left, the mode as a badge on the right; what the page is about comes under it.
+    Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            if (dot) BikeStatusDot(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
+            else BikeStatusPill(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
+            KtmBadge(stringResource(R.string.mirror_title), Modifier.semantics { heading() })
         }
-        if (dot) BikeStatusDot(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
-        else BikeStatusPill(bike.label, bike.pill.tone, actions.onBike, stateDescription = bike.stateDescription)
+        when (status) {
+            is MirrorStatus.Setup -> Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                Text(stringResource(R.string.mirror_setup_title), style = MaterialTheme.typography.headlineLarge, color = c.fg)
+                Text(stringResource(R.string.mirror_setup_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
+            }
+            // MR3/MR5: what the dash shows, and how fresh it is (amber with the gap when it has gone quiet).
+            is MirrorStatus.Live -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+                Text(
+                    stringResource(R.string.mirror_on_dash), style = MaterialTheme.typography.labelMedium, color = c.fg2,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
+                // Not a live region: it changes every second. The stale banner announces itself instead.
+                Text(
+                    freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall,
+                    color = if (status.stale) c.warn else c.fg2,
+                )
+            }
+            is MirrorStatus.Ready -> {}
+        }
     }
 }
 
 @Composable
-private fun freshnessLabel(f: Freshness): String = when (f) {
+private fun freshnessLabel(f: Freshness, stale: Boolean): String = if (stale) stringResource(R.string.mirror_stale_label, ageText(f)) else when (f) {
     Freshness.JustNow -> stringResource(R.string.mirror_live_now)
     is Freshness.Seconds -> stringResource(R.string.mirror_live_seconds, f.n)
     is Freshness.Minutes -> pluralStringResource(R.plurals.mirror_live_minutes, f.n, f.n)
 }
 
 @Composable
+private fun ageText(f: Freshness): String = when (f) {
+    Freshness.JustNow -> stringResource(R.string.mirror_age_seconds, 0)
+    is Freshness.Seconds -> stringResource(R.string.mirror_age_seconds, f.n)
+    is Freshness.Minutes -> pluralStringResource(R.plurals.mirror_age_minutes, f.n, f.n)
+}
+
+@Composable
 private fun StaleBanner(f: Freshness) {
-    val gap = when (f) {
-        Freshness.JustNow -> stringResource(R.string.mirror_age_seconds, 0)
-        is Freshness.Seconds -> stringResource(R.string.mirror_age_seconds, f.n)
-        is Freshness.Minutes -> pluralStringResource(R.plurals.mirror_age_minutes, f.n, f.n)
-    }
     InfoBanner(
-        title = stringResource(R.string.mirror_stale_title, gap),
+        title = stringResource(R.string.mirror_stale_title),
         message = stringResource(R.string.mirror_stale_body),
         tone = BannerTone.Warn,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -262,12 +283,11 @@ private fun Controls(status: MirrorStatus, actions: MirrorActions, landscape: Bo
             status is MirrorStatus.Live -> PauseRow(status.paused, actions.onSending)
             status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending)
         }
-        if (status !is MirrorStatus.Setup) {
-            KtmButton(
-                stringResource(R.string.mirror_open_maps), actions.onOpenMaps, Modifier.fillMaxWidth(),
-                size = size, icon = KtmIcons.Navigation,
-            )
-        }
+        // Also during setup (MR1): Maps is where the trip starts, and the checklist does not block opening it.
+        KtmButton(
+            stringResource(R.string.mirror_open_maps), actions.onOpenMaps, Modifier.fillMaxWidth(),
+            size = size, icon = KtmIcons.Navigation,
+        )
         if (status is MirrorStatus.Ready && !recording) {
             KtmButton(
                 stringResource(R.string.record_ride), actions.onRecord, Modifier.fillMaxWidth(),

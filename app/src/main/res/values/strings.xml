@@ -296,6 +296,7 @@
     <string name="end_keep">Keep riding</string>
     <string name="riding_calculating">Calculating route</string>
     <string name="riding_starting_support">Starting…</string>
+    <string name="riding_starting_route">Getting your route to %1$s</string>
     <!-- Couldn't start (NV6) -->
     <string name="start_failed_title">Navigation didn\'t start</string>
     <string name="start_failed_route">Couldn\'t get a route from here. Check your connection and try again.</string>
@@ -361,8 +362,12 @@
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>
     </plurals>
-    <string name="mirror_stale_title">No update for %1$s</string>
-    <string name="mirror_stale_body">The turns shown may be old. Check that the trip is still running in Google Maps, and that Android isn\'t limiting it in the background.</string>
+    <string name="mirror_stale_title">Google Maps went quiet</string>
+    <string name="mirror_stale_label">No update · %1$s</string>
+    <string name="mirror_on_dash">On your dash now</string>
+    <string name="mirror_setup_title">Set up mirror mode</string>
+    <string name="mirror_setup_intro">You navigate in Google Maps. We copy each turn to your dash, even offline.</string>
+    <string name="mirror_stale_body">Is navigation still running there? Android may have paused it.</string>
     <string name="mirror_access_title">Notification access</string>
     <string name="mirror_access_why">Mirror mode reads Google Maps\' turn notifications. Without access no turns reach the dash.</string>
     <string name="mirror_listener_title">Notification listener</string>
