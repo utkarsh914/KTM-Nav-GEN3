@@ -206,7 +206,8 @@ private fun ColumnScope.TripControlsPanelBody(maneuver: ManeuverUi, bar: TripBar
     if (summary.isNotEmpty() && !short) {
         Text(
             summary, style = MaterialTheme.typography.bodySmall, color = KtmTheme.riding.onSurfaceVariant,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.md),
+            // Two lines: the destination and when you arrive both matter, and the narrow panel cannot hold them in one.
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = KtmSpacing.md),
         )
     }
     Column(

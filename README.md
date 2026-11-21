@@ -149,7 +149,7 @@ exact dash, a per-slot dash text playground, and shareable logs — which is how
    to the fastest route for some alternates. Expected to be reliable when actually riding.
 6. Full vehicle telemetry (RPM, gear, coolant, fuel, TPMS) exists in the protocol but the dash rejects
    the writes. It is **not** available — help welcome.
-7. This is a beta. If something crashes or misbehaves, please open an issue or share your logs from
+7. If something crashes or misbehaves, please open an issue or share your logs from
    Settings → Diagnostics, and include your bike model and firmware if you can.
 
 ---

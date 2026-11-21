@@ -2,11 +2,13 @@ package com.navigator.app.ui.feature.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.ButtonSize
@@ -33,9 +36,13 @@ import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.RowChevron
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
+import java.time.Instant
+import java.time.ZoneId
 
 class SettingsHomeActions(
     val onOpenPage: (SettingsPage) -> Unit,
@@ -110,14 +117,33 @@ internal fun BikeCardView(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-            Icon(KtmIcons.Bike, null, tint = c.fg2)
-            Text(
-                bike.name ?: stringResource(R.string.settings_no_bike), style = MaterialTheme.typography.titleLarge, color = c.fg,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-            )
+            // ST2: the bike in a round tile (green while it is connected), its name, and when it was paired.
+            val connected = bike.status.tone == PillTone.Connected
+            Box(
+                Modifier.size(KtmLayout.badgeTile).background(if (connected) c.okContainer else c.surf3, KtmShapes.Pill),
+                contentAlignment = Alignment.Center,
+            ) { Icon(KtmIcons.Bike, null, tint = if (connected) c.ok else c.fg2) }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    bike.name ?: stringResource(R.string.settings_no_bike), style = MaterialTheme.typography.titleLarge, color = c.fg,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                bike.pairedMs?.let {
+                    Text(
+                        stringResource(R.string.settings_paired_on, PairedDate.format(it)), style = MaterialTheme.typography.bodySmall,
+                        color = c.fg2, maxLines = 1,
+                    )
+                }
+            }
             KtmBadge(stringResource(bike.status.state), tone = tone)
             if (onClick != null) RowChevron()
         }
         footer?.invoke()
     }
+}
+
+/** "12 Nov": when the bike was paired, in the rider's locale and zone. */
+object PairedDate {
+    fun format(pairedMs: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+        ClockFormat.formatter(date = "MMMd").format(Instant.ofEpochMilli(pairedMs).atZone(zone))
 }

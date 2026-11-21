@@ -1,6 +1,8 @@
 package com.navigator.app.ui.feature.settings
 
 import android.content.Context
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -251,6 +253,22 @@ class SettingsContentTest {
         rule.onNodeWithText("sum-SOUNDS").assertIsDisplayed()
         rule.onNodeWithText("Quit KTM Navigator").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(listOf("quit"), log)
+    }
+
+    @Test fun theBikeCardSaysWhenItWasPairedWhenKnownAndNothingWhenNot() {
+        val paired = java.time.ZonedDateTime.of(2026, 11, 12, 9, 0, 0, 0, java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        rule.setContent {
+            KtmTheme(darkTheme = false) {
+                SettingsHomeContent(SettingsHomeUi(bike.copy(pairedMs = paired), false, rows), SettingsHomeActions({}, {}, {}))
+            }
+        }
+        rule.onNodeWithText("Paired", substring = true).assertIsDisplayed()
+        rule.onNodeWithText(PairedDate.format(paired), substring = true).assertIsDisplayed()
+    }
+
+    @Test fun withoutAPairDateTheCardHasNoPairedLine() {
+        home()
+        rule.onAllNodesWithText("Paired", substring = true).assertCountEquals(0)
     }
 
     @Test fun aCategoryOpensItsPage() {

@@ -50,7 +50,7 @@ fun MapControlButton(
             .shadow(KtmElevation.onMap, KtmShapes.Card)
             .clip(KtmShapes.Card)
             .background(container)
-            .let { if (accent) it else it.border(1.dp, c.line, KtmShapes.Card) }
+            .let { if (accent) it else it.border(KtmLayout.hairline, c.line, KtmShapes.Card) }
             .clickable(role = Role.Button, indication = ripple(color = content), interactionSource = null) {
                 haptics.tap()
                 onClick()

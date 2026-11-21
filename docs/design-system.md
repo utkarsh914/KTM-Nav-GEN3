@@ -34,7 +34,7 @@ When adding UI, reach for these before hand-rolling values, and run
 
 ## Components (`ui/components/`)
 `KtmButton` (Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal; sizes
-Small 48, Rest 56, Riding 64, Tile 72, TileLarge 84), `KtmIconButton`, `MapControlButton`,
+Small 48, Rest 56, Riding 64, Tile 72, TileCompact 80, TileLarge 84), `KtmIconButton`, `MapControlButton`,
 `KtmFab`, `ListRow`, `KtmSwitchRow`, `KtmCheckboxRow`/`KtmRadioRow`, `KtmSelectionBar`, `KtmCard`, `KtmBadge`,
 `KtmFilterChip`, `KtmSegmented`, `KtmSearchField`, `KtmTextField`, `KtmStepper`,
 `KtmSwitch`, `KtmColorPicker`, `KtmTopBar`, `LargeTitle`, `SectionHeader`,

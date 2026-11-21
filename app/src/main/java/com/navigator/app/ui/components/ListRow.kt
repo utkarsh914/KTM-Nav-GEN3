@@ -149,6 +149,17 @@ fun ListDivider(modifier: Modifier = Modifier, withIcon: Boolean = true) {
     HorizontalDivider(modifier.padding(start = if (withIcon) KtmLayout.dividerInset else KtmSpacing.lg), color = KtmTheme.colors.line)
 }
 
+/** Rows with a divider between them, never before the first or after the last: one place decides, so lists do not drift. */
+@Composable
+fun <T> DividedList(items: List<T>, modifier: Modifier = Modifier, withIcon: Boolean = true, row: @Composable (T) -> Unit) {
+    Column(modifier) {
+        items.forEachIndexed { i, item ->
+            if (i > 0) ListDivider(withIcon = withIcon)
+            row(item)
+        }
+    }
+}
+
 /** [text] with the characters in [match] in bold; the style lives here so feature code sets none. */
 fun highlightedText(text: String, match: IntRange?): AnnotatedString =
     androidx.compose.ui.text.buildAnnotatedString {

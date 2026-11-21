@@ -1,8 +1,6 @@
 package com.navigator.app.ui.feature.navigate.plan
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +21,6 @@ import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.theme.KtmLayout
-import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -44,10 +41,7 @@ fun StopCandidateSheet(
     val c = KtmTheme.colors
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-            Box(
-                Modifier.size(KtmLayout.stopMarker).background(KtmTheme.accent.fill, KtmShapes.Pill),
-                contentAlignment = Alignment.Center,
-            ) { Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.onFill) }
+            StopNumberBadge(number, Modifier.size(KtmLayout.stopMarker))
             Text(
                 name, style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).semantics { heading() },

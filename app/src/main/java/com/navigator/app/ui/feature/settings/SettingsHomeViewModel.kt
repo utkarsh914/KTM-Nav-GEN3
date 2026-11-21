@@ -26,7 +26,8 @@ internal fun BikeStatus.nameOrNull(): String? = when (this) {
     else -> null
 }
 
-data class BikeCard(val name: String?, val status: BikePillUi, val paired: Boolean)
+/** [pairedMs] is when the bike was paired, null when unknown (paired before the date was kept). */
+data class BikeCard(val name: String?, val status: BikePillUi, val paired: Boolean, val pairedMs: Long? = null)
 
 data class CategoryRow(val page: SettingsPage, val summary: CategorySummary)
 
@@ -41,7 +42,7 @@ class SettingsHomeViewModel(
 ) : ViewModel() {
     val ui: StateFlow<SettingsHomeUi> = combine(settings.snapshot, connection.status, connection.detail, permissions.state) { snap, status, detail, perms ->
         SettingsHomeUi(
-            bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired),
+            bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
             repairSuggested = detail.repairSuggested && snap.isPaired,
             rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, perms, version)) },
         )
@@ -55,7 +56,7 @@ class SettingsHomeViewModel(
             val snap = settings.snapshot.value
             val status = connection.status.value
             return SettingsHomeUi(
-                bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired),
+                bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
                 repairSuggested = connection.detail.value.repairSuggested && snap.isPaired,
                 rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, permissions.state.value, version)) },
             )

@@ -114,7 +114,7 @@ fun MirrorContent(
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                     Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
                     if (status.stale) StaleBanner(status.freshness)
-                    PauseRow(status.paused, actions.onSending, KtmSpacing.ridingEdge)
+                    PauseRow(status.paused, actions.onSending, KtmSpacing.ridingEdge, compact = true)
                 }
                 // Google Maps stays at the foot, where the thumb rests on the mount.
                 OpenMapsButton(actions, ButtonSize.Riding)
@@ -291,8 +291,8 @@ private fun Controls(status: MirrorStatus, actions: MirrorActions, landscape: Bo
     val bleed = if (landscape) KtmSpacing.ridingEdge else KtmSpacing.lg
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         when {
-            status is MirrorStatus.Live -> PauseRow(status.paused, actions.onSending, bleed)
-            status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending, bleed)
+            status is MirrorStatus.Live -> PauseRow(status.paused, actions.onSending, bleed, compact = landscape)
+            status is MirrorStatus.Ready && status.paused -> PauseRow(true, actions.onSending, bleed, compact = landscape)
         }
         // Also during setup (MR1): Maps is where the trip starts, and the checklist does not block opening it.
         OpenMapsButton(actions, size)
@@ -313,17 +313,23 @@ private fun OpenMapsButton(actions: MirrorActions, size: ButtonSize) {
     )
 }
 
-/** The pause switch with its reason; amber-outlined while paused so the state is plain at a glance (MR4). */
+/**
+ * The pause switch with its reason; amber-outlined while paused so the state is plain at a glance (MR4). [compact] is the
+ * mounted landscape card (MR6): no icon, "Send to dash" and a one-word state, so the column stays short.
+ */
 @Composable
-private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit, bleed: Dp) {
+private fun PauseRow(paused: Boolean, onSending: (Boolean) -> Unit, bleed: Dp, compact: Boolean = false) {
     val c = KtmTheme.colors
     KtmSwitchRow(
-        title = stringResource(R.string.mirror_sending_title),
+        title = stringResource(if (compact) R.string.mirror_sending_short else R.string.mirror_sending_title),
         checked = !paused,
         onCheckedChange = onSending,
-        supporting = stringResource(if (paused) R.string.mirror_sending_paused else R.string.mirror_sending_on),
-        supportingLines = 2,
-        leadingIcon = KtmIcons.Dash,
+        supporting = stringResource(
+            if (compact) (if (paused) R.string.mirror_sending_short_paused else R.string.mirror_sending_short_on)
+            else if (paused) R.string.mirror_sending_paused else R.string.mirror_sending_on,
+        ),
+        supportingLines = if (compact) 1 else 2,
+        leadingIcon = if (compact) null else KtmIcons.Dash,
         // Paused: an inset card with an amber outline (the outline stays inside the page padding); otherwise a full-width row.
         modifier = if (paused) Modifier.border(KtmLayout.outline, c.warn, KtmShapes.Card) else Modifier.fullBleed(bleed),
     )

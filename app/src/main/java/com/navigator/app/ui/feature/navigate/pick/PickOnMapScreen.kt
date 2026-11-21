@@ -48,6 +48,7 @@ import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.components.consumeMapTouches
+import com.navigator.app.ui.feature.navigate.plan.StopNumberBadge
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -172,10 +173,8 @@ private fun Details(state: PickOnMapState, title: String, stopNumber: Int?, subt
     val c = KtmTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
         if (stopNumber != null) {
-            Box(
-                Modifier.size(KtmLayout.stopMarker).background(KtmTheme.accent.fill, KtmShapes.Pill),
-                contentAlignment = Alignment.Center,
-            ) { Text(stopNumber.toString(), style = MaterialTheme.typography.labelLarge, color = KtmTheme.accent.onFill) }
+            // As on the map: a white disc with a dark ring, whatever the theme.
+            StopNumberBadge(stopNumber, Modifier.size(KtmLayout.stopMarker))
         }
         Column(Modifier.weight(1f)) {
             Text(

@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -30,7 +30,7 @@ fun KtmCard(
         modifier
             .clip(KtmShapes.Card)
             .background(c.surf)
-            .border(1.dp, c.line, KtmShapes.Card)
+            .border(KtmLayout.hairline, c.line, KtmShapes.Card)
             .let { if (onClick != null) it.clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onClick() } else it }
             .padding(KtmSpacing.lg),
         content = content,

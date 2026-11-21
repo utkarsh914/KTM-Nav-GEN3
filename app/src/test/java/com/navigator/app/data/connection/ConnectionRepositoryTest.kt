@@ -84,9 +84,18 @@ class ConnectionRepositoryTest {
         val repo = repo()
         state.value = ConnectionState.AUTHENTICATED
         state.value = ConnectionState.DISCONNECTED
+        settings.legacy.bondedPairedMs = 1_000L
         repo.rePair()
         assertEquals(null, repo.lastSeenMs.value)
         assertEquals(0L, settings.legacy.bondedLastSeenMs)
+        assertEquals("the pair date goes with the bike", 0L, settings.legacy.bondedPairedMs)
+    }
+
+    @Test fun aConfirmedPairingStampsItsDate() {
+        val session = com.navigator.app.ui.feature.pairing.AndroidPairingSession(ctx, settings)
+        assertEquals(0L, settings.legacy.bondedPairedMs)
+        session.commit()
+        assertTrue(settings.legacy.bondedPairedMs > 0L)
     }
 
     @Test fun rePairWhileLinkedLeavesNoLastSeenBehind() = runTest(UnconfinedTestDispatcher()) {

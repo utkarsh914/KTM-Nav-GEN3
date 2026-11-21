@@ -55,7 +55,7 @@ fun SkeletonRow(modifier: Modifier = Modifier, announce: Boolean = true) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg),
     ) {
-        Skeleton(Modifier.size(40.dp), KtmShapes.Control)
+        Skeleton(Modifier.size(KtmLayout.badgeTile), KtmShapes.Control)
         Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             Skeleton(Modifier.size(width = 200.dp, height = 16.dp))
             Skeleton(Modifier.size(width = 120.dp, height = 12.dp))

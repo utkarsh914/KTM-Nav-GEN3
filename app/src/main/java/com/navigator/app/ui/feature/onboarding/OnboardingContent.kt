@@ -53,12 +53,12 @@ import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DashPreview
 import com.navigator.app.ui.components.DashPreviewState
+import com.navigator.app.ui.components.DividedList
 import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmRadio
 import com.navigator.app.ui.components.KtmStepHeader
 import com.navigator.app.ui.components.KtmTextField
-import com.navigator.app.ui.components.ListDivider
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.permissions.PermissionRow
@@ -326,9 +326,6 @@ private fun Permissions(ui: OnboardingUi, actions: OnboardingActions) {
             }
         },
     ) {
-        ui.permissions.items.forEachIndexed { i, it ->
-            if (i > 0) ListDivider()
-            PermissionRow(it, onFix = { actions.onFix(it.id) })
-        }
+        DividedList(ui.permissions.items) { PermissionRow(it, onFix = { actions.onFix(it.id) }) }
     }
 }

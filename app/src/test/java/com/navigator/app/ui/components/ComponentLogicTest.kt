@@ -53,7 +53,7 @@ class ComponentLogicTest {
     }
 
     @Test fun buttonHeightsAreTheTouchTargets() {
-        assertEquals(listOf(48.dp, 56.dp, 64.dp, 72.dp, 84.dp), ButtonSize.entries.map { it.height })
+        assertEquals(listOf(48.dp, 56.dp, 64.dp, 72.dp, 80.dp, 84.dp), ButtonSize.entries.map { it.height })
     }
 
     @Test fun rowHeightsFollowTheRule() {

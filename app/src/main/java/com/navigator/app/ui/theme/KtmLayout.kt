@@ -25,8 +25,10 @@ object KtmSpacing {
 /** Four radii and the pill. */
 object KtmShapes {
     val Badge = RoundedCornerShape(8.dp)
-    val Control = RoundedCornerShape(12.dp)
-    val Card = RoundedCornerShape(16.dp)
+    val ControlRadius = 12.dp
+    val CardRadius = 16.dp
+    val Control = RoundedCornerShape(ControlRadius)
+    val Card = RoundedCornerShape(CardRadius)
     val Sheet = RoundedCornerShape(28.dp)
     val Pill = CircleShape
 
@@ -58,6 +60,7 @@ object KtmLayout {
     /** Stacked icon-over-label buttons: the trip sheet's (large) and the finished screen's. */
     val targetTile = 72.dp
     val targetTileLarge = 84.dp
+    val targetTileCompact = 80.dp
     val targetRiding = 64.dp
 
     // Row heights: one line, two lines, three lines, thumbnail or large leading
@@ -233,6 +236,18 @@ object KtmLayout {
     val iconSmall = 18.dp
     val iconInline = 20.dp
     val iconMedium = 24.dp
+
+    /** A button's own icon (the mock's `.btn .i`), and the spinner that replaces it. */
+    val iconButton = 22.dp
+    val spinnerStroke = 2.5.dp
+
+    /** The turn glyph on the dash preview, and the default glyph elsewhere. */
+    val dashGlyph = 56.dp
+    val glyph = 40.dp
+
+    /** The snackbar's least height and the dialog's widest. */
+    val snackbarMin = 52.dp
+    val dialogMaxWidth = 312.dp
     val pillStartPadding = 14.dp
 
     val logRowPadding = 2.dp

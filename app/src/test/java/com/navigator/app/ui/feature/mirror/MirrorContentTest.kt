@@ -2,7 +2,6 @@ package com.navigator.app.ui.feature.mirror
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -130,5 +129,13 @@ class MirrorContentTest {
         rule.onAllNodesWithText("On your dash now").assertCountEquals(1)
         rule.onNodeWithText("17:42").assertIsDisplayed()
         rule.onNodeWithText("12 km").assertIsDisplayed()
+    }
+
+    @Config(sdk = [36], qualifiers = "w874dp-h402dp")
+    @Test fun theMountedSendToDashCardIsOneShortLineWithoutAnIcon() {
+        show(MirrorStatus.Live(turn, Freshness.Seconds(2), paused = false, stale = false), landscape = true)
+        rule.onNodeWithText("Send to dash").assertIsDisplayed()
+        rule.onNodeWithText("On").assertIsDisplayed()
+        rule.onAllNodesWithText("Send turns to the dash").assertCountEquals(0)
     }
 }

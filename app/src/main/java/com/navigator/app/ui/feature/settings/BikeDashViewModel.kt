@@ -49,7 +49,7 @@ class BikeDashViewModel(
         snap: SettingsSnapshot, status: BikeStatus, suggested: Boolean,
         access: Boolean, lookUp: Boolean = true,
     ) = BikeDashUi(
-        bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired),
+        bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
         repairSuggested = suggested && snap.isPaired,
         connected = status is BikeStatus.Connected,
         showOnDash = snap.mirrorEnabled,

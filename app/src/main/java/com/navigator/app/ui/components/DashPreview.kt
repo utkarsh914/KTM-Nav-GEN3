@@ -16,8 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 
@@ -58,7 +58,7 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
         modifier.fillMaxWidth()
             .semantics(mergeDescendants = true) {}
             .background(DashPalette.bg, KtmShapes.Card)
-            .border(2.dp, DashPalette.ring, KtmShapes.Card)
+            .border(KtmLayout.outline, DashPalette.ring, KtmShapes.Card)
             .padding(KtmSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
@@ -66,7 +66,7 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
             is DashPreviewState.Turn -> {
                 DashLine(state.time)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
-                    state.icon?.let { TurnGlyph(it, DashPalette.text, size = 56.dp) }
+                    state.icon?.let { TurnGlyph(it, DashPalette.text, size = KtmLayout.dashGlyph) }
                     Column {
                         Text(state.distance, style = MaterialTheme.typography.displaySmall, color = DashPalette.text, maxLines = 1)
                         Text(state.road, style = MaterialTheme.typography.titleLarge, color = DashPalette.text, maxLines = 1)
@@ -89,7 +89,7 @@ fun DashPreview(state: DashPreviewState, modifier: Modifier = Modifier) {
                     )
                     Text(
                         state.no, style = MaterialTheme.typography.titleMedium, color = DashPalette.subtle,
-                        modifier = Modifier.border(2.dp, DashPalette.ring, KtmShapes.Control).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
+                        modifier = Modifier.border(KtmLayout.outline, DashPalette.ring, KtmShapes.Control).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.sm),
                     )
                 }
             }

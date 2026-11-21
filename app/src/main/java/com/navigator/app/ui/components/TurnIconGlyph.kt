@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.ui.theme.KtmLayout
 
 /**
  * Draws a clear, schematic arrow for each dash [TurnIcon] so the rider can
@@ -29,7 +29,7 @@ import com.navigator.app.ble.BccuProtocol.TurnIcon
 fun TurnIconGlyph(
     icon: TurnIcon,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
+    size: Dp = KtmLayout.glyph,
     color: Color = Color.White,
 ) {
     Canvas(modifier = modifier.size(size)) { drawTurnGlyph(icon, color) }
@@ -45,7 +45,7 @@ fun TurnIconGlyph(
 fun TurnIconRef(
     icon: TurnIcon,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
+    size: Dp = KtmLayout.glyph,
     color: Color = Color.White,
     /** Null (the default) for decoration: where a glyph carries meaning, its row or card says it in words. */
     contentDescription: String? = null,

@@ -57,16 +57,18 @@ import com.navigator.app.ui.theme.rememberHaptics
 /** Visual style of a [KtmButton]. One primary action per screen; destructive actions use a danger style, never the accent. */
 enum class ButtonStyle { Primary, Tonal, Neutral, Outline, Text, Danger, DangerTonal }
 
-/** Heights are touch targets: 48 at rest, 56 primary at rest, 64 riding, 72 for stacked icon-over-label tiles, 84 for the trip sheet's. */
+/** Heights are touch targets: 48 at rest, 56 primary at rest, 64 riding, 72 for stacked icon-over-label tiles, 80 for the trip controls on a short landscape screen, 84 for the trip sheet's. */
 enum class ButtonSize(val height: Dp) {
     Small(KtmLayout.targetRest),
     Rest(KtmLayout.targetPrimary),
     Riding(KtmLayout.targetRiding),
     Tile(KtmLayout.targetTile),
+    /** The trip controls on a short landscape screen (NL8). */
+    TileCompact(KtmLayout.targetTileCompact),
     /** The trip sheet's big stacked tiles (Add stop, Overview, Minimise). */
     TileLarge(KtmLayout.targetTileLarge);
 
-    val stacked: Boolean get() = this == Tile || this == TileLarge
+    val stacked: Boolean get() = this == Tile || this == TileCompact || this == TileLarge
 }
 
 /** Container, content and outline colours of a button in one state, resolved from the theme tokens. */
@@ -115,7 +117,7 @@ fun KtmButton(
     val shape: Shape = if (size == ButtonSize.Riding || size.stacked) KtmShapes.Card else KtmShapes.Control
     val label = when (size) {
         ButtonSize.Small -> KtmTheme.type.buttonCompact
-        ButtonSize.Tile, ButtonSize.TileLarge -> KtmTheme.type.buttonCompact
+        ButtonSize.Tile, ButtonSize.TileCompact, ButtonSize.TileLarge -> KtmTheme.type.buttonCompact
         else -> MaterialTheme.typography.labelLarge
     }
     val active = enabled && !loading
@@ -135,7 +137,7 @@ fun KtmButton(
                 // Focus ring: 3 dp, 3 dp outside the button.
                 if (focused) {
                     val gap = KtmLayout.focusRingGap.toPx()
-                    val r = if (shape === KtmShapes.Card) 16.dp.toPx() else 12.dp.toPx()
+                    val r = (if (shape === KtmShapes.Card) KtmShapes.CardRadius else KtmShapes.ControlRadius).toPx()
                     drawRoundRect(
                         ringColor, Offset(-gap - (KtmLayout.focusRingWidth / 2).toPx(), -gap - (KtmLayout.focusRingWidth / 2).toPx()),
                         Size(this.size.width + 2 * (gap + (KtmLayout.focusRingWidth / 2).toPx()), this.size.height + 2 * (gap + (KtmLayout.focusRingWidth / 2).toPx())),
@@ -166,9 +168,9 @@ fun KtmButton(
             val lead: @Composable () -> Unit = {
                 when {
                     loading -> CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp), strokeWidth = 2.5.dp, color = palette.content,
+                        modifier = Modifier.size(KtmLayout.iconInline), strokeWidth = KtmLayout.spinnerStroke, color = palette.content,
                     )
-                    icon != null -> Icon(icon, null, tint = palette.content, modifier = Modifier.size(if (stacked) 24.dp else 22.dp))
+                    icon != null -> Icon(icon, null, tint = palette.content, modifier = Modifier.size(if (stacked) KtmLayout.iconMedium else KtmLayout.iconButton))
                 }
             }
             lead()

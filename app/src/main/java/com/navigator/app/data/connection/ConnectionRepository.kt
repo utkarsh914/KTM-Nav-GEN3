@@ -116,6 +116,7 @@ class ConnectionRepository(
         s.bondedDeviceAddress = null
         s.bondedDeviceName = null
         s.bondedLastSeenMs = 0L
+        s.bondedPairedMs = 0L
         _lastSeenMs.value = null
         stopService()
         settings.refresh()

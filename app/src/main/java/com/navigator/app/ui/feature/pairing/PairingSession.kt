@@ -44,11 +44,16 @@ class AndroidPairingSession(context: Context, private val settings: SettingsRepo
         before?.first?.let { BccuConnectionService.start(app, it) }
     }
 
-    override fun commit() { previous = null }
+    override fun commit() {
+        previous = null
+        // The date the pairing was confirmed, for the bike card.
+        settings.legacy.bondedPairedMs = System.currentTimeMillis()
+    }
 
     override fun bondDebugDevice() {
         settings.legacy.bondedDeviceAddress = "00:00:00:00:00:00"
         settings.legacy.bondedDeviceName = "Debug device (no real bike)"
+        settings.legacy.bondedPairedMs = System.currentTimeMillis()
         settings.refresh()
     }
 }

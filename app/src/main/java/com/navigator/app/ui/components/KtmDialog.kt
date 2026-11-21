@@ -40,6 +40,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.navigator.app.ui.theme.KtmElevation
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -94,7 +95,7 @@ fun KtmDialog(
         ) {
             Column(
                 modifier
-                    .widthIn(max = 312.dp)
+                    .widthIn(max = KtmLayout.dialogMaxWidth)
                     .shadow(KtmElevation.dialog, KtmShapes.Sheet)
                     .background(c.surf, KtmShapes.Sheet)
                     .pointerInput(Unit) { detectTapGestures { } }

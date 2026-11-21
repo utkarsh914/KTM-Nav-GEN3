@@ -78,7 +78,7 @@ fun KtmSnackbar(data: SnackbarData, modifier: Modifier = Modifier) {
         modifier.fillMaxWidth()
             .shadow(KtmElevation.onMap, KtmShapes.Control)
             .background(c.inv, KtmShapes.Control)
-            .heightIn(min = 52.dp)
+            .heightIn(min = KtmLayout.snackbarMin)
             .padding(start = KtmSpacing.lg, top = KtmSpacing.sm, bottom = KtmSpacing.sm, end = KtmSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),

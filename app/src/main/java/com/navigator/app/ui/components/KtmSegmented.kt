@@ -10,7 +10,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmTheme
@@ -44,7 +43,7 @@ fun <T> KtmSegmented(
                 shape = SegmentedButtonDefaults.itemShape(index, options.size, KtmShapes.Control),
                 colors = colors,
                 enabled = enabled,
-                border = BorderStroke(1.dp, if (option == selected) a.container else c.line2),
+                border = BorderStroke(KtmLayout.hairline, if (option == selected) a.container else c.line2),
                 icon = {},
                 label = { Text(label(option), style = MaterialTheme.typography.labelMedium, maxLines = 1) },
             )

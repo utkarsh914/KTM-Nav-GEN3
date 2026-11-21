@@ -409,6 +409,9 @@
     <string name="mirror_ready_hint">Start a trip in Google Maps and the turns appear here and on your dash.</string>
     <string name="mirror_ready_line">Mirror mode is set up</string>
     <string name="mirror_sending_title">Send turns to the dash</string>
+    <string name="mirror_sending_short">Send to dash</string>
+    <string name="mirror_sending_short_on">On</string>
+    <string name="mirror_sending_short_paused">Paused</string>
     <string name="mirror_sending_on">Turn off to stop updating the dash. Google Maps keeps guiding.</string>
     <string name="mirror_sending_paused">Paused: the dash isn\'t being updated. Turn on to resume.</string>
     <string name="mirror_paused_badge">Paused</string>
@@ -679,6 +682,7 @@
     <!-- Settings home (ST1, ST10) -->
     <string name="settings_title">Settings</string>
     <string name="settings_wordmark">KTM</string>
+    <string name="settings_paired_on">Paired %1$s</string>
     <string name="settings_no_bike">No bike paired</string>
     <string name="settings_repair_title">Can\'t reach your bike</string>
     <string name="settings_repair_message">The keys may have been lost. Re-pair to connect again.</string>

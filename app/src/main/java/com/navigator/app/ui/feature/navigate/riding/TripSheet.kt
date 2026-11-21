@@ -91,7 +91,7 @@ fun ColumnScope.TripControlsBody(
     nextStopNumber: Int? = null,
     nextStopDistance: String? = null,
 ) {
-    val tile = if (compact) ButtonSize.Tile else ButtonSize.TileLarge
+    val tile = if (compact) ButtonSize.TileCompact else ButtonSize.TileLarge
     // One height for the three tiles: a label that wraps (a large font) makes its neighbours as tall.
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         KtmButton(

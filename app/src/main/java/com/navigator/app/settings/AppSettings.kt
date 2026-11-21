@@ -55,6 +55,11 @@ class AppSettings(context: Context) {
         get() = pairingPrefs.getLong(KEY_BONDED_LAST_SEEN, 0L)
         set(value) { pairingPrefs.edit { putLong(KEY_BONDED_LAST_SEEN, value) } }
 
+    /** When the bike was paired (epoch ms, 0 = unknown, e.g. paired before this was kept), for "Paired 12 Nov". Device-local like [bondedLastSeenMs]. */
+    var bondedPairedMs: Long
+        get() = pairingPrefs.getLong(KEY_BONDED_PAIRED, 0L)
+        set(value) { pairingPrefs.edit { putLong(KEY_BONDED_PAIRED, value) } }
+
     /**
      * One-time clean-up of the retired brand choice: a rider who had picked Husqvarna and never set
      * an accent keeps blue, then the orphaned `brand` key is removed.
@@ -407,6 +412,7 @@ class AppSettings(context: Context) {
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
         private const val KEY_BONDED_LAST_SEEN = "bonded_last_seen_ms"
+        private const val KEY_BONDED_PAIRED = "bonded_paired_ms"
 
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         private const val KEY_USER_NAME = "user_name"

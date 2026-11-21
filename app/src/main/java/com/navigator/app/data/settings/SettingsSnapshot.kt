@@ -58,6 +58,8 @@ data class SettingsSnapshot(
     val speedBandCount: Int,
     // Diagnostics
     val dashPreviewOverlay: Boolean,
+    /** When the bike was paired (0 = unknown). */
+    val bondedPairedMs: Long = 0L,
 ) {
     val isPaired: Boolean get() = !bondedDeviceAddress.isNullOrBlank()
 
@@ -96,6 +98,7 @@ data class SettingsSnapshot(
             speedBandStepKmh = s.speedBandStepKmh,
             speedBandCount = s.speedBandCount,
             dashPreviewOverlay = s.dashPreviewOverlay,
+            bondedPairedMs = s.bondedPairedMs,
         )
     }
 }
