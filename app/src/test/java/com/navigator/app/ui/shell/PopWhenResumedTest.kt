@@ -38,6 +38,18 @@ class PopWhenResumedTest {
         assertEquals(1, pops)
     }
 
+    @Test fun aPageThatVanishesWhileResumedLeavesAtOnce() {
+        val owner = Owner().apply { registry.currentState = Lifecycle.State.RESUMED }
+        var pops = 0
+        var gone by mutableStateOf(false)
+        rule.setContent { CompositionLocalProvider(LocalLifecycleOwner provides owner) { PopWhenResumed(gone) { pops++ } } }
+        rule.waitForIdle()
+        assertEquals(0, pops)
+        gone = true
+        rule.waitForIdle()
+        assertEquals(1, pops)
+    }
+
     @Test fun nothingPopsWhileThePageIsStillThere() {
         val owner = Owner().apply { registry.currentState = Lifecycle.State.RESUMED }
         var pops = 0

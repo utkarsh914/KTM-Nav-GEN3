@@ -125,7 +125,7 @@ fun MirrorContent(
                 when (status) {
                     is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = true)
                     is MirrorStatus.Setup -> Checklist(status.rows, actions)
-                    is MirrorStatus.Live -> {}
+                    is MirrorStatus.Live -> Unit // handled by the mounted panel above
                 }
             }
             Column(

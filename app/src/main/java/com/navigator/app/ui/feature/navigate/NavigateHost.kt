@@ -390,13 +390,13 @@ fun NavigateHost(
     // One frame per change of what is shown: the card measures after it arrives, so frame again once its size is known.
     // A later resize of the card (the rider panned the map meanwhile) must not pull the camera back.
     var fitPending by remember { mutableStateOf(false) }
-    LaunchedEffect(stage, selected, routePreview.routes, stops) { fitPending = true }
-    LaunchedEffect(planInsets, stage, fitPending) {
+    LaunchedEffect(stage, selected, routePreview.routes, routePreview.selected, stops) { fitPending = true }
+    LaunchedEffect(planInsets, stage, fitPending, stopCandidate, pickingStop) {
         val framed = (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) || stage == NavStage.CONFIRM
         if (framed && fitPending) {
             delay(250)
             fitPending = false
-            if (stage == NavStage.CONFIRM || stage == NavStage.PREVIEW) fitKey++
+            fitKey++
         }
     }
     LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate) {

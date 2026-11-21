@@ -146,6 +146,21 @@ class ComponentInteractionTest {
         assertEquals("riding buttons are 64 dp (1 px = 1 dp at the default density)", 64f, keep.height, 1f)
     }
 
+    @Test fun aDialogKeepsItsButtonsSideBySideAtTheNormalFont() {
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                KtmDialog(
+                    title = "Delete this ride?", onDismiss = {},
+                    confirm = DialogAction("Delete ride", {}, ButtonStyle.Danger),
+                    dismiss = DialogAction("Keep it", {}),
+                )
+            }
+        }
+        val keep = rule.onNodeWithText("Keep it").fetchSemanticsNode().boundsInRoot
+        val delete = rule.onNodeWithText("Delete ride").fetchSemanticsNode().boundsInRoot
+        assertTrue("same row", keep.right <= delete.left && Math.abs(keep.top - delete.top) < 1f)
+    }
+
     @Test fun aDialogStacksItsButtonsAtALargeFont() {
         rule.setContent {
             val d = LocalDensity.current
