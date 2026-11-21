@@ -8,6 +8,9 @@ import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.notifications.NavSubtextParser
 import com.navigator.app.settings.AppSettings
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,8 +18,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * Stereo turn-approach beeper. One continuous "metronome" runs while a turn is
@@ -121,7 +122,7 @@ object TurnBeeper {
                 playBeep(Side.RIGHT, ducked = false)
                 delay(500)
                 playBeep(Side.LEFT, ducked = false)
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 AppLogger.log("Beep", "!! preview failed: ${e.javaClass.simpleName}")
@@ -149,7 +150,7 @@ object TurnBeeper {
                     playBeep(side)
                     delay(gapForMeters(currentMeters))
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e // normal stop (new maneuver / nav ended), not a failure
             } catch (e: Exception) {
                 AppLogger.log("Beep", "!! beep pattern failed: $e")

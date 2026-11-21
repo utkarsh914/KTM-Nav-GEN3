@@ -43,6 +43,7 @@ import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -108,7 +109,7 @@ class SharedLinkController(
             // A lookup that throws is a failed lookup: the card says so, the app does not go down.
             val outcome = try {
                 resolve(text)
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 LinkOutcome.Failed(LinkFailure.UNREADABLE)

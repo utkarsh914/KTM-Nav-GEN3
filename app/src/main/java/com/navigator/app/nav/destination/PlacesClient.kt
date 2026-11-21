@@ -5,13 +5,13 @@ import android.content.pm.PackageManager
 import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.ride.RideMetrics
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /** One autocomplete prediction. [distanceMeters] is straight-line (may be null). */
 data class PlaceSuggestion(

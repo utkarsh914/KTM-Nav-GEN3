@@ -3,15 +3,16 @@ package com.navigator.app.ui.feature.diagnostics
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performSemanticsAction
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Rule
 import org.junit.Test
@@ -68,7 +69,7 @@ class LogsFollowTest {
         var ui by mutableStateOf(LogsUi(entries = entries(60), tags = listOf("BLE")))
         rule.setContent { KtmTheme(darkTheme = true) { LogsContent(ui, noActions) } }
         rule.waitForIdle()
-        rule.onNodeWithTag("logs-list").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, -300f) }
+        rule.onNodeWithTag("logs-list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -300f) }
         rule.waitForIdle()
         rule.onNodeWithText("Paused").assertIsDisplayed()
         ui = LogsUi(entries = entries(80), tags = listOf("BLE"))

@@ -3,13 +3,16 @@ package com.navigator.app.ui.feature.replay
 import android.content.Context
 import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.AvgSpeedMode
+import com.navigator.app.ride.MergeResult
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -26,7 +29,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -55,7 +57,7 @@ class ReplayViewModelTest {
     private fun vm(id: String) = ReplayViewModel(id, repo, AvgSpeedMode.MOVING, RideMetrics.SpeedBands.DEFAULT, dispatcher) { dispatcher.scheduler.currentTime }
     private fun ReplayViewModel.ready() = ui.value as ReplayUi.Ready
 
-    private fun kotlinx.coroutines.test.TestScope.events(vm: ReplayViewModel): List<ReplayEvent> {
+    private fun TestScope.events(vm: ReplayViewModel): List<ReplayEvent> {
         val list = mutableListOf<ReplayEvent>()
         vm.events.onEach { list += it }.launchIn(backgroundScope)
         return list
@@ -139,7 +141,7 @@ class ReplayViewModelTest {
     @Test fun aMergedRideShowsItsPartsAndPlaybackSkipsTheStop() = runTest(dispatcher) {
         val a = plain("A", 30, 1_000_000L)
         val b = plain("B", 30, 9_000_000L, 77.1)
-        val merged = (store.mergeRides(listOf(a.id, b.id)) as com.navigator.app.ride.MergeResult.Merged).ride
+        val merged = (store.mergeRides(listOf(a.id, b.id)) as MergeResult.Merged).ride
         val v = vm(merged.id)
         assertEquals(2, v.ready().parts)
         assertEquals(1, v.ready().seams.size)
@@ -152,7 +154,7 @@ class ReplayViewModelTest {
     @Test fun starringMarksTheRideAndEndsAMergeOffer() = runTest(dispatcher) {
         val a = plain("A", 30, 1_000_000L)
         val b = plain("B", 30, 9_000_000L)
-        val merged = (store.mergeRides(listOf(a.id, b.id)) as com.navigator.app.ride.MergeResult.Merged).ride
+        val merged = (store.mergeRides(listOf(a.id, b.id)) as MergeResult.Merged).ride
         val v = vm(merged.id)
         val seen = events(v)
         v.toggleStar()

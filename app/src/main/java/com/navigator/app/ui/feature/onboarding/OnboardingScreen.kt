@@ -15,8 +15,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
-import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.feature.permissions.rememberPermissionFixer
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.theme.KtmTheme
 
 /** First run: [OnboardingContent] over its view model, with the permission requests and Google's terms dialog. */

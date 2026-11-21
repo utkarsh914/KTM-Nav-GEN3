@@ -3,12 +3,15 @@ package com.navigator.app.ui.feature.rides
 import android.content.Context
 import com.navigator.app.data.rides.ImportResult
 import com.navigator.app.data.rides.RidesRepository
+import com.navigator.app.ride.Gpx
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -23,7 +26,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -48,7 +50,7 @@ class RidesViewModelTest {
     private fun ride(start: Long, name: String) = store.importRide(name, pts(60, start))!!
 
 
-    private fun kotlinx.coroutines.test.TestScope.watch(): () -> RidesUi? {
+    private fun TestScope.watch(): () -> RidesUi? {
         val job = vm.ui.launchIn(backgroundScope)
         return { vm.ui.value.also { job.hashCode() } }
     }
@@ -162,13 +164,13 @@ class RidesViewModelTest {
         vm.events.onEach { events += it }.launchIn(backgroundScope)
         vm.importGpx({ null }, null)
         assertEquals(ImportResult.Unreadable, (events.last() as RidesEvent.Imported).result)
-        val gpx = com.navigator.app.ride.Gpx.write("Loop", pts(60, 5_000_000L))
+        val gpx = Gpx.write("Loop", pts(60, 5_000_000L))
         vm.importGpx({ gpx.byteInputStream() }, "loop.gpx")
         val first = (events.last() as RidesEvent.Imported).result as ImportResult.Imported
         assertEquals("Loop", first.ride.destinationLabel)
         vm.importGpx({ gpx.byteInputStream() }, "loop.gpx")
         assertEquals(ImportResult.Duplicate, (events.last() as RidesEvent.Imported).result)
-        val tiny = com.navigator.app.ride.Gpx.write("x", pts(1, 9_000_000L))
+        val tiny = Gpx.write("x", pts(1, 9_000_000L))
         vm.importGpx({ tiny.byteInputStream() }, "x.gpx")
         assertEquals("a one-fix track is not a track", ImportResult.Unreadable, (events.last() as RidesEvent.Imported).result)
     }

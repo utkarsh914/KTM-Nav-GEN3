@@ -1,10 +1,10 @@
 package com.navigator.app.ui.map
 
 import android.content.Context
-import android.graphics.Color
-import androidx.core.graphics.createBitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import androidx.core.graphics.createBitmap
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 

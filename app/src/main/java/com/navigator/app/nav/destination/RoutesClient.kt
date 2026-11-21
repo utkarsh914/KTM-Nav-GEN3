@@ -4,11 +4,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.TravelMode
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 /** A single computed route for the pre-navigation preview. */
 data class RoutePreview(

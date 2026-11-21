@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -10,11 +11,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
 import com.navigator.app.data.settings.NavEngine
-import com.navigator.app.ui.components.KtmChoiceCard
-import androidx.compose.foundation.layout.Arrangement
 import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.settings.DrivingSidePreference
+import com.navigator.app.ui.components.KtmChoiceCard
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow

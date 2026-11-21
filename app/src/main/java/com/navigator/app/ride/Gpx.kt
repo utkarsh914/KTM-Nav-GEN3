@@ -1,21 +1,21 @@
 package com.navigator.app.ride
 
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.StringReader
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import javax.xml.parsers.SAXParserFactory
 import org.xml.sax.Attributes
 import org.xml.sax.InputSource
 import org.xml.sax.helpers.DefaultHandler
-import java.io.ByteArrayInputStream
-import java.io.InputStream
-import java.time.Instant
-import java.time.OffsetDateTime
-import javax.xml.parsers.SAXParserFactory
 
 /** A track read from a GPX file. */
 class GpxTrack(val name: String?, val points: List<RidePoint>)

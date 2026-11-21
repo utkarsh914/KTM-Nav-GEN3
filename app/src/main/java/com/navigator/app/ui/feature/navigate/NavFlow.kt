@@ -5,9 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.navigator.app.trip.MAX_STOPS
 import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.trip.MAX_STOPS
 import org.json.JSONObject
 
 internal enum class NavStage { BROWSE, SEARCH, CONFIRM, PREVIEW, NAVIGATING, TRIP_FINISHED }

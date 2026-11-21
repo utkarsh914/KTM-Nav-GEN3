@@ -23,8 +23,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,10 +39,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
-import com.navigator.app.nav.destination.PolylineCodec
-import com.navigator.app.nav.model.Stop
-import com.navigator.app.ride.RideMetrics
-import com.navigator.app.ui.findHostActivity
 import com.navigator.app.app.appContainer
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.location.freshLocation
@@ -53,15 +49,18 @@ import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.PlacesStore
+import com.navigator.app.nav.destination.PolylineCodec
 import com.navigator.app.nav.destination.RoutesClient
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.Stop
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.ride.RideEvents
+import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RideStore
 import com.navigator.app.trip.FinishedTrip
 import com.navigator.app.ui.feature.navigate.ActivityCard
@@ -85,6 +84,7 @@ import com.navigator.app.ui.feature.navigate.riding.rememberSpeedKmh
 import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
 import com.navigator.app.ui.feature.navigate.search.SearchMode
 import com.navigator.app.ui.feature.record.RecordRidePill
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.map.FollowMode
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets

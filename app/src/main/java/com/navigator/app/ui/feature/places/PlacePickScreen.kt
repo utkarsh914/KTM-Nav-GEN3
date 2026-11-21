@@ -1,16 +1,14 @@
 package com.navigator.app.ui.feature.places
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import androidx.core.app.ActivityCompat
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -25,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
 import com.navigator.app.location.lastKnownLocation
@@ -34,6 +34,7 @@ import com.navigator.app.ui.feature.navigate.PickOnMapHost
 import com.navigator.app.ui.feature.navigate.pick.AndroidReverseGeocoder
 import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
 import com.navigator.app.ui.feature.navigate.search.SearchMode
+import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
@@ -41,7 +42,6 @@ import com.navigator.app.ui.map.MapSurface
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
-import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull

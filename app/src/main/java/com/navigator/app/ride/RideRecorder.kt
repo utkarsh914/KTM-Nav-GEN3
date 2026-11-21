@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import androidx.core.content.ContextCompat
+import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import java.io.Writer
@@ -103,7 +104,7 @@ class RideRecorder(private val context: Context) {
         // Poor fixes (urban canyon, cold start) add phantom distance and speed spikes.
         if (location.hasAccuracy() && location.accuracy > MAX_ACCURACY_M) return
         // Mock providers are accepted in debug builds only, so mock-location testing still works.
-        if (location.isMock && !com.navigator.app.BuildConfig.DEBUG) return
+        if (location.isMock && !BuildConfig.DEBUG) return
         val point = RidePoint(
             lat = location.latitude,
             lng = location.longitude,

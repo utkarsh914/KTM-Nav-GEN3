@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import com.navigator.app.ui.OpenDashPermissions
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 
 /** A paired Bluetooth audio device a call can be sent to. */
 data class AudioDevice(val address: String, val name: String)
@@ -19,7 +21,7 @@ fun interface AudioDevices {
 }
 
 /** The paired audio devices, or none when Android won't say (no nearby-devices permission, Bluetooth off). Slow binder IPC: off the main thread. */
-class AndroidAudioDevices(context: Context, private val io: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO) : AudioDevices {
+class AndroidAudioDevices(context: Context, private val io: CoroutineDispatcher = Dispatchers.IO) : AudioDevices {
     private val app = context.applicationContext
 
     // The permission is checked on the line above; lint can't see through the helper.

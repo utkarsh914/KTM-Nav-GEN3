@@ -4,13 +4,13 @@ import com.navigator.app.R
 import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.time.LocalDate
 import java.time.ZoneOffset
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class RidesListTest {
     private val utc = ZoneOffset.UTC

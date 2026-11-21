@@ -2,7 +2,9 @@ package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
+import com.navigator.app.nav.destination.RoutePreview
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.ui.map.MapPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -107,7 +109,7 @@ class PlanPoliciesTest {
     }
 
     @Test fun routesGetTimeLabelsOnlyWhenThereAreAlternatives() {
-        fun r(m: Int) = com.navigator.app.nav.destination.RoutePreview(m * 60, 1000, emptyList(), null, 0, com.navigator.app.nav.model.TravelMode.TWO_WHEELER, emptyList())
+        fun r(m: Int) = RoutePreview(m * 60, 1000, emptyList(), null, 0, TravelMode.TWO_WHEELER, emptyList())
         assertEquals(listOf("30 min", "35 min"), RouteSheetMapper.callouts(listOf(r(30), r(35)), 0))
         assertTrue(RouteSheetMapper.callouts(listOf(r(30)), 0).isEmpty())
         assertTrue("with stops the header carries the time", RouteSheetMapper.callouts(listOf(r(30), r(35)), 1).isEmpty())

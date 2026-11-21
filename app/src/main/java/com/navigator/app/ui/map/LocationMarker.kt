@@ -1,24 +1,23 @@
 package com.navigator.app.ui.map
 
-import android.graphics.RadialGradient
-import android.graphics.Shader
-import android.location.LocationListener
-import android.os.Bundle
-import android.view.WindowManager
-import com.navigator.app.location.hasLocationPermission
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Bundle
 import android.view.Surface
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
@@ -33,6 +32,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.ui.shell.rememberLifecycleStarted
 import kotlin.math.cos
 import kotlin.math.sin

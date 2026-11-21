@@ -9,11 +9,11 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DrivingSide
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.util.concurrent.ConcurrentHashMap
 import org.tensorflow.lite.Interpreter
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * On-device turn-icon recogniser, ported from the approach used by the KTM

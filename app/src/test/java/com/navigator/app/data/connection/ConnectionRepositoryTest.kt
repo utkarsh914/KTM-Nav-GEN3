@@ -1,14 +1,15 @@
 package com.navigator.app.data.connection
 
 import android.content.Context
+import com.navigator.app.backup.PrefsBackup
 import com.navigator.app.ble.BccuConnectionService.ConnectionState
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.nav.DashPreview
 import com.navigator.app.settings.AppSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -99,7 +100,7 @@ class ConnectionRepositoryTest {
     }
 
     @Test fun lastSeenNeverGoesIntoABackup() {
-        assertTrue(com.navigator.app.backup.PrefsBackup.isExcluded("bonded_last_seen_ms"))
+        assertTrue(PrefsBackup.isExcluded("bonded_last_seen_ms"))
     }
 
     @Test fun rePairForgetsTheBikeItsFlagAndItsKeys() = runTest(UnconfinedTestDispatcher()) {

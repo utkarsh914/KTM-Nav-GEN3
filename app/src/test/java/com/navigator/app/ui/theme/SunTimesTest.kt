@@ -1,10 +1,10 @@
 package com.navigator.app.ui.theme
 
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 class SunTimesTest {
     private fun ms(y: Int, m: Int, d: Int, h: Int, min: Int, zone: ZoneOffset) =

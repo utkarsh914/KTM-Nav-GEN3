@@ -22,12 +22,12 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
-import com.navigator.app.net.ConnectivityMonitor
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.ui.feature.navigate.ActivityCardModel
 import com.navigator.app.ui.feature.navigate.voiceAvailable
-import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.shell.LocalFeedback
 
 /**

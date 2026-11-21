@@ -6,8 +6,8 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.CancellationSignal
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==

@@ -7,8 +7,8 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.navigator.app.R
 import com.navigator.app.app.AppIntents
-import com.navigator.app.ride.RecordRideShortcutActivity
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.ride.RecordRideShortcutActivity
 import com.navigator.app.ui.MainActivity
 
 /**

@@ -1,9 +1,16 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,6 +19,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -19,8 +27,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.shell.LocalTripShared
+import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -35,7 +44,7 @@ import org.robolectric.annotation.Config
 /** What the trip sheet shows: the controls and End trip, as the sheet the trip bar grows into and the landscape panel use them. */
 @Composable
 internal fun TripSheetForTest(beeps: Boolean, messages: Boolean, dashStatus: String?, canAddStop: Boolean, nextStop: String?, actions: TripSheetActions, nextStopNumber: Int? = null, nextStopDistance: String? = null) {
-    androidx.compose.foundation.layout.Column {
+    Column {
         TripControlsBody(beeps, messages, dashStatus, canAddStop, nextStop, actions, nextStopNumber = nextStopNumber, nextStopDistance = nextStopDistance)
         Spacer(Modifier.height(KtmSpacing.xl))
         EndTripButton(actions.onEnd)
@@ -57,7 +66,7 @@ class TripBarSheetTest {
             KtmTheme(darkTheme = true) {
                 RidingTheme(night = true) {
                     TripBarSheet(bar, open(), { log += "open" }, { log += "dismiss" }, 600.dp) {
-                        androidx.compose.material3.Text("sheet body")
+                        Text("sheet body")
                     }
                 }
             }
@@ -98,20 +107,20 @@ class TripBarSheetTest {
         rule.onNodeWithText("42").assertIsDisplayed()
     }
 
-    @androidx.compose.animation.ExperimentalSharedTransitionApi
+    @ExperimentalSharedTransitionApi
     @Test fun insideTheRidingStageTheBarAndTheStripShareBoundsAndTheSheetStillOpens() {
         var stage by mutableStateOf(true)
         var open by mutableStateOf(false)
         rule.setContent {
             KtmTheme(darkTheme = true) {
                 RidingTheme(night = true) {
-                    androidx.compose.animation.SharedTransitionLayout {
-                        androidx.compose.animation.AnimatedContent(stage, label = "stage") { riding ->
-                            androidx.compose.runtime.CompositionLocalProvider(
-                                com.navigator.app.ui.shell.LocalTripShared provides com.navigator.app.ui.shell.SharedElements(this@SharedTransitionLayout, this),
+                    SharedTransitionLayout {
+                        AnimatedContent(stage, label = "stage") { riding ->
+                            CompositionLocalProvider(
+                                LocalTripShared provides SharedElements(this@SharedTransitionLayout, this),
                             ) {
-                                if (riding) TripBarSheet(bar, open, { log += "open" }, { log += "dismiss" }, 600.dp) { androidx.compose.material3.Text("sheet body") }
-                                else androidx.compose.foundation.layout.Box(Modifier.tripStripBounds()) { androidx.compose.material3.Text("strip") }
+                                if (riding) TripBarSheet(bar, open, { log += "open" }, { log += "dismiss" }, 600.dp) { Text("sheet body") }
+                                else Box(Modifier.tripStripBounds()) { Text("strip") }
                             }
                         }
                     }

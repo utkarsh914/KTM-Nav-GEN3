@@ -6,6 +6,7 @@ import com.navigator.app.data.connection.ConnectionDetail
 import com.navigator.app.data.connection.ConnectionPhase
 import com.navigator.app.data.permissions.PermissionGrants
 import com.navigator.app.data.permissions.PermissionPolicy
+import com.navigator.app.data.permissions.PermissionsState
 import com.navigator.app.data.settings.NavEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -52,10 +54,10 @@ class PairingViewModelTest {
 
     private class Rig(
         val scan: FakeScan, val session: FakeSession, val link: MutableStateFlow<ConnectionDetail>,
-        val perms: MutableStateFlow<com.navigator.app.data.permissions.PermissionsState>, val vm: PairingViewModel,
+        val perms: MutableStateFlow<PermissionsState>, val vm: PairingViewModel,
     )
 
-    private fun kotlinx.coroutines.test.TestScope.rig(nearby: Boolean = true): Rig {
+    private fun TestScope.rig(nearby: Boolean = true): Rig {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val scan = FakeScan(); val session = FakeSession()
         val link = MutableStateFlow(ConnectionDetail())

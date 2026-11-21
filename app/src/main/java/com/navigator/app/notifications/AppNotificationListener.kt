@@ -1,18 +1,19 @@
 package com.navigator.app.notifications
 
-import android.graphics.Bitmap
-import com.navigator.app.audio.BeepSourcePolicy
-import com.navigator.app.audio.TurnBeeper
-import com.navigator.app.location.SpeedMonitor
-import com.navigator.app.nav.model.isActiveNav
-import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import android.app.Notification
+import android.graphics.Bitmap
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.navigator.app.BuildConfig
+import com.navigator.app.audio.BeepSourcePolicy
+import com.navigator.app.audio.TurnBeeper
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
+import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.GoogleNavSdkController
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
 import java.io.File
@@ -108,7 +109,7 @@ class AppNotificationListener : NotificationListenerService() {
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
         // Debug only: logs the package + category of EVERY app's notification, which
         // would otherwise be mirrored to the public Downloads log in release.
-        if (com.navigator.app.BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG) {
             AppLogger.log("Notif", "Posted: pkg=$packageName category=${sbn.notification.category} flags=0x${Integer.toHexString(sbn.notification.flags)} title=${redact(title)}")
         }
         if (title.isBlank() && text.isBlank()) return
@@ -138,7 +139,7 @@ class AppNotificationListener : NotificationListenerService() {
             // DEBUG-only: extra *values* carry the destination road/address
             // (location PII) and AppLogger mirrors every line to the public
             // Downloads copy, so raw values must never be emitted in a release.
-            if (com.navigator.app.BuildConfig.DEBUG) {
+            if (BuildConfig.DEBUG) {
                 for (key in extras.keySet()) {
                     // Bundle.get(String) is deprecated (no typed replacement exists for a
                     // dump of arbitrary-type extras); fine for this debug-only diagnostic.

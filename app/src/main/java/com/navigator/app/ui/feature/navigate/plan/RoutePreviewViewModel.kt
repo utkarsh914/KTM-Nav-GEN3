@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.navigator.app.nav.destination.RoutePreview
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.TravelMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,7 +72,7 @@ class RoutePreviewViewModel(
             // The API client reports failure as no routes; anything unexpected is a failure too, never a crash.
             val routes = try {
                 api.compute(origin, dest.lat to dest.lng, mode(), stops.map { it.lat to it.lng })
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 emptyList()

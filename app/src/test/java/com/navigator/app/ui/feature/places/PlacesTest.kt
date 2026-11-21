@@ -1,17 +1,18 @@
 package com.navigator.app.ui.feature.places
 
 import android.content.Context
+import androidx.compose.runtime.saveable.SaverScope
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import com.navigator.app.data.places.PlacesRepository
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlacesStore
@@ -300,7 +301,7 @@ class PlacesContentTest {
     @Test fun thePlaceActionsTargetSurvivesTheProcessBeingKilled() {
         val place = SavedPlace(12.5, 77.5, "Toit", "Indiranagar")
         val saver = PlaceTarget.Saver
-        val scope = androidx.compose.runtime.saveable.SaverScope { true }
+        val scope = SaverScope { true }
         for (t in listOf<PlaceTarget?>(null, PlaceTarget.Saved(place), PlaceTarget.Slot(FavoriteSlot.WORK, place))) {
             val saved = with(saver) { scope.save(t) }!!
             assertEquals(t, saver.restore(saved))

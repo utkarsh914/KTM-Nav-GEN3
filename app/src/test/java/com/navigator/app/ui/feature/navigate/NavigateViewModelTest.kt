@@ -22,6 +22,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -71,7 +72,7 @@ class NavigateViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun kotlinx.coroutines.test.TestScope.vm(): NavigateViewModel {
+    private fun TestScope.vm(): NavigateViewModel {
         val connection = ConnectionRepository(
             backgroundScope, settings,
             LinkSources(

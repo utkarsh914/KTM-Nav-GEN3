@@ -9,10 +9,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.lifecycle.SavedStateHandle
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.data.permissions.PermissionGrants
+import com.navigator.app.data.permissions.PermissionPolicy
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.feature.permissions.FixStep
@@ -22,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -55,15 +59,15 @@ class OnboardingViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun kotlinx.coroutines.test.TestScope.vm(
-        available: Boolean = true, accepted: Boolean = false, saved: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle(),
+    private fun TestScope.vm(
+        available: Boolean = true, accepted: Boolean = false, saved: SavedStateHandle = SavedStateHandle(),
     ): OnboardingViewModel {
         val perms = PermissionsRepository({ grants }, settings, backgroundScope)
         return OnboardingViewModel(settings, perms, available, accepted, saved).also { it.ui.launchIn(backgroundScope) }
     }
 
     @Test fun theStepSurvivesTheProcessBeingKilled() = runTest(UnconfinedTestDispatcher()) {
-        val handle = androidx.lifecycle.SavedStateHandle()
+        val handle = SavedStateHandle()
         val first = vm(saved = handle)
         first.next(); first.chooseEngine(NavEngine.IN_APP); first.next()
         assertEquals(OnboardingStep.TERMS, first.ui.value.step)
@@ -72,9 +76,9 @@ class OnboardingViewModelTest {
     }
 
     @Test fun aSavedStepThatIsNoLongerInTheListGoesOnToTheNextOne() = runTest(UnconfinedTestDispatcher()) {
-        val handle = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.TERMS.name))
+        val handle = SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.TERMS.name))
         assertEquals("the terms were accepted since: on to the name", OnboardingStep.NAME, vm(available = true, accepted = true, saved = handle).ui.value.step)
-        assertEquals("an unknown step starts over", OnboardingStep.WELCOME, vm(saved = androidx.lifecycle.SavedStateHandle(mapOf("onboarding_step" to "NOPE"))).ui.value.step)
+        assertEquals("an unknown step starts over", OnboardingStep.WELCOME, vm(saved = SavedStateHandle(mapOf("onboarding_step" to "NOPE"))).ui.value.step)
     }
 
     @Test fun walksTheStepsWithTermsForInAppAndSavesTheChoices() = runTest(UnconfinedTestDispatcher()) {
@@ -123,7 +127,7 @@ class OnboardingViewModelTest {
     @Test fun theNameIsCapped() = runTest(UnconfinedTestDispatcher()) {
         val vm = vm()
         vm.setName("x".repeat(100))
-        assertEquals(com.navigator.app.data.settings.SettingSpecs.MAX_USER_NAME, vm.ui.value.name.length)
+        assertEquals(SettingSpecs.MAX_USER_NAME, vm.ui.value.name.length)
     }
 
     @Test fun backReturnsAndStopsAtTheWelcome() = runTest(UnconfinedTestDispatcher()) {
@@ -174,7 +178,7 @@ class OnboardingContentTest {
 
     private fun show(step: OnboardingStep, engine: NavEngine = NavEngine.IN_APP, name: String = "", terms: TermsUi = TermsUi(), missing: Boolean = true) {
         val grants = if (missing) PermissionGrants(false, true, true, true, true, true) else PermissionGrants(true, true, true, true, true, true)
-        val perms = PermissionsUi.of(com.navigator.app.data.permissions.PermissionPolicy.build(grants, NavEngine.MIRROR))
+        val perms = PermissionsUi.of(PermissionPolicy.build(grants, NavEngine.MIRROR))
         val ui = OnboardingUi(step, engine, name, progress = if (step == OnboardingStep.WELCOME) null else 2 to 4, canGoBack = step != OnboardingStep.WELCOME, permissions = perms)
         rule.setContent { KtmTheme(darkTheme = false) { OnboardingContent(ui, terms, actions(), reducedMotion = true) } }
     }

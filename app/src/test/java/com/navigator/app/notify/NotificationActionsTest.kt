@@ -1,5 +1,6 @@
 package com.navigator.app.notify
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.navigator.app.app.AppIntents
@@ -21,7 +22,7 @@ import org.robolectric.annotation.Config
 class NotificationActionsTest {
     private val ctx: Context get() = RuntimeEnvironment.getApplication()
 
-    private fun intentOf(pending: android.app.PendingIntent): Intent = shadowOf(pending).savedIntent
+    private fun intentOf(pending: PendingIntent): Intent = shadowOf(pending).savedIntent
 
     @Test fun aRequestButtonOpensTheAppOnThatRequestWithoutTheNavScreen() {
         val intent = intentOf(NotificationActions.open(ctx, 3, AppIntents.REQUEST_REPAIR))

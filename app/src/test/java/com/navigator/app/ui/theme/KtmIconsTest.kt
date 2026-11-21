@@ -1,6 +1,7 @@
 package com.navigator.app.ui.theme
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.VectorPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,7 +17,7 @@ class KtmIconsTest {
     }
 
     @Test fun filledTwinsAndDashIconsHaveFilledShapes() {
-        fun fills(i: ImageVector) = (i.root.toList().filterIsInstance<androidx.compose.ui.graphics.vector.VectorPath>()).any { it.fill != null }
+        fun fills(i: ImageVector) = (i.root.toList().filterIsInstance<VectorPath>()).any { it.fill != null }
         assertTrue(fills(KtmIcons.StarFilled) && fills(KtmIcons.BookmarkFilled) && fills(KtmIcons.Play))
         assertTrue(!fills(KtmIcons.Star) && !fills(KtmIcons.Bookmark) && !fills(KtmIcons.Search))
     }

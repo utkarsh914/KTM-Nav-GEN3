@@ -9,13 +9,13 @@ import com.navigator.app.ride.MergeToken
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideStore
 import com.navigator.app.ride.RideTrim
+import java.io.InputStream
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.io.InputStream
 
 object RideSearch {
     /** Rides whose name or note contains every word of [query] (case-insensitive); all of them for a blank query. */

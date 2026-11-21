@@ -2,9 +2,20 @@ package com.navigator.app.ui.components
 
 import android.content.Context
 import android.provider.Settings
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.SnapSpec
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -13,11 +24,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
+import com.navigator.app.data.rides.ThumbPoint
+import com.navigator.app.ui.feature.replay.MapCover
+import com.navigator.app.ui.shell.LocalSharedElements
+import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.rideContainer
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
@@ -62,32 +75,32 @@ class MotionAndSemanticsTest {
         val normal = KtmMotionSpecs(reduced = false)
         assertEquals(0, reduced.cameraFitMs)
         assertEquals(KtmMotionSpecs.CAMERA_FIT_MS, normal.cameraFitMs)
-        assertTrue("spatial moves become short tweens", reduced.spatialDefault<Float>() is androidx.compose.animation.core.TweenSpec)
-        assertTrue(normal.spatialDefault<Float>() is androidx.compose.animation.core.SpringSpec)
-        assertTrue("fades stay fades, only shorter", reduced.effectsDefault<Float>() is androidx.compose.animation.core.TweenSpec)
-        assertTrue("a riding slide jumps when reduced: callers zero the offset and keep the fade", reduced.ridingSpatial<Float>() is androidx.compose.animation.core.SnapSpec)
-        val riding = normal.ridingSpatial<Float>(delayMs = 50) as androidx.compose.animation.core.TweenSpec
+        assertTrue("spatial moves become short tweens", reduced.spatialDefault<Float>() is TweenSpec)
+        assertTrue(normal.spatialDefault<Float>() is SpringSpec)
+        assertTrue("fades stay fades, only shorter", reduced.effectsDefault<Float>() is TweenSpec)
+        assertTrue("a riding slide jumps when reduced: callers zero the offset and keep the fade", reduced.ridingSpatial<Float>() is SnapSpec)
+        val riding = normal.ridingSpatial<Float>(delayMs = 50) as TweenSpec
         assertEquals(KtmMotionSpecs.RIDING_MAX_MS, riding.durationMillis)
         assertEquals(50, riding.delay)
     }
 
     @Test fun aRideContainerWithoutASharedScopeIsJustAModifier() {
-        rule.setContent { androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("1")) { androidx.compose.material3.Text("card") } }
+        rule.setContent { Box(androidx.compose.ui.Modifier.rideContainer("1")) { Text("card") } }
         rule.onNodeWithText("card").assertIsDisplayed()
     }
 
-    @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+    @OptIn(ExperimentalSharedTransitionApi::class)
     @Test fun aRideContainerSharesBoundsWithItsPageUnderASharedScope() {
         var showPage by mutableStateOf(false)
         rule.setContent {
             KtmTheme(darkTheme = true) {
-                androidx.compose.animation.SharedTransitionLayout {
-                    androidx.compose.animation.AnimatedContent(showPage, label = "t") { page ->
-                        androidx.compose.runtime.CompositionLocalProvider(
-                            com.navigator.app.ui.shell.LocalSharedElements provides com.navigator.app.ui.shell.SharedElements(this@SharedTransitionLayout, this),
+                SharedTransitionLayout {
+                    AnimatedContent(showPage, label = "t") { page ->
+                        CompositionLocalProvider(
+                            LocalSharedElements provides SharedElements(this@SharedTransitionLayout, this),
                         ) {
-                            if (page) androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("7", remeasure = false)) { androidx.compose.material3.Text("page") }
-                            else androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.rideContainer("7")) { androidx.compose.material3.Text("card") }
+                            if (page) Box(androidx.compose.ui.Modifier.rideContainer("7", remeasure = false)) { Text("page") }
+                            else Box(androidx.compose.ui.Modifier.rideContainer("7")) { Text("card") }
                         }
                     }
                 }
@@ -104,9 +117,9 @@ class MotionAndSemanticsTest {
         var visible by mutableStateOf(true)
         rule.setContent {
             KtmTheme(darkTheme = true) {
-                androidx.compose.foundation.layout.Box {
-                    androidx.compose.material3.Text("map")
-                    com.navigator.app.ui.feature.replay.MapCover(visible, listOf(com.navigator.app.data.rides.ThumbPoint(0.0, 0.0), com.navigator.app.data.rides.ThumbPoint(1.0, 1.0)), Modifier.testTag("cover"))
+                Box {
+                    Text("map")
+                    MapCover(visible, listOf(ThumbPoint(0.0, 0.0), ThumbPoint(1.0, 1.0)), Modifier.testTag("cover"))
                 }
             }
         }

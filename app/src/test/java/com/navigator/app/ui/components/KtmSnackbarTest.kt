@@ -3,6 +3,7 @@ package com.navigator.app.ui.components
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -29,7 +30,7 @@ class KtmSnackbarTest {
         rule.setContent {
             KtmTheme(darkTheme = true) {
                 KtmSnackbarHost(host)
-                androidx.compose.runtime.LaunchedEffect(Unit) {
+                LaunchedEffect(Unit) {
                     result = host.showSnackbar("Ride deleted", "Undo", duration = SnackbarDuration.Indefinite)
                 }
             }

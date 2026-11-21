@@ -6,6 +6,8 @@ import android.location.Geocoder
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapPoint
+import java.util.Locale
+import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,8 +17,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.Locale
-import kotlin.coroutines.resume
 
 /** Turns a map point into the nearest street's name (null when unknown or offline). */
 fun interface ReverseGeocoder {

@@ -1,25 +1,27 @@
 package com.navigator.app.ui.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.down
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.click
-import androidx.compose.ui.test.down
 import androidx.compose.ui.test.up
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -64,7 +66,7 @@ class ComponentInteractionTest {
         rule.setContent { KtmTheme(darkTheme = false) { SectionHeader("Saved", action = "See all", onAction = { taps++ }) } }
         val bounds = rule.onNodeWithText("See all").getUnclippedBoundsInRoot()
         assertTrue("the text is its natural height, not a 48 dp box", (bounds.bottom - bounds.top).value < 48f)
-        rule.onNodeWithText("See all").performTouchInput { click(androidx.compose.ui.geometry.Offset(center.x, center.y + 20.dp.toPx())) }
+        rule.onNodeWithText("See all").performTouchInput { click(Offset(center.x, center.y + 20.dp.toPx())) }
         assertEquals(1, taps)
     }
 
@@ -219,7 +221,7 @@ class ComponentInteractionTest {
     @Test fun aLeadingRadioPushesTheTitleAwayFromTheEdge() {
         rule.setContent {
             KtmTheme(darkTheme = true) {
-                androidx.compose.foundation.layout.Column {
+                Column {
                     KtmRadioRow("Newest first", true, {}, radioAtStart = true)
                     KtmRadioRow("Oldest first", true, {})
                 }

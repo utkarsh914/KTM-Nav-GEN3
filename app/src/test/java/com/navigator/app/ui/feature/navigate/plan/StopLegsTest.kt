@@ -1,11 +1,11 @@
 package com.navigator.app.ui.feature.navigate.plan
 
 import com.navigator.app.nav.destination.RouteLeg
+import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneOffset
 
 class StopLegsTest {
     private val utc = ZoneOffset.UTC

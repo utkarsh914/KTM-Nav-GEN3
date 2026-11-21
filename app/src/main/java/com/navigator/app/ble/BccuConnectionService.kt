@@ -33,6 +33,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.navigator.app.BuildConfig
 import com.navigator.app.R
+import com.navigator.app.app.AppIntents
 import com.navigator.app.audio.TurnBeeper
 import com.navigator.app.data.connection.ConnectionMapping
 import com.navigator.app.location.SpeedMonitor
@@ -42,9 +43,18 @@ import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.DashPreviewTee
 import com.navigator.app.nav.NavigationCoordinator
 import com.navigator.app.nav.NavigationProvider
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.NotificationNavProvider
+import com.navigator.app.notify.ConnectionAction
+import com.navigator.app.notify.ConnectionNotice
+import com.navigator.app.notify.ConnectionNoticeContent
+import com.navigator.app.notify.NotificationActions
+import com.navigator.app.notify.NotificationChannels
+import com.navigator.app.notify.NotificationRequestCodes
 import com.navigator.app.ride.RideSession
+import com.navigator.app.ride.formatElapsed
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.AppForegroundState
 import java.util.UUID
@@ -53,16 +63,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.navigator.app.app.AppIntents
-import com.navigator.app.nav.model.NavSessionState
-import com.navigator.app.nav.providers.GoogleNavSdkController
-import com.navigator.app.notify.ConnectionAction
-import com.navigator.app.notify.ConnectionNotice
-import com.navigator.app.notify.ConnectionNoticeContent
-import com.navigator.app.notify.NotificationActions
-import com.navigator.app.notify.NotificationRequestCodes
-import com.navigator.app.notify.NotificationChannels
-import com.navigator.app.ride.formatElapsed
 
 /**
  * Owns the BLE connection to the bike's BCCU: handshake, session crypto, and

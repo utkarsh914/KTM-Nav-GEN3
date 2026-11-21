@@ -20,8 +20,11 @@ import com.navigator.app.data.connection.LinkSources
 import com.navigator.app.data.permissions.PermissionGrants
 import com.navigator.app.data.permissions.PermissionPolicy
 import com.navigator.app.data.permissions.PermissionsRepository
+import com.navigator.app.data.permissions.PermissionsState
 import com.navigator.app.data.settings.IntSpec
+import com.navigator.app.data.settings.NavEngine
 import com.navigator.app.data.settings.SettingSpecs
+import com.navigator.app.data.settings.SettingUnit
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.data.settings.SpecValidation
@@ -111,7 +114,7 @@ class SettingsViewModelsTest {
     }
 
     @Test fun bikeDashWritesItsSettings() = runTest(UnconfinedTestDispatcher()) {
-        val vm = BikeDashViewModel(settings, connection(), permissions(), io = kotlinx.coroutines.Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
+        val vm = BikeDashViewModel(settings, connection(), permissions(), io = Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         vm.setShowOnDash(false); vm.setMarquee(false); vm.setLatinOnly(false); vm.setName("Asha")
         with(vm.ui.value) {
             assertFalse(showOnDash); assertFalse(marquee); assertFalse(latinOnly); assertEquals("Asha", userName)
@@ -121,7 +124,7 @@ class SettingsViewModelsTest {
     }
 
     @Test fun bikeDashCountsTheChosenApps() = runTest(UnconfinedTestDispatcher()) {
-        val vm = BikeDashViewModel(settings, connection(), permissions(), io = kotlinx.coroutines.Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
+        val vm = BikeDashViewModel(settings, connection(), permissions(), io = Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         settings.update { notificationSourceApps = setOf("a", "b", "c") }
         assertEquals(3, vm.ui.value.appCount)
     }
@@ -159,14 +162,14 @@ class SettingsViewModelsTest {
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class SettingsSummaryTest {
-    private val perms = PermissionPolicy.build(PermissionGrants(true, true, false, true, notificationAccess = false, batteryUnrestricted = false), com.navigator.app.data.settings.NavEngine.IN_APP)
+    private val perms = PermissionPolicy.build(PermissionGrants(true, true, false, true, notificationAccess = false, batteryUnrestricted = false), NavEngine.IN_APP)
     private fun snap(change: AppSettings.() -> Unit = {}): SettingsSnapshot {
         val s = AppSettings(RuntimeEnvironment.getApplication())
         s.change()
         return SettingsSnapshot.read(s)
     }
 
-    private fun summary(page: SettingsPage, snap: SettingsSnapshot = snap(), bike: BikeStatus = BikeStatus.NotPaired, p: com.navigator.app.data.permissions.PermissionsState = perms) =
+    private fun summary(page: SettingsPage, snap: SettingsSnapshot = snap(), bike: BikeStatus = BikeStatus.NotPaired, p: PermissionsState = perms) =
         SettingsSummary.of(page, snap, bike, p, "9.9")
 
     @Test fun everyCategoryHasASummary() {
@@ -175,7 +178,7 @@ class SettingsSummaryTest {
 
     @Test fun permissionsAreAmberOnlyWhenARequiredOneIsMissing() {
         assertFalse(summary(SettingsPage.PERMISSIONS).attention)
-        val missing = PermissionPolicy.build(PermissionGrants(false, true, false, true, false, false), com.navigator.app.data.settings.NavEngine.IN_APP)
+        val missing = PermissionPolicy.build(PermissionGrants(false, true, false, true, false, false), NavEngine.IN_APP)
         val s = summary(SettingsPage.PERMISSIONS, p = missing)
         assertTrue(s.attention)
         assertEquals(UiText.Plural(R.plurals.settings_sum_permissions_missing, 1), s.parts.single())
@@ -213,7 +216,7 @@ class SettingsSummaryTest {
 }
 
 class EditValueTextTest {
-    private val spec = IntSpec(10, 200, 5, 60, com.navigator.app.data.settings.SettingUnit.KMH)
+    private val spec = IntSpec(10, 200, 5, 60, SettingUnit.KMH)
 
     @Test fun anInRangeNumberHasNoMessage() = assertNull(EditValueText.error(spec.validate("80"), "80", spec))
 

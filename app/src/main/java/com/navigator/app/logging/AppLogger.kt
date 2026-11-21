@@ -8,12 +8,13 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.navigator.app.BuildConfig
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * App-wide logger: logcat + an in-memory buffer (for the in-app Logs screen)
@@ -60,7 +61,7 @@ object AppLogger {
      */
     var publicMirrorEnabled: Boolean
         get() = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_PUBLIC_MIRROR, com.navigator.app.BuildConfig.DEBUG)
+            .getBoolean(KEY_PUBLIC_MIRROR, BuildConfig.DEBUG)
         set(value) {
             appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_PUBLIC_MIRROR, value).apply()
         }
@@ -112,7 +113,7 @@ object AppLogger {
      */
     fun sensitive(s: String?): String = when {
         s == null -> "null"
-        com.navigator.app.BuildConfig.DEBUG -> "\"$s\""
+        BuildConfig.DEBUG -> "\"$s\""
         s.isEmpty() -> "<empty>"
         else -> "<${s.length} chars>"
     }

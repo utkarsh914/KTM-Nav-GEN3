@@ -10,6 +10,7 @@ import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSessionState
 import com.navigator.app.ride.RideSource
+import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -20,7 +21,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])

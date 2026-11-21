@@ -1,11 +1,11 @@
 package com.navigator.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.random.Random
 
 class AccentTonesTest {
     private val darkSurf = KtmDarkColors.surf

@@ -2,8 +2,8 @@ package com.navigator.app.app
 
 import android.content.Intent
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.AppShortcuts
+import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

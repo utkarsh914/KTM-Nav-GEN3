@@ -9,14 +9,13 @@ import com.navigator.app.ride.AvgSpeedMode
 import com.navigator.app.ride.ChartSeries
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideChart
+import com.navigator.app.ride.RideMerge
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
-import com.navigator.app.ride.RideMerge
 import com.navigator.app.ride.RideSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** What the replay screen shows. The marker's position is separate ([ReplayViewModel.position]): it changes every frame. */
 sealed interface ReplayUi {

@@ -1,17 +1,14 @@
 package com.navigator.app.ui.feature.navigate.finished
 
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.IntrinsicSize
-import com.navigator.app.nav.ktm.ClockFormat
-import com.navigator.app.ui.components.InfoBanner
-import com.navigator.app.ui.components.isNarrowWindow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +26,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.navigator.app.R
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.AvgSpeedMode
@@ -36,9 +34,11 @@ import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.displayAvgKmh
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.InfoBanner
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.Skeleton
 import com.navigator.app.ui.components.StatTile
+import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.feature.navigate.riding.TimeLeft
 import com.navigator.app.ui.feature.navigate.riding.shortDurationText
 import com.navigator.app.ui.feature.navigate.riding.timeLeftText

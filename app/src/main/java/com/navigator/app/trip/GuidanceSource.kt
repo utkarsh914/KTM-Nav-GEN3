@@ -8,8 +8,8 @@ import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.StartFailure
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 
 /** What [TripController] needs from the guidance engine, so it can be tested with fake flows. */

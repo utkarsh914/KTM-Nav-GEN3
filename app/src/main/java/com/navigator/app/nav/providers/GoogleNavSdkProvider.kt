@@ -9,6 +9,7 @@ import com.google.android.libraries.navigation.Navigator
 import com.google.android.libraries.navigation.RouteTokenExecutionDetails.TokenExecutionStatus
 import com.google.android.libraries.navigation.RoutingOptions
 import com.google.android.libraries.navigation.Waypoint
+import com.navigator.app.BuildConfig
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.RoutingNavigationProvider
 import com.navigator.app.nav.ktm.KtmManeuverMapping
@@ -26,8 +27,8 @@ import java.util.Locale
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
@@ -521,7 +522,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             lastLoggedStep = stepKey
             val chosen = KtmManeuverMapping.resolveIcon(mapped.maneuver, mapped.rotation, side, fullInstruction)
             val textOverride = fullInstruction?.let { KtmManeuverMapping.explicitTurnFromInstruction(it) }
-            val text = if (com.navigator.app.BuildConfig.DEBUG) {
+            val text = if (BuildConfig.DEBUG) {
                 "road=\"$road\", instruction=\"$fullInstruction\""
             } else {
                 "road=<${road?.length ?: 0} chars>, instruction=<${fullInstruction?.length ?: 0} chars>"

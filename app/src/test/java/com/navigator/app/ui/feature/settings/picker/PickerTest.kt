@@ -2,15 +2,17 @@ package com.navigator.app.ui.feature.settings.picker
 
 import android.content.Context
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.navigator.app.R
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.feature.settings.AudioDevice
 import com.navigator.app.ui.feature.settings.AudioDeviceList
+import com.navigator.app.ui.feature.settings.UiText
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,7 +56,7 @@ class AppPickerListTest {
     @Test fun emptySectionsAreLeftOut() {
         val sections = AppPickerList.build(listOf(AppEntry("com.mid", "Mid")), emptySet(), "")
         assertEquals(1, sections.size)
-        assertEquals(com.navigator.app.R.string.picker_all, (sections.single().title as com.navigator.app.ui.feature.settings.UiText.Res).id)
+        assertEquals(R.string.picker_all, (sections.single().title as UiText.Res).id)
     }
 
     @Test fun searchFlattensAndMatchesLabelOrPackageIgnoringCase() {

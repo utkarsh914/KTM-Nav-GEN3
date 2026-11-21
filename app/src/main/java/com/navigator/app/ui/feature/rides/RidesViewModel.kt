@@ -7,8 +7,8 @@ import com.navigator.app.app.AppContainer
 import com.navigator.app.data.rides.ImportResult
 import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.RecordedRide
-import kotlinx.coroutines.channels.Channel
 import java.io.InputStream
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

@@ -6,10 +6,10 @@ import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
-import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import org.json.JSONObject
 
 /** Back up / restore rides, saved places and app preferences (never the bike pairing). Blocking: call on IO. */
 class BackupManager(context: Context) {

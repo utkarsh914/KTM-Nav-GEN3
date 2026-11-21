@@ -1,12 +1,12 @@
 package com.navigator.app.ui.shell
 
-import com.navigator.app.location.lastKnownLocation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
-import com.navigator.app.ui.theme.NavThemeMode
+import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.feature.navigate.riding.DayNightRule
+import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

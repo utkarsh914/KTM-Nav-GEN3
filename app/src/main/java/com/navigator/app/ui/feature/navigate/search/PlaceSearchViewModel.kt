@@ -8,6 +8,7 @@ import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.PlaceSuggestion
 import com.navigator.app.nav.destination.SavedPlace
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class PlaceSearchState(
     val query: String = "",

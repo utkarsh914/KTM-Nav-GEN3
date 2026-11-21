@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.navigator.app.ble.BccuProtocol.NotificationIcon
 import com.navigator.app.ble.BccuProtocol.TurnIcon
+import com.navigator.app.ui.components.TurnIconNames
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -172,9 +173,9 @@ class DiagnosticsViewModelsTest {
     }
 
     @Test fun symbolNamesReadAsWordsAndRoundaboutExitsAreNumbered() {
-        assertEquals("Roundabout exit 13 (RH)", com.navigator.app.ui.components.TurnIconNames.human("RAB_SECT_13_RH"))
-        assertEquals("U-turn left", com.navigator.app.ui.components.TurnIconNames.human("UTURN_LEFT"))
-        assertEquals("Go straight", com.navigator.app.ui.components.TurnIconNames.human("GO_STRAIGHT"))
+        assertEquals("Roundabout exit 13 (RH)", TurnIconNames.human("RAB_SECT_13_RH"))
+        assertEquals("U-turn left", TurnIconNames.human("UTURN_LEFT"))
+        assertEquals("Go straight", TurnIconNames.human("GO_STRAIGHT"))
     }
 
     private class CalPorts : CalibrationPorts {
@@ -191,7 +192,7 @@ class DiagnosticsViewModelsTest {
 
     @Test fun calibrationLabelsOnceSendsItAndCollapsesTheRow() = runTest(UnconfinedTestDispatcher()) {
         val ports = CalPorts().also { it.labels[22] = "KEEP_LEFT" }
-        val vm = CalibrationViewModel(ports, io = kotlinx.coroutines.Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
+        val vm = CalibrationViewModel(ports, io = Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         assertEquals(1, vm.ui.value.rows.count { it.assigned == null })
         assertEquals(setOf(TurnIcon.UTURN_LEFT), vm.ui.value.working)
         assertEquals(TurnIcon.KEEP_LEFT, vm.ui.value.rows.first { it.hash == 22 }.assigned)

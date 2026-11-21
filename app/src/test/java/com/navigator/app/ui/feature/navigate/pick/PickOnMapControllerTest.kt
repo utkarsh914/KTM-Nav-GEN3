@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.pick
 
+import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.map.FakeMapController
 import com.navigator.app.ui.map.MapPoint
 import kotlinx.coroutines.CompletableDeferred
@@ -75,6 +76,6 @@ class PickOnMapControllerTest {
         val c = PickOnMapController(backgroundScope, map, { null })
         assertNull("before the map is ready there is no point", c.use("Dropped pin"))
         c.start(); runCurrent()
-        assertEquals(com.navigator.app.nav.destination.SavedPlace(12.97, 77.59, "Dropped pin"), c.use("Dropped pin"))
+        assertEquals(SavedPlace(12.97, 77.59, "Dropped pin"), c.use("Dropped pin"))
     }
 }

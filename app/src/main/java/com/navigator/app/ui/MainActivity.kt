@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.navigator.app.BuildConfig
 import com.navigator.app.app.AppIntent
 import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
         settings = appContainer.settings.legacy
         appContainer.activityHolder.current = this
-        if (com.navigator.app.BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG) {
             DashPreview.setOverlayEnabled(settings.dashPreviewOverlay)
         }
 
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
         // DEBUG-only: `adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS`
         // renders Google Maps' own labeled maneuver icons to files/maneuver_dataset/
         // to build a training set for an independent classifier. Stripped from release.
-        if (com.navigator.app.BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG) {
             maneuverExportReceiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, i: Intent?) {
                     lifecycleScope.launch {

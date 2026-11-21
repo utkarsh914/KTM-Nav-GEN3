@@ -11,9 +11,9 @@ import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
+import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.DistanceUnits
-import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.trip.TripState

@@ -1,5 +1,6 @@
 package com.navigator.app.ride
 
+import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -153,7 +154,7 @@ class GpxTest {
             <trkpt lat="1" lon="1"/>
             <trkpt lat="1.0001" lon="1"><time>2024-05-01T05:00:00</time></trkpt>
             <trkpt lat="1.0002" lon="1"><time>2024-05-01T05:00:10Z</time></trkpt></trkseg></trk></gpx>""")!!
-        val expected = java.time.Instant.parse("2024-05-01T05:00:00Z").toEpochMilli()
+        val expected = Instant.parse("2024-05-01T05:00:00Z").toEpochMilli()
         assertEquals(expected, t.points[0].timeMs) // untimed first point anchored to the first real time
         assertEquals(expected, t.points[1].timeMs)
         assertEquals(expected + 10_000, t.points[2].timeMs)

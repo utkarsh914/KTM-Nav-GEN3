@@ -4,8 +4,8 @@ import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedNavigationState
-import com.navigator.app.nav.model.Stop
 import com.navigator.app.nav.model.RemainingStops
+import com.navigator.app.nav.model.Stop
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.ride.RideEvents
 import kotlinx.coroutines.CoroutineScope

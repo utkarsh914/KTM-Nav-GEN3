@@ -1,6 +1,7 @@
 package com.navigator.app.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,7 +15,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class BrandMigrationTest {
-    private lateinit var prefs: android.content.SharedPreferences
+    private lateinit var prefs: SharedPreferences
     private lateinit var settings: AppSettings
 
     @Before fun setUp() {

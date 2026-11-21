@@ -4,6 +4,7 @@ import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -29,7 +30,7 @@ class TurnBeepAdapterTest {
     private fun nav(session: NavSessionState = NavSessionState.ENROUTE, m: Int? = 300) =
         NormalizedNavigationState(session, maneuver = NormalizedManeuver.RIGHT, distanceToManeuverMeters = m)
 
-    private class Env(scope: kotlinx.coroutines.CoroutineScope) {
+    private class Env(scope: CoroutineScope) {
         val sink = Sink()
         val nav = MutableStateFlow(NormalizedNavigationState.IDLE)
         val minimised = MutableStateFlow(false)

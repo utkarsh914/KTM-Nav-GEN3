@@ -7,8 +7,10 @@ import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.nav.ktm.KtmManeuverMapping
 import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.trip.TripState
 import com.navigator.app.ui.components.DashPreviewState
@@ -122,9 +124,9 @@ class NavigateStateTest {
     }
 
     @Test fun theCardCarriesTheNextTurnGlyphForTheStrip() {
-        val right = guiding.copy(maneuver = com.navigator.app.nav.model.NormalizedManeuver.RIGHT)
+        val right = guiding.copy(maneuver = NormalizedManeuver.RIGHT)
         val card = ActivityCard.build(TripState(dest = dest, minimised = true), right, 0L)!!
-        assertEquals(com.navigator.app.nav.ktm.KtmManeuverMapping.resolveIcon(com.navigator.app.nav.model.NormalizedManeuver.RIGHT), card.glyph)
+        assertEquals(KtmManeuverMapping.resolveIcon(NormalizedManeuver.RIGHT), card.glyph)
     }
 
     @Test fun noKnownManeuverMeansNoGlyph() {

@@ -1,38 +1,44 @@
 package com.navigator.app.ui.shell
 
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.core.net.toUri
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -44,6 +50,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.navigator.app.BuildConfig
 import com.navigator.app.R
 import com.navigator.app.app.AppIntent
 import com.navigator.app.app.AppIntents
@@ -51,39 +58,39 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
-import com.navigator.app.ui.feature.diagnostics.CalibrationScreen
-import com.navigator.app.ui.feature.diagnostics.DebugOverlay
-import com.navigator.app.ui.feature.diagnostics.LogsScreen
-import com.navigator.app.ui.feature.diagnostics.SymbolTestScreen
-import com.navigator.app.ui.feature.places.PlaceActions
+import com.navigator.app.nav.destination.MapsUrlResolver
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
+import com.navigator.app.ui.feature.diagnostics.CalibrationScreen
+import com.navigator.app.ui.feature.diagnostics.DebugOverlay
+import com.navigator.app.ui.feature.diagnostics.LogsScreen
+import com.navigator.app.ui.feature.diagnostics.SymbolTestScreen
 import com.navigator.app.ui.feature.mirror.MirrorScreen
+import com.navigator.app.ui.feature.navigate.BikePillMapper
+import com.navigator.app.ui.feature.navigate.NavigateHost
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.link.SharedLinkState
-import com.navigator.app.ui.feature.navigate.NavigateHost
 import com.navigator.app.ui.feature.onboarding.OnboardingFlow
 import com.navigator.app.ui.feature.onboarding.OnboardingScreen
 import com.navigator.app.ui.feature.onboarding.ReadyScreen
 import com.navigator.app.ui.feature.pairing.PairingScreen
-import com.navigator.app.ui.feature.rides.RidesScreen
-import com.navigator.app.ui.feature.navigate.BikePillMapper
-import com.navigator.app.ui.theme.KtmLayout
-import kotlinx.coroutines.launch
-import com.navigator.app.ui.feature.rides.merge.MergeScreen
+import com.navigator.app.ui.feature.places.PlaceActions
+import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.feature.replay.ReplayScreen
 import com.navigator.app.ui.feature.replay.edit.EditRideScreen
 import com.navigator.app.ui.feature.replay.trim.TrimRideScreen
-import com.navigator.app.ui.feature.places.PlacePickScreen
+import com.navigator.app.ui.feature.rides.RidesScreen
+import com.navigator.app.ui.feature.rides.merge.MergeScreen
 import com.navigator.app.ui.feature.settings.AboutScreen
 import com.navigator.app.ui.feature.settings.AppearanceScreen
 import com.navigator.app.ui.feature.settings.BackupScreen
-import com.navigator.app.ui.feature.settings.PermissionsScreen
 import com.navigator.app.ui.feature.settings.BikeDashScreen
 import com.navigator.app.ui.feature.settings.NavigationScreen
+import com.navigator.app.ui.feature.settings.PermissionsScreen
 import com.navigator.app.ui.feature.settings.RecordingScreen
 import com.navigator.app.ui.feature.settings.SettingsHomeScreen
 import com.navigator.app.ui.feature.settings.SettingsPage
@@ -91,13 +98,13 @@ import com.navigator.app.ui.feature.settings.SoundsScreen
 import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
-import com.navigator.app.ui.feature.places.PlacesScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmTheme
-import com.navigator.app.ui.theme.rememberReducedMotion
-import androidx.compose.animation.scaleIn
 import com.navigator.app.ui.theme.accentFor
+import com.navigator.app.ui.theme.rememberReducedMotion
+import kotlinx.coroutines.launch
 
 /**
  * Root of the UI: theme, navigation, the tab shell, feedback and the handling of outside requests.
@@ -161,7 +168,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val setupDone = snap.onboardingComplete && !inSetupScreen
     val pending by intents.pending.collectAsState()
     val reducedMotion = rememberReducedMotion()
-    val pushPx = with(androidx.compose.ui.platform.LocalDensity.current) { PUSH_OFFSET.roundToPx() }
+    val pushPx = with(LocalDensity.current) { PUSH_OFFSET.roundToPx() }
     // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
     // not again each time something else changes.
     val taken = remember { mutableSetOf<AppIntent>() }
@@ -235,7 +242,7 @@ fun KtmApp(onQuit: () -> Unit) {
                     onSelectTab = { navController.openTab(it) },
                     feedback = feedback,
                     strip = {
-                        androidx.compose.foundation.layout.Column {
+                        Column {
                             TripStrip(
                                 onNavigateTab = currentTab == Tab.Navigate,
                                 onOpen = { intents.post(AppIntent.OpenNav); navController.openTab(Tab.Navigate) },
@@ -319,7 +326,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                         onSearchRequestConsumed = intents::consumeOpenSearch,
                                     )
                                 } else {
-                                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                                    Box(Modifier.fillMaxSize()) {
                                         MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
                                         // A Google Maps link shared in mirror mode: Google Maps does the navigating.
                                         pending.sharedLink?.let { link ->
@@ -470,7 +477,7 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                     }
                 }
-                if (com.navigator.app.BuildConfig.DEBUG) DebugOverlay(riding = chrome.immersive)
+                if (BuildConfig.DEBUG) DebugOverlay(riding = chrome.immersive)
             }
 
             if (showQuit) {
@@ -605,14 +612,14 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(reduced
  * Hand a shared Google Maps link back to Google Maps, which starts the navigation the mirror then follows.
  * False when the share holds nothing Maps can open.
  */
-private fun openInGoogleMaps(context: android.content.Context, sharedText: String): Boolean {
-    val resolver = com.navigator.app.nav.destination.MapsUrlResolver
+private fun openInGoogleMaps(context: Context, sharedText: String): Boolean {
+    val resolver = MapsUrlResolver
     // Maps shares "Place name\nhttps://..." : only the link is a URI. Coordinates alone go as a geo: URI.
     val uri = resolver.extractUrl(sharedText)?.toUri()
         ?: resolver.parseCoordinates(sharedText)?.let { "geo:${it.lat},${it.lng}".toUri() }
         ?: return false
-    val view = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
-    val maps = com.navigator.app.ui.feature.places.PlaceActions.mapsIntent(uri)
+    val view = Intent(Intent.ACTION_VIEW, uri)
+    val maps = PlaceActions.mapsIntent(uri)
     return runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }.isSuccess
 }
 
@@ -621,9 +628,9 @@ const val MERGE_OFFER = "merge:"
 
 /** The bike's state for the rail's dot. A State so only the rail reads it: a change doesn't recompose the whole app. */
 @Composable
-private fun rememberBikeRailStatus(): androidx.compose.runtime.State<BikeRailStatus> {
+private fun rememberBikeRailStatus(): State<BikeRailStatus> {
     val status = LocalContext.current.appContainer.connection.status.collectAsState()
-    val resources = androidx.compose.ui.platform.LocalResources.current
+    val resources = LocalResources.current
     return androidx.compose.runtime.remember(status, resources) {
         androidx.compose.runtime.derivedStateOf {
             val pill = BikePillMapper.map(status.value)

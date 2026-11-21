@@ -1,19 +1,19 @@
 package com.navigator.app.ui.feature.navigate.pick
 
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

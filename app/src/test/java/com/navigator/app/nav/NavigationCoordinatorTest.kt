@@ -5,6 +5,7 @@ import com.navigator.app.nav.ktm.KtmNavigationEncoder
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
+import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
@@ -15,7 +16,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NavigationCoordinatorTest {

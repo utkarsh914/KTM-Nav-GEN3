@@ -4,8 +4,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.ButtonStyle
-import com.navigator.app.ui.components.buttonPalette
 import com.navigator.app.ui.components.badgeColors
+import com.navigator.app.ui.components.buttonPalette
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

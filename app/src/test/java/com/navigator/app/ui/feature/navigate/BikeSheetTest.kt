@@ -1,16 +1,19 @@
 package com.navigator.app.ui.feature.navigate
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.navigator.app.data.connection.BikeStatus
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ui.shell.LocalOpenBikeSettings
 import com.navigator.app.ui.theme.KtmTheme
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -99,20 +102,20 @@ class BikeSheetTest {
 }
 
 class LastSeenTest {
-    private val zone = java.time.ZoneId.of("UTC")
-    private val now = java.time.ZonedDateTime.of(2026, 11, 21, 20, 0, 0, 0, zone).toInstant().toEpochMilli()
+    private val zone = ZoneId.of("UTC")
+    private val now = ZonedDateTime.of(2026, 11, 21, 20, 0, 0, 0, zone).toInstant().toEpochMilli()
 
-    @org.junit.After fun reset() { com.navigator.app.nav.ktm.ClockFormat.use24h = { true } }
+    @org.junit.After fun reset() { ClockFormat.use24h = { true } }
 
     @Test fun todayIsJustTheTime() {
-        val seen = java.time.ZonedDateTime.of(2026, 11, 21, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
+        val seen = ZonedDateTime.of(2026, 11, 21, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
         assertEquals("18:04", LastSeen.format(seen, now, zone))
-        com.navigator.app.nav.ktm.ClockFormat.use24h = { false }
+        ClockFormat.use24h = { false }
         assertEquals(true, LastSeen.format(seen, now, zone).contains("6:04"))
     }
 
     @Test fun anEarlierDayCarriesTheDate() {
-        val seen = java.time.ZonedDateTime.of(2026, 11, 12, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
+        val seen = ZonedDateTime.of(2026, 11, 12, 18, 4, 0, 0, zone).toInstant().toEpochMilli()
         val text = LastSeen.format(seen, now, zone)
         assertEquals(true, text.contains("18:04") && text.contains("12"))
     }

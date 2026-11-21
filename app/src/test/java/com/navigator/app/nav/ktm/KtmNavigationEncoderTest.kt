@@ -5,10 +5,10 @@ import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneId
 
 class KtmNavigationEncoderTest {
 

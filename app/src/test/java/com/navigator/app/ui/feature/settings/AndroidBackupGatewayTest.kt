@@ -2,8 +2,9 @@ package com.navigator.app.ui.feature.settings
 
 import android.content.Context
 import android.net.Uri
-import com.navigator.app.ride.RideStore
 import com.navigator.app.ride.RidePoint
+import com.navigator.app.ride.RideStore
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,7 +16,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])

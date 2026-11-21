@@ -3,15 +3,15 @@ package com.navigator.app.ui.feature.onboarding
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.navigator.app.app.AppContainer
 import com.navigator.app.data.permissions.PermissionId
-import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.ui.feature.permissions.FixStep

@@ -8,12 +8,12 @@ import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ui.shell.ChipTone
 import com.navigator.app.ui.shell.RidingChipMessage
+import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneOffset
 
 class RidingModelsTest {
     private fun nav(

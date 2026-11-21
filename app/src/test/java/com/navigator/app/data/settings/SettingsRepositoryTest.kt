@@ -1,7 +1,11 @@
 package com.navigator.app.data.settings
 
 import android.content.Context
+import com.navigator.app.nav.model.TravelMode
+import com.navigator.app.ride.AvgSpeedMode
 import com.navigator.app.settings.AppSettings
+import com.navigator.app.settings.DrivingSidePreference
+import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -76,20 +80,20 @@ class SettingsRepositoryTest {
 
     @Test fun snapshotMapsEveryGroupOfSettings() {
         repo.update {
-            navThemeMode = com.navigator.app.ui.theme.NavThemeMode.APP
-            avgSpeedMode = com.navigator.app.ride.AvgSpeedMode.OVERALL
-            drivingSidePreference = com.navigator.app.settings.DrivingSidePreference.LEFT
-            vehicleMode = com.navigator.app.nav.model.TravelMode.DRIVING
+            navThemeMode = NavThemeMode.APP
+            avgSpeedMode = AvgSpeedMode.OVERALL
+            drivingSidePreference = DrivingSidePreference.LEFT
+            vehicleMode = TravelMode.DRIVING
             notificationSourceApps = setOf("a.b")
             navAppOverride = "com.waze"
             preferredCallAudioDeviceAddress = "11:22"
             speedBandCount = 7
         }
         val s = repo.snapshot.value
-        assertEquals(com.navigator.app.ui.theme.NavThemeMode.APP, s.ridingScreens)
-        assertEquals(com.navigator.app.ride.AvgSpeedMode.OVERALL, s.avgSpeedMode)
-        assertEquals(com.navigator.app.settings.DrivingSidePreference.LEFT, s.drivingSide)
-        assertEquals(com.navigator.app.nav.model.TravelMode.DRIVING, s.vehicleMode)
+        assertEquals(NavThemeMode.APP, s.ridingScreens)
+        assertEquals(AvgSpeedMode.OVERALL, s.avgSpeedMode)
+        assertEquals(DrivingSidePreference.LEFT, s.drivingSide)
+        assertEquals(TravelMode.DRIVING, s.vehicleMode)
         assertEquals(setOf("a.b"), s.notificationSourceApps)
         assertEquals("com.waze", s.navAppOverride)
         assertEquals("11:22", s.callAudioDeviceAddress)

@@ -27,6 +27,7 @@ import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.feature.permissions.Explainer
 import com.navigator.app.ui.feature.permissions.FixStep
+import com.navigator.app.ui.feature.permissions.PermissionExplainerSheet
 import com.navigator.app.ui.feature.permissions.PermissionFix
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.Dispatchers
@@ -306,7 +307,7 @@ class SettingsB16cContentTest {
         val gone = mutableListOf<String>()
         rule.setContent {
             KtmTheme(darkTheme = false) {
-                com.navigator.app.ui.feature.permissions.PermissionExplainerSheet(Explainer.BACKGROUND_LOCATION, { gone += "go" }, { gone += "no" })
+                PermissionExplainerSheet(Explainer.BACKGROUND_LOCATION, { gone += "go" }, { gone += "no" })
             }
         }
         rule.onNodeWithText("Tap Open settings").assertIsDisplayed()

@@ -6,16 +6,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -27,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.ThemeMode
@@ -85,14 +87,14 @@ class ShellTest {
 
     @Test fun theBikeDotIsOnlyInTheLandscapeRail() {
         tab = Tab.Rides
-        bike = BikeRailStatus(com.navigator.app.ui.components.PillTone.Connected, "Connected")
+        bike = BikeRailStatus(PillTone.Connected, "Connected")
         rule.setContent { Shell { Box {} } }
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Connected")).assertDoesNotExist()
     }
 
     @Test @Config(sdk = [36], qualifiers = "w780dp-h360dp") fun theRailCarriesTheBikeStateOnTheNavigateItem() {
         tab = Tab.Rides
-        bike = BikeRailStatus(com.navigator.app.ui.components.PillTone.Connected, "Connected")
+        bike = BikeRailStatus(PillTone.Connected, "Connected")
         rule.setContent { Shell { Box {} } }
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Connected")).assertExists()
         bike = null
@@ -302,7 +304,7 @@ class ShellTest {
 
     @Composable
     private fun ImmersiveHosts(chrome: ShellChrome, a: Boolean, b: Boolean) {
-        androidx.compose.runtime.CompositionLocalProvider(LocalShellChrome provides chrome) {
+        CompositionLocalProvider(LocalShellChrome provides chrome) {
             ImmersiveEffect(a)
             ImmersiveEffect(b)
         }

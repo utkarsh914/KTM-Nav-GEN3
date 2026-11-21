@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.navigator.app.R
 import com.navigator.app.app.AppContainer
 import com.navigator.app.backup.BackupManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +76,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         }
     }
 
-    private var inspecting: kotlinx.coroutines.Job? = null
+    private var inspecting: Job? = null
 
     fun dismissRestore() {
         inspecting?.cancel()

@@ -1,8 +1,8 @@
 package com.navigator.app.nav.destination
 
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 
 /**
  * Pure (de)serialisation for [PlacesStore], JVM-testable. Parsing is tolerant: one

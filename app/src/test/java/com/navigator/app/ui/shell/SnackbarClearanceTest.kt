@@ -2,6 +2,7 @@ package com.navigator.app.ui.shell
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +30,7 @@ class SnackbarClearanceTest {
     @get:Rule val rule = createComposeRule()
 
     @Test fun theLargestClearanceWinsAndLeavingRemovesIt() {
-        val feedback = Feedback(CoroutineScope(Dispatchers.Unconfined), androidx.compose.material3.SnackbarHostState())
+        val feedback = Feedback(CoroutineScope(Dispatchers.Unconfined), SnackbarHostState())
         val a = Any(); val b = Any()
         feedback.cover(a, 120.dp, 0.dp)
         feedback.cover(b, 80.dp, 352.dp)

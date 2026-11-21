@@ -19,9 +19,9 @@ import com.navigator.app.ui.components.KtmCard
 import com.navigator.app.ui.components.KtmSegmented
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.theme.FontMode
-import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.ThemeMode
 
 class AppearanceActions(

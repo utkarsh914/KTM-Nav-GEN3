@@ -1,13 +1,14 @@
 package com.navigator.app.ui.feature.navigate
 
+import androidx.lifecycle.SavedStateHandle
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.trip.ArrivalPolicy
+import com.navigator.app.trip.MAX_STOPS
+import com.navigator.app.trip.STOP_ADD_SETTLE_MS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import com.navigator.app.trip.ArrivalPolicy
-import com.navigator.app.trip.MAX_STOPS
-import com.navigator.app.trip.STOP_ADD_SETTLE_MS
 import org.junit.Test
 
 class NavFlowTest {
@@ -211,7 +212,7 @@ class NavFlowTest {
 
     // ---- ViewModel lifecycle ------------------------------------------------
 
-    private fun vm() = NavFlowViewModel(androidx.lifecycle.SavedStateHandle())
+    private fun vm() = NavFlowViewModel(SavedStateHandle())
 
     // The trip bookkeeping moved to TripController (see TripControllerTest: it survives leaving the screen).
     @Test fun lastScreenLeavingResetsPlanning() {
@@ -243,7 +244,7 @@ class NavFlowTest {
     }
 
     @Test fun stateIsPersistedToTheHandleAndRestored() {
-        val handle = androidx.lifecycle.SavedStateHandle()
+        val handle = SavedStateHandle()
         val a = NavFlowViewModel(handle)
         a.update { it.choose(place(1)).copy(stage = NavStage.PREVIEW) }
         val b = NavFlowViewModel(handle) // "new process" with the saved handle

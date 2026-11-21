@@ -1,7 +1,7 @@
 package com.navigator.app.ui.feature.replay
 
-import com.navigator.app.ride.RideMerge
 import com.navigator.app.ride.ReplayPacing
+import com.navigator.app.ride.RideMerge
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RidePoint
 

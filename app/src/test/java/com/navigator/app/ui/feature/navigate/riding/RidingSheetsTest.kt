@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import com.navigator.app.R
 import com.navigator.app.nav.destination.CategoryResult
 import com.navigator.app.nav.destination.PlaceCategory
+import com.navigator.app.nav.model.Stop
 import com.navigator.app.nav.providers.StartFailure
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.RidingTheme
@@ -31,7 +33,7 @@ class RidingSheetsTest {
     @get:Rule val rule = createComposeRule()
     private val log = mutableListOf<String>()
 
-    private fun riding(content: @androidx.compose.runtime.Composable () -> Unit) =
+    private fun riding(content: @Composable () -> Unit) =
         rule.setContent { KtmTheme(darkTheme = true) { RidingTheme(night = true, content = content) } }
 
     private fun failedActions() = StartFailedActions({ log += "retry" }, { log += "back" }, { log += "close" }, { log += "mirror" })
@@ -76,7 +78,7 @@ class RidingSheetsTest {
     }
 
     @Test fun theNextStopDistanceIsStraightLineMetricAndBlankWithoutAFix() {
-        val stop = com.navigator.app.nav.model.Stop(12.0, 77.1, "Toit")
+        val stop = Stop(12.0, 77.1, "Toit")
         assertEquals(null, TripStopRules.distanceTo(null, stop))
         assertEquals("no distance when basically there", null, TripStopRules.distanceTo(12.0 to 77.1, stop))
         assertEquals("11 km", TripStopRules.distanceTo(12.0 to 77.0, stop))

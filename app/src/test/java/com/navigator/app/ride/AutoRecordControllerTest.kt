@@ -4,6 +4,7 @@ import com.navigator.app.nav.model.NavDestination
 import com.navigator.app.nav.providers.GoogleNavSdkProvider.ActiveTrip
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -48,7 +49,7 @@ class AutoRecordControllerTest {
         var cleared = 0
     }
 
-    private fun kotlinx.coroutines.test.TestScope.controller(e: Env) = AutoRecordController(
+    private fun TestScope.controller(e: Env) = AutoRecordController(
         scope = backgroundScope, trips = e.trips, session = { e.session },
         recordingEnabled = { e.enabled }, locationGranted = { e.granted },
         startRecording = { t -> e.started += t.rideKey; e.startOk },

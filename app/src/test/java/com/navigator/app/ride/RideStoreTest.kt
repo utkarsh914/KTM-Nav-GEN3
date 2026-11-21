@@ -1,21 +1,24 @@
 package com.navigator.app.ride
 
 import android.content.Context
-import org.robolectric.RuntimeEnvironment
+import com.navigator.app.backup.BackupManager
+import com.navigator.app.data.rides.RideThumbnailCache
+import java.io.ByteArrayOutputStream
+import java.io.File
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -294,8 +297,8 @@ class RideStoreTest {
     @Test fun backupLeavesDeletedRidesOut() {
         val a = importRide(startMs = 1_000_000L); importRide(startMs = 2_000_000L)
         store.softDelete(listOf(a.id))
-        val out = java.io.ByteArrayOutputStream()
-        val summary = com.navigator.app.backup.BackupManager(ctx).backup(out)
+        val out = ByteArrayOutputStream()
+        val summary = BackupManager(ctx).backup(out)
         assertEquals(1, summary.rides)
     }
 
@@ -355,7 +358,7 @@ class RideStoreTest {
 
     @Test fun thumbnailCacheIsLruAndKeyedByPointCount() {
         var reads = 0
-        val cache = com.navigator.app.data.rides.RideThumbnailCache(store, capacity = 2, load = { reads++; pts(100) })
+        val cache = RideThumbnailCache(store, capacity = 2, load = { reads++; pts(100) })
         cache.get("a", 100); cache.get("a", 100)
         assertEquals(1, reads)
         cache.get("a", 50)
@@ -368,7 +371,7 @@ class RideStoreTest {
 
     @Test fun aCachedThumbnailCanBePeekedWithoutReading() {
         var reads = 0
-        val cache = com.navigator.app.data.rides.RideThumbnailCache(store, load = { reads++; pts(100) })
+        val cache = RideThumbnailCache(store, load = { reads++; pts(100) })
         assertNull(cache.peek("a", 100))
         val first = cache.get("a", 100)
         assertEquals(first, cache.peek("a", 100))

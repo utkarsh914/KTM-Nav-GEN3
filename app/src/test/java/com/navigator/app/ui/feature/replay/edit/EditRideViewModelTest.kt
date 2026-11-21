@@ -5,10 +5,13 @@ import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.MergeResult
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
+import com.navigator.app.ride.RideTrim
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -24,7 +27,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -51,10 +53,10 @@ class EditRideViewModelTest {
         store.importRide(name, pts(60, start))!!.also { store.setSaved(it.id, false) }
 
     private var mergedOffers = 0
-    private fun kotlinx.coroutines.test.TestScope.edit(id: String) =
+    private fun TestScope.edit(id: String) =
         EditRideViewModel(id, repo, backgroundScope, debounceMs = 500, onMergedRideChanged = { mergedOffers++ })
 
-    private fun kotlinx.coroutines.test.TestScope.events(vm: EditRideViewModel): List<EditEvent> {
+    private fun TestScope.events(vm: EditRideViewModel): List<EditEvent> {
         val list = mutableListOf<EditEvent>()
         vm.events.onEach { list += it }.launchIn(backgroundScope)
         return list
@@ -91,7 +93,7 @@ class EditRideViewModelTest {
     @Test fun fieldsAreCapped() = runTest(dispatcher) {
         val vm = edit(ride().id)
         vm.onName("x".repeat(500))
-        assertEquals(com.navigator.app.ride.RideTrim.MAX_NAME, (vm.ui.value as EditUi.Ready).name.length)
+        assertEquals(RideTrim.MAX_NAME, (vm.ui.value as EditUi.Ready).name.length)
     }
 
     @Test fun theStarSavesAtOnce() = runTest(dispatcher) {

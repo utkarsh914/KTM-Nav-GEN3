@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -29,7 +30,7 @@ class RidingUiTest {
     @get:Rule val rule = createComposeRule()
     private val log = mutableListOf<String>()
 
-    private fun riding(night: Boolean = true, content: @androidx.compose.runtime.Composable () -> Unit) =
+    private fun riding(night: Boolean = true, content: @Composable () -> Unit) =
         rule.setContent { KtmTheme(darkTheme = true) { RidingTheme(night = night, content = content) } }
 
     private fun active(footer: ManeuverFooter = ManeuverFooter.None, rerouting: Boolean = false, exit: String? = null) =

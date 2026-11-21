@@ -55,12 +55,9 @@ import com.navigator.app.ui.components.BadgeTone
 import com.navigator.app.ui.components.BannerTone
 import com.navigator.app.ui.components.BikeStatusDot
 import com.navigator.app.ui.components.BikeStatusPill
-import com.navigator.app.ui.components.DashPalette
-import com.navigator.app.ui.components.TurnIconNames
-import com.navigator.app.ui.components.fullBleed
-import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
+import com.navigator.app.ui.components.DashPalette
 import com.navigator.app.ui.components.DashPreview
 import com.navigator.app.ui.components.DashPreviewState
 import com.navigator.app.ui.components.InfoBanner
@@ -68,7 +65,10 @@ import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSwitchRow
 import com.navigator.app.ui.components.ListRow
+import com.navigator.app.ui.components.TurnIconNames
 import com.navigator.app.ui.components.TurnIconRef
+import com.navigator.app.ui.components.fullBleed
+import com.navigator.app.ui.components.isNarrowWindow
 import com.navigator.app.ui.feature.navigate.BikePillUi
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout

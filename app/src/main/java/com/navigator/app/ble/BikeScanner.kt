@@ -10,8 +10,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.ui.OpenDashPermissions
 import com.navigator.app.settings.AppSettings
+import com.navigator.app.ui.OpenDashPermissions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

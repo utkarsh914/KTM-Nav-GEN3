@@ -16,9 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
 import com.navigator.app.data.permissions.PermissionId
+import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.feature.permissions.PermissionFix
 import com.navigator.app.ui.feature.permissions.rememberPermissionFixer
-import com.navigator.app.ui.feature.diagnostics.rememberLogSharer
 import com.navigator.app.ui.shell.LocalOpenLogs
 import com.navigator.app.ui.shell.openBluetoothSettings
 

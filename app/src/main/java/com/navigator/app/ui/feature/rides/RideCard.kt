@@ -33,9 +33,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
 import com.navigator.app.data.rides.ThumbPoint
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
-import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
 import com.navigator.app.ui.components.BadgeTone

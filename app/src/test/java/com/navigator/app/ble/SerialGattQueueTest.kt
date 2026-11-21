@@ -1,8 +1,8 @@
 package com.navigator.app.ble
 
+import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.util.UUID
 
 class SerialGattQueueTest {
 

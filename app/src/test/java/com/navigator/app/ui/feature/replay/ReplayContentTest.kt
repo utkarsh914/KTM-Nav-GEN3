@@ -1,8 +1,11 @@
 package com.navigator.app.ui.feature.replay
 
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
@@ -14,7 +17,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.assertCountEquals
 import com.navigator.app.ride.AvgSpeedMode
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideChart
@@ -58,7 +60,7 @@ class ReplayContentTest {
         KtmTheme(darkTheme = false) { ReplayContent(ui, position.asState(), bearing, AvgSpeedMode.MOVING, actions(), {}) }
     }
 
-    private fun androidx.compose.runtime.MutableIntState.asState(): androidx.compose.runtime.State<Int> = this
+    private fun MutableIntState.asState(): State<Int> = this
 
     @Test fun peekShowsTheRideTheReadoutsAndTheControls() {
         show(ui())

@@ -1,6 +1,7 @@
 package com.navigator.app.ride
 
 import android.content.res.Resources
+import com.navigator.app.R
 
 /** "7:05" / "1:02:09" for a recorded duration. */
 fun formatElapsed(ms: Long): String {
@@ -14,8 +15,8 @@ fun formatElapsed(ms: Long): String {
 /** "38 min" / "1 h 05" for a finished ride, rounded up to the minute (the ride card, the Ride saved notification). */
 fun rideDurationText(res: Resources, seconds: Int): String {
     val minutes = (seconds + 59) / 60
-    return if (minutes < 60) res.getString(com.navigator.app.R.string.ride_duration_min, minutes)
-    else res.getString(com.navigator.app.R.string.ride_duration_h, minutes / 60, minutes % 60)
+    return if (minutes < 60) res.getString(R.string.ride_duration_min, minutes)
+    else res.getString(R.string.ride_duration_h, minutes / 60, minutes % 60)
 }
 
 /** What happened when the rider asked to record a ride with no destination. */

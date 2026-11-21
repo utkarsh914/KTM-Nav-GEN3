@@ -1,16 +1,5 @@
 package com.navigator.app.ui.feature.navigate.riding
 
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.text.style.TextOverflow
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.SizeTransform
-import com.navigator.app.ui.shell.tripStripBounds
-import com.navigator.app.ui.shell.LocalTripShared
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
@@ -18,6 +7,9 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,17 +48,23 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import com.navigator.app.R
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.KtmSheetContent
 import com.navigator.app.ui.components.SheetHandle
+import com.navigator.app.ui.shell.LocalTripShared
+import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * MO2: the trip bar and the trip sheet are one container. Opening grows the bar into the sheet (the bar's content

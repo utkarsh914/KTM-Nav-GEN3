@@ -2,6 +2,7 @@ package com.navigator.app.ui.feature.replay.trim
 
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -18,6 +19,7 @@ import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.theme.KtmTheme
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
@@ -39,7 +41,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import java.io.File
 
 class TrimRangeTest {
     private val r = TrimRange(0, 9, 9)
@@ -251,7 +252,7 @@ class TrimContentTest {
     @Test fun theBarAnnouncesTheCut() {
         show(ready(from = 5, to = 15))
         val bar = rule.onNodeWithContentDescription("Part of the ride to keep").fetchSemanticsNode()
-        assertTrue(bar.config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription].startsWith("From "))
+        assertTrue(bar.config[SemanticsProperties.StateDescription].startsWith("From "))
     }
 
     @Test fun nothingMovesOrCancelsWhileTheWriteRuns() {

@@ -3,12 +3,12 @@ package com.navigator.app.ui.feature.navigate.search
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.FavoritePlace
+import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.shell.LocalOpenPlaces
 import com.navigator.app.ui.theme.KtmTheme

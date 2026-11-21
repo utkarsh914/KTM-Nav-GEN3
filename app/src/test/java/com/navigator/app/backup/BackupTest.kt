@@ -1,10 +1,16 @@
 package com.navigator.app.backup
 
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlacesMerge
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ride.RecordedRide
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,10 +19,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class BackupTest {
     @get:Rule val tmp = TemporaryFolder()
@@ -26,9 +28,9 @@ class BackupTest {
     @Test fun archiveRoundTripKeepsRidesTracksPlacesAndPrefs() {
         val src = tmp.newFolder("src")
         val rides = listOf(ride("111"), ride("222"))
-        java.io.File(src, "111.jsonl").writeText("{\"lat\":1}\n")
+        File(src, "111.jsonl").writeText("{\"lat\":1}\n")
         val out = ByteArrayOutputStream()
-        val written = BackupArchive.write(out, rides, { id -> java.io.File(src, "$id.jsonl") }, """{"recents":"[]"}""", """{"a":1}""", 123L)
+        val written = BackupArchive.write(out, rides, { id -> File(src, "$id.jsonl") }, """{"recents":"[]"}""", """{"a":1}""", 123L)
         assertEquals(1, written) // ride 222 has no track file: still listed, no track entry
         val c = BackupArchive.read(ByteArrayInputStream(out.toByteArray()), tmp.newFolder("tmp"))!!
         assertEquals(listOf("111", "222"), c.rides.map { it.id })
@@ -65,7 +67,7 @@ class BackupTest {
         val c = BackupArchive.read(ByteArrayInputStream(data), dir)!!
         assertEquals(setOf("123"), c.tracks.keys)
         assertEquals(setOf("123.jsonl"), dir.list()!!.toSet())
-        assertFalse(java.io.File(dir, "../evil.txt").exists())
+        assertFalse(File(dir, "../evil.txt").exists())
     }
 
     @Test fun badRideEntriesAreSkipped() {
@@ -126,7 +128,7 @@ class BackupTest {
         assertEquals(100, back["beep_volume_percent"])
         assertEquals(30, back["overspeed_limit_kmh"])
         assertEquals(20, back["speed_band_count"])
-        assertEquals(com.navigator.app.data.settings.SettingSpecs.MAX_USER_NAME, (back["user_name"] as String).length)
+        assertEquals(SettingSpecs.MAX_USER_NAME, (back["user_name"] as String).length)
     }
 
     @Test fun hostileOrBrokenPrefsAreFilteredOnDecode() {
@@ -166,10 +168,10 @@ class BackupTest {
 
     @Test fun peekCountsTracksWithoutExtractingThem() {
         val src = tmp.newFolder("peeksrc")
-        java.io.File(src, "111.jsonl").writeText("{\"lat\":1}\n")
+        File(src, "111.jsonl").writeText("{\"lat\":1}\n")
         val out = ByteArrayOutputStream()
-        BackupArchive.write(out, listOf(ride("111"), ride("222")), { id -> java.io.File(src, "$id.jsonl") }, "{}", "{}", 1L)
-        val dir = java.io.File(tmp.root, "peekdir")
+        BackupArchive.write(out, listOf(ride("111"), ride("222")), { id -> File(src, "$id.jsonl") }, "{}", "{}", 1L)
+        val dir = File(tmp.root, "peekdir")
         val c = BackupArchive.read(ByteArrayInputStream(out.toByteArray()), dir, withTracks = false)!!
         assertEquals(setOf("111"), c.trackIds)
         assertTrue(c.tracks.isEmpty())

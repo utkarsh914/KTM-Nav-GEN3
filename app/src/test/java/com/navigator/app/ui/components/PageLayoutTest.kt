@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -93,7 +94,7 @@ class PageLayoutTest {
     @Test fun anEmptyStateThatDoesNotScrollFitsInsideAList() {
         rule.setContent {
             KtmTheme(darkTheme = false) {
-                androidx.compose.foundation.lazy.LazyColumn {
+                LazyColumn {
                     item { EmptyState(KtmIcons.Bookmark, "Nothing saved", "Save a place.", scrollable = false) }
                 }
             }

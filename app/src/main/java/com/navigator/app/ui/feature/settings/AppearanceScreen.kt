@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
-import com.navigator.app.ui.theme.accentFor
 import com.navigator.app.ui.shell.resolveAppDark
+import com.navigator.app.ui.theme.accentFor
 
 /** The Appearance page: [AppearanceContent] over its view model, with the custom-colour sheet. */
 @Composable

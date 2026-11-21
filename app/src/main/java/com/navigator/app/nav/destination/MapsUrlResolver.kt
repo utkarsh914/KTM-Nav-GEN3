@@ -3,12 +3,12 @@ package com.navigator.app.nav.destination
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
 import java.io.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Best-effort resolution of a Google Maps link (or shared text containing one)

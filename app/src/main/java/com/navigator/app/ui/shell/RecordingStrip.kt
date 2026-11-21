@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -21,12 +21,12 @@ import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideFinish
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideSession
+import com.navigator.app.ride.formatElapsed
 import com.navigator.app.ui.components.ActivityStrip
 import com.navigator.app.ui.components.ActivityStripState
 import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
-import com.navigator.app.ride.formatElapsed
 import com.navigator.app.ui.theme.KtmSpacing
 import kotlinx.coroutines.delay
 

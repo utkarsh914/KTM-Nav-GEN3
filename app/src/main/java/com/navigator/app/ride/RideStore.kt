@@ -2,6 +2,13 @@ package com.navigator.app.ride
 
 import android.content.Context
 import com.navigator.app.logging.AppLogger
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileOutputStream
+import java.io.FileReader
+import java.io.OutputStreamWriter
+import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
@@ -10,13 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileOutputStream
-import java.io.FileReader
-import java.io.OutputStreamWriter
-import java.io.Writer
 
 /**
  * Local persistence for recorded rides — following the app's lightweight
