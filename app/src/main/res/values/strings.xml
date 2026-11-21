@@ -240,13 +240,14 @@
     <string name="stop_add_here">Add stop here</string>
     <!-- Riding (NV1–NV8, DL2) -->
     <string name="riding_starting">Starting navigation</string>
-    <string name="riding_rerouting">Rerouting</string>
+    <string name="riding_rerouting">Rerouting…</string>
+    <string name="riding_last_instruction">Last: %1$s</string>
     <string name="riding_exit">Exit %1$s</string>
     <string name="riding_then">Then</string>
     <string name="riding_lanes_description">Lanes</string>
     <string name="riding_lane_recommended">Recommended lane</string>
     <string name="riding_speed_unit">km/h</string>
-    <string name="riding_alert">Limit %1$d</string>
+    <string name="riding_alert">alert %1$d</string>
     <string name="riding_speed_description">%1$s km/h</string>
     <string name="riding_speed_over_description">%1$s km/h, over your limit of %2$d</string>
     <string name="riding_speed_no_fix">No GPS speed yet</string>
@@ -261,7 +262,7 @@
     <string name="riding_north_up">North up</string>
     <string name="riding_chip_offline">Offline · guidance continues</string>
     <string name="riding_chip_offline_reroute">Offline · reroutes when back online</string>
-    <string name="riding_chip_dash_lost">Dash disconnected</string>
+    <string name="riding_chip_dash_lost">Dash disconnected · retrying</string>
     <string name="riding_chip_dash_back">Dash connected</string>
     <string name="riding_chip_stop_added">Stop added · %1$s</string>
     <string name="riding_chip_stop_removed">Stop removed · %1$s</string>
@@ -277,13 +278,16 @@
     <string name="riding_chip_unknown_next">Couldn\'t tell which stop is next. Try again in a moment</string>
     <string name="riding_chip_max_stops">That trip already has the maximum number of stops</string>
     <string name="trip_sheet_title">Trip</string>
+    <string name="trip_sheet_arrive">Arrive %1$s</string>
     <string name="trip_add_stop">Add stop</string>
     <string name="trip_sheet_close">Close trip menu</string>
     <string name="trip_add_stop_unavailable">Add stop works once guidance is running</string>
     <string name="riding_guidance_pane">Guidance</string>
     <string name="trip_minimise">Minimise</string>
-    <string name="trip_beeps">Turn beeps</string>
-    <string name="trip_messages">Phone messages on the dash</string>
+    <string name="trip_beeps">Beeps</string>
+    <string name="trip_beeps_description">Turn beeps</string>
+    <string name="trip_messages">Messages</string>
+    <string name="trip_messages_description">Phone messages on the dash</string>
     <string name="trip_dash">Dash</string>
     <string name="trip_end">End trip</string>
     <string name="end_title">End this trip?</string>
@@ -291,9 +295,10 @@
     <string name="end_confirm">End trip</string>
     <string name="end_keep">Keep riding</string>
     <string name="riding_calculating">Calculating route</string>
+    <string name="riding_starting_support">Starting…</string>
     <!-- Couldn't start (NV6) -->
     <string name="start_failed_title">Navigation didn\'t start</string>
-    <string name="start_failed_route">Couldn\'t get a route from here. Try again, or choose another place.</string>
+    <string name="start_failed_route">Couldn\'t get a route from here. Check your connection and try again.</string>
     <string name="start_failed_not_ready">Google navigation isn\'t ready yet. Check your connection and Play services.</string>
     <string name="start_failed_unavailable">This phone can\'t run in-app navigation. Use mirror mode instead.</string>
     <string name="start_failed_retry">Try again</string>
@@ -316,10 +321,12 @@
     <string name="trip_next_stop">Next stop</string>
     <string name="trip_remove_next_stop">Remove next stop</string>
     <!-- Trip finished (TF1-TF5) -->
-    <string name="finished_title">Trip finished</string>
+    <string name="finished_arrived">You\'ve arrived</string>
+    <string name="finished_arrived_times">You\'ve arrived · %1$s – %2$s</string>
+    <string name="finished_riding_time">Riding time</string>
     <string name="finished_reached">Destination reached</string>
     <string name="finished_distance">Distance</string>
-    <string name="finished_time">Time</string>
+    <string name="finished_time">Trip time</string>
     <string name="finished_avg_moving">Average (moving)</string>
     <string name="finished_avg_overall">Average (overall)</string>
     <string name="finished_max">Top speed</string>

@@ -153,7 +153,8 @@ class TripFinishedContentTest {
 
     @Test fun whileSavingTimeIsKnownAndDoneWorks() {
         show(model(FinishUi.Saving))
-        rule.onNodeWithText("10 min").assertIsDisplayed()
+        rule.onNodeWithText("10").assertIsDisplayed()
+        rule.onNodeWithText("min").assertIsDisplayed()
         rule.onNodeWithText("Saving ride…").assertIsDisplayed()
         rule.onNodeWithText("Done").assertIsEnabled()
         rule.onAllNodesWithText("Distance").assertCountEquals(0)

@@ -38,7 +38,7 @@ class RidingSheetsTest {
     @Test fun aRouteFailureOffersTryAgainBackAndClose() {
         riding { StartFailedSheet(StartFailure.ROUTE, canRetry = true, actions = failedActions()) }
         rule.onNodeWithText("Navigation didn't start").assertIsDisplayed()
-        rule.onNodeWithText("Couldn't get a route from here. Try again, or choose another place.").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't get a route from here. Check your connection and try again.").assertIsDisplayed()
         rule.onNodeWithText("Try again").performClick()
         rule.onNodeWithText("Back to route").performClick()
         rule.onNodeWithText("Close").performClick()

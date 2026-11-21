@@ -27,6 +27,8 @@ data class KtmTypeExtras(
     val statValue: TextStyle,
     /** The exit badge: bolder and larger than a chip so it reads from the saddle. */
     val ridingBadge: TextStyle,
+    /** The speed in the trip bar (36 sp, NV1). */
+    val ridingSpeed: TextStyle,
     /** Trip-bar second line. */
     val ridingSupport: TextStyle,
     /** Logs, MAC addresses, hex and protocol codes only. */
@@ -79,6 +81,7 @@ fun ktmTypeExtras(
     ridingBadge = plainStyle(barlow, FontWeight.Bold, 18, 22),
     ridingInstructionLand = plainStyle(barlow, FontWeight.Medium, 22, 28),
     ridingSupport = plainStyle(barlow, FontWeight.Medium, 17, 22),
+    ridingSpeed = condensedStyle(condensed, 36, 40),
     ridingDistanceNarrow = condensedStyle(condensed, 50, 52),
     ridingInstructionNarrow = plainStyle(barlow, FontWeight.Medium, 19, 24),
     ridingInstruction = plainStyle(barlow, FontWeight.Medium, 19, 24),

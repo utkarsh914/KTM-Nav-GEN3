@@ -159,7 +159,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: androidx.c
                     if (ui.exit != null && !ui.rerouting) ExitBadge(ui.exit)
                 }
                 if (ui.instruction.isNotBlank()) {
-                    Text(ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
+                    Text(if (ui.rerouting) stringResource(R.string.riding_last_instruction, ui.instruction) else ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
                 }
                 if (ui.road != null) {
                     Text(

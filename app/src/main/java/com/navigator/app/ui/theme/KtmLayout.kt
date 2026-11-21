@@ -132,6 +132,10 @@ object KtmLayout {
     val laneCellWidth = 40.dp
     val laneCellHeight = 44.dp
     val progressLine = 4.dp
+    /** The speed block of the trip bar (NV1). */
+    val tripBarSpeed = 86.dp
+    val tripBarMore = 56.dp
+    val tripBarHeight = 80.dp
     val laneRecommendedMark = 3.dp
     val iconRiding = 28.dp
 

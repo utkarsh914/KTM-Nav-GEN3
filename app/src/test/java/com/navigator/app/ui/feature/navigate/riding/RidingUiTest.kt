@@ -54,7 +54,7 @@ class RidingUiTest {
 
     @Test fun reroutingSaysSoAndDropsTheDistance() {
         riding { ManeuverCard(active(rerouting = true)) }
-        rule.onNodeWithText("Rerouting").assertIsDisplayed()
+        rule.onNodeWithText("Rerouting…").assertIsDisplayed()
         rule.onAllNodesWithText("450 m").assertCountEquals(0)
         rule.onNodeWithText("Jalaun Rd").assertIsDisplayed()
     }
@@ -81,7 +81,7 @@ class RidingUiTest {
 
     @Test fun overspeedShowsTheAlertValueAndNoFixShowsADash() {
         riding { TripBar(bar(speed = "85", over = true), onOpen = {}) }
-        rule.onNodeWithText("Limit 80").assertIsDisplayed()
+        rule.onNodeWithText("alert 80").assertIsDisplayed()
         rule.onNodeWithContentDescription("85 km/h, over your limit of 80").assertIsDisplayed()
     }
 
@@ -90,6 +90,12 @@ class RidingUiTest {
         rule.onNodeWithText("Toit").assertIsDisplayed()
         rule.onNodeWithText("–").assertIsDisplayed()
         rule.onNodeWithContentDescription("No GPS speed yet").assertIsDisplayed()
+        rule.onNodeWithText("Starting…").assertIsDisplayed()
+    }
+
+    @Test fun reroutingKeepsTheLastInstructionWithItsPrefix() {
+        riding { ManeuverCard(active(rerouting = true)) }
+        rule.onNodeWithText("Last: Turn right onto").assertIsDisplayed()
     }
 
     @Test fun longTimesReadAsHoursAndMinutes() {
@@ -136,8 +142,8 @@ class RidingUiTest {
         rule.onNodeWithText("Add stop").performClick()
         rule.onNodeWithText("Overview").performClick()
         rule.onNodeWithText("Minimise").performClick()
-        rule.onNodeWithText("Turn beeps").performClick()
-        rule.onNodeWithText("Phone messages on the dash").performClick()
+        rule.onNodeWithText("Beeps").performClick()
+        rule.onNodeWithText("Messages").performClick()
         rule.onNodeWithText("Connected").performClick()
         rule.onNodeWithText("End trip").performClick()
         assertEquals(listOf("stop", "overview", "min", "beepsfalse", "msgtrue", "dash", "end"), log)

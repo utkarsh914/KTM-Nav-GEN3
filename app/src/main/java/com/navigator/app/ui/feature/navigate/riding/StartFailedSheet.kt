@@ -2,16 +2,22 @@ package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -25,6 +31,8 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.theme.KtmElevation
+import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -51,6 +59,10 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
     ) {
         SheetHandle()
+        // A 56 dp alert tile says "something went wrong" before the words do.
+        Box(Modifier.size(KtmLayout.targetPrimary).clip(KtmShapes.Card).background(KtmTheme.colors.badContainer), contentAlignment = Alignment.Center) {
+            Icon(KtmIcons.Warning, null, tint = KtmTheme.colors.bad, modifier = Modifier.size(KtmLayout.iconRiding))
+        }
         Text(
             stringResource(R.string.start_failed_title), style = MaterialTheme.typography.headlineSmall, color = r.onSurface,
             modifier = Modifier.semantics { heading() },
@@ -60,18 +72,20 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (ui.canRetry && canRetry) {
-            KtmButton(stringResource(R.string.start_failed_retry), actions.onRetry, Modifier.fillMaxWidth(), size = ButtonSize.Riding)
+            KtmButton(stringResource(R.string.start_failed_retry), actions.onRetry, Modifier.fillMaxWidth(), size = ButtonSize.Riding, icon = KtmIcons.Refresh)
         }
         if (ui.offerMirror) {
             KtmButton(stringResource(R.string.start_failed_mirror), actions.onMirror, Modifier.fillMaxWidth(), size = ButtonSize.Riding)
         }
-        KtmButton(
-            stringResource(R.string.start_failed_back), actions.onBack, Modifier.fillMaxWidth(),
-            style = ButtonStyle.Tonal, size = ButtonSize.Rest,
-        )
-        KtmButton(
-            stringResource(R.string.common_close), actions.onClose, Modifier.fillMaxWidth(),
-            style = ButtonStyle.Text, size = ButtonSize.Rest,
-        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            KtmButton(
+                stringResource(R.string.start_failed_back), actions.onBack, Modifier.weight(1f),
+                style = ButtonStyle.Outline, size = ButtonSize.Rest,
+            )
+            KtmButton(
+                stringResource(R.string.common_close), actions.onClose, Modifier.weight(1f),
+                style = ButtonStyle.Outline, size = ButtonSize.Rest,
+            )
+        }
     }
 }

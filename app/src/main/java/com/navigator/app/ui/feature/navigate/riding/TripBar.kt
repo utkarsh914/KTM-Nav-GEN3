@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -50,7 +54,7 @@ fun timeLeftText(t: TimeLeft): String = when (t.kind) {
 }
 
 /**
- * NV1/NV3/NV5: speed, time left, distance and arrival, with a 4 dp progress line. Tapping anywhere on it (or the
+ * NV1/NV3/NV5: speed, time left, distance and arrival, with a 4 dp progress line along the top. Tapping anywhere on it (or the
  * 56 dp chevron) opens the trip sheet. When the rider is over the limit the speed block turns solid red and shows
  * the limit, in one 100 ms colour change; the number itself is plain text that never animates.
  */
@@ -66,44 +70,52 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
         ui.alert != null -> stringResource(R.string.riding_speed_over_description, ui.speed, ui.alert)
         else -> stringResource(R.string.riding_speed_description, ui.speed)
     }
-    Column(
+    val accent = KtmTheme.accent.fill
+    Box(
         modifier.fillMaxWidth().clip(KtmShapes.Card).background(r.surface)
             .clickable(role = Role.Button, onClickLabel = menu) { haptics.tap(); onOpen() },
     ) {
-        Row(Modifier.height(IntrinsicSize.Min).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = KtmLayout.tripBarHeight).height(IntrinsicSize.Min).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.fillMaxHeight().widthIn(min = KtmLayout.targetRiding + KtmSpacing.md).background(speedBg)
-                    .padding(horizontal = KtmSpacing.md, vertical = KtmSpacing.sm)
+                Modifier.fillMaxHeight().width(KtmLayout.tripBarSpeed).background(speedBg)
+                    // A 1 px divider, drawn only while the block has no fill of its own.
+                    .drawBehind { if (!ui.overspeed) drawRect(r.line, Offset(size.width - 1f, 0f), Size(1f, size.height)) }
+                    .padding(vertical = KtmSpacing.sm)
                     .semantics(mergeDescendants = true) { contentDescription = speedDescription },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(ui.speed, style = MaterialTheme.typography.headlineLarge, color = speedFg, maxLines = 1, textAlign = TextAlign.Center)
+                Text(ui.speed, style = KtmTheme.type.ridingSpeed, color = if (ui.speedKnown) speedFg else r.onSurfaceVariant, maxLines = 1, textAlign = TextAlign.Center)
                 Text(
                     if (ui.alert != null) stringResource(R.string.riding_alert, ui.alert) else stringResource(R.string.riding_speed_unit),
-                    style = MaterialTheme.typography.labelSmall, color = speedFg, maxLines = 1,
+                    style = MaterialTheme.typography.labelSmall, color = if (ui.overspeed) speedFg else r.onSurfaceVariant, maxLines = 1,
                 )
             }
-            Column(Modifier.weight(1f).padding(horizontal = KtmSpacing.md, vertical = KtmSpacing.sm)) {
+            Column(Modifier.weight(1f).padding(start = KtmSpacing.lg, end = KtmSpacing.md, top = KtmSpacing.sm, bottom = KtmSpacing.sm)) {
                 if (ui.starting) {
                     Text(
                         ui.destination ?: stringResource(R.string.riding_calculating), style = MaterialTheme.typography.headlineSmall,
                         color = r.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
+                    Text(stringResource(R.string.riding_starting_support), style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1)
                 } else {
                     ui.timeLeft?.let {
-                        Text(timeLeftText(it), style = MaterialTheme.typography.headlineSmall, color = r.onSurface, maxLines = 1)
+                        Text(timeLeftText(it), style = MaterialTheme.typography.headlineMedium, color = r.onSurface, maxLines = 1)
                     }
                     val line = listOfNotNull(ui.distance, ui.arrival).joinToString(" · ")
                     if (line.isNotEmpty()) Text(line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Box(Modifier.size(KtmLayout.targetPrimary), contentAlignment = Alignment.Center) {
+            // The chevron sits in its own tinted 56 dp tile, 12 dp from the edge.
+            Box(
+                Modifier.padding(end = KtmSpacing.md).size(KtmLayout.tripBarMore).clip(KtmShapes.Card).background(r.surfaceHigh),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(KtmIcons.ChevronUp, contentDescription = null, tint = r.onSurface, modifier = Modifier.size(KtmLayout.iconRiding))
             }
         }
-        Box(Modifier.fillMaxWidth().height(PROGRESS_H).background(r.line)) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth(ui.progress).background(r.guidance))
+        Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(PROGRESS_H).background(r.line)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(ui.progress).background(accent))
         }
     }
 }

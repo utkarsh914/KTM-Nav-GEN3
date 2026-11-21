@@ -88,7 +88,7 @@ class RidingLandscapeTest {
 
     @Test fun theCompactRowSaysRerouting() {
         show(controls, maneuver.copy(rerouting = true))
-        rule.onNodeWithText("Rerouting").assertIsDisplayed()
+        rule.onNodeWithText("Rerouting…").assertIsDisplayed()
     }
 
     @Test fun theMapIsToldHowMuchOfItsLeftThePanelCovers() {

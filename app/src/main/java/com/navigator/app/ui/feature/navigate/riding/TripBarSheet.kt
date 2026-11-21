@@ -1,6 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
@@ -163,7 +164,7 @@ private fun TripBarSheetBody(
             )
             if (isOpen) {
                 SheetPane(
-                    onDismiss = onDismiss, maxHeight = maxSheetHeight, modifier = container,
+                    bar = bar, onDismiss = onDismiss, maxHeight = maxSheetHeight, modifier = container,
                     onDrag = onDrag, onDragEnd = onDragEnd,
                     content = sheet,
                 )
@@ -176,6 +177,7 @@ private fun TripBarSheetBody(
 
 @Composable
 private fun SheetPane(
+    bar: TripBarUi,
     onDismiss: () -> Unit,
     maxHeight: Dp,
     modifier: Modifier,
@@ -184,7 +186,12 @@ private fun SheetPane(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val r = KtmTheme.riding
+    // NV7: the header is the trip itself, destination first, then when and how far.
     val title = stringResource(R.string.trip_sheet_title)
+    val destination = bar.destination?.takeIf { it.isNotBlank() }
+    val subtitle = listOfNotNull(
+        bar.arrival?.let { stringResource(R.string.trip_sheet_arrive, it) }, bar.timeLeft?.let { timeLeftText(it) }, bar.distance,
+    ).joinToString(" · ")
     val close = stringResource(R.string.trip_sheet_close)
     Column(
         modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.SheetTop).background(r.surface)
@@ -204,10 +211,13 @@ private fun SheetPane(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
         ) {
-            Text(
-                title, style = MaterialTheme.typography.headlineSmall, color = KtmTheme.colors.fg, maxLines = 1,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
+            Column(Modifier.weight(1f).semantics { heading() }) {
+                Text(
+                    destination ?: title, style = MaterialTheme.typography.headlineSmall, color = r.onSurface, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle.isNotEmpty()) Text(subtitle, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             KtmIconButton(KtmIcons.ChevronDown, close, onDismiss, size = IconButtonSize.Map)
         }
         KtmSheetContent(content = content)

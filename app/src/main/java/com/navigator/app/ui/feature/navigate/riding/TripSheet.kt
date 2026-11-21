@@ -1,6 +1,9 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
@@ -11,8 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.ButtonStyle
@@ -21,11 +29,14 @@ import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.IconButtonSize
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.components.KtmIconButton
-import com.navigator.app.ui.components.KtmSwitchRow
+import com.navigator.app.ui.components.KtmSwitch
 import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.rememberHaptics
 
 class TripSheetActions(
     val onAddStop: () -> Unit,
@@ -44,7 +55,7 @@ class TripSheetActions(
 fun EndTripButton(onEnd: () -> Unit, modifier: Modifier = Modifier) {
     KtmButton(
         stringResource(R.string.trip_end), onEnd, modifier.fillMaxWidth(),
-        style = ButtonStyle.DangerTonal, size = ButtonSize.Riding, icon = KtmIcons.Stop,
+        style = ButtonStyle.DangerTonal, size = ButtonSize.Riding, icon = KtmIcons.Close,
     )
 }
 
@@ -69,11 +80,11 @@ fun ColumnScope.TripControlsBody(
         )
         KtmButton(
             stringResource(R.string.riding_overview), actions.onOverview, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.Route,
+            style = ButtonStyle.Neutral, size = ButtonSize.TileLarge, icon = KtmIcons.Route,
         )
         KtmButton(
             stringResource(R.string.trip_minimise), actions.onMinimise, Modifier.weight(1f),
-            style = ButtonStyle.Tonal, size = ButtonSize.TileLarge, icon = KtmIcons.ChevronDown,
+            style = ButtonStyle.Neutral, size = ButtonSize.TileLarge, icon = KtmIcons.ChevronDown,
         )
     }
     if (!canAddStop) {
@@ -82,7 +93,13 @@ fun ColumnScope.TripControlsBody(
             color = KtmTheme.riding.onSurfaceVariant, modifier = Modifier.padding(top = KtmSpacing.sm),
         )
     }
-    Spacer(Modifier.height(KtmSpacing.md))
+    Spacer(Modifier.height(KtmSpacing.sm))
+    // The two riding toggles are one pair of 56 dp tiles (NV7, NL4), so a glove finds them side by side.
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+        ToggleTile(stringResource(R.string.trip_beeps), stringResource(R.string.trip_beeps_description), beeps, actions.onBeeps, Modifier.weight(1f))
+        ToggleTile(stringResource(R.string.trip_messages), stringResource(R.string.trip_messages_description), messages, actions.onMessages, Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(KtmSpacing.sm))
     if (nextStop != null) {
         ListRow(
             title = nextStop, supporting = stringResource(R.string.trip_next_stop), leadingIcon = KtmIcons.PinPlus,
@@ -94,8 +111,6 @@ fun ColumnScope.TripControlsBody(
             },
         )
     }
-    KtmSwitchRow(stringResource(R.string.trip_beeps), beeps, actions.onBeeps, leadingIcon = KtmIcons.Sound)
-    KtmSwitchRow(stringResource(R.string.trip_messages), messages, actions.onMessages, leadingIcon = KtmIcons.Message)
     ListRow(
         title = stringResource(R.string.trip_dash), supporting = dashStatus, leadingIcon = KtmIcons.Bike,
         onClick = actions.onDash,
@@ -114,4 +129,21 @@ fun EndTripDialog(onEnd: () -> Unit, onKeep: () -> Unit) {
         dismiss = DialogAction(stringResource(R.string.end_keep), onKeep, ButtonStyle.Neutral),
         riding = true,
     )
+}
+
+/** A riding toggle: a 56 dp tile with its label and a switch; the whole tile toggles. */
+@Composable
+private fun ToggleTile(label: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = rememberHaptics()
+    Row(
+        modifier.heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Control).background(KtmTheme.riding.surfaceHigh)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = { haptics.toggle(it); onChange(it) })
+            .semantics { contentDescription = description }
+            .padding(start = KtmSpacing.lg, end = KtmSpacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
+    ) {
+        Text(label, style = KtmTheme.type.ridingLabel, color = KtmTheme.riding.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
+        KtmSwitch(checked, onCheckedChange = null)
+    }
 }

@@ -9,10 +9,14 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.navigator.app.R
 import com.navigator.app.ui.shell.ChipTone
+import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
@@ -80,6 +85,12 @@ private fun Chip(text: String, tone: ChipTone, onTap: (() -> Unit)?) {
         ChipTone.Bad -> r.overspeed to r.onOverspeed
         ChipTone.Info -> r.surfaceHigh to r.onSurface
     }
+    // A leading icon says the tone in more than colour (NV3, NV4, MO12).
+    val icon = when (tone) {
+        ChipTone.Ok -> KtmIcons.DoneCircle
+        ChipTone.Warn, ChipTone.Bad -> KtmIcons.Warning
+        ChipTone.Info -> KtmIcons.Info
+    }
     Box(
         Modifier.padding(top = KtmSpacing.sm).heightIn(min = if (onTap != null) KtmLayout.targetPrimary else KtmLayout.targetRest).clip(KtmShapes.Pill).background(bg)
             .then(if (onTap != null) Modifier.clickable(role = Role.Button, onClick = onTap) else Modifier)
@@ -87,6 +98,9 @@ private fun Chip(text: String, tone: ChipTone, onTap: (() -> Unit)?) {
             .semantics { liveRegion = LiveRegionMode.Polite },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = KtmTheme.type.ridingLabel, color = fg, textAlign = TextAlign.Center, maxLines = 2)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(KtmLayout.iconRiding))
+            Text(text, style = KtmTheme.type.ridingLabel, color = fg, textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
+        }
     }
 }
