@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -293,7 +290,7 @@ private fun Blocked(reason: BlockReason, actions: PairingActions, onTrouble: () 
                 icon = if (noPermission) KtmIcons.Bluetooth else KtmIcons.BluetoothOff,
                 title = stringResource(if (noPermission) R.string.pair_blocked_permission_title else R.string.pair_blocked_off_title),
                 message = stringResource(if (noPermission) R.string.pair_blocked_permission else R.string.pair_blocked_off),
-                modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                modifier = Modifier.pageInsets(WindowInsetsSides.Horizontal),
                 primary = StateAction(stringResource(if (noPermission) R.string.pair_allow_nearby else R.string.pair_turn_on)) { actions.onFixBlock(reason) },
                 // If the system's "turn on" dialog was refused, the rider needs another way to Bluetooth.
                 secondary = if (noPermission) actions.onPairLater?.let { StateAction(stringResource(R.string.pair_later), it) }
@@ -304,7 +301,7 @@ private fun Blocked(reason: BlockReason, actions: PairingActions, onTrouble: () 
         // The help stays reachable here too: logs and Share log matter most when pairing cannot even start.
         KtmButton(
             stringResource(R.string.pair_trouble), onTrouble,
-            Modifier.align(Alignment.CenterHorizontally).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)).padding(vertical = KtmSpacing.sm),
+            Modifier.align(Alignment.CenterHorizontally).pageInsets(WindowInsetsSides.Bottom).padding(vertical = KtmSpacing.sm),
             style = ButtonStyle.Text, icon = KtmIcons.Help,
         )
     }

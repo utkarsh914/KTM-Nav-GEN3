@@ -7,13 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,6 +25,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 /** The first-run bar (ON2 to ON9): one segment per step, the done ones filled. Shared by onboarding and pairing. */
 @Composable
@@ -59,7 +56,7 @@ fun KtmStepHeader(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).fillMaxWidth()) {
+    Column(modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).fillMaxWidth()) {
         KtmStepProgress(position, total, Modifier.padding(horizontal = KtmSpacing.edge).padding(top = KtmSpacing.lg))
         Row(
             Modifier.fillMaxWidth().height(KtmLayout.targetRest).padding(horizontal = KtmSpacing.xs),

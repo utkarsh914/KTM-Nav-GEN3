@@ -88,4 +88,15 @@ class PageLayoutTest {
         val after = rule.onNodeWithTag("field").getUnclippedBoundsInRoot()
         assertEquals(keyboardPx / rule.activity.resources.displayMetrics.density, (before.bottom - after.bottom).value, 0.5f)
     }
+
+    @Test fun anEmptyStateThatDoesNotScrollFitsInsideAList() {
+        rule.setContent {
+            KtmTheme(darkTheme = false) {
+                androidx.compose.foundation.lazy.LazyColumn {
+                    item { EmptyState(KtmIcons.Bookmark, "Nothing saved", "Save a place.", scrollable = false) }
+                }
+            }
+        }
+        rule.onNodeWithText("Nothing saved").assertIsDisplayed()
+    }
 }

@@ -24,15 +24,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
@@ -68,6 +64,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import com.navigator.app.ui.theme.rememberHaptics
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -142,7 +139,7 @@ fun RidesContent(
                     )
                     is RidesBody.Items -> LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                        modifier = Modifier.fillMaxSize().pageInsets(WindowInsetsSides.Horizontal),
                         contentPadding = PaddingValues(start = KtmSpacing.edge, end = KtmSpacing.edge, bottom = FAB_CLEARANCE),
                         verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm),
                     ) {
@@ -183,7 +180,7 @@ fun RidesContent(
         if (canRecord) {
             RecordFab(
                 stringResource(R.string.rides_record), actions.onRecord,
-                Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
+                Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End)
                     .padding(KtmSpacing.lg),
             )
         }
@@ -266,7 +263,7 @@ private fun SearchBar(query: String, actions: RidesActions) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     Row(
-        Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+        Modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
             .fillMaxWidth().height(KtmLayout.topBar).padding(start = KtmSpacing.xs, end = KtmSpacing.edge),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),

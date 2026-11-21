@@ -192,7 +192,7 @@ private fun SheetPane(
     val subtitle = tripSubtitle(bar)
     val close = stringResource(R.string.trip_sheet_close)
     Column(
-        modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.Sheet).background(r.surface)
+        modifier.fillMaxWidth().heightIn(max = maxHeight).clip(KtmShapes.Card).background(r.surface)
             .semantics {
                 paneTitle = title
                 isTraversalGroup = true
@@ -218,7 +218,8 @@ private fun SheetPane(
             }
             KtmIconButton(KtmIcons.ChevronDown, close, onDismiss, size = IconButtonSize.Map)
         }
-        KtmSheetContent(content = content)
+        // Floating, not modal: nothing in it takes the keyboard, so it stays put.
+        KtmSheetContent(imePadding = false, content = content)
     }
 }
 

@@ -3,11 +3,7 @@ package com.navigator.app.ui.components
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +22,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 /**
  * 64 dp on every tab and page, even with no actions, so the large title below always lands in the
@@ -41,7 +38,7 @@ fun KtmTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+        modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
             .fillMaxWidth().height(KtmLayout.topBar).padding(start = if (onBack != null) KtmSpacing.xs else KtmSpacing.edge, end = KtmSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.xs),

@@ -65,6 +65,8 @@ fun KtmSheetContent(
     onClose: (() -> Unit)? = null,
     /** The ✕ is 56 dp on a riding surface. */
     closeSize: IconButtonSize = IconButtonSize.Rest,
+    /** False for a sheet that floats on the map and holds no text field. */
+    imePadding: Boolean = true,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -73,7 +75,7 @@ fun KtmSheetContent(
         modifier.fillMaxWidth()
             // The keyboard is the sheet's business, not each caller's: the field stays visible, and the gesture-area
             // spacer at the foot below is consumed by it, so no extra gap opens above the keyboard.
-            .imePadding()
+            .let { if (imePadding) it.imePadding() else it }
             .let { if (scrollable) it.verticalScroll(rememberScrollState()) else it }
             .padding(horizontal = KtmSpacing.lg),
     ) {

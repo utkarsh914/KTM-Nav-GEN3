@@ -3,15 +3,11 @@ package com.navigator.app.ui.feature.onboarding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -55,7 +51,7 @@ fun ReadyContent(ui: ReadyUi, actions: ReadyActions, modifier: Modifier = Modifi
     Column(modifier.fillMaxSize().background(c.bg)) {
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
+                .pageInsets(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                 .padding(horizontal = KtmSpacing.edge),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

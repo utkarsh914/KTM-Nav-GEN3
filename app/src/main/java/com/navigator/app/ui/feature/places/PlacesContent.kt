@@ -11,13 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +47,7 @@ import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import com.navigator.app.ui.theme.rememberHaptics
 import com.navigator.app.data.places.PlacesRepository
 
@@ -80,7 +77,7 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
             if (ui.selecting) SelectionBar(ui, actions) else PlacesBar(hasSaved = ui.saved.isNotEmpty(), actions)
             if (!ui.selecting) LargeTitle(stringResource(R.string.places_title))
             LazyColumn(
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                Modifier.fillMaxSize().pageInsets(WindowInsetsSides.Horizontal),
                 contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
             ) {
                 if (!ui.selecting) {
@@ -105,7 +102,7 @@ fun PlacesContent(ui: PlacesUi, actions: PlacesActions, modifier: Modifier = Mod
         if (!ui.selecting) {
             KtmFab(
                 stringResource(R.string.places_add), KtmIcons.Add, actions.onAdd,
-                Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
+                Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End)
                     .padding(KtmSpacing.lg),
             )
         }

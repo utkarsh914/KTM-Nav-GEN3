@@ -1,11 +1,8 @@
 package com.navigator.app.ui.shell
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -44,6 +41,7 @@ import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.pillDotColor
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 
 /** The bike's state for the rail's status dot (MR7): its tone and the state in words. */
 data class BikeRailStatus(val tone: PillTone, val state: String)
@@ -129,7 +127,7 @@ fun MainShell(
         // Only the portrait bar sits under the content and takes the gesture-bar inset. Without it (pushed pages, the
         // landscape rail) nothing above does, so the strip and snackbar take the bottom and cutout insets themselves.
         val ownInsets = if (showBar && type == NavigationSuiteType.ShortNavigationBarCompact) Modifier
-        else Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+        else Modifier.pageInsets(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
         var drawn by remember(immersive) { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxSize()) {

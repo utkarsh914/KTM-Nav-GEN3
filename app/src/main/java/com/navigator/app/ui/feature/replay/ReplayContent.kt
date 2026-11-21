@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,6 +83,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.pageInsets
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -138,7 +138,7 @@ fun ReplayContent(
 @Composable
 private fun NoTrack(hasRide: Boolean, onBack: () -> Unit, modifier: Modifier) {
     Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
-        Row(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(KtmSpacing.xs)) {
+        Row(Modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).padding(KtmSpacing.xs)) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), onBack)
         }
         EmptyState(
@@ -166,7 +166,7 @@ private fun Portrait(
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
         Row(
-            Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            Modifier.align(Alignment.TopCenter).pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
                 .fillMaxWidth().padding(KtmSpacing.lg),
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -177,7 +177,7 @@ private fun Portrait(
         }
         MapButtons(
             bearing, actions,
-            Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
+            Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End)
                 .padding(end = KtmSpacing.lg, bottom = with(density) { sheetHeight.toDp() } + KtmSpacing.lg),
         )
         // RP1: the sheet rises into place once the page is up.
@@ -220,7 +220,7 @@ private fun ReplaySheet(
         modifier.fillMaxWidth().heightIn(max = maxHeight)
             .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
             .background(c.surf, KtmShapes.SheetTop)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+            .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         // The bar is 4 dp tall in a 28 dp zone; the touch band is the full 48 dp.
         Box(
@@ -273,7 +273,7 @@ private fun Landscape(
     Box(Modifier.fillMaxSize()) {
         MapButtons(
             bearing, actions,
-            Modifier.align(Alignment.BottomEnd).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Bottom)).padding(KtmSpacing.lg),
+            Modifier.align(Alignment.BottomEnd).pageInsets(WindowInsetsSides.End + WindowInsetsSides.Bottom).padding(KtmSpacing.lg),
         )
         LandscapePanel(onFootprint = { onInsets(MapInsets(left = it)) }, gap = KtmSpacing.xs) {
             Row(verticalAlignment = Alignment.CenterVertically) {
