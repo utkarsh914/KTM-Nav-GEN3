@@ -23,7 +23,7 @@ class Haptics(private val view: View) {
 
     private fun perform(constant: Int) {
         runCatching {
-            // Honours the rider's own "touch feedback" system setting (no override flag).
+            // The system's own haptics setting decides; the view's flag is on by default.
             view.performHapticFeedback(constant)
         }
     }

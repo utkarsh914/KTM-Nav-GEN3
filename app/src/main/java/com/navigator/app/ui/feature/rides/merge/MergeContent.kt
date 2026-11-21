@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.ride.RecordedRide
@@ -51,8 +52,6 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * RD7: what merging the selected rides would give. The joined route (each stop a dashed link), the parts with the
@@ -129,7 +128,7 @@ private fun rideName(ride: RecordedRide): String {
     val label = ride.destinationLabel?.takeIf { it.isNotBlank() }
     if (label != null) return label
     val time = remember(ride.startMs) {
-        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(Instant.ofEpochMilli(ride.startMs).atZone(ZoneId.systemDefault()))
+        ClockFormat.formatter().format(Instant.ofEpochMilli(ride.startMs).atZone(ZoneId.systemDefault()))
     }
     return stringResource(R.string.merge_unnamed_ride, stringResource(RideSourceText.title(ride.source)), time)
 }
@@ -152,8 +151,8 @@ private fun RouteMap(plan: MergePlan) {
 @Composable
 private fun Parts(plan: MergePlan) {
     // The start carries its date (parts can be days apart); the end only when it falls on another day.
-    val time = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-    val dateTime = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+    val time = ClockFormat.formatter()
+    val dateTime = ClockFormat.formatter(date = "yMd")
     fun zoned(ms: Long) = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
     Column {
         plan.parts.forEachIndexed { i, part ->

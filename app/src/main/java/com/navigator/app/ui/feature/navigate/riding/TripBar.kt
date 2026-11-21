@@ -95,7 +95,7 @@ fun TripBar(ui: TripBarUi, onOpen: () -> Unit, modifier: Modifier = Modifier) {
                         Text(timeLeftText(it), style = MaterialTheme.typography.headlineSmall, color = r.onSurface, maxLines = 1)
                     }
                     val line = listOfNotNull(ui.distance, ui.arrival).joinToString(" · ")
-                    if (line.isNotEmpty()) Text(line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1)
+                    if (line.isNotEmpty()) Text(line, style = KtmTheme.type.ridingSupport, color = r.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Box(Modifier.size(KtmLayout.targetPrimary), contentAlignment = Alignment.Center) {

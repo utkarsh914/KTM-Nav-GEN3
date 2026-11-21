@@ -72,8 +72,7 @@ speed up as you near the corner and go quiet when you stop. Adjustable volume, s
 **Overspeed alert.** Plays on the alarm channel at full volume, so it's audible over wind and engine and
 sounds through Do Not Disturb.
 
-**The dash's idle screen.** When you're not navigating, the dash rotates clock and date, and live weather
-(via Open-Meteo, no API key).
+**The dash's idle screen.** When you're not navigating, the dash rotates clock and date.
 
 **Ride recording and replay.** Every trip's GPS track is recorded on-device by default — no API calls, no
 billing. The Rides screen lists your rides with a speed-coloured track and stats (distance, duration, top

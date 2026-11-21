@@ -34,6 +34,7 @@ import com.navigator.app.R
 import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.nav.ktm.DistanceFormatter
 import com.navigator.app.nav.model.DistanceUnits
+import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ride.RecordedRide
 import com.navigator.app.ride.RideSource
 import com.navigator.app.ui.components.BadgeTone
@@ -51,7 +52,6 @@ import com.navigator.app.ui.theme.rememberHaptics
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /** One ride on the list: a route thumbnail, what it is and how it began, one stats line, and the star. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -143,8 +143,6 @@ private fun rideStats(ride: RecordedRide): String {
     else stringResource(R.string.ride_stats_two, distance, duration)
 }
 
-private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-
 private val DAY: DateTimeFormatter by lazy {
     DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEdMMM"))
 }
@@ -159,7 +157,7 @@ private fun rideDay(ms: Long): String {
     return (if (day.year == java.time.Year.now().value) DAY else DAY_YEAR).format(day)
 }
 
-private fun rideTime(ms: Long): String = TIME.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+private fun rideTime(ms: Long): String = ClockFormat.formatter().format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
 /** A 64 dp route preview drawn from the stored points: speed-coloured, a neutral line for rides with no speed (GPX). */
 @Composable
