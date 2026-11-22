@@ -94,12 +94,24 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
+            buildConfigField("boolean", "JANK_LOG", "true")
         }
         release {
             // No minification: TFLite + reflection-heavy BLE code isn't worth
             // proguard risk for a sideloaded app; signing is what matters here.
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("boolean", "JANK_LOG", "false")
+        }
+        // Release-like (same code, not debuggable) for measuring frame times with :macrobenchmark and for
+        // judging smoothness by hand. Signed with the debug key, so the release build must be uninstalled first.
+        // No applicationIdSuffix: the Maps/Nav API key is restricted to the package name.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            isDebuggable = false
+            buildConfigField("boolean", "JANK_LOG", "true")
         }
     }
 
@@ -207,6 +219,8 @@ dependencies {
     implementation("com.materialkolor:material-color-utilities:6.0.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    // Frame-time tracking for the debug and benchmark builds (JankMonitor); unused in release.
+    implementation("androidx.metrics:metrics-performance:1.0.0")
 
     // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")

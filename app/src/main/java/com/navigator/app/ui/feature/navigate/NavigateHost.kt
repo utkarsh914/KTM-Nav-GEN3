@@ -45,6 +45,7 @@ import com.navigator.app.location.freshLocation
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.logging.JankMonitor
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlaceCategory
 import com.navigator.app.nav.destination.PlacesClient
@@ -223,6 +224,7 @@ fun NavigateHost(
     // planning part) process death. See NavFlow.kt for the pure transitions.
     val flow: NavFlowViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     var stage by flow::stage
+    JankMonitor.Tag("stage", stage.name)
     var selected by flow::selected
     DisposableEffect(flow) {
         flow.attach()

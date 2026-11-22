@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "opendash-app"
 include(":app")
+include(":macrobenchmark")

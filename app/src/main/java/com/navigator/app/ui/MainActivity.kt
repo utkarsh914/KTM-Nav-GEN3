@@ -21,6 +21,7 @@ import com.navigator.app.app.AppIntents
 import com.navigator.app.app.appContainer
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.logging.JankMonitor
 import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.destination.AppShortcuts
 import com.navigator.app.notifications.MapsIconExporter
@@ -89,6 +90,7 @@ class MainActivity : ComponentActivity() {
         // The brand font from the first frame: the setting is applied after composition only when it changes.
         AppFonts.apply(appContainer.settings.snapshot.value.fontMode)
         setContent { KtmApp(onQuit = { exitApp() }) }
+        JankMonitor.attach(this)
 
         // DEBUG-only: `adb shell am broadcast -a com.navigator.app.EXPORT_MANEUVERS`
         // renders Google Maps' own labeled maneuver icons to files/maneuver_dataset/
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (appContainer.activityHolder.current === this) appContainer.activityHolder.current = null
         maneuverExportReceiver?.let { runCatching { unregisterReceiver(it) } }
+        JankMonitor.detach()
         super.onDestroy()
     }
 
