@@ -29,9 +29,16 @@ internal fun NavDestination.isListPage(): Boolean =
     hasRoute<Route.SettingsPage>() || hasRoute<Route.DashApps>() || hasRoute<Route.NavApp>() || hasRoute<Route.CallAudio>() ||
         hasRoute<Route.Logs>() || hasRoute<Route.SymbolTest>() || hasRoute<Route.TurnCalibration>() || hasRoute<Route.EditRide>()
 
-/** The destinations that show the shared map layer through a transparent page: [MapClaim] callers (Navigate hosts it only when there is a map). */
+/**
+ * The destinations whose page is the map: it shows the shared map layer through a transparent page and moves like the
+ * map (see PageTransitions). Pick place is not one: it opens on its search, an opaque page, and only turns into the map
+ * inside the page, so it moves like any other page ([paintsOwnGround] still applies to it).
+ */
 internal fun NavDestination.isMapPage(): Boolean =
-    hasRoute<Route.Navigate>() || hasRoute<Route.RideReplay>() || hasRoute<Route.TrimRide>() || hasRoute<Route.PickPlace>()
+    hasRoute<Route.Navigate>() || hasRoute<Route.RideReplay>() || hasRoute<Route.TrimRide>()
+
+/** The page paints its own ground (or none, over the map) itself: [PageHost] adds none. */
+internal fun NavDestination.paintsOwnGround(): Boolean = isMapPage() || hasRoute<Route.PickPlace>()
 
 /** Rounds the corners of whatever it is applied to while the page leaves (also what the dim is drawn inside). */
 @Composable

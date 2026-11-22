@@ -116,7 +116,7 @@ internal inline fun <reified T : Any> NavGraphBuilder.page(
 @Composable
 internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, listPage: Boolean, content: @Composable () -> Unit) {
     // A map page is transparent over the map layer; every other page covers it with the app's ground.
-    val ground = if (entry.destination.isMapPage()) Modifier else Modifier.coverGround()
+    val ground = if (entry.destination.paintsOwnGround()) Modifier else Modifier.coverGround()
     Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground)) {
         content()
         PageDim(scope, entry)
