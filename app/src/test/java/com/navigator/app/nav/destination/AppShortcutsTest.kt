@@ -43,29 +43,37 @@ class AppShortcutsTest {
         return last
     }
 
+    /** A sync that lost the race above is swallowed by design (logged, retried at the next start): do the same here. */
+    private fun syncedIds(favorites: List<FavoritePlace>, expected: Set<String>): Set<String> {
+        var got: Set<String> = emptySet()
+        repeat(SYNC_ATTEMPTS) {
+            AppShortcuts.sync(ctx, favorites)
+            got = ids(expected)
+            if (got == expected) return got
+        }
+        return got
+    }
+
     private fun fav(slot: FavoriteSlot) = FavoritePlace(SavedPlace(12.9, 77.6, slot.name), slot)
 
     @Test fun theFixedShortcutsAreAlwaysThereAndASlotOnlyWhileItIsSet() {
-        AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.HOME)))
         val manager = ctx.getSystemService(ShortcutManager::class.java)
-        assertEquals("max ${manager.maxShortcutCountPerActivity}, rate limited ${manager.isRateLimitingActive}", setOf("record_ride", "where_to", "ride_home"), ids(setOf("record_ride", "where_to", "ride_home")))
-        AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.HOME), fav(FavoriteSlot.WORK)))
-        assertTrue("ride_work" in ids(setOf("record_ride", "where_to", "ride_home", "ride_work")))
+        assertEquals("max ${manager.maxShortcutCountPerActivity}, rate limited ${manager.isRateLimitingActive}", setOf("record_ride", "where_to", "ride_home"), syncedIds(listOf(fav(FavoriteSlot.HOME)), setOf("record_ride", "where_to", "ride_home")))
+        assertTrue("ride_work" in syncedIds(listOf(fav(FavoriteSlot.HOME), fav(FavoriteSlot.WORK)), setOf("record_ride", "where_to", "ride_home", "ride_work")))
     }
 
     @Test fun clearingASlotRemovesItsShortcutAndKeepsTheOthers() {
-        AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.HOME), fav(FavoriteSlot.WORK)))
-        AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.WORK)))
-        assertEquals(setOf("record_ride", "where_to", "ride_work"), ids(setOf("record_ride", "where_to", "ride_work")))
+        syncedIds(listOf(fav(FavoriteSlot.HOME), fav(FavoriteSlot.WORK)), setOf("record_ride", "where_to", "ride_home", "ride_work"))
+        assertEquals(setOf("record_ride", "where_to", "ride_work"), syncedIds(listOf(fav(FavoriteSlot.WORK)), setOf("record_ride", "where_to", "ride_work")))
     }
 
     @Test fun anOtherFavouriteDoesNotMakeAShortcut() {
-        AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.OTHER)))
-        assertEquals(setOf("record_ride", "where_to"), ids(setOf("record_ride", "where_to")))
+        assertEquals(setOf("record_ride", "where_to"), syncedIds(listOf(fav(FavoriteSlot.OTHER)), setOf("record_ride", "where_to")))
     }
 
     private companion object {
-        const val MAX_READS = 80
+        const val MAX_READS = 40
+        const val SYNC_ATTEMPTS = 4
         const val READ_RETRY_MS = 25L
     }
 }

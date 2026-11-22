@@ -60,7 +60,7 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
 - Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
   list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: a press released, a pin dropped; never a page, never riding; the switch is Material's); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
-  Stage sheets other than search still fade with a small drift on `spatialDefault`. Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
+  The Navigate stages: the chrome fades, the plan sheets (`PlanPanel`, `stageSheet()`) travel in from their own edge on `spatialDefault` and leave on `spatialFast`. Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
   never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
 - Riding tier (`RidingTheme`): tweens only, never a spring, at most 250 ms, nothing overshoots, numbers never animate.
   Arriving and resizing use One UI's basic curve (0.22, 0.25, 0, 1): `ridingSpatial(delayMs)`, `ridingQuick()` (160 ms,
@@ -88,15 +88,20 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   `TripBarSheet` (trip bar to trip sheet), `tripStripBounds` (trip bar to the
   activity strip). The sheets are drawn in the tree (not in a window) so they
   can share bounds.
-- Pages (`ui/shell/PageTransitions.kt`, every page registered with `page<T>`/`listPage<T>`): tabs fade through (the old
-  screen fades out fast, the new one fades in 90 ms later and settles in from 0.92; the Navigate tab, which is the map,
-  only fades). A pushed page slides in 30 dp and fades in; the page underneath slides back 30 dp and dims
-  (`KtmLayout.pageDim`, 25 % black, a plain overlay; it never fades, so nothing shows through, and never blurs). Back
-  slides the page out and fades it out early (the fade is on the fast effects spring, so a predictive back swipe has
-  it gone after about a third of the gesture); the page underneath comes back lit. Only pages with no map (`listPage`:
-  settings pages, pickers, logs, edit ride) shrink to 90 % and take 28 dp corners while they leave; a page that hosts the
-  Nav SDK map is never scaled, clipped or blurred. Tabs and the ride card's shared-bounds move are not dimmed. Onboarding
-  steps use the same page and fade-through tokens. With Remove animations: plain fades, no offset, no scale, no dim.
+- The map is one layer (`ui/map/MapLayer.kt`) behind every page, in the shell; it is never re-parented, faded, scaled,
+  clipped or blurred. A page takes it with `MapClaim`. Map pages (`isMapPage()`: Navigate, Replay, Trim, Pick on map) are
+  transparent over it and only their controls move; every other page paints `coverGround()` (opaque, and it takes the
+  touches nobody inside wanted, so nothing falls through to the map). The map is hidden from TalkBack while no page claims it.
+- Pages (`ui/shell/PageTransitions.kt`, every page registered with `page<T>`/`listPage<T>`; D28): a pushed page is opaque
+  and slides in from the right edge, full width, on `page()`, with no alpha at all (`check-ui-rules.sh` fails on slide plus
+  fade); the page underneath moves back a quarter of the width and dims (`KtmLayout.pageDim`, 25 % black, a plain overlay
+  that never blurs). A map page underneath does not move, it only dims (the map is not part of the page). Back is the exact
+  reverse; a predictive back swipe seeks it, and only list pages (`listPage`: settings pages, pickers, logs, edit ride)
+  shrink to 90 % and take 28 dp corners while they leave. Tabs: the new tab fades in over the old one at once (no gap, no
+  scale, the old one stays put). Where the map is between the pages (a map page over, or back to, an opaque page) both
+  dissolve; the ride card's shared-bounds move keeps Rides still while the replay fades and its container carries its own
+  ground. Tabs and the card move are not dimmed. Onboarding steps still use the page and fade-through tokens. With Remove
+  animations: plain fades, no offset, no dim.
 - Landscape: one 352 dp (320 below 800 dp) floating panel on the left, also for the browse sheet; the rail shows the
   bike's state as a dot on Navigate. The trim bar and its time labels stay left to right in every language, like the
   chart above them.

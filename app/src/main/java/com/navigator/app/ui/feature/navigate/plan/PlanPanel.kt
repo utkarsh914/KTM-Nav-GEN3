@@ -25,6 +25,7 @@ import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.shell.SnackbarClearance
+import com.navigator.app.ui.shell.stageSheet
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmTheme
@@ -51,7 +52,7 @@ fun PlanPanel(
             var footprintPx by remember { mutableIntStateOf(0) }
             // A snackbar (Undo) sits beside the panel, not over its buttons.
             SnackbarClearance(start = with(density) { footprintPx.toDp() })
-            LandscapePanel(onFootprint = { footprintPx = it; report(it, 0) }) {
+            LandscapePanel(onFootprint = { footprintPx = it; report(it, 0) }, panelModifier = Modifier.stageSheet(fromSide = true)) {
                 CompositionLocalProvider(LocalFillPanel provides true) { content() }
             }
         } else {
@@ -60,6 +61,7 @@ fun PlanPanel(
             SnackbarClearance(bottom = with(density) { heightPx.toDp() })
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .stageSheet()
                     .heightIn(max = maxHeight * 0.85f)
                     .onSizeChanged { heightPx = it.height; report(0, it.height) }
                     .shadow(KtmElevation.sheet, KtmShapes.SheetTop)

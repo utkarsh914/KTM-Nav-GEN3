@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
@@ -160,7 +159,6 @@ fun KtmApp(onQuit: () -> Unit) {
     val pending by intents.pending.collectAsState()
     val reducedMotion = rememberReducedMotion()
     val pageMotion = remember(reducedMotion) { KtmMotionSpecs(reduced = reducedMotion) }
-    val pushPx = with(LocalDensity.current) { PUSH_OFFSET.roundToPx() }
     // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
     // not again each time something else changes.
     val taken = remember { mutableSetOf<AppIntent>() }
@@ -256,10 +254,10 @@ fun KtmApp(onQuit: () -> Unit) {
                                 navController = navController,
                                 startDestination = startRoute,
                                 modifier = Modifier.fillMaxSize(),
-                                enterTransition = { enterFor(pageMotion, pushPx) },
-                                exitTransition = { exitFor(pageMotion, pushPx) },
-                                popEnterTransition = { popEnterFor(pageMotion, pushPx) },
-                                popExitTransition = { popExitFor(pageMotion, pushPx) },
+                                enterTransition = { enterFor(pageMotion) },
+                                exitTransition = { exitFor(pageMotion) },
+                                popEnterTransition = { popEnterFor(pageMotion) },
+                                popExitTransition = { popExitFor(pageMotion) },
                             ) {
                                 page<Route.Onboarding> {
                                     OnboardingScreen(

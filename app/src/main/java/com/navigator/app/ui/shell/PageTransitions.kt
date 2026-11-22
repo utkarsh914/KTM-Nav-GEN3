@@ -8,7 +8,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -34,19 +33,16 @@ import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /*
- * Page motion. Tabs fade through (the map stays put); pushed pages share the X axis: the new page slides in 30 dp and
- * fades in, the page underneath slides back a little and dims. All of it runs on the tokens of KtmMotionSpecs: the page
- * spring for travel, and effects springs for the fades, which are faster than the travel. During a predictive back
- * swipe the seekable transition spreads those over the gesture, so the leaving page has faded out by about a third of
- * the swipe (Android's fade-through) while it keeps sliding. Only list pages shrink and take corners; a page that hosts
- * the map is never scaled, and the Navigate tab is not scaled either. Exits are faster than enters.
+ * Page motion (D28). A pushed page is opaque and slides in over the page below from the right edge, full width, with no
+ * alpha; the page below moves back a quarter of the width and dims (see PageDim). The map is one layer behind all the
+ * pages (D27), so a map page is transparent: only its controls travel, and a map page underneath only dims. Tabs fade
+ * the new tab in over the old one: no scale, no gap. The few moves that cannot slide because the map is between the
+ * pages dissolve instead. All of it runs on the tokens of KtmMotionSpecs. A predictive back swipe seeks the same
+ * transitions; only list pages shrink and take corners.
  */
 
-/** MO11: a pushed page enters and leaves 30 dp sideways. */
-internal val PUSH_OFFSET = KtmLayout.pushOffset
-
-/** MO10: a tab settles in from this scale. */
-private const val TAB_SCALE = 0.92f
+/** The page under a push moves back by one over this share of the width. */
+private const val UNDERLAY_SHIFT = 4
 
 /**
  * Map pages are transparent over the shared map layer, so what a page change looks like depends on who is a map page:
@@ -61,58 +57,41 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToPage(): Boole
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.pageToMap(): Boolean =
     !initialState.destination.isMapPage() && targetState.destination.isMapPage()
 
-/** Tab to tab, and the end of first run into the app: the old screen fades out, then the new one settles in (MO10, ON10). */
+/** Tab to tab, and the end of first run into the app (MO10, ON10). */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boolean =
     (initialState.destination.tab() != null || initialState.destination.hasRoute<Route.Ready>()) && targetState.destination.tab() != null
-
-/** The new tab fades in after the old one and settles in from [TAB_SCALE]; with the map on either side there is no scale (the map does not scale). */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabEnter(motion: KtmMotionSpecs): EnterTransition {
-    val fade = fadeIn(motion.stage(KtmMotionSpecs.FADE_THROUGH_DELAY_MS))
-    val mapInvolved = initialState.destination.isMapPage() || targetState.destination.isMapPage()
-    return if (mapInvolved) fade else fade + scaleIn(motion.page(), initialScale = TAB_SCALE)
-}
 
 /** MO8: the ride card and the replay page share their bounds; the Rides page itself stays put, the replay fades around them. */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMove(): Boolean =
     (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
         (initialState.destination.hasRoute<Route.RideReplay>() && targetState.destination.hasRoute<Route.Rides>())
 
-// With "Remove animations" every move is a plain fade: no offset, no scale (the tokens collapse to short fades).
-internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: KtmMotionSpecs, slidePx: Int): EnterTransition = when {
-    isRideContainerMove() -> fadeIn(motion.effectsDefault())
-    motion.reduced -> fadeIn(motion.effectsDefault())
-    tabSwitch() -> tabEnter(motion)
-    pageToMap() -> fadeIn(motion.effectsDefault())
-    mapToPage() -> slideInHorizontally(motion.page()) { slidePx }
-    else -> slideInHorizontally(motion.page()) { slidePx } + fadeIn(motion.effectsDefault())
+// With "Remove animations" every move is a plain fade: no offset (the tokens collapse to short fades).
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: KtmMotionSpecs): EnterTransition = when {
+    isRideContainerMove() || motion.reduced || tabSwitch() || pageToMap() -> fadeIn(motion.effectsDefault())
+    else -> slideInHorizontally(motion.page()) { it }
 }
 
-/** The page underneath a push slides back a little and dims (see [PageHost]); it does not fade, so nothing shows through. */
-internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs, slidePx: Int): ExitTransition = when {
-    isRideContainerMove() -> ExitTransition.None
-    motion.reduced -> fadeOut(motion.effectsFast())
-    tabSwitch() || pageToMap() -> fadeOut(motion.effectsFast())
-    mapToPage() -> ExitTransition.None
-    else -> slideOutHorizontally(motion.page()) { -slidePx }
+/** The page underneath a push moves back a quarter and dims (see [PageHost]); it does not fade, so nothing shows through. */
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs): ExitTransition = when {
+    isRideContainerMove() || tabSwitch() && !pageToMap() -> ExitTransition.None
+    motion.reduced || pageToMap() -> fadeOut(motion.effectsFast())
+    initialState.destination.isMapPage() -> ExitTransition.None
+    else -> slideOutHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
-internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs, slidePx: Int): EnterTransition = when {
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs): EnterTransition = when {
     isRideContainerMove() -> EnterTransition.None
-    motion.reduced -> fadeIn(motion.effectsDefault())
-    tabSwitch() -> tabEnter(motion)
-    mapToPage() -> fadeIn(motion.effectsDefault())
-    pageToMap() -> EnterTransition.None
-    else -> slideInHorizontally(motion.page()) { -slidePx }
+    motion.reduced || tabSwitch() || mapToPage() -> fadeIn(motion.effectsDefault())
+    targetState.destination.isMapPage() -> EnterTransition.None
+    else -> slideInHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
-internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs, slidePx: Int): ExitTransition = when {
-    isRideContainerMove() -> fadeOut(motion.effectsFast())
-    motion.reduced -> fadeOut(motion.effectsFast())
-    tabSwitch() || mapToPage() -> fadeOut(motion.effectsFast())
-    // Also what a predictive back swipe previews: the list page shrinks and fades out early (a map page only slides and fades; MO11).
-    pageToMap() -> slideOutHorizontally(motion.page()) { slidePx } +
-        (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
-    else -> slideOutHorizontally(motion.page()) { slidePx } + fadeOut(motion.effectsFast()) +
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs): ExitTransition = when {
+    isRideContainerMove() || motion.reduced || mapToPage() -> fadeOut(motion.effectsFast())
+    tabSwitch() -> if (pageToMap()) fadeOut(motion.effectsFast()) else ExitTransition.None
+    // Also what a predictive back swipe previews: a list page shrinks as it slides away.
+    else -> slideOutHorizontally(motion.page()) { it } +
         (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
 }
 

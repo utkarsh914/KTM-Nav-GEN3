@@ -117,8 +117,8 @@ import kotlinx.coroutines.withContext
 
 /** Transition between [NavStage] chrome. Between BROWSE and SEARCH the Where to? field and the panel are one
  *  container ([searchContainer]), so the stage only fades around it; the panel from or to any other stage slides
- *  up from / down to the bottom; every other stage change is a gentle fade + small vertical drift so
- *  cards/overlays never hard-cut. */
+ *  up from / down to the bottom; every other stage change fades the chrome, and the plan sheets slide in from their
+ *  edge, so cards/overlays never hard-cut. */
 private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
     // The riding screen has its own choreography (MO1, MO6): around it the stage only fades, with no drift and no spring.
     initial == NavStage.NAVIGATING || target == NavStage.NAVIGATING ->
@@ -130,9 +130,8 @@ private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMoti
         (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
     initial == NavStage.SEARCH ->
         fadeIn(motion.effectsDefault()) togetherWith (slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeOut(motion.effectsFast()))
-    else ->
-        (fadeIn(motion.effectsDefault()) + slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it / 12 }) togetherWith
-            (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else -it / 12 })
+    // The chrome fades; the place and route sheets travel from their own edge (PlanPanel, [stageSheet]).
+    else -> fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
 }
 
 

@@ -5,6 +5,10 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
@@ -107,3 +111,22 @@ fun Modifier.searchContainer(fieldSide: Boolean): Modifier {
 private const val SEARCH_KEY = "search-container"
 
 private const val TRIP_STRIP_KEY = "trip-strip"
+
+/**
+ * The place and route sheets (and the landscape panel) travel in from their own edge when the Navigate stage changes,
+ * and leave towards it, while the rest of the stage's chrome only fades. A no-op outside the stage's
+ * AnimatedContent ([LocalTripShared]) and with "Remove animations".
+ */
+@Composable
+fun Modifier.stageSheet(fromSide: Boolean = false): Modifier {
+    val visibility = LocalTripShared.current?.visibility ?: return this
+    val motion = KtmTheme.motion
+    if (motion.reduced) return this
+    return with(visibility) {
+        this@stageSheet.animateEnterExit(
+            enter = if (fromSide) slideInHorizontally(motion.spatialDefault()) { -it } else slideInVertically(motion.spatialDefault()) { it },
+            exit = if (fromSide) slideOutHorizontally(motion.spatialFast()) { -it } else slideOutVertically(motion.spatialFast()) { it },
+        )
+    }
+}
+
