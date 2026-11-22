@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -122,7 +123,7 @@ class MotionAndSemanticsTest {
                 SharedTransitionLayout {
                     AnimatedContent(panel, label = "stage") { open ->
                         CompositionLocalProvider(LocalTripShared provides SharedElements(this@SharedTransitionLayout, this)) {
-                            if (open) Box(Modifier.searchContainer()) { Text("panel") } else Box(Modifier.searchContainer()) { Text("field") }
+                            if (open) Box(Modifier.searchContainer(fieldSide = false)) { Text("panel") } else Box(Modifier.searchContainer(fieldSide = true)) { Text("field") }
                         }
                     }
                 }
@@ -137,8 +138,30 @@ class MotionAndSemanticsTest {
         rule.onNodeWithText("field").assertIsDisplayed()
     }
 
+    @Test fun theSearchContainerShowsExactlyOneSideAtTheEndAndNothingMovesWhenReduced() {
+        var panel by mutableStateOf(false)
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                SharedTransitionLayout {
+                    AnimatedContent(panel, label = "stage") { open ->
+                        CompositionLocalProvider(LocalTripShared provides SharedElements(this@SharedTransitionLayout, this)) {
+                            if (open) Box(Modifier.searchContainer(fieldSide = false)) { Text("panel") } else Box(Modifier.searchContainer(fieldSide = true)) { Text("field") }
+                        }
+                    }
+                }
+            }
+        }
+        val before = rule.onNodeWithText("field").fetchSemanticsNode().boundsInRoot
+        panel = true
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("panel").assertIsDisplayed()
+        assertEquals(1, rule.onAllNodesWithText("panel").fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodesWithText("field").fetchSemanticsNodes().size)
+        assertEquals(before.top, rule.onNodeWithText("panel").fetchSemanticsNode().boundsInRoot.top, 0.5f)
+    }
+
     @Test fun theSearchContainerIsJustAModifierWithoutASharedScope() {
-        rule.setContent { Box(Modifier.searchContainer()) { Text("field") } }
+        rule.setContent { Box(Modifier.searchContainer(fieldSide = true)) { Text("field") } }
         rule.onNodeWithText("field").assertIsDisplayed()
     }
 

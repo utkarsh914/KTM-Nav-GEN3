@@ -141,6 +141,9 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val STAGGER_ROWS = 10
         const val SKELETON_PULSE_MS = 900
 
+        /** M4 fallback switch: off, search slides up as before instead of the field growing into the panel. */
+        const val SEARCH_CONTAINER = true
+
         /** What a page (a list page) or a dialog shrinks to in a back swipe: Android's back preview. */
         const val BACK_SCALE = 0.9f
 

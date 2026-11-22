@@ -10,7 +10,9 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -72,16 +74,18 @@ fun Modifier.tripStripBounds(): Modifier {
 
 /**
  * M4: the Where to? field and the search panel are one container: the field grows into the panel and the panel shrinks
- * back into the field. Both sides scale their content to the moving bounds (the panel is laid out once, at full size,
- * so its list is never remeasured per frame), clipped to the sheet shape. A no-op without [LocalTripShared] and with
- * "Remove animations"; if the field is not on screen (a search from a shortcut) the panel just fades.
+ * back into the field. The panel ([fieldSide] false) is laid out once, at full size, and scaled to the moving bounds, so
+ * its list is never remeasured per frame; the field is a single row, so it is remeasured instead and its text is never
+ * magnified. Clipped to the moving bounds. A no-op without [LocalTripShared], with "Remove animations" and when
+ * [KtmMotionSpecs.SEARCH_CONTAINER] is off (the fallback: [stageTransition] then slides the panel as before); if the
+ * field is not on screen the panel just fades.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun Modifier.searchContainer(): Modifier {
+fun Modifier.searchContainer(fieldSide: Boolean): Modifier {
     val shared = LocalTripShared.current ?: return this
     val motion = KtmTheme.motion
-    if (motion.reduced) return this
+    if (motion.reduced || !KtmMotionSpecs.SEARCH_CONTAINER) return this
     return with(shared.scope) {
         this@searchContainer.sharedBounds(
             sharedContentState = rememberSharedContentState(key = SEARCH_KEY),
@@ -89,8 +93,9 @@ fun Modifier.searchContainer(): Modifier {
             enter = fadeIn(motion.effectsDefault()),
             exit = fadeOut(motion.effectsFast()),
             boundsTransform = { _, _ -> motion.spatialDefault<Rect>() },
-            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.FillWidth, Alignment.TopCenter),
-            clipInOverlayDuringTransition = OverlayClip(KtmShapes.Sheet),
+            resizeMode = if (fieldSide) SharedTransitionScope.ResizeMode.RemeasureToBounds
+            else SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.FillWidth, Alignment.TopCenter),
+            clipInOverlayDuringTransition = OverlayClip(RectangleShape),
         )
     }
 }

@@ -123,7 +123,7 @@ private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMoti
     initial == NavStage.NAVIGATING || target == NavStage.NAVIGATING ->
         fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
     // The container does the moving (with "Remove animations" there is no container: a plain fade, as the slide has no offset).
-    (initial == NavStage.BROWSE && target == NavStage.SEARCH) || (initial == NavStage.SEARCH && target == NavStage.BROWSE) ->
+    KtmMotionSpecs.SEARCH_CONTAINER && ((initial == NavStage.BROWSE && target == NavStage.SEARCH) || (initial == NavStage.SEARCH && target == NavStage.BROWSE)) ->
         fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
     target == NavStage.SEARCH ->
         (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())

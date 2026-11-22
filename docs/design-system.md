@@ -60,7 +60,7 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
 - Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
   list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: a press released, a pin dropped; never a page, never riding; the switch is Material's); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
-  Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
+  Stage sheets other than search still fade with a small drift on `spatialDefault`. Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
   never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
 - Riding tier (`RidingTheme`): plain tweens of at most 250 ms, nothing overshoots, numbers never animate; Material
   components on riding surfaces use `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
@@ -78,7 +78,10 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   its offset when `motion.reduced`. The system setting itself is the animator scale
   being 0, and Compose multiplies every duration by it, so in practice those
   crossfades are cuts (decision D22: accepted, nothing is animated while it is off).
-- Shared elements: `SharedElements`/`rideContainer` (ride card to replay page),
+- Shared elements: `SharedElements`/`rideContainer` (ride card to replay page), `searchContainer` (the Where to? field grows
+  into the search panel and back: `sharedBounds`, the panel scaled to the bounds and the one-row field remeasured, a no-op
+  under Remove animations; `KtmMotionSpecs.SEARCH_CONTAINER` off restores the old slide-up; with no field on screen the
+  panel fades; the keyboard waits until the container has settled),
   `TripBarSheet` (trip bar to trip sheet), `tripStripBounds` (trip bar to the
   activity strip). The sheets are drawn in the tree (not in a window) so they
   can share bounds.

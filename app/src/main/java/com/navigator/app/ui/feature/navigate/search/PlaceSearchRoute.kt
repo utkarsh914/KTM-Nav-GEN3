@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -29,6 +30,8 @@ import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.ui.feature.navigate.ActivityCardModel
 import com.navigator.app.ui.feature.navigate.voiceAvailable
 import com.navigator.app.ui.shell.LocalFeedback
+import com.navigator.app.ui.shell.LocalTripShared
+import kotlinx.coroutines.flow.first
 
 /**
  * Stateful host of [PlaceSearchScreen]: owns the view model for one search session, the voice launcher
@@ -107,7 +110,13 @@ fun PlaceSearchRoute(
     DisposableEffect(vm) { onDispose { vm.cancelPending() } }
 
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (initialCategory == null) runCatching { focus.requestFocus() } }
+    // Not while the container is still growing: the keyboard would resize the panel on every frame of it.
+    val entering = LocalTripShared.current?.visibility?.transition
+    LaunchedEffect(Unit) {
+        if (initialCategory != null) return@LaunchedEffect
+        snapshotFlow { entering == null || entering.currentState == entering.targetState }.first { it }
+        runCatching { focus.requestFocus() }
+    }
 
     PlaceSearchScreen(
         state = state, mode = mode, voiceAvailable = hasVoice, modifier = modifier,
