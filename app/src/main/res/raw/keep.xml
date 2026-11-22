@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ManeuverClassifier finds the labels file with getIdentifier(), which the resource shrinker cannot see. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/maneuver_labels,@raw/maneuver_model" />
