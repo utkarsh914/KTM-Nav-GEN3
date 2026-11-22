@@ -23,7 +23,7 @@ class BrowseOverlapTest {
             KtmTheme(darkTheme = true) {
                 NavigateBrowse(
                     state = NavigateUiState(tiles = WhereToTiles.build(emptyList(), emptyList()) { null }, greeting = GreetingUi("Asha")),
-                    location = LocationState.PermissionOff, mapState = MapState.Preparing, mapBearing = 0f, voiceAvailable = false,
+                    location = LocationState.PermissionOff, mapState = MapState.Preparing, mapBearing = { 0f }, voiceAvailable = false,
                     actions = NavigateBrowseActions(WhereToActions({}, {}, {}, {}, {}, {}, {}), {}, {}, {}, {}, {}, {}, { _, _ -> }),
                     recordControls = {},
                 )

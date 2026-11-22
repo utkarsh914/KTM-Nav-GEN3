@@ -168,6 +168,9 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val CAMERA_RECENTER_MS = 400
         const val CAMERA_FIT_MS = 600
 
+        /** A riding panel must hold its size this long before the map is re-padded to it. */
+        const val INSETS_SETTLE_MS = 60L
+
         /** True when the system animator scale is 0 (Developer options or Accessibility). */
         fun isReducedMotion(context: Context): Boolean =
             Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f

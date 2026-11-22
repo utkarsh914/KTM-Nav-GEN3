@@ -112,7 +112,7 @@ class RidingUiTest {
 
     @Test fun theMapButtonIsOverviewUntilTheMapMovesThenRecenter() {
         var recenter = androidx.compose.runtime.mutableStateOf(false)
-        riding { RidingMapButton(recenter.value, bearing = 40f, onTap = { log += "tap" }, onNorthUp = { log += "north" }) }
+        riding { RidingMapButton(recenter.value, bearing = { 40f }, onTap = { log += "tap" }, onNorthUp = { log += "north" }) }
         rule.onNodeWithContentDescription("Overview").performClick()
         rule.onAllNodes(hasContentDescription("North up")).assertCountEquals(0)
         recenter.value = true

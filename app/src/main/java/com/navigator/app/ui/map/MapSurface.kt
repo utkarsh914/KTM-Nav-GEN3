@@ -10,6 +10,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -18,6 +20,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
+import com.navigator.app.ui.theme.KtmMotionSpecs
 
 /** What the riding surfaces cover of the map, in px. */
 data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0)
@@ -80,10 +83,13 @@ fun MapSurface(
         if (hasLocationPermission(context)) controller.setPuck(navUiEnabled)
     }
     // Padding on its own: the surfaces change height (lanes appear, text wraps) without the engine being touched again.
-    LaunchedEffect(navUiEnabled, ready, guidanceInsets) {
+    // The panels report their size every frame while they animate: the map follows once they settle.
+    val insets by rememberUpdatedState(guidanceInsets)
+    LaunchedEffect(navUiEnabled, ready) {
         if (!ready) return@LaunchedEffect
-        val pad = if (navUiEnabled) guidanceInsets else MapInsets()
-        controller.setPadding(pad.left, pad.top, pad.right, pad.bottom)
+        snapshotFlow { if (navUiEnabled) insets else MapInsets() }
+            .settled(KtmMotionSpecs.INSETS_SETTLE_MS)
+            .collect { controller.setPadding(it.left, it.top, it.right, it.bottom) }
     }
     DisposableEffect(controller) { onDispose { controller.detach() } }
 }

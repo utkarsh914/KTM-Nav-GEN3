@@ -11,9 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -35,7 +35,7 @@ fun MapControlButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accent: Boolean = false,
-    rotationDegrees: Float = 0f,
+    rotationDegrees: () -> Float = NO_ROTATION,
     /** False for a glyph that carries its own colours (the compass's red north needle). */
     tinted: Boolean = true,
 ) {
@@ -56,5 +56,7 @@ fun MapControlButton(
                 onClick()
             },
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription, tint = if (tinted) content else Color.Unspecified, modifier = Modifier.size(KtmLayout.iconMedium).rotate(rotationDegrees)) }
+    ) { Icon(icon, contentDescription, tint = if (tinted) content else Color.Unspecified, modifier = Modifier.size(KtmLayout.iconMedium).graphicsLayer { rotationZ = rotationDegrees() }) }
 }
+
+private val NO_ROTATION: () -> Float = { 0f }

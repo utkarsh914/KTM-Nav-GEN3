@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -40,13 +41,13 @@ import com.navigator.app.ui.feature.navigate.plan.RouteSheetMapper
 import com.navigator.app.ui.feature.navigate.plan.StopCandidateSheet
 import com.navigator.app.ui.feature.navigate.plan.StopList
 import com.navigator.app.ui.map.MapController
+import com.navigator.app.ui.map.rememberOffNorth
 import com.navigator.app.ui.shell.Feedback
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.edgePadding
 import com.navigator.app.ui.theme.mapCornerPadding
-import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,7 +70,7 @@ internal class PlanStage(
     val leftInsetPx: Int,
     /** The map is up (so its compass can show). */
     val mapReadyForControls: Boolean,
-    val mapBearing: Float,
+    val mapBearing: () -> Float,
     val map: MapController,
     val feedback: Feedback,
     val places: PlacesRepository,
@@ -133,14 +134,15 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
         }
     }
     // Top-right control: the compass, only when rotated (✕ is in the sheet).
-    if (plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f) {
+    val offNorth by rememberOffNorth(plan.mapBearing)
+    if (plan.mapReadyForControls && offNorth) {
         Column(
             modifier = Modifier.align(Alignment.TopEnd).mapCornerPadding(),
             horizontalAlignment = Alignment.End,
         ) {
             MapControlButton(
                 KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { plan.map.resetNorth() },
-                rotationDegrees = -plan.mapBearing, tinted = false,
+                rotationDegrees = { -plan.mapBearing() }, tinted = false,
             )
         }
     }
@@ -203,14 +205,15 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
         }
     }
     // Top-right control: the compass, only when rotated (✕ is in the sheet).
-    if (plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f && !plan.pickingStop) {
+    val offNorth by rememberOffNorth(plan.mapBearing)
+    if (plan.mapReadyForControls && offNorth && !plan.pickingStop) {
         Column(
             modifier = Modifier.align(Alignment.TopEnd).mapCornerPadding(),
             horizontalAlignment = Alignment.End,
         ) {
             MapControlButton(
                 KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), { plan.map.resetNorth() },
-                rotationDegrees = -plan.mapBearing, tinted = false,
+                rotationDegrees = { -plan.mapBearing() }, tinted = false,
             )
         }
     }
@@ -228,7 +231,8 @@ private fun BoxScope.PlanTopRow(plan: PlanStage, showBack: Boolean) {
         val narrow = maxWidth < KtmLayout.resumeFullLabelMinWidth
         val back = showBack && portrait
         if (!back && !plan.showResumePill) return@BoxWithConstraints
-        val compass = plan.mapReadyForControls && abs(plan.mapBearing) > 0.5f
+        val offNorth by rememberOffNorth(plan.mapBearing)
+        val compass = plan.mapReadyForControls && offNorth
         // After the landscape panel; the cutout side is already inside the panel's footprint, and edgePadding adds it once.
         val density = LocalDensity.current
         val cutoutLeft = with(density) { WindowInsets.systemBars.union(WindowInsets.displayCutout).getLeft(density, LayoutDirection.Ltr).toDp() }

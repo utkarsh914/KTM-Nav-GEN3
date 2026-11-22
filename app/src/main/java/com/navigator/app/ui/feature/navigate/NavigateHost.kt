@@ -189,7 +189,9 @@ fun NavigateHost(
     var prepareAttempt by remember { mutableIntStateOf(0) }
     val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(appSettings.locationMarkerStyle))
     val mapReady by map.ready.collectAsState()
-    val mapBearing by map.bearing.collectAsState()
+    // Not read here: the bearing changes every camera frame, so only the compass reads it (in its own scope).
+    val bearingState = map.bearing.collectAsState()
+    val mapBearing: () -> Float = remember(bearingState) { { bearingState.value } }
 
     // Warm up the Nav SDK (key + ToS + Navigator); retriable via prepareAttempt.
     LaunchedEffect(prepareAttempt) {

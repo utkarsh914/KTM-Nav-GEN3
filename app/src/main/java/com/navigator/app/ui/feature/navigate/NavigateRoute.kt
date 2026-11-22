@@ -54,7 +54,7 @@ internal fun voiceAvailable(context: Context): Boolean =
 fun NavigateRoute(
     map: MapController,
     mapState: MapState,
-    mapBearing: Float,
+    mapBearing: () -> Float,
     location: LocationState,
     padMap: Boolean,
     onSearch: (query: String?, category: PlaceCategory?) -> Unit,

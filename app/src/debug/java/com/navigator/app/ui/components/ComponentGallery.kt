@@ -74,7 +74,7 @@ internal fun ComponentGallery() {
                     KtmIconButton(KtmIcons.Add, "Add", {}, style = IconButtonStyle.Accent)
                     MapControlButton(KtmIcons.Recenter, "Recenter", {})
                     MapControlButton(KtmIcons.Recenter, "Recenter", {}, accent = true)
-                    MapControlButton(KtmIcons.CompassNorth, "North", {}, rotationDegrees = 30f)
+                    MapControlButton(KtmIcons.CompassNorth, "North", {}, rotationDegrees = { 30f })
                 }
             }
             Group("Controls") {

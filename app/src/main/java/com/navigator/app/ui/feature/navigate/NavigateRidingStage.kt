@@ -84,7 +84,7 @@ internal fun NavigatingStage(
     selected: SavedPlace?,
     navSpeedKmh: Float?,
     initialRemainingM: Int?,
-    mapBearing: Float,
+    mapBearing: () -> Float,
     isOnline: Boolean,
     rerouteOfflinePaused: Boolean,
     bikeStatus: BikeStatus,

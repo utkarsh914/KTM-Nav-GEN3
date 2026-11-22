@@ -89,6 +89,7 @@ import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.components.windowWidthDp
+import com.navigator.app.ui.map.rememberOffNorth
 import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
@@ -97,7 +98,6 @@ import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
-import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -128,7 +128,7 @@ fun NavigateBrowse(
     state: NavigateUiState,
     location: LocationState,
     mapState: MapState,
-    mapBearing: Float,
+    mapBearing: () -> Float,
     voiceAvailable: Boolean,
     actions: NavigateBrowseActions,
     recordControls: @Composable () -> Unit,
@@ -244,7 +244,7 @@ private fun Overlays(
     state: NavigateUiState,
     location: LocationState,
     mapState: MapState,
-    mapBearing: Float,
+    mapBearing: () -> Float,
     actions: NavigateBrowseActions,
     recordControls: @Composable () -> Unit,
     sheetLiftPx: Int,
@@ -318,10 +318,11 @@ private fun Overlays(
                 // Only a full-width banner or greeting can be reached; the pill is at the other side.
                 val hanging = if (!locationOk || state.greeting != null) topPx else 0
                 val roomForCompass = containerPx - sheetLiftPx - stackPx >= hanging
-                if (mapState == MapState.Ready && abs(mapBearing) > 0.5f && roomForCompass) {
+                val offNorth by rememberOffNorth(mapBearing)
+                if (mapState == MapState.Ready && offNorth && roomForCompass) {
                     MapControlButton(
                         KtmIcons.CompassNorth, stringResource(R.string.navigate_reset_north), actions.onResetNorth,
-                        rotationDegrees = -mapBearing, tinted = false,
+                        rotationDegrees = { -mapBearing() }, tinted = false,
                     )
                 }
                 if (mapState == MapState.Ready) {

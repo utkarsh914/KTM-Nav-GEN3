@@ -81,7 +81,7 @@ class RidingLandscapeTest {
             KtmTheme(darkTheme = false) {
                 RidingTheme(night = false) {
                     RidingLandscape(
-                        m, bar, chip = null, recenter = false, bearing = 0f, narrow = false, controls = controlsUi,
+                        m, bar, chip = null, recenter = false, bearing = { 0f }, narrow = false, controls = controlsUi,
                         actions = RidingActions({ log += "open" }, { log += "map" }, { log += "north" }, { log += "dismiss" }),
                         controlActions = TripSheetActions(
                             { log += "add" }, { log += "overview" }, { log += "minimise" }, {}, {}, {}, {}, { log += "end" }, { log += "flipBack" },

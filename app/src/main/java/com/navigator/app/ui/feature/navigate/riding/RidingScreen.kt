@@ -65,7 +65,7 @@ fun RidingScreen(
     bar: TripBarUi,
     chip: ChipSource?,
     recenter: Boolean,
-    bearing: Float,
+    bearing: () -> Float,
     actions: RidingActions,
     onInsets: (topPx: Int, bottomPx: Int) -> Unit,
     modifier: Modifier = Modifier,

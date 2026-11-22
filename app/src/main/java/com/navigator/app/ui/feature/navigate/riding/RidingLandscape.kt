@@ -107,7 +107,7 @@ fun RidingLandscape(
     bar: TripBarUi,
     chip: ChipSource?,
     recenter: Boolean,
-    bearing: Float,
+    bearing: () -> Float,
     narrow: Boolean,
     controls: TripControlsUi?,
     actions: RidingActions,

@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -29,6 +28,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
+import com.navigator.app.ui.map.rememberOffNorth
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -44,7 +44,7 @@ import com.navigator.app.ui.theme.rememberHaptics
 @Composable
 fun RidingMapButton(
     recenter: Boolean,
-    bearing: Float,
+    bearing: () -> Float,
     onTap: () -> Unit,
     onNorthUp: () -> Unit,
     modifier: Modifier = Modifier,
@@ -53,14 +53,15 @@ fun RidingMapButton(
     val a = KtmTheme.accent
     val haptics = rememberHaptics()
     Column(modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        if (recenter && kotlin.math.abs(bearing) > 0.5f) {
+        val offNorth by rememberOffNorth(bearing)
+        if (recenter && offNorth) {
             val north = stringResource(R.string.riding_north_up)
             Box(
                 Modifier.size(KtmLayout.targetPrimary).shadow(KtmElevation.onMap, KtmShapes.Card).clip(KtmShapes.Card).background(r.surface)
                     .clickable(role = Role.Button, onClickLabel = north) { haptics.tap(); onNorthUp() }
                     .semantics { contentDescription = north },
                 contentAlignment = Alignment.Center,
-            ) { Icon(KtmIcons.NavigationUp, null, tint = r.onSurface, modifier = Modifier.rotate(-bearing)) }
+            ) { Icon(KtmIcons.NavigationUp, null, tint = r.onSurface, modifier = Modifier.graphicsLayer { rotationZ = -bearing() }) }
         }
         val label = stringResource(if (recenter) R.string.riding_recenter else R.string.riding_overview)
         val motion = KtmTheme.motion

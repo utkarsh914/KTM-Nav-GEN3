@@ -30,7 +30,7 @@ private val noActions = NavigateBrowseActions(WhereToActions({}, {}, {}, {}, {},
 @Composable
 private fun Browse(dark: Boolean, state: NavigateUiState, location: LocationState, map: MapState) = KtmTheme(darkTheme = dark) {
     Box(Modifier.fillMaxSize().background(if (dark) Color(0xFF2B3A33) else Color(0xFFDDE5D0))) {
-        NavigateBrowse(state, location, map, 20f, true, noActions, recordControls = { KtmButton("Record", {}) })
+        NavigateBrowse(state, location, map, { 20f }, true, noActions, recordControls = { KtmButton("Record", {}) })
     }
 }
 
