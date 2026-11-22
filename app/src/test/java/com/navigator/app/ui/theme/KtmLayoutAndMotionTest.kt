@@ -118,4 +118,10 @@ class KtmLayoutAndMotionTest {
         assertEquals(Dp.VisibilityThreshold, (m.effectsDefault<Dp>() as SpringSpec).visibilityThreshold)
         assertEquals(null, (m.effectsDefault<Float>() as SpringSpec).visibilityThreshold)
     }
+
+    @Test fun aContentSwapFadesInSlowerThanItFadesOutAndNeverAnimatesSize() {
+        val swap = KtmMotionSpecs(reduced = false).contentSwap()
+        assertTrue(swap.sizeTransform != null)
+        assertTrue("the old content leaves faster than the new arrives", KtmMotionSpecs.EFFECTS_FAST_STIFFNESS > KtmMotionSpecs.EFFECTS_STIFFNESS)
+    }
 }

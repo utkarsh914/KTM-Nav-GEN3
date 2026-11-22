@@ -1,5 +1,6 @@
 package com.navigator.app.ui.components
 
+import androidx.activity.ComponentDialog
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -35,6 +36,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowDialog
 
 /** Behaviour of the interactive components: semantics, taps, holds and guards. */
 @RunWith(RobolectricTestRunner::class)
@@ -152,6 +154,22 @@ class ComponentInteractionTest {
         rule.onNodeWithText("Delete this ride?").assertIsDisplayed()
         rule.onNodeWithText("Delete").performClick()
         assertTrue(confirmed)
+    }
+
+    @Test fun backDismissesADialogThroughThePredictiveHandler() {
+        var dismissed = 0
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                KtmDialog(
+                    title = "Delete this ride?", onDismiss = { dismissed++ },
+                    confirm = DialogAction("Delete", {}, ButtonStyle.Danger),
+                    dismiss = DialogAction("Cancel", {}),
+                )
+            }
+        }
+        rule.runOnUiThread { (ShadowDialog.getLatestDialog() as ComponentDialog).onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
+        assertEquals("Back is the safe choice, once", 1, dismissed)
     }
 
     @Test fun aRidingDialogStacksTheSafeChoiceFirst() {

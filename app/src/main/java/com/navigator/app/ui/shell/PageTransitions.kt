@@ -48,9 +48,6 @@ internal val PUSH_OFFSET = KtmLayout.pushOffset
 /** MO10: a tab settles in from this scale. */
 private const val TAB_SCALE = 0.92f
 
-/** The leaving page shrinks to this in a back swipe (Android's back preview). */
-private const val BACK_SCALE = 0.9f
-
 /** MO8: the ride card and the replay page share their bounds, so the pages only fade around that. */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMove(): Boolean =
     (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
@@ -91,7 +88,7 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion
     tabSwitch() -> fadeOut(motion.effectsFast())
     // Also what a predictive back swipe previews: the list page shrinks and fades out early (a map page only slides and fades; MO11).
     else -> slideOutHorizontally(motion.page()) { slidePx } + fadeOut(motion.effectsFast()) +
-        (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = BACK_SCALE) else ExitTransition.None)
+        (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
 }
 
 /** The nav controller, so a page can tell it is covered by one pushed over it. Provided by [KtmApp]. */

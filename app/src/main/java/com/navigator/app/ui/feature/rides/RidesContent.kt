@@ -2,11 +2,6 @@ package com.navigator.app.ui.feature.rides
 
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -130,7 +125,7 @@ fun RidesContent(
             }
             if (ui == null || (!ui.searchOpen && !ui.selecting)) LargeTitle(stringResource(R.string.rides_title))
             val motionSpecs = KtmTheme.motion
-            AnimatedContent(targetState = ui, contentKey = { it?.body?.let { b -> b::class } }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+            AnimatedContent(targetState = ui, contentKey = { it?.body?.let { b -> b::class } }, transitionSpec = { motionSpecs.contentSwap() }, label = "loading") { shown ->
                 when (val body = shown?.body) {
                     null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
                     RidesBody.Empty -> EmptyRides(autoRecordOn, recording, actions)

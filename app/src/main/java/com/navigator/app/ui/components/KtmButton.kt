@@ -124,7 +124,8 @@ fun KtmButton(
     val stacked = size.stacked
     val pressed by source.collectIsPressedAsState()
     val reduced = KtmTheme.motion.reduced
-    val scale by animateFloatAsState(if (pressed && !reduced) 0.97f else 1f, KtmTheme.motion.effectsFast(), label = "press")
+    // Down is immediate; the release settles back with a hair of bounce.
+    val scale by animateFloatAsState(if (pressed && !reduced) 0.97f else 1f, if (pressed) KtmTheme.motion.effectsFast() else KtmTheme.motion.playful(), label = "press")
     val ringColor = if (style == ButtonStyle.Primary) KtmTheme.colors.fg else KtmTheme.accent.text
     val outline = palette.border?.let { BorderStroke(KtmLayout.outlineThin, it) }
     Box(

@@ -1,9 +1,11 @@
 package com.navigator.app.ui.components
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
@@ -25,10 +27,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -45,6 +52,8 @@ import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 /** A dialog button. Name the verb ("Delete", "Keep riding"), never "OK". */
 @Immutable
@@ -74,7 +83,7 @@ fun KtmDialog(
     val motion = KtmTheme.motion
     // Side by side labels do not fit at a large font: stack them, as on the riding screen.
     val bigText = LocalDensity.current.fontScale >= BIG_TEXT_SCALE
-    // Fade and settle in from 92 %; a dialog window can't play an exit, it goes with its window.
+    // Fade and settle in from 92 %; a dialog window can't play an exit, it goes with its window (so a back swipe previews the shrink instead).
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         // The window's own dim appears at once; the scrim is drawn here so it can fade in with the card.
@@ -83,6 +92,18 @@ fun KtmDialog(
         val scrim = remember { Animatable(0f) }
         LaunchedEffect(Unit) { scrim.animateTo(KtmScrim.alpha, motion.effectsDefault()) }
         Box(Modifier.fillMaxSize().background(KtmScrim.copy(alpha = scrim.value)))
+        // A back swipe previews the card shrinking, as the system's does; letting go early eases it back.
+        var backProgress by remember { mutableFloatStateOf(0f) }
+        val scope = rememberCoroutineScope()
+        PredictiveBackHandler { events ->
+            try {
+                events.collect { backProgress = it.progress }
+                onDismiss()
+            } catch (cancelled: CancellationException) {
+                scope.launch { animate(backProgress, 0f, animationSpec = motion.spatialFast()) { v, _ -> backProgress = v } }
+                throw cancelled
+            }
+        }
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,
@@ -96,6 +117,10 @@ fun KtmDialog(
         ) {
             Column(
                 modifier
+                    .graphicsLayer {
+                        val s = if (motion.reduced) 1f else 1f - (1f - KtmMotionSpecs.BACK_SCALE) * backProgress
+                        scaleX = s; scaleY = s
+                    }
                     .widthIn(max = KtmLayout.dialogMaxWidth)
                     .shadow(KtmElevation.dialog, KtmShapes.Sheet)
                     .background(c.surf, KtmShapes.Sheet)

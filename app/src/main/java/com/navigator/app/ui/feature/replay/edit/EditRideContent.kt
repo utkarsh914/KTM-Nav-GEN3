@@ -1,11 +1,6 @@
 package com.navigator.app.ui.feature.replay.edit
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,7 +47,7 @@ fun EditRideContent(ui: EditUi, actions: EditRideActions, modifier: Modifier = M
     Column(modifier.fillMaxSize().background(c.bg)) {
         KtmTopBar(title = stringResource(R.string.edit_ride_title), onBack = actions.onBack)
         val motionSpecs = KtmTheme.motion
-        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { motionSpecs.contentSwap() }, label = "loading") { shown ->
             when (shown) {
                 EditUi.Loading -> Column { repeat(2) { SkeletonRow(announce = it == 0) } }
                 EditUi.Gone -> EmptyState(KtmIcons.Warning, stringResource(R.string.edit_ride_gone_title), stringResource(R.string.edit_ride_gone_message))

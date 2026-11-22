@@ -5,12 +5,16 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.DurationBasedAnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,6 +63,13 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     /** Staged choreography that needs exact timing (a tab fading in after the old one has gone): a short named tween. */
     fun <T> stage(delayMs: Int = 0): FiniteAnimationSpec<T> =
         if (reduced) tween(EFFECTS_FAST_MS / 2) else tween(STAGE_MS, delayMillis = delayMs)
+
+    /**
+     * A loading skeleton or a row swapped for its content: the new one fades in while the old fades out faster, and the
+     * size snaps (a size animation would clip the list). Skeletons carry no text, so the two may overlap.
+     */
+    fun contentSwap(): ContentTransform =
+        ContentTransform(fadeIn(effectsDefault<Float>()), fadeOut(effectsFast<Float>()), sizeTransform = SizeTransform { _, _ -> snap() })
 
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)
@@ -127,6 +138,9 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val STAGGER_MS = 20
         const val STAGGER_ROWS = 10
         const val SKELETON_PULSE_MS = 900
+
+        /** What a page (a list page) or a dialog shrinks to in a back swipe: Android's back preview. */
+        const val BACK_SCALE = 0.9f
 
         /** Where a dialog and the bike greeting start growing from. */
         const val DIALOG_SCALE = 0.92f

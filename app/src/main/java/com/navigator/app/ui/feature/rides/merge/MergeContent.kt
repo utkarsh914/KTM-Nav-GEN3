@@ -1,11 +1,6 @@
 package com.navigator.app.ui.feature.rides.merge
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +66,7 @@ fun MergeContent(ui: MergeUi, onBack: () -> Unit, onMerge: () -> Unit, modifier:
             onBack = onBack,
         )
         val motionSpecs = KtmTheme.motion
-        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { fadeIn(motionSpecs.effectsDefault()) togetherWith fadeOut(motionSpecs.effectsFast()) using SizeTransform { _, _ -> snap() } }, label = "loading") { shown ->
+        AnimatedContent(targetState = ui, modifier = Modifier.pageInsets(), contentKey = { it::class }, transitionSpec = { motionSpecs.contentSwap() }, label = "loading") { shown ->
             when (shown) {
                 MergeUi.Loading -> Column { repeat(3) { SkeletonRow(announce = it == 0) } }
                 MergeUi.Gone -> EmptyState(

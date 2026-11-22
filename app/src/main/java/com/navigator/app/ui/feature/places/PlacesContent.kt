@@ -1,9 +1,6 @@
 package com.navigator.app.ui.feature.places
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -160,7 +157,7 @@ private fun SlotRow(slot: FavoriteSlot, place: SavedPlace?, origin: Pair<Double,
     // Setting or clearing a slot crossfades the row rather than swapping it.
     AnimatedContent(
         targetState = place, contentKey = { it != null },
-        transitionSpec = { fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast()) },
+        transitionSpec = { motion.contentSwap() },
         label = "slotRow",
     ) { shown ->
         if (shown == null) {
