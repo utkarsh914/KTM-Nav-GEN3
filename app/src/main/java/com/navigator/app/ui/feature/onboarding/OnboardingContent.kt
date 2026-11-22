@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -91,15 +92,18 @@ data class TermsUi(val declined: Boolean = false, val showing: Boolean = false)
 fun OnboardingContent(
     ui: OnboardingUi, terms: TermsUi, actions: OnboardingActions, reducedMotion: Boolean, modifier: Modifier = Modifier,
 ) {
+    val motion = KtmTheme.motion
+    val slidePx = with(LocalDensity.current) { KtmLayout.pushOffset.roundToPx() }
     Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
         Header(ui, actions)
         AnimatedContent(
             targetState = ui.step,
             transitionSpec = {
-                if (reducedMotion) fadeIn().togetherWith(fadeOut())
+                if (reducedMotion) fadeIn(motion.effectsDefault()).togetherWith(fadeOut(motion.effectsFast()))
                 else {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally { w -> dir * w / 6 } + fadeIn()).togetherWith(slideOutHorizontally { w -> -dir * w / 6 } + fadeOut())
+                    (slideInHorizontally(motion.page()) { dir * slidePx } + fadeIn(motion.effectsDefault()))
+                        .togetherWith(slideOutHorizontally(motion.page()) { -dir * slidePx } + fadeOut(motion.effectsFast()))
                 }
             },
             label = "onboarding-step",

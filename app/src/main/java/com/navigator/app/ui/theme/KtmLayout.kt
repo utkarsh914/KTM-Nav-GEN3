@@ -264,6 +264,9 @@ object KtmLayout {
     /** The next-turn card stays above Pick on map only on a portrait window at least this tall (below it, the pin would be crowded). */
     val pickGuidanceMinHeight = 600.dp
 
+    /** How dark the page underneath goes while another page is pushed over it (dim, never blur). */
+    const val pageDim = 0.25f
+
     /** How far a pushed page slides in from the right. */
     val pushOffset = 30.dp
 

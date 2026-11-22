@@ -1,0 +1,53 @@
+package com.navigator.app.ui.shell
+
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.platform.LocalContext
+import com.navigator.app.ui.theme.KtmTheme
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36], qualifiers = "w400dp-h800dp")
+class PageTransitionsTest {
+    @get:Rule val rule = createComposeRule()
+
+    @Test fun aPageIsCoveredOnlyWhileSomethingIsPushedOverIt() {
+        assertTrue(isCovered(listOf("graph", "a", "b"), "a"))
+        assertFalse("the top page is not covered", isCovered(listOf("graph", "a", "b"), "b"))
+        assertFalse("a popped page has left the stack", isCovered(listOf("graph", "a"), "b"))
+    }
+
+    @Test fun pushingAndPoppingAPageKeepsBothHostedAndShowsTheRightOne() {
+        var nav: NavHostController? = null
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = false) {
+                val controller = rememberNavController().also { nav = it }
+                CompositionLocalProvider(LocalPageNav provides controller) {
+                    NavHost(controller, startDestination = Route.Rides) {
+                        page<Route.Rides> { Text("rides") }
+                        page<Route.Logs> { Text("logs") }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("rides").assertIsDisplayed()
+        rule.runOnIdle { nav!!.navigate(Route.Logs) }
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("logs").assertIsDisplayed()
+        rule.runOnIdle { nav!!.popBackStack() }
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("rides").assertIsDisplayed()
+    }
+}

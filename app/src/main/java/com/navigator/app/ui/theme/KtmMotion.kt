@@ -56,6 +56,10 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     fun <T> staggeredFade(index: Int): FiniteAnimationSpec<T> =
         if (reduced) tween(EFFECTS_FAST_MS / 2) else tween(EFFECTS_DEFAULT_MS, delayMillis = index.coerceIn(0, STAGGER_ROWS) * STAGGER_MS)
 
+    /** Staged choreography that needs exact timing (a tab fading in after the old one has gone): a short named tween. */
+    fun <T> stage(delayMs: Int = 0): FiniteAnimationSpec<T> =
+        if (reduced) tween(EFFECTS_FAST_MS / 2) else tween(STAGE_MS, delayMillis = delayMs)
+
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)
 
@@ -116,6 +120,10 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val RIDING_SWAP_OUT_MS = 60
         const val RIDING_SWAP_IN_DELAY_MS = 50
 
+        const val STAGE_MS = 200
+
+        /** MO10: the new tab starts fading in once the old one has gone. */
+        const val TAB_FADE_DELAY_MS = 90
         const val STAGGER_MS = 20
         const val STAGGER_ROWS = 10
         const val SKELETON_PULSE_MS = 900

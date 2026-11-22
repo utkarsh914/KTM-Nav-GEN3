@@ -35,7 +35,6 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
@@ -89,6 +88,7 @@ import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.accentFor
 import com.navigator.app.ui.theme.rememberReducedMotion
@@ -156,6 +156,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val setupDone = snap.onboardingComplete && !inSetupScreen
     val pending by intents.pending.collectAsState()
     val reducedMotion = rememberReducedMotion()
+    val pageMotion = remember(reducedMotion) { KtmMotionSpecs(reduced = reducedMotion) }
     val pushPx = with(LocalDensity.current) { PUSH_OFFSET.roundToPx() }
     // A request that stays pending (the mirror card waits for a tap) takes the rider to Navigate once,
     // not again each time something else changes.
@@ -245,222 +246,224 @@ fun KtmApp(onQuit: () -> Unit) {
                     },
                 ) {
                     SharedTransitionLayout {
-                        NavHost(
-                            navController = navController,
-                            startDestination = startRoute,
-                            modifier = Modifier.fillMaxSize(),
-                            enterTransition = { enterFor(reducedMotion, pushPx) },
-                            exitTransition = { exitFor(reducedMotion, pushPx) },
-                            popEnterTransition = { popEnterFor(reducedMotion, pushPx) },
-                            popExitTransition = { popExitFor(reducedMotion, pushPx) },
-                        ) {
-                            composable<Route.Onboarding> {
-                                OnboardingScreen(
-                                    onFinished = {
-                                        navController.navigate(Route.Pairing(forced = true, fromOnboarding = true)) {
-                                            popUpTo<Route.Onboarding> { inclusive = true }
-                                        }
-                                    },
-                                )
-                            }
-                            composable<Route.Pairing> { backStackEntry ->
-                                val route = backStackEntry.toRoute<Route.Pairing>()
-                                val back = { navController.popFrom(backStackEntry) }
-                                val pairingEngineAvailable = remember { GoogleNavSdkController.isAvailable(context) }
-                                PairingScreen(
-                                    onPaired = {
-                                        // Not a tap: it fires when the handshake completes, even while the app is paused.
-                                        when {
-                                            route.fromOnboarding -> navController.navigate(Route.Ready) {
-                                                popUpTo<Route.Pairing> { inclusive = true }
+                        CompositionLocalProvider(LocalPageNav provides navController) {
+                            NavHost(
+                                navController = navController,
+                                startDestination = startRoute,
+                                modifier = Modifier.fillMaxSize(),
+                                enterTransition = { enterFor(pageMotion, pushPx) },
+                                exitTransition = { exitFor(pageMotion, pushPx) },
+                                popEnterTransition = { popEnterFor(pageMotion, pushPx) },
+                                popExitTransition = { popExitFor(pageMotion, pushPx) },
+                            ) {
+                                page<Route.Onboarding> {
+                                    OnboardingScreen(
+                                        onFinished = {
+                                            navController.navigate(Route.Pairing(forced = true, fromOnboarding = true)) {
+                                                popUpTo<Route.Onboarding> { inclusive = true }
                                             }
-                                            route.forced || route.toHome -> navController.openRoot(Route.Navigate)
-                                            else -> navController.popBackStack()
-                                        }
-                                    },
-                                    onBack = if (route.forced) null else back,
-                                    onPairLater = if (route.forced || route.toHome) ({ navController.openRoot(Route.Navigate) }) else null,
-                                    progress = if (route.fromOnboarding) OnboardingFlow.pairingProgress(pairingEngineAvailable) else null,
-                                )
-                            }
-                            composable<Route.Ready> {
-                                ReadyScreen(
-                                    onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
-                                    onStart = { navController.openRoot(Route.Navigate) },
-                                )
-                            }
-                            composable<Route.Navigate> {
-                                val openNav = pending.openNav
-                                LaunchedEffect(openNav) { if (openNav) intents.consumeOpenNav() }
-                                if (inAppState.value) {
-                                    NavigateHost(
-                                        retainedNav = retainedNav,
-                                        onOpenConnect = { navController.push(Route.Pairing()) },
-                                        onOpenReplay = { id -> navController.push(Route.RideReplay(id)) },
-                                        onOpenSettings = { navController.openTab(Tab.Settings) },
-                                        onOpenRecordingSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
-                                        onOpenPlaces = { navController.openTab(Tab.Places) },
-                                        sharedLink = pending.sharedLink,
-                                        onSharedLinkConsumed = intents::consumeSharedLink,
-                                        pendingPlace = pending.place,
-                                        pendingDirections = pending.placeDirections,
-                                        onPendingPlaceConsumed = intents::consumePlace,
-                                        quickRoute = pending.quickRoute?.name,
-                                        onQuickRouteConsumed = intents::consumeQuickRoute,
-                                        openNavRequest = pending.openNav,
-                                        confirmEndRequest = pending.confirmEnd,
-                                        onConfirmEndConsumed = intents::consumeConfirmEnd,
-                                        searchRequest = pending.openSearch,
-                                        onSearchRequestConsumed = intents::consumeOpenSearch,
+                                        },
                                     )
-                                } else {
-                                    Box(Modifier.fillMaxSize()) {
-                                        MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
-                                        // A Google Maps link shared in mirror mode: Google Maps does the navigating.
-                                        pending.sharedLink?.let { link ->
-                                            SharedLinkCard(
-                                                SharedLinkState.Mirror,
-                                                SharedLinkActions(
-                                                    onRetry = {}, onSearchInstead = {},
-                                                    onDismiss = intents::consumeSharedLink,
-                                                    onOpenMaps = {
-                                                        intents.consumeSharedLink()
-                                                        if (!openInGoogleMaps(context, link)) {
-                                                            feedback.snackbar(resources.getString(R.string.shared_link_mirror_unreadable))
-                                                        }
-                                                    },
-                                                    onSwitchToInApp = if (GoogleNavSdkController.isAvailable(context)) {
-                                                        { container.settings.update { googleNavEnabled = true } }
-                                                    } else null,
-                                                ),
-                                            )
+                                }
+                                page<Route.Pairing> { backStackEntry ->
+                                    val route = backStackEntry.toRoute<Route.Pairing>()
+                                    val back = { navController.popFrom(backStackEntry) }
+                                    val pairingEngineAvailable = remember { GoogleNavSdkController.isAvailable(context) }
+                                    PairingScreen(
+                                        onPaired = {
+                                            // Not a tap: it fires when the handshake completes, even while the app is paused.
+                                            when {
+                                                route.fromOnboarding -> navController.navigate(Route.Ready) {
+                                                    popUpTo<Route.Pairing> { inclusive = true }
+                                                }
+                                                route.forced || route.toHome -> navController.openRoot(Route.Navigate)
+                                                else -> navController.popBackStack()
+                                            }
+                                        },
+                                        onBack = if (route.forced) null else back,
+                                        onPairLater = if (route.forced || route.toHome) ({ navController.openRoot(Route.Navigate) }) else null,
+                                        progress = if (route.fromOnboarding) OnboardingFlow.pairingProgress(pairingEngineAvailable) else null,
+                                    )
+                                }
+                                page<Route.Ready> {
+                                    ReadyScreen(
+                                        onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
+                                        onStart = { navController.openRoot(Route.Navigate) },
+                                    )
+                                }
+                                page<Route.Navigate> {
+                                    val openNav = pending.openNav
+                                    LaunchedEffect(openNav) { if (openNav) intents.consumeOpenNav() }
+                                    if (inAppState.value) {
+                                        NavigateHost(
+                                            retainedNav = retainedNav,
+                                            onOpenConnect = { navController.push(Route.Pairing()) },
+                                            onOpenReplay = { id -> navController.push(Route.RideReplay(id)) },
+                                            onOpenSettings = { navController.openTab(Tab.Settings) },
+                                            onOpenRecordingSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
+                                            onOpenPlaces = { navController.openTab(Tab.Places) },
+                                            sharedLink = pending.sharedLink,
+                                            onSharedLinkConsumed = intents::consumeSharedLink,
+                                            pendingPlace = pending.place,
+                                            pendingDirections = pending.placeDirections,
+                                            onPendingPlaceConsumed = intents::consumePlace,
+                                            quickRoute = pending.quickRoute?.name,
+                                            onQuickRouteConsumed = intents::consumeQuickRoute,
+                                            openNavRequest = pending.openNav,
+                                            confirmEndRequest = pending.confirmEnd,
+                                            onConfirmEndConsumed = intents::consumeConfirmEnd,
+                                            searchRequest = pending.openSearch,
+                                            onSearchRequestConsumed = intents::consumeOpenSearch,
+                                        )
+                                    } else {
+                                        Box(Modifier.fillMaxSize()) {
+                                            MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
+                                            // A Google Maps link shared in mirror mode: Google Maps does the navigating.
+                                            pending.sharedLink?.let { link ->
+                                                SharedLinkCard(
+                                                    SharedLinkState.Mirror,
+                                                    SharedLinkActions(
+                                                        onRetry = {}, onSearchInstead = {},
+                                                        onDismiss = intents::consumeSharedLink,
+                                                        onOpenMaps = {
+                                                            intents.consumeSharedLink()
+                                                            if (!openInGoogleMaps(context, link)) {
+                                                                feedback.snackbar(resources.getString(R.string.shared_link_mirror_unreadable))
+                                                            }
+                                                        },
+                                                        onSwitchToInApp = if (GoogleNavSdkController.isAvailable(context)) {
+                                                            { container.settings.update { googleNavEnabled = true } }
+                                                        } else null,
+                                                    ),
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            composable<Route.Rides> {
-                                CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
-                                    RidesScreen(
-                                        onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
-                                        onMerge = { ids -> navController.push(Route.MergeRides(ids)) },
-                                        onOpenSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
-                                    )
-                                }
-                            }
-                            composable<Route.Places> {
-                                PlacesScreen(
-                                    inApp = inAppMaps,
-                                    onRideSlot = { slot -> intents.post(AppIntent.QuickRoute(slot)) },
-                                    onShowPlace = { place, directions -> intents.post(AppIntent.OpenPlace(place, directions)) },
-                                    onPick = { slot -> navController.push(Route.PickPlace(slot)) },
-                                )
-                            }
-                            composable<Route.Settings> {
-                                SettingsHomeScreen(
-                                    onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
-                                    onRePaired = { navController.push(Route.Pairing(toHome = true)) },
-                                    onQuit = { showQuit = true },
-                                )
-                            }
-                            listPage<Route.SettingsPage> { backStackEntry ->
-                                val back = { navController.popFrom(backStackEntry) }
-                                when (backStackEntry.toRoute<Route.SettingsPage>().page) {
-                                    SettingsPage.BIKE_DASH -> BikeDashScreen(
-                                        onBack = back,
-                                        onOpenApps = { navController.push(Route.DashApps) },
-                                        onOpenPermissions = { navController.push(Route.SettingsPage(SettingsPage.PERMISSIONS)) },
-                                        onRePaired = { navController.push(Route.Pairing(toHome = true)) },
-                                    )
-                                    SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) }, onOpenPlaces = { navController.openTab(Tab.Places) })
-                                    SettingsPage.RECORDING -> RecordingScreen(onBack = back)
-                                    SettingsPage.APPEARANCE -> AppearanceScreen(onBack = back)
-                                    SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })
-                                    SettingsPage.PERMISSIONS -> PermissionsScreen(onBack = back)
-                                    SettingsPage.BACKUP -> BackupScreen(onBack = back)
-                                    SettingsPage.ABOUT -> AboutScreen(
-                                        onBack = back,
-                                        onLogs = { navController.push(Route.Logs) },
-                                        onSymbols = { navController.push(Route.SymbolTest) },
-                                        onCalibration = { navController.push(Route.TurnCalibration) },
-                                    )
-                                }
-                            }
-                            listPage<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
-                            listPage<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
-                            listPage<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
-                            listPage<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
-                            listPage<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
-                            listPage<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
-                            composable<Route.MergeRides> { backStackEntry ->
-                                MergeScreen(
-                                    ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
-                                    onBack = { navController.popFrom(backStackEntry) },
-                                    onMerged = { ride, token ->
-                                        // Land on the merged ride; Undo brings the originals back and leaves it.
-                                        navController.navigate(Route.RideReplay(ride.id)) {
-                                            popUpTo<Route.MergeRides> { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                        feedback.snackbar(
-                                            resources.getString(R.string.merge_done), resources.getString(R.string.common_undo),
-                                            tag = MERGE_OFFER + ride.id,
-                                            onDismiss = { scope.launch { container.rides.purge(token.originalIds) } },
-                                            onAction = {
-                                                scope.launch {
-                                                    if (!container.rides.undoMerge(token)) {
-                                                        feedback.snackbar(resources.getString(R.string.merge_undo_failed))
-                                                        return@launch
-                                                    }
-                                                }
-                                            },
+                                page<Route.Rides> {
+                                    CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
+                                        RidesScreen(
+                                            onOpenRide = { id -> navController.push(Route.RideReplay(id)) },
+                                            onMerge = { ids -> navController.push(Route.MergeRides(ids)) },
+                                            onOpenSettings = { navController.push(Route.SettingsPage(SettingsPage.RECORDING)) },
                                         )
-                                    },
-                                )
-                            }
-                            composable<Route.RideReplay> { backStackEntry ->
-                                val id = backStackEntry.toRoute<Route.RideReplay>().rideId
-                                CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
-                                ReplayScreen(
-                                    modifier = Modifier.rideContainer(id, remeasure = false),
-                                    rideId = id,
-                                    retainedNav = retainedNav,
-                                    onBack = { navController.popFrom(backStackEntry) },
-                                    onEdit = { navController.push(Route.EditRide(id)) },
-                                    onTrim = { navController.push(Route.TrimRide(id)) },
-                                    onDeleted = { ids -> navController.popFrom(backStackEntry); offerUndoDelete(ids) },
-                                )
+                                    }
                                 }
-                            }
-                            listPage<Route.EditRide> { backStackEntry ->
-                                val id = backStackEntry.toRoute<Route.EditRide>().rideId
-                                EditRideScreen(
-                                    rideId = id,
-                                    onBack = { navController.popFrom(backStackEntry) },
-                                    onTrim = { navController.push(Route.TrimRide(id)) },
-                                    onDeleted = { ids ->
-                                        // The replay beneath shows a ride that is gone: leave it too.
-                                        navController.popFrom(backStackEntry)
-                                        val below = navController.currentBackStackEntry
-                                        if (below?.destination?.hasRoute<Route.RideReplay>() == true && below.toRoute<Route.RideReplay>().rideId == id) {
-                                            navController.popBackStack()
-                                        }
-                                        offerUndoDelete(ids)
-                                    },
-                                )
-                            }
-                            composable<Route.PickPlace> { backStackEntry ->
-                                PlacePickScreen(
-                                    slot = backStackEntry.toRoute<Route.PickPlace>().slot,
-                                    retainedNav = retainedNav,
-                                    onBack = { navController.popFrom(backStackEntry) },
-                                )
-                            }
-                            composable<Route.TrimRide> { backStackEntry ->
-                                TrimRideScreen(
-                                    rideId = backStackEntry.toRoute<Route.TrimRide>().rideId,
-                                    retainedNav = retainedNav,
-                                    onBack = { navController.popFrom(backStackEntry) },
-                                )
+                                page<Route.Places> {
+                                    PlacesScreen(
+                                        inApp = inAppMaps,
+                                        onRideSlot = { slot -> intents.post(AppIntent.QuickRoute(slot)) },
+                                        onShowPlace = { place, directions -> intents.post(AppIntent.OpenPlace(place, directions)) },
+                                        onPick = { slot -> navController.push(Route.PickPlace(slot)) },
+                                    )
+                                }
+                                page<Route.Settings> {
+                                    SettingsHomeScreen(
+                                        onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
+                                        onRePaired = { navController.push(Route.Pairing(toHome = true)) },
+                                        onQuit = { showQuit = true },
+                                    )
+                                }
+                                listPage<Route.SettingsPage> { backStackEntry ->
+                                    val back = { navController.popFrom(backStackEntry) }
+                                    when (backStackEntry.toRoute<Route.SettingsPage>().page) {
+                                        SettingsPage.BIKE_DASH -> BikeDashScreen(
+                                            onBack = back,
+                                            onOpenApps = { navController.push(Route.DashApps) },
+                                            onOpenPermissions = { navController.push(Route.SettingsPage(SettingsPage.PERMISSIONS)) },
+                                            onRePaired = { navController.push(Route.Pairing(toHome = true)) },
+                                        )
+                                        SettingsPage.NAVIGATION -> NavigationScreen(onBack = back, onChooseNavApp = { navController.push(Route.NavApp) }, onOpenPlaces = { navController.openTab(Tab.Places) })
+                                        SettingsPage.RECORDING -> RecordingScreen(onBack = back)
+                                        SettingsPage.APPEARANCE -> AppearanceScreen(onBack = back)
+                                        SettingsPage.SOUNDS -> SoundsScreen(onBack = back, onOpenCallAudio = { navController.push(Route.CallAudio) })
+                                        SettingsPage.PERMISSIONS -> PermissionsScreen(onBack = back)
+                                        SettingsPage.BACKUP -> BackupScreen(onBack = back)
+                                        SettingsPage.ABOUT -> AboutScreen(
+                                            onBack = back,
+                                            onLogs = { navController.push(Route.Logs) },
+                                            onSymbols = { navController.push(Route.SymbolTest) },
+                                            onCalibration = { navController.push(Route.TurnCalibration) },
+                                        )
+                                    }
+                                }
+                                listPage<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
+                                listPage<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
+                                listPage<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
+                                listPage<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
+                                listPage<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
+                                listPage<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.MergeRides> { backStackEntry ->
+                                    MergeScreen(
+                                        ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
+                                        onBack = { navController.popFrom(backStackEntry) },
+                                        onMerged = { ride, token ->
+                                            // Land on the merged ride; Undo brings the originals back and leaves it.
+                                            navController.navigate(Route.RideReplay(ride.id)) {
+                                                popUpTo<Route.MergeRides> { inclusive = true }
+                                                launchSingleTop = true
+                                            }
+                                            feedback.snackbar(
+                                                resources.getString(R.string.merge_done), resources.getString(R.string.common_undo),
+                                                tag = MERGE_OFFER + ride.id,
+                                                onDismiss = { scope.launch { container.rides.purge(token.originalIds) } },
+                                                onAction = {
+                                                    scope.launch {
+                                                        if (!container.rides.undoMerge(token)) {
+                                                            feedback.snackbar(resources.getString(R.string.merge_undo_failed))
+                                                            return@launch
+                                                        }
+                                                    }
+                                                },
+                                            )
+                                        },
+                                    )
+                                }
+                                page<Route.RideReplay> { backStackEntry ->
+                                    val id = backStackEntry.toRoute<Route.RideReplay>().rideId
+                                    CompositionLocalProvider(LocalSharedElements provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
+                                    ReplayScreen(
+                                        modifier = Modifier.rideContainer(id, remeasure = false),
+                                        rideId = id,
+                                        retainedNav = retainedNav,
+                                        onBack = { navController.popFrom(backStackEntry) },
+                                        onEdit = { navController.push(Route.EditRide(id)) },
+                                        onTrim = { navController.push(Route.TrimRide(id)) },
+                                        onDeleted = { ids -> navController.popFrom(backStackEntry); offerUndoDelete(ids) },
+                                    )
+                                    }
+                                }
+                                listPage<Route.EditRide> { backStackEntry ->
+                                    val id = backStackEntry.toRoute<Route.EditRide>().rideId
+                                    EditRideScreen(
+                                        rideId = id,
+                                        onBack = { navController.popFrom(backStackEntry) },
+                                        onTrim = { navController.push(Route.TrimRide(id)) },
+                                        onDeleted = { ids ->
+                                            // The replay beneath shows a ride that is gone: leave it too.
+                                            navController.popFrom(backStackEntry)
+                                            val below = navController.currentBackStackEntry
+                                            if (below?.destination?.hasRoute<Route.RideReplay>() == true && below.toRoute<Route.RideReplay>().rideId == id) {
+                                                navController.popBackStack()
+                                            }
+                                            offerUndoDelete(ids)
+                                        },
+                                    )
+                                }
+                                page<Route.PickPlace> { backStackEntry ->
+                                    PlacePickScreen(
+                                        slot = backStackEntry.toRoute<Route.PickPlace>().slot,
+                                        retainedNav = retainedNav,
+                                        onBack = { navController.popFrom(backStackEntry) },
+                                    )
+                                }
+                                page<Route.TrimRide> { backStackEntry ->
+                                    TrimRideScreen(
+                                        rideId = backStackEntry.toRoute<Route.TrimRide>().rideId,
+                                        retainedNav = retainedNav,
+                                        onBack = { navController.popFrom(backStackEntry) },
+                                    )
+                                }
                             }
                         }
                     }

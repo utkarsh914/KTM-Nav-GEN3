@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -22,7 +21,7 @@ import com.navigator.app.ui.theme.KtmTheme
  */
 internal inline fun <reified T : Any> NavGraphBuilder.listPage(
     noinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit,
-) = composable<T> { entry -> RoundedWhileLeaving { content(entry) } }
+) = page<T> { entry -> RoundedWhileLeaving { content(entry) } }
 
 @Composable
 private fun AnimatedContentScope.RoundedWhileLeaving(content: @Composable () -> Unit) {
