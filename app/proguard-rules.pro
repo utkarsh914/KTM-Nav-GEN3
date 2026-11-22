@@ -24,4 +24,8 @@
 -dontwarn org.tensorflow.lite.**
 -dontwarn com.google.ai.edge.litert.**
 
+# WorkManager (a transitive dependency, started by androidx.startup) builds its Room database by reflection. Room 2.5's
+# own rule keeps the class but, in R8 full mode, not its constructor: the app then dies at launch.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+
 # Navigation SDK and Maps: the AARs carry their own consumer rules; nothing is added here on purpose.
