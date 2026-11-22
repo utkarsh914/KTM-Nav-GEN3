@@ -1,6 +1,12 @@
 package com.navigator.app.ui.shell
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.platform.LocalContext
 import com.navigator.app.ui.theme.KtmTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -106,5 +113,19 @@ class PageTransitionsTest {
         rule.runOnIdle { nav!!.popBackStack(); nav!!.popBackStack() }
         rule.mainClock.advanceTimeBy(2_000)
         rule.onNodeWithText("rides").assertIsDisplayed()
+    }
+
+    @Test fun anEmptySpotOnAnOpaquePageDoesNotReachTheMapBehindIt() {
+        var mapTouches = 0
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().testTag("map").clickable { mapTouches++ })
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().testTag("page").coverGround()) { Text("settings") }
+                }
+            }
+        }
+        rule.onNodeWithTag("page").performClick()
+        rule.runOnIdle { assertEquals(0, mapTouches) }
     }
 }

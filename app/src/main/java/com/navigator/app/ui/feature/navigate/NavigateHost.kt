@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -88,10 +87,10 @@ import com.navigator.app.ui.feature.record.RecordRidePill
 import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.map.FollowMode
 import com.navigator.app.ui.map.LocationMarkerStyle
+import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
-import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.PreviewPinStyle
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.TripPreviewScene
@@ -103,6 +102,7 @@ import com.navigator.app.ui.shell.ImmersiveEffect
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.SharedElements
+import com.navigator.app.ui.shell.coverGround
 import com.navigator.app.ui.shell.rememberNightNow
 import com.navigator.app.ui.shell.resolveSurfaceDark
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -850,7 +850,7 @@ fun NavigateHost(
                 dark = mapDark,
             )
             // Not ready: the Navigate screen says why and offers Try again; behind it is plain ground.
-            else -> Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg))
+            else -> Box(Modifier.fillMaxSize().coverGround())
         }
 
         // Animated stage chrome (overlays the persistent map above). The map layer

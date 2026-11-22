@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -322,7 +321,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                             onSearchRequestConsumed = intents::consumeOpenSearch,
                                         )
                                     } else {
-                                        Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
+                                        Box(Modifier.fillMaxSize().coverGround()) {
                                             MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
                                             // A Google Maps link shared in mirror mode: Google Maps does the navigating.
                                             pending.sharedLink?.let { link ->

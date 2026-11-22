@@ -9,7 +9,6 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -42,6 +41,7 @@ import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
+import com.navigator.app.ui.shell.coverGround
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -114,7 +114,7 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
 
     BackHandler(enabled = mapping) { mapping = false }
     // Transparent over the shell's map layer while picking on the map; the search page paints the ground.
-    Box(modifier.fillMaxSize().then(if (mapping) Modifier else Modifier.background(KtmTheme.colors.bg))) {
+    Box(modifier.fillMaxSize().then(if (mapping) Modifier else Modifier.coverGround())) {
         if (mapping) {
             val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(settings.locationMarkerStyle))
             val mapReady by map.ready.collectAsState()

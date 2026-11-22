@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +34,9 @@ class RetainedNavigationView(
     /** Read by the map layer, which hosts the view as soon as a page creates it. */
     var view: NavigationView? by mutableStateOf(null)
         private set
+
+    /** How many pages hold the map: with none, the layer behind the pages is hidden from screen readers. */
+    var claims: Int by mutableIntStateOf(0)
 
     /** True once the one-time camera framing has run, so re-entry doesn't snap
      *  the camera back to the starting location. */

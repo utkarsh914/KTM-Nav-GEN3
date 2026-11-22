@@ -39,6 +39,11 @@ fun MapClaim(
     // Creating the view here (not in the layer) keeps onboarding and the mirror screen free of the map.
     val navView = remember(retained) { retained.getOrCreate() }
 
+    DisposableEffect(retained) {
+        retained.claims++
+        onDispose { retained.claims-- }
+    }
+
     // (Re)deliver the map on every entry. getMapAsync returns the cached GoogleMap at once for an
     // already-loaded view, so this is cheap.
     LaunchedEffect(navView) {

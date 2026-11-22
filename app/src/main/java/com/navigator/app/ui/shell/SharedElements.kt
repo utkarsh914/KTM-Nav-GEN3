@@ -5,6 +5,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
@@ -34,6 +35,9 @@ fun Modifier.rideContainer(rideId: String, remeasure: Boolean = true): Modifier 
     val shared = LocalSharedElements.current ?: return this
     val motion = KtmTheme.motion
     if (motion.reduced) return this
+    // The page side (not remeasured) is transparent over the map layer, which is not part of the moving bounds: while it
+    // moves it carries its own ground, so the card never grows or shrinks over a stale map.
+    val ground = if (!remeasure && shared.scope.isTransitionActive) Modifier.background(KtmTheme.colors.surf3) else Modifier
     return with(shared.scope) {
         this@rideContainer.sharedBounds(
             sharedContentState = rememberSharedContentState(key = "ride-$rideId"),
@@ -41,7 +45,7 @@ fun Modifier.rideContainer(rideId: String, remeasure: Boolean = true): Modifier 
             boundsTransform = { _, _ -> motion.spatialDefault() },
             resizeMode = if (remeasure) SharedTransitionScope.ResizeMode.RemeasureToBounds else SharedTransitionScope.ResizeMode.scaleToBounds(),
             clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
-        )
+        ).then(ground)
     }
 }
 

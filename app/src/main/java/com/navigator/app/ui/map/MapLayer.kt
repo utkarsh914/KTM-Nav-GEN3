@@ -1,5 +1,6 @@
 package com.navigator.app.ui.map
 
+import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -14,11 +15,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 @Composable
 fun MapLayer(retained: RetainedNavigationView, modifier: Modifier = Modifier) {
     val view = retained.view ?: return
+    val claimed = retained.claims > 0
     AndroidView(
         factory = {
             (view.parent as? ViewGroup)?.removeView(view)
             view
         },
         modifier = modifier.fillMaxSize(),
+        // Covered by a page that is not a map page, the map must not be reachable by touch exploration either.
+        update = {
+            it.importantForAccessibility =
+                if (claimed) View.IMPORTANT_FOR_ACCESSIBILITY_AUTO else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        },
     )
 }
