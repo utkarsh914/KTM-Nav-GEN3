@@ -10,6 +10,9 @@ val localProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+/** R8 on release and benchmark builds; `minifyRelease=false` in local.properties is the escape hatch. */
+val minifyRelease = localProps.getProperty("minifyRelease", "true") != "false"
+
 /** Output of a git command run in the repo root, or null when git/the repo is unavailable. */
 // providers.exec rather than ProcessBuilder: Gradle 9 deprecates starting raw processes at
 // configuration time (an error in Gradle 11).
@@ -69,7 +72,7 @@ android {
             "\"${localProps.getProperty("NAV_SDK_API_KEY", "")}\"",
         )
 
-        // Size lever (minify stays off - see buildTypes). The Navigation SDK
+        // Size lever (see also R8 in buildTypes). The Navigation SDK
         // ships native libs for every ABI; the app targets modern 64-bit
         // bikes/phones only. (Locale stripping is in androidResources below.)
         ndk { abiFilters += "arm64-v8a" }
@@ -97,9 +100,11 @@ android {
             buildConfigField("boolean", "JANK_LOG", "true")
         }
         release {
-            // No minification: TFLite + reflection-heavy BLE code isn't worth
-            // proguard risk for a sideloaded app; signing is what matters here.
-            isMinifyEnabled = false
+            // R8 shrinks and optimises but does not obfuscate (readable crash logs; see proguard-rules.pro).
+            // If it ever breaks something on the bike: `minifyRelease=false` in local.properties turns it off.
+            isMinifyEnabled = minifyRelease
+            isShrinkResources = minifyRelease
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
             buildConfigField("boolean", "JANK_LOG", "false")
         }
@@ -223,6 +228,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     // Frame-time tracking for the debug and benchmark builds (JankMonitor); unused in release.
     implementation("androidx.metrics:metrics-performance:1.0.0")
+    // Installs the Baseline Profile (src/main/baseline-prof.txt) on first run so the app is AOT-compiled without Play.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")

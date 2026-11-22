@@ -1,0 +1,5 @@
+# Starter Baseline Profile: every method of the app is marked hot (H), startup (S) and post-startup (P), so the first
+# run of any screen and transition is already compiled. Replace it with a collected profile once a phone is available:
+# see macrobenchmark/.../BaselineProfileGenerator.kt and overhaul/FLUID_PLAN.md F1.
+HSPLcom/navigator/app/**->**(**)**
+Lcom/navigator/app/**;

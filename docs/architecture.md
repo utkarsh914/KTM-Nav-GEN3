@@ -267,7 +267,7 @@ Confirmed against Nav SDK **7.9.0**; builds and the `Maneuver` completeness test
 | Packaging | Single APK, runtime-gated (SDK compiled in; active only with key + Play Services) |
 | SDK level | compileSdk 37.2, targetSdk 36; minSdk 36 (Android 16+ only); Kotlin 2.4 / AGP 9.5 / Gradle 9.9 |
 | Provider default | Nav SDK when key + Play Services present, user-toggleable in Settings |
-| APK size | Accepted (~29 MB debug). Levers: `abiFilters("arm64-v8a")`, `androidResources.localeFilters("en")`; **minify off** (protects TFLite + reflection-heavy BLE) |
+| APK size | Accepted (~29 MB debug). Levers: `abiFilters("arm64-v8a")`, `androidResources.localeFilters("en")`; **R8 on release, no obfuscation** (`app/proguard-rules.pro`; keep rules for LiteRT and the `@Serializable` routes; `minifyRelease=false` in `local.properties` turns it off) plus a Baseline Profile (`app/src/main/baseline-prof.txt`) |
 | Domain model | `NormalizedManeuver` mirrors the SDK set; single lossy collapse in `KtmManeuverMapping` |
 | Destination search | Places API (New) over HTTPS (no Places SDK — avoids the Maps-SDK conflict) |
 | App identity | `applicationId` = `com.navigator.ktm`; code namespace kept `com.navigator.app` |
