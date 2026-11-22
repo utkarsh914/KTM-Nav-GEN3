@@ -52,7 +52,7 @@ fun PlanPanel(
             var footprintPx by remember { mutableIntStateOf(0) }
             // A snackbar (Undo) sits beside the panel, not over its buttons.
             SnackbarClearance(start = with(density) { footprintPx.toDp() })
-            LandscapePanel(onFootprint = { footprintPx = it; report(it, 0) }, panelModifier = Modifier.stageSheet(fromSide = true)) {
+            LandscapePanel(onFootprint = { footprintPx = it; report(it, 0) }) {
                 CompositionLocalProvider(LocalFillPanel provides true) { content() }
             }
         } else {

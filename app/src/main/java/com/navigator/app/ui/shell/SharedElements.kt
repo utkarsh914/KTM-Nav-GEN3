@@ -5,9 +5,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
@@ -113,20 +111,19 @@ private const val SEARCH_KEY = "search-container"
 private const val TRIP_STRIP_KEY = "trip-strip"
 
 /**
- * The place and route sheets (and the landscape panel) travel in from their own edge when the Navigate stage changes,
- * and leave towards it, while the rest of the stage's chrome only fades. A no-op outside the stage's
- * AnimatedContent ([LocalTripShared]) and with "Remove animations".
+ * The portrait place and route sheets travel in from the bottom edge when the Navigate stage changes, and leave towards
+ * it, while the rest of the stage's chrome only fades (the landscape panel has its own entrance). It arrives on the page
+ * spring, which does not overshoot. A no-op outside the stage's AnimatedContent ([LocalTripShared]) and with "Remove animations".
  */
 @Composable
-fun Modifier.stageSheet(fromSide: Boolean = false): Modifier {
+fun Modifier.stageSheet(): Modifier {
     val visibility = LocalTripShared.current?.visibility ?: return this
     val motion = KtmTheme.motion
     if (motion.reduced) return this
     return with(visibility) {
         this@stageSheet.animateEnterExit(
-            enter = if (fromSide) slideInHorizontally(motion.spatialDefault()) { -it } else slideInVertically(motion.spatialDefault()) { it },
-            exit = if (fromSide) slideOutHorizontally(motion.spatialFast()) { -it } else slideOutVertically(motion.spatialFast()) { it },
+            enter = slideInVertically(motion.page()) { it },
+            exit = slideOutVertically(motion.spatialFast()) { it },
         )
     }
 }
-

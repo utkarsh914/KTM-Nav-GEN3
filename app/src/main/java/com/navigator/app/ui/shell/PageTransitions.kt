@@ -46,7 +46,7 @@ private const val UNDERLAY_SHIFT = 4
 
 /**
  * Map pages are transparent over the shared map layer, so what a page change looks like depends on who is a map page:
- * map to map and page to page slide; an opaque page over a map page slides in with no alpha (a fade would show the
+ * page to page slides; two map pages cross-fade their controls; an opaque page over a map page slides in with no alpha (a fade would show the
  * static map through it); a map page over, or back to, an opaque page dissolves, because that page sits between the map
  * and the map page and a slide would show it through. The ride card's container move keeps the Rides page opaque and
  * still until the replay has covered it, so a stale map never shows in between.
@@ -66,30 +66,36 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMov
     (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
         (initialState.destination.hasRoute<Route.RideReplay>() && targetState.destination.hasRoute<Route.Rides>())
 
-// With "Remove animations" every move is a plain fade: no offset (the tokens collapse to short fades).
+/** Two map pages: both are transparent over the same map, so only their controls cross-fade (a slide would show two sets). */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToMap(): Boolean =
+    initialState.destination.isMapPage() && targetState.destination.isMapPage() && !isRideContainerMove()
+
+// With "Remove animations" every move is a plain fade: no offset (the tokens collapse to short fades). The page that
+// stays underneath is never faded out while the other fades in, or the ground would show through between them.
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: KtmMotionSpecs): EnterTransition = when {
-    isRideContainerMove() || motion.reduced || tabSwitch() || pageToMap() -> fadeIn(motion.effectsDefault())
+    isRideContainerMove() || motion.reduced || tabSwitch() || pageToMap() || mapToMap() -> fadeIn(motion.effectsDefault())
     else -> slideInHorizontally(motion.page()) { it }
 }
 
 /** The page underneath a push moves back a quarter and dims (see [PageHost]); it does not fade, so nothing shows through. */
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs): ExitTransition = when {
-    isRideContainerMove() || tabSwitch() && !pageToMap() -> ExitTransition.None
-    motion.reduced || pageToMap() -> fadeOut(motion.effectsFast())
+    pageToMap() || mapToMap() -> fadeOut(motion.effectsDefault())
+    isRideContainerMove() || motion.reduced || tabSwitch() -> ExitTransition.None
     initialState.destination.isMapPage() -> ExitTransition.None
     else -> slideOutHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs): EnterTransition = when {
     isRideContainerMove() -> EnterTransition.None
-    motion.reduced || tabSwitch() || mapToPage() -> fadeIn(motion.effectsDefault())
-    targetState.destination.isMapPage() -> EnterTransition.None
+    tabSwitch() || mapToPage() || mapToMap() -> fadeIn(motion.effectsDefault())
+    motion.reduced || targetState.destination.isMapPage() -> EnterTransition.None
     else -> slideInHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs): ExitTransition = when {
-    isRideContainerMove() || motion.reduced || mapToPage() -> fadeOut(motion.effectsFast())
-    tabSwitch() -> if (pageToMap()) fadeOut(motion.effectsFast()) else ExitTransition.None
+    isRideContainerMove() -> fadeOut(motion.effectsFast())
+    mapToPage() || mapToMap() -> fadeOut(motion.effectsDefault())
+    motion.reduced || tabSwitch() -> fadeOut(motion.effectsFast())
     // Also what a predictive back swipe previews: a list page shrinks as it slides away.
     else -> slideOutHorizontally(motion.page()) { it } +
         (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)

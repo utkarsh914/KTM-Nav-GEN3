@@ -267,7 +267,7 @@ object KtmLayout {
     /** How dark the page underneath goes while another page is pushed over it (dim, never blur). */
     const val pageDim = 0.25f
 
-    /** How far a pushed page slides in from the right. */
+    /** How far an onboarding step slides in (pages slide their full width). */
     val pushOffset = 30.dp
 
     // Diagnostics: glyph tiles and cells in the calibration and symbol-test tools.
