@@ -2,6 +2,11 @@ package com.navigator.app.ui.theme
 
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -52,9 +57,10 @@ class KtmLayoutAndMotionTest {
     @Test fun pagesAndEffectsNeverOvershootAndOnlyPlayfulThingsBounce() {
         val m = KtmMotionSpecs(reduced = false)
         assertEquals(1f, damping(m.page<Float>()))
+        assertEquals(KtmMotionSpecs.PAGE_STIFFNESS, (m.page<Float>() as SpringSpec).stiffness)
         listOf(m.effectsFast<Float>(), m.effectsDefault<Float>(), m.effectsSlow<Float>()).forEach { assertEquals(1f, damping(it)) }
         listOf(m.spatialFast<Float>(), m.spatialDefault<Float>(), m.spatialSlow<Float>()).forEach {
-            assertTrue("elements overshoot at most a hair", damping(it) >= 0.85f)
+            assertTrue("elements overshoot at most a hair", damping(it) in 0.85f..1f)
         }
         assertTrue("the playful spring is the only one that bounces visibly", damping(m.playful<Float>()) < 0.85f)
     }
@@ -96,5 +102,20 @@ class KtmLayoutAndMotionTest {
         val calm = KtmMotionScheme(calm = true)
         listOf(calm.defaultSpatialSpec<Float>(), calm.fastSpatialSpec<Float>(), calm.slowSpatialSpec<Float>(),
             calm.defaultEffectsSpec<Float>(), calm.fastEffectsSpec<Float>(), calm.slowEffectsSpec<Float>()).forEach { assertEquals(1f, damping(it)) }
+        listOf(calm.defaultSpatialSpec<Float>(), calm.fastSpatialSpec<Float>(), calm.slowSpatialSpec<Float>()).forEach {
+            assertTrue("a calm spring settles within the riding ceiling", settleMs(it) <= KtmMotionSpecs.RIDING_MAX_MS)
+        }
+    }
+
+    /** A critically damped spring is within 1 % of its target after about 6.6 / sqrt(stiffness) seconds. */
+    private fun settleMs(spec: Any?) = 6.6 / Math.sqrt((spec as SpringSpec<*>).stiffness.toDouble()) * 1000
+
+    @Test fun movesInPixelsAndDpStopWithinAPixelNotAHundredthOfOne() {
+        val m = KtmMotionSpecs(reduced = false)
+        assertEquals(Rect.VisibilityThreshold, (m.spatialDefault<Rect>() as SpringSpec).visibilityThreshold)
+        assertEquals(IntOffset.VisibilityThreshold, (m.spatialDefault<IntOffset>() as SpringSpec).visibilityThreshold)
+        assertEquals(IntSize.VisibilityThreshold, (m.page<IntSize>() as SpringSpec).visibilityThreshold)
+        assertEquals(Dp.VisibilityThreshold, (m.effectsDefault<Dp>() as SpringSpec).visibilityThreshold)
+        assertEquals(null, (m.effectsDefault<Float>() as SpringSpec).visibilityThreshold)
     }
 }

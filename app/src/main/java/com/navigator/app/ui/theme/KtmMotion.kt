@@ -7,6 +7,7 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.DurationBasedAnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -18,7 +19,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 
 /**
  * Motion tokens (design §3.5), the one source of physics for the app. Off the bike everything is a spring with
@@ -30,24 +37,24 @@ import androidx.compose.ui.platform.LocalContext
  */
 class KtmMotionSpecs(val reduced: Boolean = false) {
     /** A page, a tab or a stage sheet travelling: critically damped, about 250 ms, never visibly overshoots. */
-    fun <T> page(): FiniteAnimationSpec<T> = move(PAGE_DAMPING, PAGE_STIFFNESS)
+    inline fun <reified T> page(): FiniteAnimationSpec<T> = move(PAGE_DAMPING, PAGE_STIFFNESS, visibilityThreshold<T>())
 
     /** Elements that move or resize: sheets, dialogs, chips, shared bounds, list placement. A hair of overshoot at most. */
-    fun <T> spatialFast(): FiniteAnimationSpec<T> = move(ELEMENT_DAMPING, ELEMENT_FAST_STIFFNESS)
-    fun <T> spatialDefault(): FiniteAnimationSpec<T> = move(ELEMENT_DAMPING, ELEMENT_STIFFNESS)
-    fun <T> spatialSlow(): FiniteAnimationSpec<T> = move(ELEMENT_SLOW_DAMPING, ELEMENT_SLOW_STIFFNESS)
+    inline fun <reified T> spatialFast(): FiniteAnimationSpec<T> = move(ELEMENT_DAMPING, ELEMENT_FAST_STIFFNESS, visibilityThreshold<T>())
+    inline fun <reified T> spatialDefault(): FiniteAnimationSpec<T> = move(ELEMENT_DAMPING, ELEMENT_STIFFNESS, visibilityThreshold<T>())
+    inline fun <reified T> spatialSlow(): FiniteAnimationSpec<T> = move(ELEMENT_SLOW_DAMPING, ELEMENT_SLOW_STIFFNESS, visibilityThreshold<T>())
 
     /** Only tiny things may bounce: a press released, a pin dropped, a switch. Never on a page or while riding. */
-    fun <T> playful(): FiniteAnimationSpec<T> = move(PLAYFUL_DAMPING, PLAYFUL_STIFFNESS)
+    inline fun <reified T> playful(): FiniteAnimationSpec<T> = move(PLAYFUL_DAMPING, PLAYFUL_STIFFNESS, visibilityThreshold<T>())
 
     /** Alpha, colour and scrim: critically damped springs, so a fade that is interrupted retargets instead of restarting. */
-    fun <T> effectsFast(): FiniteAnimationSpec<T> = effect(EFFECTS_FAST_STIFFNESS, EFFECTS_FAST_MS)
-    fun <T> effectsDefault(): FiniteAnimationSpec<T> = effect(EFFECTS_STIFFNESS, EFFECTS_DEFAULT_MS)
-    fun <T> effectsSlow(): FiniteAnimationSpec<T> = effect(EFFECTS_SLOW_STIFFNESS, EFFECTS_SLOW_MS)
+    inline fun <reified T> effectsFast(): FiniteAnimationSpec<T> = effect(EFFECTS_FAST_STIFFNESS, EFFECTS_FAST_MS, visibilityThreshold<T>())
+    inline fun <reified T> effectsDefault(): FiniteAnimationSpec<T> = effect(EFFECTS_STIFFNESS, EFFECTS_DEFAULT_MS, visibilityThreshold<T>())
+    inline fun <reified T> effectsSlow(): FiniteAnimationSpec<T> = effect(EFFECTS_SLOW_STIFFNESS, EFFECTS_SLOW_MS, visibilityThreshold<T>())
 
     /** SE2: a list result fades in [STAGGER_MS] after the one above it (at most [STAGGER_ROWS] deep); reduced motion drops the delay. */
     fun <T> staggeredFade(index: Int): FiniteAnimationSpec<T> =
-        if (reduced) tween(EFFECTS_FAST_MS) else tween(EFFECTS_DEFAULT_MS, delayMillis = index.coerceIn(0, STAGGER_ROWS) * STAGGER_MS)
+        if (reduced) tween(EFFECTS_FAST_MS / 2) else tween(EFFECTS_DEFAULT_MS, delayMillis = index.coerceIn(0, STAGGER_ROWS) * STAGGER_MS)
 
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)
@@ -72,11 +79,11 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     val cameraRecenterMs: Int get() = if (reduced) 0 else CAMERA_RECENTER_MS
     val cameraFitMs: Int get() = if (reduced) 0 else CAMERA_FIT_MS
 
-    private fun <T> move(damping: Float, stiffness: Float): FiniteAnimationSpec<T> =
-        if (reduced) tween(EFFECTS_FAST_MS) else spring(dampingRatio = damping, stiffness = stiffness)
+    @PublishedApi internal fun <T> move(damping: Float, stiffness: Float, threshold: T?): FiniteAnimationSpec<T> =
+        if (reduced) tween(EFFECTS_FAST_MS) else spring(dampingRatio = damping, stiffness = stiffness, visibilityThreshold = threshold)
 
-    private fun <T> effect(stiffness: Float, reducedMs: Int): FiniteAnimationSpec<T> =
-        if (reduced) tween(reducedMs / 2) else spring(dampingRatio = 1f, stiffness = stiffness)
+    @PublishedApi internal fun <T> effect(stiffness: Float, reducedMs: Int, threshold: T?): FiniteAnimationSpec<T> =
+        if (reduced) tween(reducedMs / 2) else spring(dampingRatio = 1f, stiffness = stiffness, visibilityThreshold = threshold)
 
     companion object {
         const val PAGE_DAMPING = 1f
@@ -86,6 +93,11 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val ELEMENT_FAST_STIFFNESS = 800f
         const val ELEMENT_SLOW_DAMPING = 0.9f
         const val ELEMENT_SLOW_STIFFNESS = 200f
+
+        /** Material components on riding surfaces: critically damped and stiff enough to settle within [RIDING_MAX_MS]. */
+        const val CALM_STIFFNESS = 800f
+        const val CALM_FAST_STIFFNESS = 1400f
+        const val CALM_SLOW_STIFFNESS = 700f
         const val PLAYFUL_DAMPING = 0.7f
         const val PLAYFUL_STIFFNESS = 800f
         const val EFFECTS_FAST_STIFFNESS = 3800f
@@ -108,7 +120,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val STAGGER_ROWS = 10
         const val SKELETON_PULSE_MS = 900
 
-        /** Page and tab leave, dialog and greeting start sizes. */
+        /** Where a dialog and the bike greeting start growing from. */
         const val DIALOG_SCALE = 0.92f
         const val GREETING_SCALE = 0.4f
 
@@ -123,19 +135,34 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
 
 /**
  * The Material components' motion, built from the same tokens as [KtmMotionSpecs] so a sheet, a switch or a nav-bar
- * indicator moves like the rest of the app. [calm] (riding surfaces) uses critically damped springs: no overshoot.
+ * indicator moves like the rest of the app. [calm] (riding surfaces) uses critically damped, stiffer springs: no overshoot,
+ * settled within the riding ceiling. Material cannot ask for a type here, so these use the default visibility thresholds;
+ * "Remove animations" reaches them through the system animator scale, which is the same signal as [KtmMotionSpecs.reduced].
  */
 class KtmMotionScheme(private val calm: Boolean = false) : MotionScheme {
     private val damping get() = if (calm) 1f else KtmMotionSpecs.ELEMENT_DAMPING
     private val slowDamping get() = if (calm) 1f else KtmMotionSpecs.ELEMENT_SLOW_DAMPING
 
-    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = spring(damping, KtmMotionSpecs.ELEMENT_STIFFNESS)
-    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = spring(damping, KtmMotionSpecs.ELEMENT_FAST_STIFFNESS)
-    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = spring(slowDamping, KtmMotionSpecs.ELEMENT_SLOW_STIFFNESS)
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = spring(damping, if (calm) KtmMotionSpecs.CALM_STIFFNESS else KtmMotionSpecs.ELEMENT_STIFFNESS)
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = spring(damping, if (calm) KtmMotionSpecs.CALM_FAST_STIFFNESS else KtmMotionSpecs.ELEMENT_FAST_STIFFNESS)
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = spring(slowDamping, if (calm) KtmMotionSpecs.CALM_SLOW_STIFFNESS else KtmMotionSpecs.ELEMENT_SLOW_STIFFNESS)
     override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, KtmMotionSpecs.EFFECTS_STIFFNESS)
     override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, KtmMotionSpecs.EFFECTS_FAST_STIFFNESS)
     override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, KtmMotionSpecs.EFFECTS_SLOW_STIFFNESS)
 }
+
+/** Compose's own thresholds for the types that move in pixels or dp: a spring is done when it is within one pixel, not 0.01 of one. */
+@PublishedApi
+@Suppress("UNCHECKED_CAST")
+internal inline fun <reified T> visibilityThreshold(): T? = when (T::class) {
+    Rect::class -> Rect.VisibilityThreshold
+    IntOffset::class -> IntOffset.VisibilityThreshold
+    IntSize::class -> IntSize.VisibilityThreshold
+    Offset::class -> Offset.VisibilityThreshold
+    Size::class -> Size.VisibilityThreshold
+    Dp::class -> Dp.VisibilityThreshold
+    else -> null
+} as T?
 
 val LocalKtmMotion = staticCompositionLocalOf { KtmMotionSpecs() }
 

@@ -28,7 +28,7 @@ internal inline fun <reified T : Any> NavGraphBuilder.listPage(
 private fun AnimatedContentScope.RoundedWhileLeaving(content: @Composable () -> Unit) {
     val motion = KtmTheme.motion
     val reduced = motion.reduced
-    val radius = transition.animateDp(transitionSpec = { motion.page() }, label = "pageCorner") { state ->
+    val radius = transition.animateDp(transitionSpec = { motion.effectsDefault() }, label = "pageCorner") { state ->
         if (state == EnterExitState.PostExit && !reduced) KtmLayout.pageLeaveCorner else 0.dp
     }
     // Read in the layer, not in composition: no recomposition per frame, and no clip at rest.

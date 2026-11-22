@@ -225,8 +225,6 @@ private fun SheetPane(
 
 private const val CONTAINER_KEY = "trip-container"
 
-/** MO2: the bar's content is gone within 60 ms; the sheet's content arrives as the container settles. */
-
 /** How far the sheet is dragged before letting go closes it. */
 private val DISMISS_DRAG = KtmSpacing.xxxl + KtmSpacing.xxxl
 

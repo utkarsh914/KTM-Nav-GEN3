@@ -57,14 +57,14 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   `KtmMotionScheme` (`MaterialExpressiveTheme(motionScheme = …)`), so a sheet, a switch or the nav-bar indicator moves
   like the rest of the app. Off the bike everything is a spring, so an interrupted move (a second tap, a back swipe)
   carries on from where it is instead of restarting.
-- Tokens (fluid tier): `page()` (critically damped, stiffness 400, about 250 ms: pages, tabs, stage sheets);
+- Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets; the page transitions move onto it in M2);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
   list placement; a hair of overshoot at most); `playful()` (damping 0.7, stiffness 800: press release, pin drop,
   switch only); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
-  Pages never visibly overshoot. Exits use the fast tokens. Behind a pushed page or a dialog we dim, never blur, and a
-  page that hosts the Nav SDK map is never scaled, clipped or blurred.
-- Riding tier (`RidingTheme`, `KtmMotionScheme(calm = true)`): plain tweens of at most 250 ms, nothing overshoots,
-  numbers never animate. `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
+  Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
+  never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
+- Riding tier (`RidingTheme`): plain tweens of at most 250 ms, nothing overshoots, numbers never animate; Material
+  components on riding surfaces use `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
   `ridingSwapOut()`, `ridingColor()` (100 ms); the entrance staggers are `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`.
   `staggeredFade(index)` is the search results' 20 ms stagger.
 - **Remove animations** (`rememberReducedMotion`, read live): every fluid token becomes a

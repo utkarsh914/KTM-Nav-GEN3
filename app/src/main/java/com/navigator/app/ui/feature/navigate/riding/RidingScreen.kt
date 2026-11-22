@@ -135,8 +135,6 @@ fun RidingScreen(
     }
 }
 
-/** MO1: the card drops in after the sheet has gone, and the bar rises a beat after it. */
-
 /** The open trip sheet never gets smaller than this, however tall the card above it is. */
 private val SHEET_MIN = KtmLayout.sheetMinHeight
 
