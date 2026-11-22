@@ -121,7 +121,9 @@ class KtmLayoutAndMotionTest {
 
     @Test fun aContentSwapFadesInSlowerThanItFadesOutAndNeverAnimatesSize() {
         val swap = KtmMotionSpecs(reduced = false).contentSwap()
-        assertTrue(swap.sizeTransform != null)
-        assertTrue("the old content leaves faster than the new arrives", KtmMotionSpecs.EFFECTS_FAST_STIFFNESS > KtmMotionSpecs.EFFECTS_STIFFNESS)
+        assertTrue("the size snaps", swap.sizeTransform != null)
+        val delayed = KtmMotionSpecs(reduced = false).stage<Float>(KtmMotionSpecs.FADE_THROUGH_DELAY_MS) as TweenSpec
+        assertEquals("the new content waits for the old to go", KtmMotionSpecs.FADE_THROUGH_DELAY_MS, delayed.delay)
+        assertEquals("and a reduced swap has no wait", 0, (KtmMotionSpecs(reduced = true).stage<Float>(KtmMotionSpecs.FADE_THROUGH_DELAY_MS) as TweenSpec).delay)
     }
 }

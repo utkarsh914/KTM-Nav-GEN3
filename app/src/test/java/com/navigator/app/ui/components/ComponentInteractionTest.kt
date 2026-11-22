@@ -172,6 +172,17 @@ class ComponentInteractionTest {
         assertEquals("Back is the safe choice, once", 1, dismissed)
     }
 
+    @Test fun aBackSwipeShrinksAndFadesTheCardAndTheDimTogetherAndRidingIsMilder() {
+        assertEquals(DialogBackFeedback(1f, 1f, 1f), dialogBackFeedback(0f, reduced = false, riding = false))
+        val half = dialogBackFeedback(0.5f, reduced = false, riding = false)
+        assertEquals(0.95f, half.scale, 0.001f)
+        assertEquals(0.5f, half.alpha, 0.001f)
+        assertEquals("the dim goes with the card", half.alpha, half.scrim, 0f)
+        assertEquals("fully gone when the swipe commits", 0f, dialogBackFeedback(1f, reduced = false, riding = false).alpha, 0f)
+        assertTrue("riding shrinks less", dialogBackFeedback(1f, false, riding = true).scale > dialogBackFeedback(1f, false, riding = false).scale)
+        assertEquals("reduced motion previews nothing", DialogBackFeedback(1f, 1f, 1f), dialogBackFeedback(1f, reduced = true, riding = false))
+    }
+
     @Test fun aRidingDialogStacksTheSafeChoiceFirst() {
         rule.setContent {
             KtmTheme(darkTheme = true) {

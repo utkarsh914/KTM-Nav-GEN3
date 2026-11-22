@@ -48,7 +48,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     inline fun <reified T> spatialDefault(): FiniteAnimationSpec<T> = move(ELEMENT_DAMPING, ELEMENT_STIFFNESS, visibilityThreshold<T>())
     inline fun <reified T> spatialSlow(): FiniteAnimationSpec<T> = move(ELEMENT_SLOW_DAMPING, ELEMENT_SLOW_STIFFNESS, visibilityThreshold<T>())
 
-    /** Only tiny things may bounce: a press released, a pin dropped, a switch. Never on a page or while riding. */
+    /** Only tiny things may bounce: a press released, a pin dropped. Never on a page, a switch (Material's) or while riding. */
     inline fun <reified T> playful(): FiniteAnimationSpec<T> = move(PLAYFUL_DAMPING, PLAYFUL_STIFFNESS, visibilityThreshold<T>())
 
     /** Alpha, colour and scrim: critically damped springs, so a fade that is interrupted retargets instead of restarting. */
@@ -65,11 +65,13 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         if (reduced) tween(EFFECTS_FAST_MS / 2) else tween(STAGE_MS, delayMillis = delayMs)
 
     /**
-     * A loading skeleton or a row swapped for its content: the new one fades in while the old fades out faster, and the
-     * size snaps (a size animation would clip the list). Skeletons carry no text, so the two may overlap.
+     * A loading skeleton, an empty state or a row swapped for its content: a fade-through. The old content fades out
+     * fast and the new one fades in once it has gone (text never overlaps), and the size snaps (a size animation would
+     * clip the list).
      */
-    fun contentSwap(): ContentTransform =
-        ContentTransform(fadeIn(effectsDefault<Float>()), fadeOut(effectsFast<Float>()), sizeTransform = SizeTransform { _, _ -> snap() })
+    fun contentSwap(): ContentTransform = ContentTransform(
+        fadeIn(stage<Float>(FADE_THROUGH_DELAY_MS)), fadeOut(effectsFast<Float>()), sizeTransform = SizeTransform { _, _ -> snap() },
+    )
 
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)

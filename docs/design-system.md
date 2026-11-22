@@ -59,14 +59,20 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   carries on from where it is instead of restarting.
 - Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
-  list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: press release, pin drop,
-  switch only); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
+  list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: a press released, a pin dropped; never a page, never riding; the switch is Material's); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
   Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
   never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
 - Riding tier (`RidingTheme`): plain tweens of at most 250 ms, nothing overshoots, numbers never animate; Material
   components on riding surfaces use `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
   `ridingSwapOut()`, `ridingColor()` (100 ms); the entrance staggers are `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`.
   `staggeredFade(index)` is the search results' 20 ms stagger.
+- Overlays and swaps: a dialog (`KtmDialog`) fades and settles in from 92 %; a back swipe previews the card shrinking to
+  90 % (riding: 95 %) and fading with its dim, a committed swipe finishes the fade before the window goes (a dialog window
+  can't play an exit), a cancelled one eases back; no preview under Remove animations. `contentSwap()` is the one
+  transition for a loading skeleton, empty state or row replaced by its content: a fade-through (the old fades out fast, the
+  new fades in 90 ms later, text never overlaps) with the size snapping. Buttons press down to 0.97 at once and release on
+  `playful()`, except the riding and stacked sizes, which release on a plain fade. The snackbar and the sheet scrim are
+  Material's own motion (fed by `KtmMotionScheme`); the sheet scrim is a static dim.
 - **Remove animations** (`rememberReducedMotion`, read live): every fluid token becomes a
   short fade with no offset, camera moves jump. Code that slides must zero
   its offset when `motion.reduced`. The system setting itself is the animator scale

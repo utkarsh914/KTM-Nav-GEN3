@@ -29,11 +29,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -53,6 +55,7 @@ import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /** A dialog button. Name the verb ("Delete", "Keep riding"), never "OK". */
@@ -91,19 +94,30 @@ fun KtmDialog(
         SideEffect { window?.setDimAmount(0f) }
         val scrim = remember { Animatable(0f) }
         LaunchedEffect(Unit) { scrim.animateTo(KtmScrim.alpha, motion.effectsDefault()) }
-        Box(Modifier.fillMaxSize().background(KtmScrim.copy(alpha = scrim.value)))
-        // A back swipe previews the card shrinking, as the system's does; letting go early eases it back.
+        // A back swipe previews the card shrinking and fading, as the system's does; letting go early eases it back, and
+        // a committed swipe finishes the fade before the window goes, so nothing pops out.
         var backProgress by remember { mutableFloatStateOf(0f) }
         val scope = rememberCoroutineScope()
+        var easing by remember { mutableStateOf<Job?>(null) }
+        fun easeTo(target: Float) {
+            easing?.cancel()
+            easing = scope.launch { animate(backProgress, target, animationSpec = if (riding) motion.ridingQuick() else motion.spatialFast()) { v, _ -> backProgress = v } }
+        }
         PredictiveBackHandler { events ->
+            easing?.cancel()
             try {
                 events.collect { backProgress = it.progress }
+                if (!motion.reduced) animate(backProgress, 1f, animationSpec = if (riding) motion.ridingQuick() else motion.effectsFast()) { v, _ -> backProgress = v }
                 onDismiss()
+                // If the caller keeps the dialog, it comes back whole.
+                easeTo(0f)
             } catch (cancelled: CancellationException) {
-                scope.launch { animate(backProgress, 0f, animationSpec = motion.spatialFast()) { v, _ -> backProgress = v } }
+                easeTo(0f)
                 throw cancelled
             }
         }
+        val back = dialogBackFeedback(backProgress, motion.reduced, riding)
+        Box(Modifier.fillMaxSize().drawBehind { drawRect(KtmScrim.copy(alpha = scrim.value * back.scrim)) })
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,
@@ -117,10 +131,7 @@ fun KtmDialog(
         ) {
             Column(
                 modifier
-                    .graphicsLayer {
-                        val s = if (motion.reduced) 1f else 1f - (1f - KtmMotionSpecs.BACK_SCALE) * backProgress
-                        scaleX = s; scaleY = s
-                    }
+                    .graphicsLayer { scaleX = back.scale; scaleY = back.scale; alpha = back.alpha }
                     .widthIn(max = KtmLayout.dialogMaxWidth)
                     .shadow(KtmElevation.dialog, KtmShapes.Sheet)
                     .background(c.surf, KtmShapes.Sheet)
@@ -156,6 +167,18 @@ fun KtmDialog(
 }
 
 private const val BIG_TEXT_SCALE = 1.3f
+private const val RIDING_BACK_SHRINK = 0.05f
+
+/** What a dialog looks like [progress] of the way through a back swipe: the card shrinks and fades, and the dim goes with it. */
+internal data class DialogBackFeedback(val scale: Float, val alpha: Float, val scrim: Float)
+
+internal fun dialogBackFeedback(progress: Float, reduced: Boolean, riding: Boolean): DialogBackFeedback {
+    if (reduced) return DialogBackFeedback(1f, 1f, 1f)
+    val p = progress.coerceIn(0f, 1f)
+    // Riding is milder: glanceable, and nothing the rider didn't ask for.
+    val shrink = if (riding) RIDING_BACK_SHRINK else 1f - KtmMotionSpecs.BACK_SCALE
+    return DialogBackFeedback(1f - shrink * p, 1f - p, 1f - p)
+}
 
 @Composable
 private fun DialogButton(action: DialogAction, size: ButtonSize, style: ButtonStyle, modifier: Modifier) {
