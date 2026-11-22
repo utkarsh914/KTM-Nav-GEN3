@@ -111,7 +111,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
             isDebuggable = false
-            buildConfigField("boolean", "JANK_LOG", "true")
+            // Jank logging adds work to the frames being measured: off unless local.properties has JANK_LOG=true
+            // (hand-testing the build; the Jank lines land in Settings > Logs).
+            buildConfigField("boolean", "JANK_LOG", (localProps.getProperty("JANK_LOG") == "true").toString())
         }
     }
 

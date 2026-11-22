@@ -17,7 +17,7 @@ import com.navigator.app.BuildConfig
 object JankMonitor {
 
     private const val TAG = "Jank"
-    private const val MIN_GAP_MS = 100L
+    private const val MIN_GAP_MS = 500L
 
     private var stats: JankStats? = null
     private var lastLogMs = 0L
@@ -32,7 +32,7 @@ object JankMonitor {
             lastLogMs = now
             val where = frame.states.joinToString(" ") { "${it.key}=${it.value}" }
             AppLogger.log(TAG, "${frame.frameDurationUiNanos / 1_000_000} ms ui, $where")
-        }
+        }.also { it.jankHeuristicMultiplier = 1.5f }
     }
 
     fun detach() {

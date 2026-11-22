@@ -116,7 +116,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
     val currentTab = entry?.destination.tab()
-    JankMonitor.Tag("route", entry?.destination?.route?.substringAfterLast('.')?.substringBefore('/') ?: "none")
+    JankMonitor.Tag("route", entry?.destination?.route?.substringBefore('/')?.substringBefore('?')?.substringAfterLast('.') ?: "none")
 
     // The whole app follows the rider's own light/dark; Day/Night applies to the riding surfaces only (RidingTheme).
     val dark = resolveAppDark(snap.themeMode, isSystemInDarkTheme())

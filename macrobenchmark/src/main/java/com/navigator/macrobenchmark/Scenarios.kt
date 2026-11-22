@@ -43,15 +43,21 @@ fun MacrobenchmarkRule.measureScenario(
 
 /** Taps the first element whose text matches; fails the iteration if the app is not past onboarding. */
 fun MacrobenchmarkScope.tap(text: String) {
-    val node = device.wait(Until.findObject(By.text(Pattern.compile(text))), WAIT_MS)
-        ?: error("'$text' not on screen: finish onboarding and pairing on this phone first")
+    val pattern = By.text(Pattern.compile(text))
+    var node = device.wait(Until.findObject(pattern), WAIT_MS)
+    var scrolls = 0
+    while (node == null && scrolls++ < 4) {
+        device.findObject(By.scrollable(true))?.scroll(Direction.DOWN, 0.8f)
+        node = device.findObject(pattern)
+    }
+    node ?: error("'$text' not on screen: finish onboarding and pairing on this phone first")
     node.click()
     device.waitForIdle()
 }
 
 fun MacrobenchmarkScope.tapTab(label: String) {
-    val node = device.wait(Until.findObject(By.text(label).clickable(true)), WAIT_MS)
-        ?: device.wait(Until.findObject(By.text(label)), WAIT_MS)
+    val node = device.wait(Until.findObject(By.text(label)), WAIT_MS)
+        ?: device.findObject(By.desc(label))
         ?: error("tab '$label' not on screen")
     node.click()
     device.waitForIdle()
@@ -62,7 +68,7 @@ fun MacrobenchmarkScope.back() {
     device.waitForIdle()
 }
 
-fun MacrobenchmarkScope.panAndZoomMap(seconds: Int = 5) {
+fun MacrobenchmarkScope.panMap(seconds: Int = 5) {
     val w = device.displayWidth
     val h = device.displayHeight
     val end = System.currentTimeMillis() + seconds * 1_000L
@@ -73,5 +79,4 @@ fun MacrobenchmarkScope.panAndZoomMap(seconds: Int = 5) {
         device.swipe(from.x, from.y, to.x, to.y, 24)
         flip = !flip
     }
-    device.findObject(By.scrollable(true))?.fling(Direction.DOWN)
 }

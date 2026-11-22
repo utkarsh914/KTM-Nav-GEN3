@@ -2,6 +2,7 @@ package com.navigator.macrobenchmark
 
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.uiautomator.By
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,7 +37,7 @@ class FluidityBenchmark {
     /** c: push Replay from a ride card (a map page) and Back. */
     @Test
     fun c_replayPush() = rule.measureScenario(setup = { tapTab("Rides") }) {
-        tap(".* km.*")
+        tap(".* km · .*")
         back()
     }
 
@@ -45,11 +46,13 @@ class FluidityBenchmark {
     fun d_search() = rule.measureScenario(setup = { tapTab("Navigate") }) {
         tap("Where to\\?")
         back()
+        // The search field opens focused: the first Back may only close the keyboard.
+        if (!device.hasObject(By.text("Where to?"))) back()
     }
 
     /** f: pan the map for five seconds. */
     @Test
     fun f_mapPan() = rule.measureScenario(iterations = 5, setup = { tapTab("Navigate") }) {
-        panAndZoomMap()
+        panMap()
     }
 }
