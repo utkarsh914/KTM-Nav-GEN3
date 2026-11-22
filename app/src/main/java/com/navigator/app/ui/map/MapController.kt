@@ -38,6 +38,9 @@ enum class FollowMode { TILTED, NORTH_UP, HEADING_UP }
  * is behind this, so screens and view models don't touch `GoogleMap`, and tests use a fake.
  */
 interface MapController {
+    /** Returns once the shell's coverage of the map has stopped moving, so a camera framed next uses the final padding. */
+    suspend fun awaitPaddingSettled() {}
+
     /** True while a map is attached and drawable. */
     val ready: StateFlow<Boolean>
 

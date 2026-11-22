@@ -9,6 +9,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.navigator.app.ui.theme.KtmMotionSpecs
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * Hosts the app-scoped [RetainedNavigationView] once, behind the whole shell, and nothing else: it is never
@@ -21,7 +24,13 @@ fun MapLayer(retained: RetainedNavigationView, shellInsets: () -> MapInsets, mod
     // the map's buffers and blocks the UI thread on the map's render thread); what the shell covers is padding instead,
     // sent once it has held still.
     LaunchedEffect(retained) {
-        snapshotFlow(shellInsets).settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { retained.setShellInsets(it) }
+        var first = true
+        snapshotFlow(shellInsets).distinctUntilChanged().collectLatest { insets ->
+            if (!first) { retained.shellSettled = false; delay(KtmMotionSpecs.INSETS_SETTLE_MS) }
+            first = false
+            retained.setShellInsets(insets)
+            retained.shellSettled = true
+        }
     }
     val view = retained.view ?: return
     val claimed = retained.claims > 0

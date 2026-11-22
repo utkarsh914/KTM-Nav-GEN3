@@ -88,6 +88,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
             val r = ready ?: return@LaunchedEffect
             if (!mapReady || !pageSettled) return@LaunchedEffect
             snapshotFlow { insets }.filter { it != MapInsets() }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { open ->
+                map.awaitPaddingSettled()
                 map.setPadding(open.left, open.top, open.right, open.bottom)
                 if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
             }

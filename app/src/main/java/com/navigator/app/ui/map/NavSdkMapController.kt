@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 
 private const val ROUTE_SELECTED = 0xFF1A73E8.toInt() // Google route blue
 private const val ROUTE_ALT = 0xFF8FA4BF.toInt()      // desaturated blue alternate
@@ -187,7 +189,11 @@ class NavSdkMapController(
     }
 
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        retained.requestPadding(MapInsets(left, top, right, bottom))
+        if (owns) retained.requestPadding(MapInsets(left, top, right, bottom))
+    }
+
+    override suspend fun awaitPaddingSettled() {
+        snapshotFlow { retained.shellSettled }.first { it }
     }
 
     override fun clearOverlays() {
@@ -337,7 +343,6 @@ class NavSdkMapController(
     // Each call individually guarded so an API mismatch degrades gracefully.
     override fun setGuidanceChrome(guidance: Boolean) {
         val view = navView ?: return
-        retained.appliedPadding = null // the SDK may re-pad its own chrome
         runCatching { view.setNavigationUiEnabled(guidance) }
         runCatching { view.setHeaderEnabled(false) }
         runCatching { view.setEtaCardEnabled(false) }
@@ -345,6 +350,7 @@ class NavSdkMapController(
         runCatching { view.setRecenterButtonEnabled(false) }
         runCatching { view.setReportIncidentButtonEnabled(false) }
         runCatching { view.setTrafficIncidentCardsEnabled(false) }
+        retained.reapplyPadding() // the SDK may have re-padded its own chrome
     }
 
     override fun setNightMode(dark: Boolean) {
