@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
@@ -115,6 +116,15 @@ class PageTransitionsTest {
         rule.onNodeWithText("rides").assertIsDisplayed()
     }
 
+    /** A real finger: down, a few pixels of drift, up. performClick() sends none of the drift, which is what cancels taps. */
+    private fun ComposeContentTestRule.fingerTap(tag: String) {
+        onNodeWithTag(tag).performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(3f, 2f))
+            up()
+        }
+    }
+
     @Test fun anEmptySpotOnAnOpaquePageDoesNotReachTheMapBehindIt() {
         var mapTouches = 0
         rule.setContent {
@@ -125,7 +135,20 @@ class PageTransitionsTest {
                 }
             }
         }
-        rule.onNodeWithTag("page").performClick()
+        rule.fingerTap("page")
         rule.runOnIdle { assertEquals(0, mapTouches) }
+    }
+
+    @Test fun aButtonOnAnOpaquePageStillGetsATapWithARealFinger() {
+        var taps = 0
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().coverGround()) {
+                    Text("row", Modifier.testTag("row").clickable { taps++ })
+                }
+            }
+        }
+        rule.fingerTap("row")
+        rule.runOnIdle { assertEquals(1, taps) }
     }
 }
