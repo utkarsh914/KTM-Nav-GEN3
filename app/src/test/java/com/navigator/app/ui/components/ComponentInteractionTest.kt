@@ -179,6 +179,8 @@ class ComponentInteractionTest {
         assertEquals(0.5f, half.alpha, 0.001f)
         assertEquals("the dim goes with the card", half.alpha, half.scrim, 0f)
         assertEquals("fully gone when the swipe commits", 0f, dialogBackFeedback(1f, reduced = false, riding = false).alpha, 0f)
+        assertEquals("riding only dims to 60 % for most of the swipe", 0.6f, dialogBackFeedback(0.7f, false, riding = true).alpha, 0.001f)
+        assertEquals("and is gone when the swipe commits", 0f, dialogBackFeedback(1f, false, riding = true).alpha, 0.001f)
         assertTrue("riding shrinks less", dialogBackFeedback(1f, false, riding = true).scale > dialogBackFeedback(1f, false, riding = false).scale)
         assertEquals("reduced motion previews nothing", DialogBackFeedback(1f, 1f, 1f), dialogBackFeedback(1f, reduced = true, riding = false))
     }

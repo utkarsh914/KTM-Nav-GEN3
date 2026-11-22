@@ -62,7 +62,7 @@ fun Modifier.tripStripBounds(): Modifier {
         this@tripStripBounds.sharedBounds(
             sharedContentState = rememberSharedContentState(key = TRIP_STRIP_KEY),
             animatedVisibilityScope = shared.visibility,
-            enter = fadeIn(motion.ridingFadeOut()),
+            enter = fadeIn(motion.ridingFade()),
             exit = fadeOut(motion.ridingFadeOut()),
             // On the riding stage: at most 250 ms, no overshoot.
             boundsTransform = { _, _ -> motion.ridingSpatial<Rect>() },

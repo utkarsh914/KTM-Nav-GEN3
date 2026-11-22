@@ -65,9 +65,9 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
 - Riding tier (`RidingTheme`): tweens only, never a spring, at most 250 ms, nothing overshoots, numbers never animate.
   Arriving and resizing use One UI's basic curve (0.22, 0.25, 0, 1): `ridingSpatial(delayMs)`, `ridingQuick()` (160 ms,
   the next-maneuver swap); leaving is quicker and eases in: `ridingExit()` (200 ms); fades are `ridingFade(delayMs)` and
-  `ridingFadeOut()` (100 ms), `ridingSwapOut()`, `ridingColor()` (100 ms). The entrance staggers are
+  `ridingFadeOut()` (100 ms) are linear (fades only), as are `ridingSwapOut()` (60 ms) and `ridingColor()` (100 ms). The entrance staggers are
   `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`. Material components on riding surfaces use
-  `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `check-ui-rules.sh` fails if the
+  `KtmMotionScheme(calm = true)`: critically damped springs whose stiffness is chosen so each settles within 250 ms (a test checks it); sheets, the scrim and the snackbar are Material's own motion fed by that scheme. `check-ui-rules.sh` fails if the
   riding screens or the landscape panel ask for a fluid token. `staggeredFade(index)` is the search results' 20 ms stagger.
 - Overlays and swaps: a dialog (`KtmDialog`) fades and settles in from 92 %; a back swipe previews the card shrinking to
   90 % (riding: 95 %) and fading with its dim, a committed swipe finishes the fade before the window goes (a dialog window

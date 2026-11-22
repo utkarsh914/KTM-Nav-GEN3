@@ -168,6 +168,8 @@ fun KtmDialog(
 
 private const val BIG_TEXT_SCALE = 1.3f
 private const val RIDING_BACK_SHRINK = 0.05f
+private const val RIDING_BACK_DIM = 0.4f
+private const val RIDING_BACK_HOLD = 0.7f
 
 /** What a dialog looks like [progress] of the way through a back swipe: the card shrinks and fades, and the dim goes with it. */
 internal data class DialogBackFeedback(val scale: Float, val alpha: Float, val scrim: Float)
@@ -175,9 +177,13 @@ internal data class DialogBackFeedback(val scale: Float, val alpha: Float, val s
 internal fun dialogBackFeedback(progress: Float, reduced: Boolean, riding: Boolean): DialogBackFeedback {
     if (reduced) return DialogBackFeedback(1f, 1f, 1f)
     val p = progress.coerceIn(0f, 1f)
-    // Riding is milder: glanceable, and nothing the rider didn't ask for.
-    val shrink = if (riding) RIDING_BACK_SHRINK else 1f - KtmMotionSpecs.BACK_SCALE
-    return DialogBackFeedback(1f - shrink * p, 1f - p, 1f - p)
+    if (riding) {
+        // Milder: an accidental edge swipe with a gloved thumb on a vibrating mount must not make the dialog vanish. It
+        // dims to 60 % over most of the swipe and only a swipe that is nearly through fades it out.
+        val fade = if (p < RIDING_BACK_HOLD) 1f - RIDING_BACK_DIM * (p / RIDING_BACK_HOLD) else (1f - RIDING_BACK_DIM) * (1f - p) / (1f - RIDING_BACK_HOLD)
+        return DialogBackFeedback(1f - RIDING_BACK_SHRINK * p, fade, fade)
+    }
+    return DialogBackFeedback(1f - (1f - KtmMotionSpecs.BACK_SCALE) * p, 1f - p, 1f - p)
 }
 
 @Composable

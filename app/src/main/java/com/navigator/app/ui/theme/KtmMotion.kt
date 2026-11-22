@@ -11,6 +11,7 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.DurationBasedAnimationSpec
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -87,11 +88,11 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         if (reduced) snap() else tween(RIDING_EXIT_MS, easing = FastOutLinearInEasing)
 
     /** A riding fade out, 100 ms; the matching fade in is [ridingFade]. Riding never uses a spring. */
-    fun <T> ridingFadeOut(): FiniteAnimationSpec<T> = tween(if (reduced) EFFECTS_FAST_MS / 2 else EFFECTS_FAST_MS)
+    fun <T> ridingFadeOut(): FiniteAnimationSpec<T> = tween(if (reduced) EFFECTS_FAST_MS / 2 else EFFECTS_FAST_MS, easing = LinearEasing)
 
     /** A riding fade that starts [delayMs] late (the staggered entrance); reduced motion drops the delay. */
     fun <T> ridingFade(delayMs: Int = 0): FiniteAnimationSpec<T> =
-        if (reduced) tween(EFFECTS_FAST_MS) else tween(EFFECTS_DEFAULT_MS, delayMillis = delayMs)
+        if (reduced) tween(EFFECTS_FAST_MS) else tween(EFFECTS_DEFAULT_MS, delayMillis = delayMs, easing = LinearEasing)
 
     /** The old trip-sheet content leaves this fast, before the new one fades in ([RIDING_SWAP_IN_DELAY_MS]). */
     fun <T> ridingSwapOut(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(RIDING_SWAP_OUT_MS)
@@ -100,7 +101,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     fun <T> ridingQuick(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(MANEUVER_SWAP_MS, easing = RIDING_ENTER_EASING)
 
     /** The overspeed colour change: a plain 100 ms fade, never a flash. */
-    fun <T> ridingColor(): FiniteAnimationSpec<T> = tween(EFFECTS_FAST_MS)
+    fun <T> ridingColor(): FiniteAnimationSpec<T> = tween(EFFECTS_FAST_MS, easing = LinearEasing)
 
     val cameraRecenterMs: Int get() = if (reduced) 0 else CAMERA_RECENTER_MS
     val cameraFitMs: Int get() = if (reduced) 0 else CAMERA_FIT_MS

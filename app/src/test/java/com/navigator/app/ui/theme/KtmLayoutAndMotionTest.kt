@@ -1,6 +1,7 @@
 package com.navigator.app.ui.theme
 
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
@@ -105,6 +106,10 @@ class KtmLayoutAndMotionTest {
         assertEquals(FastOutLinearInEasing, exit.easing)
         assertTrue("a reduced exit is a cut", KtmMotionSpecs(reduced = true).ridingExit<Float>() is SnapSpec)
         assertEquals(KtmMotionSpecs.EFFECTS_FAST_MS, (m.ridingFadeOut<Float>() as TweenSpec).durationMillis)
+        assertEquals("riding fades are linear", LinearEasing, (m.ridingFade<Float>() as TweenSpec).easing)
+        val reduced = KtmMotionSpecs(reduced = true)
+        assertEquals(KtmMotionSpecs.EFFECTS_FAST_MS, (reduced.ridingFade<Float>() as TweenSpec).durationMillis)
+        assertEquals(KtmMotionSpecs.EFFECTS_FAST_MS / 2, (reduced.ridingFadeOut<Float>() as TweenSpec).durationMillis)
     }
 
     @Test fun theMaterialSchemeUsesTheSameTokensAndTheCalmOneNeverBounces() {
