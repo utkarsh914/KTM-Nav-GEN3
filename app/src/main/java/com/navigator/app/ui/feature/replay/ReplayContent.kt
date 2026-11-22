@@ -77,6 +77,7 @@ import com.navigator.app.ui.components.StatTile
 import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.map.MapInsets
+import com.navigator.app.ui.map.rememberOffNorth
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -116,7 +117,7 @@ class ReplayActions(
 fun ReplayContent(
     ui: ReplayUi,
     position: State<Int>,
-    bearing: Float,
+    bearing: () -> Float,
     avgMode: AvgSpeedMode,
     actions: ReplayActions,
     onInsets: (MapInsets) -> Unit,
@@ -155,7 +156,7 @@ private fun NoTrack(hasRide: Boolean, onBack: () -> Unit, modifier: Modifier) {
 private fun Portrait(
     ui: ReplayUi.Ready,
     position: State<Int>,
-    bearing: Float,
+    bearing: () -> Float,
     avgMode: AvgSpeedMode,
     actions: ReplayActions,
     onInsets: (MapInsets) -> Unit,
@@ -265,7 +266,7 @@ private fun PointerInputScope.dragThresholdPx(): Float = viewConfiguration.touch
 private fun Landscape(
     ui: ReplayUi.Ready,
     position: State<Int>,
-    bearing: Float,
+    bearing: () -> Float,
     avgMode: AvgSpeedMode,
     actions: ReplayActions,
     onInsets: (MapInsets) -> Unit,
@@ -297,10 +298,11 @@ private fun Landscape(
 // ---- Pieces ---------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun MapButtons(bearing: Float, actions: ReplayActions, modifier: Modifier) {
+private fun MapButtons(bearing: () -> Float, actions: ReplayActions, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm), horizontalAlignment = Alignment.End) {
-        if (abs(bearing) > NORTH_EPSILON) {
-            MapControlButton(KtmIcons.CompassNorth, stringResource(R.string.replay_north), actions.onResetNorth, rotationDegrees = { -bearing }, tinted = false)
+        val offNorth by rememberOffNorth(bearing)
+        if (offNorth) {
+            MapControlButton(KtmIcons.CompassNorth, stringResource(R.string.replay_north), actions.onResetNorth, rotationDegrees = { -bearing() }, tinted = false)
         }
         MapControlButton(KtmIcons.Recenter, stringResource(R.string.replay_recenter), actions.onRecenter)
     }
@@ -464,4 +466,3 @@ private fun Smoothing(meters: Int, onStep: (Int) -> Unit) {
     }
 }
 
-private const val NORTH_EPSILON = 0.5f

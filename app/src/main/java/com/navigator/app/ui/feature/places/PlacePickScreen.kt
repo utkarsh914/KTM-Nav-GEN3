@@ -36,7 +36,6 @@ import com.navigator.app.ui.feature.navigate.search.PlaceSearchRoute
 import com.navigator.app.ui.feature.navigate.search.SearchMode
 import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.map.LocationMarkerStyle
-import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapSurface
 import com.navigator.app.ui.map.RetainedNavigationView
@@ -117,7 +116,7 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
         if (mapping) {
             val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(settings.locationMarkerStyle))
             val mapReady by map.ready.collectAsState()
-            MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
+            MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
             LaunchedEffect(mapReady) {
                 if (mapReady) lastKnownLocation(context)?.let { map.recenter(MapPoint(it.first, it.second)) }
             }

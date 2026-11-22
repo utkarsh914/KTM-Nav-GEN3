@@ -247,7 +247,8 @@ fun NavigateHost(
     val ridingDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = true, night = night)
     val mapDark = resolveSurfaceDark(appDark, settingsSnap.ridingScreens, ridingNow = stage == NavStage.NAVIGATING, night = night)
     // What the riding surfaces cover of the map (top, bottom in px), and whether the map button reads Recenter.
-    var ridingInsets by remember { mutableStateOf(MapInsets()) }
+    // Not read in composition: the panels report their size every frame while they animate.
+    val ridingInsets = remember { mutableStateOf(MapInsets()) }
     val riding = remember { RidingOverlayState() }
     var mapButton by riding::mapButton
     var showTripSheet by riding::showTripSheet
@@ -308,7 +309,7 @@ fun NavigateHost(
     var stopCandidate by rememberSaveable(stateSaver = SavedPlaceSaver) { mutableStateOf<SavedPlace?>(null) }
     var pickingStop by rememberSaveable { mutableStateOf(false) }
     // How much of the map the plan sheet covers (left, bottom in px), so the camera frames the route in the rest.
-    var planInsets by remember { mutableStateOf(0 to 0) }
+    val planInsets = remember { mutableStateOf(0 to 0) }
     // Bumped when the sheet settles at a new height so the camera frames the route again (not for the proposed-stop sheet).
     var fitKey by remember { mutableIntStateOf(0) }
     val lastFit = remember { arrayOfNulls<Any>(1) }
@@ -409,10 +410,16 @@ fun NavigateHost(
     // A later resize of the card (the rider panned the map meanwhile) must not pull the camera back.
     var fitPending by remember { mutableStateOf(false) }
     LaunchedEffect(stage, selected, routePreview.routes, routePreview.selected, stops) { fitPending = true }
-    LaunchedEffect(planInsets, stage, fitPending, stopCandidate, pickingStop) {
+    LaunchedEffect(stage, fitPending, stopCandidate, pickingStop) {
         val framed = (stage == NavStage.PREVIEW && stopCandidate == null && !pickingStop) || stage == NavStage.CONFIRM
         if (framed && fitPending) {
-            delay(250)
+            // The card measures after it arrives and may still be growing: frame once its size has held for a moment.
+            var size = planInsets.value
+            while (true) {
+                delay(250)
+                if (planInsets.value == size) break
+                size = planInsets.value
+            }
             fitPending = false
             fitKey++
         }
@@ -429,7 +436,7 @@ fun NavigateHost(
             NavStage.CONFIRM, NavStage.PREVIEW -> {
                 // Framed in what the sheet leaves open (PL2); picking a stop uses the whole map (the pin is at its middle).
                 // Picking a stop: the pick screen pads the map itself (the pin is at the middle of what is open).
-                if (!pickingStop) map.setPadding(planInsets.first, 0, 0, planInsets.second)
+                if (!pickingStop) map.setPadding(planInsets.value.first, 0, 0, planInsets.value.second)
             }
             else -> {}
         }
@@ -819,11 +826,11 @@ fun NavigateHost(
     fun planStage() = PlanStage(
         selected = selected, savedPlaces = savedPlaces, origin = origin, routePreview = routePreview,
         pickingStop = pickingStop, stopCandidate = stopCandidate,
-        showResumePill = navState.sessionState.isActiveNav() && leftNavManually, leftInsetPx = planInsets.first,
+        showResumePill = navState.sessionState.isActiveNav() && leftNavManually, leftInsetPx = { planInsets.value.first },
         mapReadyForControls = available && navReady, mapBearing = mapBearing, map = map, feedback = feedback,
         places = places, scope = scope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
-        onInsets = { left, bottom -> planInsets = left to bottom },
+        onInsets = { left, bottom -> planInsets.value = left to bottom },
         onAskReplace = { replaceRequest = it }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
         onPickingStop = { pickingStop = it }, onStopCandidate = { stopCandidate = it },
         onSelectRoute = routeVm::select, onAddStop = { if (stage == NavStage.PREVIEW) openSearchForStop() }, onStart = { if (stage == NavStage.PREVIEW) startTo(it) },
@@ -838,7 +845,7 @@ fun NavigateHost(
                 retained = retainedNav,
                 controller = map,
                 navUiEnabled = stage == NavStage.NAVIGATING,
-                guidanceInsets = ridingInsets,
+                guidanceInsets = { ridingInsets.value },
                 dark = mapDark,
             )
             // Not ready: the Navigate screen says why and offers Try again; behind it is plain ground.
@@ -923,7 +930,7 @@ fun NavigateHost(
                     rerouteOfflinePaused = rerouteOfflinePaused, bikeStatus = bikeStatus, trip = trip,
                     settings = container.settings, map = map, feedback = feedback,
                     actions = NavigatingStageActions(
-                        onRidingInsets = { ridingInsets = it }, onApplyMapButton = ::applyMapButton,
+                        onRidingInsets = { ridingInsets.value = it }, onApplyMapButton = ::applyMapButton,
                         onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = { stage = NavStage.PREVIEW },
                         onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = { openTripStopSearch(it) }, onOpenConnect = onOpenConnect,
                     ),

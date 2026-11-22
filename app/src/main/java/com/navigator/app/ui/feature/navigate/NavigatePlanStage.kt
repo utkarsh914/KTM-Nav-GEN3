@@ -67,7 +67,7 @@ internal class PlanStage(
     /** A trip still runs while another is planned: one tap back to it. */
     val showResumePill: Boolean,
     /** How much of the map's left side the landscape panel covers (px); 0 in portrait. */
-    val leftInsetPx: Int,
+    val leftInsetPx: () -> Int,
     /** The map is up (so its compass can show). */
     val mapReadyForControls: Boolean,
     val mapBearing: () -> Float,
@@ -236,7 +236,7 @@ private fun BoxScope.PlanTopRow(plan: PlanStage, showBack: Boolean) {
         // After the landscape panel; the cutout side is already inside the panel's footprint, and edgePadding adds it once.
         val density = LocalDensity.current
         val cutoutLeft = with(density) { WindowInsets.systemBars.union(WindowInsets.displayCutout).getLeft(density, LayoutDirection.Ltr).toDp() }
-        val afterPanel = if (portrait) 0.dp else (with(density) { plan.leftInsetPx.toDp() } - cutoutLeft).coerceAtLeast(0.dp)
+        val afterPanel = if (portrait) 0.dp else (with(density) { plan.leftInsetPx().toDp() } - cutoutLeft).coerceAtLeast(0.dp)
         Row(
             Modifier.align(Alignment.TopStart).mapCornerPadding().padding(start = afterPanel, end = if (compass) KtmLayout.targetPrimary + KtmSpacing.md else 0.dp),
             horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),

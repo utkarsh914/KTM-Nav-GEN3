@@ -61,7 +61,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
     BackHandler(enabled = applying) {}
 
     Box(modifier.fillMaxSize()) {
-        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
+        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
 
         LaunchedEffect(mapReady) {
             if (!mapReady) return@LaunchedEffect

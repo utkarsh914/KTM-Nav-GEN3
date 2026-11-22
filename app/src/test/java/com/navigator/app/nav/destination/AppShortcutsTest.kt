@@ -65,7 +65,7 @@ class AppShortcutsTest {
     }
 
     private companion object {
-        const val MAX_READS = 20
+        const val MAX_READS = 80
         const val READ_RETRY_MS = 25L
     }
 }

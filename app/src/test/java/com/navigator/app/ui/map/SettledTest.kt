@@ -37,4 +37,16 @@ class SettledTest {
         src.value = 8; advanceTimeBy(10); src.value = 7; advanceTimeBy(200)
         assertEquals(listOf(7), got)
     }
+
+    @Test fun aLaterValueWaitsForTheSettleTime() = runTest {
+        val src = MutableStateFlow(1)
+        val got = mutableListOf<Int>()
+        backgroundScope.launch { src.settled(60).toList(got) }
+        runCurrent()
+        src.value = 2
+        advanceTimeBy(59); runCurrent()
+        assertEquals(listOf(1), got)
+        advanceTimeBy(2); runCurrent()
+        assertEquals(listOf(1, 2), got)
+    }
 }

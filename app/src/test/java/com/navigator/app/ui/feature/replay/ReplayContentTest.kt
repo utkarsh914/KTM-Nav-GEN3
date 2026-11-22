@@ -57,7 +57,7 @@ class ReplayContentTest {
     )
 
     private fun show(ui: ReplayUi, bearing: Float = 0f) = rule.setContent {
-        KtmTheme(darkTheme = false) { ReplayContent(ui, position.asState(), bearing, AvgSpeedMode.MOVING, actions(), {}) }
+        KtmTheme(darkTheme = false) { ReplayContent(ui, position.asState(), { bearing }, AvgSpeedMode.MOVING, actions(), {}) }
     }
 
     private fun MutableIntState.asState(): State<Int> = this
@@ -212,7 +212,7 @@ class ReplayLandscapeTest {
         val position = mutableIntStateOf(0)
         rule.setContent {
             KtmTheme(darkTheme = false) {
-                ReplayContent(ui, position, 0f, AvgSpeedMode.MOVING, ReplayActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), {})
+                ReplayContent(ui, position, { 0f }, AvgSpeedMode.MOVING, ReplayActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), {})
             }
         }
         rule.onNodeWithContentDescription("Play").assertIsDisplayed()

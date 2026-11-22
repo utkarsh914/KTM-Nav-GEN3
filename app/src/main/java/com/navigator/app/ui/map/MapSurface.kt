@@ -9,8 +9,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,7 +39,7 @@ fun MapSurface(
     controller: NavSdkMapController,
     navUiEnabled: Boolean,
     /** What the riding screen covers while guiding: the camera and Google's logo stay clear of it. */
-    guidanceInsets: MapInsets,
+    guidanceInsets: () -> MapInsets = NO_INSETS,
     dark: Boolean,
 ) {
     val context = LocalContext.current
@@ -84,13 +86,20 @@ fun MapSurface(
     }
     // Padding on its own: the surfaces change height (lanes appear, text wraps) without the engine being touched again.
     // The panels report their size every frame while they animate: the map follows once they settle.
+    // Read only in this flow, never in composition: the host and the screen do not recompose per frame.
     val insets by rememberUpdatedState(guidanceInsets)
+    var applied by remember { mutableStateOf<MapInsets?>(null) }
     LaunchedEffect(navUiEnabled, ready) {
         if (!ready) return@LaunchedEffect
-        snapshotFlow { if (navUiEnabled) insets else MapInsets() }
+        snapshotFlow { if (navUiEnabled) insets() else MapInsets() }
             .settled(KtmMotionSpecs.INSETS_SETTLE_MS)
-            .collect { controller.setPadding(it.left, it.top, it.right, it.bottom) }
+            .collect {
+                if (it == applied) return@collect
+                applied = it
+                controller.setPadding(it.left, it.top, it.right, it.bottom)
+            }
     }
     DisposableEffect(controller) { onDispose { controller.detach() } }
 }
 
+private val NO_INSETS: () -> MapInsets = { MapInsets() }

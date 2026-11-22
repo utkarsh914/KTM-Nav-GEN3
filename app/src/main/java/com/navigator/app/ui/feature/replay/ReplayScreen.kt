@@ -77,7 +77,8 @@ fun ReplayScreen(
     val position = vm.position.collectAsState()
     val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(container.settings.legacy.locationMarkerStyle))
     val mapReady by map.ready.collectAsState()
-    val bearing by map.bearing.collectAsState()
+    val bearingState = map.bearing.collectAsState()
+    val bearing: () -> Float = remember(bearingState) { { bearingState.value } }
     var insets by remember { mutableStateOf(MapInsets()) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var gone by remember { mutableStateOf(false) }
@@ -111,7 +112,7 @@ fun ReplayScreen(
     SnackbarClearance(bottom = with(LocalDensity.current) { insets.bottom.toDp() })
 
     Box(modifier.fillMaxSize()) {
-        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, guidanceInsets = MapInsets(), dark = KtmTheme.colors.isDark)
+        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
 
         // MO8: the card's thumbnail covers the map until the map has framed the track (or a few seconds have gone).
         var mapFramed by remember { mutableStateOf(false) }
