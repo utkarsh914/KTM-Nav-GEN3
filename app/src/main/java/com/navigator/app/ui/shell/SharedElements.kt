@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.ContentScale
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmTheme
 
@@ -67,5 +69,32 @@ fun Modifier.tripStripBounds(): Modifier {
         )
     }
 }
+
+/**
+ * M4: the Where to? field and the search panel are one container: the field grows into the panel and the panel shrinks
+ * back into the field. Both sides scale their content to the moving bounds (the panel is laid out once, at full size,
+ * so its list is never remeasured per frame), clipped to the sheet shape. A no-op without [LocalTripShared] and with
+ * "Remove animations"; if the field is not on screen (a search from a shortcut) the panel just fades.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.searchContainer(): Modifier {
+    val shared = LocalTripShared.current ?: return this
+    val motion = KtmTheme.motion
+    if (motion.reduced) return this
+    return with(shared.scope) {
+        this@searchContainer.sharedBounds(
+            sharedContentState = rememberSharedContentState(key = SEARCH_KEY),
+            animatedVisibilityScope = shared.visibility,
+            enter = fadeIn(motion.effectsDefault()),
+            exit = fadeOut(motion.effectsFast()),
+            boundsTransform = { _, _ -> motion.spatialDefault<Rect>() },
+            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.FillWidth, Alignment.TopCenter),
+            clipInOverlayDuringTransition = OverlayClip(KtmShapes.Sheet),
+        )
+    }
+}
+
+private const val SEARCH_KEY = "search-container"
 
 private const val TRIP_STRIP_KEY = "trip-strip"

@@ -158,9 +158,9 @@ private fun HintRow(onBack: () -> Unit, hint: String, pill: Boolean) {
 @Composable
 private fun Pin(state: PickOnMapState, stopNumber: Int?, modifier: Modifier) {
     val motion = KtmTheme.motion
-    val pinLift by animateDpAsState(if (state.resolving) PIN_LIFT else 0.dp, motion.spatialFast(), label = "pinLift")
+    val pinLift by animateDpAsState(if (state.resolving) PIN_LIFT else 0.dp, motion.playful(), label = "pinLift")
     val drop = remember { Animatable(if (motion.reduced) 0f else 1f) }
-    LaunchedEffect(Unit) { drop.animateTo(0f, motion.spatialDefault()) }
+    LaunchedEffect(Unit) { drop.animateTo(0f, motion.playful()) }
     Icon(
         if (stopNumber != null) KtmIcons.PinPlus else KtmIcons.Pin, null, tint = KtmTheme.accent.fill,
         modifier = modifier.size(KtmLayout.mapPin).offset { IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },

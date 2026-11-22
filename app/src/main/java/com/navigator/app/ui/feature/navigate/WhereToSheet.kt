@@ -50,6 +50,7 @@ import com.navigator.app.ui.components.ListRow
 import com.navigator.app.ui.components.RowValue
 import com.navigator.app.ui.components.SectionHeader
 import com.navigator.app.ui.feature.navigate.search.labelRes
+import com.navigator.app.ui.shell.searchContainer
 import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -122,7 +123,7 @@ fun WhereToSheetContent(
             Spacer(Modifier.height(KtmSpacing.md))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
-            SearchField(onClick = actions.onSearch, modifier = Modifier.weight(1f))
+            SearchField(onClick = actions.onSearch, modifier = Modifier.weight(1f).searchContainer())
             if (voiceAvailable) {
                 KtmIconButton(
                     KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice,

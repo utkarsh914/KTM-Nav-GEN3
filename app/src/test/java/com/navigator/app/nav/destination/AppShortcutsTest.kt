@@ -25,8 +25,18 @@ class AppShortcutsTest {
         ctx.getSystemService(ShortcutManager::class.java).removeAllDynamicShortcuts()
     }
 
-    private fun ids(): Set<String> =
-        ctx.getSystemService(ShortcutManager::class.java).dynamicShortcuts.map { it.id }.toSet()
+    /**
+     * androidx's ShortcutManagerCompat also touches the launcher state from a background thread, and Robolectric's
+     * shadow keeps it in a plain HashMap: a read that overlaps a write throws (an NPE inside ImmutableList.copyOf), so
+     * read again a moment later.
+     */
+    private fun ids(): Set<String> {
+        repeat(MAX_READS) {
+            try { return ctx.getSystemService(ShortcutManager::class.java).dynamicShortcuts.map { it.id }.toSet() }
+            catch (racing: NullPointerException) { Thread.sleep(READ_RETRY_MS) }
+        }
+        return ctx.getSystemService(ShortcutManager::class.java).dynamicShortcuts.map { it.id }.toSet()
+    }
 
     private fun fav(slot: FavoriteSlot) = FavoritePlace(SavedPlace(12.9, 77.6, slot.name), slot)
 
@@ -48,5 +58,10 @@ class AppShortcutsTest {
     @Test fun anOtherFavouriteDoesNotMakeAShortcut() {
         AppShortcuts.sync(ctx, listOf(fav(FavoriteSlot.OTHER)))
         assertEquals(setOf("record_ride", "where_to"), ids())
+    }
+
+    private companion object {
+        const val MAX_READS = 20
+        const val READ_RETRY_MS = 25L
     }
 }

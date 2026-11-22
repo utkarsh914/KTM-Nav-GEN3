@@ -60,6 +60,7 @@ import com.navigator.app.ui.feature.navigate.StraightLine
 import com.navigator.app.ui.feature.navigate.detailText
 import com.navigator.app.ui.feature.navigate.titleText
 import com.navigator.app.ui.shell.LocalOpenPlaces
+import com.navigator.app.ui.shell.searchContainer
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -124,7 +125,7 @@ fun PlaceSearchScreen(
 ) {
     val c = KtmTheme.colors
     Column(
-        modifier.fillMaxSize().background(c.bg).consumeMapTouches().windowInsetsPadding(WindowInsets.safeDrawing),
+        modifier.searchContainer().fillMaxSize().background(c.bg).consumeMapTouches().windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         Row(Modifier.padding(horizontal = KtmSpacing.lg), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)

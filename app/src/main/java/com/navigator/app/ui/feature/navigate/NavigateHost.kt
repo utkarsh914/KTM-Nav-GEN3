@@ -114,12 +114,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Transition between [NavStage] chrome. The full-screen SEARCH panel slides up
- *  from / down to the bottom; every other stage change is a gentle fade + small
- *  vertical drift so cards/overlays never hard-cut. */
+/** Transition between [NavStage] chrome. Between BROWSE and SEARCH the Where to? field and the panel are one
+ *  container ([searchContainer]), so the stage only fades around it; the panel from or to any other stage slides
+ *  up from / down to the bottom; every other stage change is a gentle fade + small vertical drift so
+ *  cards/overlays never hard-cut. */
 private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
     // The riding screen has its own choreography (MO1, MO6): around it the stage only fades, with no drift and no spring.
     initial == NavStage.NAVIGATING || target == NavStage.NAVIGATING ->
+        fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
+    // The container does the moving (with "Remove animations" there is no container: a plain fade, as the slide has no offset).
+    (initial == NavStage.BROWSE && target == NavStage.SEARCH) || (initial == NavStage.SEARCH && target == NavStage.BROWSE) ->
         fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
     target == NavStage.SEARCH ->
         (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())

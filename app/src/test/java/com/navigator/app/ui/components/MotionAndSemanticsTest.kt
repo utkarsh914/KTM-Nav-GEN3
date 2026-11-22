@@ -30,8 +30,10 @@ import androidx.compose.ui.test.performSemanticsAction
 import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.ui.feature.replay.MapCover
 import com.navigator.app.ui.shell.LocalSharedElements
+import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.rideContainer
+import com.navigator.app.ui.shell.searchContainer
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberReducedMotion
@@ -111,6 +113,33 @@ class MotionAndSemanticsTest {
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(1_000)
         rule.onNodeWithText("page").assertIsDisplayed()
+    }
+
+    @Test fun theSearchFieldGrowsIntoThePanelAndBackWithoutLosingEitherSide() {
+        var panel by mutableStateOf(false)
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = false) {
+                SharedTransitionLayout {
+                    AnimatedContent(panel, label = "stage") { open ->
+                        CompositionLocalProvider(LocalTripShared provides SharedElements(this@SharedTransitionLayout, this)) {
+                            if (open) Box(Modifier.searchContainer()) { Text("panel") } else Box(Modifier.searchContainer()) { Text("field") }
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("field").assertIsDisplayed()
+        panel = true
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("panel").assertIsDisplayed()
+        panel = false
+        rule.waitForIdle(); rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("field").assertIsDisplayed()
+    }
+
+    @Test fun theSearchContainerIsJustAModifierWithoutASharedScope() {
+        rule.setContent { Box(Modifier.searchContainer()) { Text("field") } }
+        rule.onNodeWithText("field").assertIsDisplayed()
     }
 
     @Test fun theMapCoverShowsTheRouteUntilTheMapIsFramed() {
