@@ -42,6 +42,7 @@ import com.navigator.app.R
 import com.navigator.app.ui.components.KtmScrim
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.edgePadding
@@ -105,7 +106,7 @@ fun RidingScreen(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().then(cardExit),
-            enter = fadeIn(motion.ridingFade(CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
+            enter = fadeIn(motion.ridingFade(KtmMotionSpecs.RIDING_CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(KtmMotionSpecs.RIDING_CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
         ) {
             // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
             val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.effectsDefault(), label = "cardDim")
@@ -117,7 +118,7 @@ fun RidingScreen(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            enter = fadeIn(motion.ridingFade(BAR_DELAY_MS)) + slideInVertically(motion.ridingSpatial(BAR_DELAY_MS)) { if (motion.reduced) 0 else it },
+            enter = fadeIn(motion.ridingFade(KtmMotionSpecs.RIDING_BAR_DELAY_MS)) + slideInVertically(motion.ridingSpatial(KtmMotionSpecs.RIDING_BAR_DELAY_MS)) { if (motion.reduced) 0 else it },
         ) {
           Column(Modifier.fillMaxWidth().onSizeChanged { if (!sheetOpen) { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) } }) {
             // The map control gives way to the sheet: it can't be tapped, or focused, behind it.
@@ -135,8 +136,6 @@ fun RidingScreen(
 }
 
 /** MO1: the card drops in after the sheet has gone, and the bar rises a beat after it. */
-private const val CARD_DELAY_MS = 100
-private const val BAR_DELAY_MS = 150
 
 /** The open trip sheet never gets smaller than this, however tall the card above it is. */
 private val SHEET_MIN = KtmLayout.sheetMinHeight

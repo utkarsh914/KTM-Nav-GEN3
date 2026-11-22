@@ -93,6 +93,7 @@ import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -284,9 +285,9 @@ private fun Overlays(
             val motionSpecs = KtmTheme.motion
             AnimatedVisibility(
                 visible = state.greeting != null,
-                enter = fadeIn(motionSpecs.effectsDefault()) + scaleIn(motionSpecs.spatialDefault(), initialScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                enter = fadeIn(motionSpecs.effectsDefault()) + scaleIn(motionSpecs.spatialDefault(), initialScale = KtmMotionSpecs.GREETING_SCALE, transformOrigin = TransformOrigin(0.1f, 0f)) +
                     slideInVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
-                exit = fadeOut(motionSpecs.effectsDefault()) + scaleOut(motionSpecs.spatialDefault(), targetScale = GREETING_FROM, transformOrigin = TransformOrigin(0.1f, 0f)) +
+                exit = fadeOut(motionSpecs.effectsDefault()) + scaleOut(motionSpecs.spatialDefault(), targetScale = KtmMotionSpecs.GREETING_SCALE, transformOrigin = TransformOrigin(0.1f, 0f)) +
                     slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
             ) {
                 val hello = state.greeting
@@ -434,4 +435,3 @@ private fun ConnectGreeting(greeting: GreetingUi, modifier: Modifier = Modifier)
 }
 
 private const val PILL_PULSE = 1.08f
-private const val GREETING_FROM = 0.4f

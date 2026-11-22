@@ -10,7 +10,6 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -58,6 +57,7 @@ import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.tripStripBounds
 import com.navigator.app.ui.theme.KtmIcons
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -156,8 +156,8 @@ private fun TripBarSheetBody(
             }.sharedBounds(
                 sharedContentState = rememberSharedContentState(key = CONTAINER_KEY),
                 animatedVisibilityScope = this,
-                enter = fadeIn(motion.ridingFade(CONTENT_IN_DELAY_MS)),
-                exit = fadeOut(tween(CONTENT_OUT_MS)),
+                enter = fadeIn(motion.ridingFade(KtmMotionSpecs.RIDING_SWAP_IN_DELAY_MS)),
+                exit = fadeOut(motion.ridingSwapOut()),
                 boundsTransform = { _, _ -> motion.ridingSpatial<Rect>() },
                 resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                 clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
@@ -226,8 +226,6 @@ private fun SheetPane(
 private const val CONTAINER_KEY = "trip-container"
 
 /** MO2: the bar's content is gone within 60 ms; the sheet's content arrives as the container settles. */
-private const val CONTENT_OUT_MS = 60
-private const val CONTENT_IN_DELAY_MS = 50
 
 /** How far the sheet is dragged before letting go closes it. */
 private val DISMISS_DRAG = KtmSpacing.xxxl + KtmSpacing.xxxl

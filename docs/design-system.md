@@ -52,13 +52,23 @@ Lists and sheets: `ListDivider(withIcon)` starts at the text (past the leading i
 A control in a corner of the map (Back, the compass, the pick hint) uses `mapCornerPadding()`, so they share one margin. A screen that draws a sheet, a side panel or a button over the foot of the content says so with `SnackbarClearance(bottom, start)` (the full size of what it draws; the shell takes off the inset it already applies, and the largest of several wins), so a snackbar never covers a primary action. `PickOnMapScreen` is the same in portrait (sheet) and landscape (the shared panel, `onFootprint` tells the host to pad the map so the pin stays in the open part), and takes `guidance` to keep the next turn in view while a trip runs.
 
 ## Motion (`ui/theme/KtmMotion.kt`)
-- Every animation takes its spec from `KtmTheme.motion` (`KtmMotionSpecs`):
-  `spatialFast/Default/Slow` (springs), `effectsFast/Default` (fades),
-  `ridingSpatial(delayMs)`, `ridingQuick()` (160 ms), `ridingFade(delayMs)`,
-  `ridingColor()` (100 ms). Riding surfaces: at most 250 ms, no overshoot,
-  numbers never animate.
-- **Remove animations** (`rememberReducedMotion`, read live): spatial moves become
-  short crossfades with no offset, camera moves jump. Code that slides must zero
+- One source of physics. Every animation takes its spec from `KtmTheme.motion` (`KtmMotionSpecs`); feature code never
+  writes a numeric `tween(`/`spring(` (`check-ui-rules.sh`). Material components get the same numbers through
+  `KtmMotionScheme` (`MaterialExpressiveTheme(motionScheme = …)`), so a sheet, a switch or the nav-bar indicator moves
+  like the rest of the app. Off the bike everything is a spring, so an interrupted move (a second tap, a back swipe)
+  carries on from where it is instead of restarting.
+- Tokens (fluid tier): `page()` (critically damped, stiffness 400, about 250 ms: pages, tabs, stage sheets);
+  `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
+  list placement; a hair of overshoot at most); `playful()` (damping 0.7, stiffness 800: press release, pin drop,
+  switch only); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
+  Pages never visibly overshoot. Exits use the fast tokens. Behind a pushed page or a dialog we dim, never blur, and a
+  page that hosts the Nav SDK map is never scaled, clipped or blurred.
+- Riding tier (`RidingTheme`, `KtmMotionScheme(calm = true)`): plain tweens of at most 250 ms, nothing overshoots,
+  numbers never animate. `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
+  `ridingSwapOut()`, `ridingColor()` (100 ms); the entrance staggers are `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`.
+  `staggeredFade(index)` is the search results' 20 ms stagger.
+- **Remove animations** (`rememberReducedMotion`, read live): every fluid token becomes a
+  short fade with no offset, camera moves jump. Code that slides must zero
   its offset when `motion.reduced`. The system setting itself is the animator scale
   being 0, and Compose multiplies every duration by it, so in practice those
   crossfades are cuts (decision D22: accepted, nothing is animated while it is off).

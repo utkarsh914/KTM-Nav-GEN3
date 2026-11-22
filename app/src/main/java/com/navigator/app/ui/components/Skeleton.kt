@@ -4,7 +4,6 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +35,7 @@ fun Skeleton(modifier: Modifier = Modifier, shape: Shape = KtmShapes.Badge) {
     val reduced = KtmTheme.motion.reduced
     val pulse = if (reduced) null else {
         rememberInfiniteTransition(label = "skeleton")
-            .animateFloat(0.5f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "alpha")
+            .animateFloat(0.5f, 1f, infiniteRepeatable(KtmTheme.motion.skeletonPulse(), RepeatMode.Reverse), label = "alpha")
     }
     // The alpha is read while drawing, so the pulse never recomposes the list.
     Box(

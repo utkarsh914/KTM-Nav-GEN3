@@ -1,7 +1,6 @@
 package com.navigator.app.ui.feature.navigate.search
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -351,13 +350,10 @@ private fun MatchRow(s: PlaceSuggestion, query: String, onClick: () -> Unit) {
     )
 }
 
-private const val STAGGER_MS = 20
-private const val STAGGER_ROWS = 10
-
 /** SE2: a result fades in 20 ms after the one above it; with "Remove animations" they just appear, and don't move. */
 private fun Modifier.staggeredFade(scope: LazyItemScope, index: Int, motion: KtmMotionSpecs): Modifier = with(scope) {
     animateItem(
-        fadeInSpec = if (motion.reduced) motion.effectsFast() else tween(KtmMotionSpecs.EFFECTS_DEFAULT_MS, delayMillis = index.coerceAtMost(STAGGER_ROWS) * STAGGER_MS),
+        fadeInSpec = motion.staggeredFade(index),
         placementSpec = if (motion.reduced) null else motion.spatialDefault(),
     )
 }

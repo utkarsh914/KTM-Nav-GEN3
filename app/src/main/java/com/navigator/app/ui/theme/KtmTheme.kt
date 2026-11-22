@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -63,7 +62,7 @@ fun KtmTheme(
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
-            motionScheme = MotionScheme.expressive(),
+            motionScheme = KtmMotionScheme(),
             shapes = KtmShapes.material,
             typography = typography,
         ) {

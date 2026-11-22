@@ -46,4 +46,55 @@ class KtmLayoutAndMotionTest {
         assertTrue((spec as TweenSpec).durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
         assertEquals(100, (KtmMotionSpecs().ridingColor<Float>() as TweenSpec).durationMillis)
     }
+
+    private fun damping(spec: Any?) = (spec as SpringSpec<*>).dampingRatio
+
+    @Test fun pagesAndEffectsNeverOvershootAndOnlyPlayfulThingsBounce() {
+        val m = KtmMotionSpecs(reduced = false)
+        assertEquals(1f, damping(m.page<Float>()))
+        listOf(m.effectsFast<Float>(), m.effectsDefault<Float>(), m.effectsSlow<Float>()).forEach { assertEquals(1f, damping(it)) }
+        listOf(m.spatialFast<Float>(), m.spatialDefault<Float>(), m.spatialSlow<Float>()).forEach {
+            assertTrue("elements overshoot at most a hair", damping(it) >= 0.85f)
+        }
+        assertTrue("the playful spring is the only one that bounces visibly", damping(m.playful<Float>()) < 0.85f)
+    }
+
+    @Test fun reducedMotionTurnsEveryFluidTokenIntoAShortFadeWithNoDelay() {
+        val m = KtmMotionSpecs(reduced = true)
+        listOf(m.page<Float>(), m.spatialFast<Float>(), m.spatialDefault<Float>(), m.spatialSlow<Float>(), m.playful<Float>(),
+            m.effectsFast<Float>(), m.effectsDefault<Float>(), m.effectsSlow<Float>(), m.staggeredFade<Float>(9)).forEach { spec ->
+            assertTrue(spec is TweenSpec)
+            assertEquals(0, (spec as TweenSpec).delay)
+            assertTrue(spec.durationMillis <= KtmMotionSpecs.EFFECTS_SLOW_MS / 2)
+        }
+    }
+
+    @Test fun theStaggerStopsGrowingAfterTenRows() {
+        val m = KtmMotionSpecs(reduced = false)
+        assertEquals(0, (m.staggeredFade<Float>(0) as TweenSpec).delay)
+        assertEquals(20, (m.staggeredFade<Float>(1) as TweenSpec).delay)
+        assertEquals(200, (m.staggeredFade<Float>(10) as TweenSpec).delay)
+        assertEquals(200, (m.staggeredFade<Float>(50) as TweenSpec).delay)
+    }
+
+    @Test fun everyRidingTokenIsATweenWithinTheCeiling() {
+        val m = KtmMotionSpecs(reduced = false)
+        listOf(m.ridingSpatial<Float>(), m.ridingSpatial<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS), m.ridingFade<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS),
+            m.ridingSwapOut<Float>(), m.ridingQuick<Float>(), m.ridingColor<Float>()).forEach { spec ->
+            assertTrue("riding never springs", spec is TweenSpec)
+            assertTrue((spec as TweenSpec).durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
+        }
+        val bar = m.ridingFade<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS) as TweenSpec
+        assertTrue("the entrance finishes inside the ceiling plus its stagger", bar.delay + bar.durationMillis <= 2 * KtmMotionSpecs.RIDING_MAX_MS)
+    }
+
+    @Test fun theMaterialSchemeUsesTheSameTokensAndTheCalmOneNeverBounces() {
+        val app = KtmMotionScheme()
+        assertEquals(KtmMotionSpecs.ELEMENT_DAMPING, damping(app.defaultSpatialSpec<Float>()))
+        assertEquals(KtmMotionSpecs.ELEMENT_STIFFNESS, (app.defaultSpatialSpec<Float>() as SpringSpec).stiffness)
+        assertEquals(KtmMotionSpecs.EFFECTS_FAST_STIFFNESS, (app.fastEffectsSpec<Float>() as SpringSpec).stiffness)
+        val calm = KtmMotionScheme(calm = true)
+        listOf(calm.defaultSpatialSpec<Float>(), calm.fastSpatialSpec<Float>(), calm.slowSpatialSpec<Float>(),
+            calm.defaultEffectsSpec<Float>(), calm.fastEffectsSpec<Float>(), calm.slowEffectsSpec<Float>()).forEach { assertEquals(1f, damping(it)) }
+    }
 }

@@ -3,7 +3,6 @@ package com.navigator.app.ui.shell
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -27,8 +26,9 @@ internal inline fun <reified T : Any> NavGraphBuilder.listPage(
 
 @Composable
 private fun AnimatedContentScope.RoundedWhileLeaving(content: @Composable () -> Unit) {
-    val reduced = KtmTheme.motion.reduced
-    val radius = transition.animateDp(transitionSpec = { tween(if (reduced) 0 else LEAVE_MS) }, label = "pageCorner") { state ->
+    val motion = KtmTheme.motion
+    val reduced = motion.reduced
+    val radius = transition.animateDp(transitionSpec = { motion.page() }, label = "pageCorner") { state ->
         if (state == EnterExitState.PostExit && !reduced) KtmLayout.pageLeaveCorner else 0.dp
     }
     // Read in the layer, not in composition: no recomposition per frame, and no clip at rest.
@@ -40,5 +40,3 @@ private fun AnimatedContentScope.RoundedWhileLeaving(content: @Composable () -> 
         },
     ) { content() }
 }
-
-private const val LEAVE_MS = 200

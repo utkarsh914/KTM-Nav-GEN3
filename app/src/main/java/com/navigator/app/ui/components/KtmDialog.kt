@@ -41,6 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -85,7 +86,7 @@ fun KtmDialog(
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,
-            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(if (riding) motion.ridingSpatial() else motion.spatialDefault(), initialScale = DIALOG_SCALE)),
+            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(if (riding) motion.ridingSpatial() else motion.spatialDefault(), initialScale = KtmMotionSpecs.DIALOG_SCALE)),
         ) {
         Box(
             Modifier.fillMaxSize().safeDrawingPadding()
@@ -129,7 +130,6 @@ fun KtmDialog(
     }
 }
 
-private const val DIALOG_SCALE = 0.92f
 private const val BIG_TEXT_SCALE = 1.3f
 
 @Composable
