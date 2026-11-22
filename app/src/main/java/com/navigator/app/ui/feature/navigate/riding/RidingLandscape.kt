@@ -192,8 +192,8 @@ fun RidingLandscape(
 /** MO5: shared axis Y. The guidance slides up and out while the controls rise in; the reverse going back. */
 private fun AnimatedContentTransitionScope<TripControlsUi?>.panelFlip(motion: KtmMotionSpecs, toControls: Boolean): ContentTransform {
     val dir = if (toControls) 1 else -1
-    return ((fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
-        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -dir * it / 8 })).using(SizeTransform(clip = true) { _, _ -> snap() })
+    return ((fadeIn(motion.ridingFade()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else dir * it / 8 }) togetherWith
+        (fadeOut(motion.ridingFadeOut()) + slideOutVertically(motion.ridingExit()) { if (motion.reduced) 0 else -dir * it / 8 })).using(SizeTransform(clip = true) { _, _ -> snap() })
 }
 
 /** NL4: a compact green row keeps the next turn visible; the actions of NV7 follow; End trip stays at the foot. */

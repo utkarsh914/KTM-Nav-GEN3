@@ -105,7 +105,7 @@ fun LandscapePanel(
         AnimatedVisibility(
             visibleState = entered,
             modifier = Modifier.align(Alignment.CenterStart),
-            enter = fadeIn(motion.effectsDefault()) + slideInHorizontally(motion.ridingSpatial()) { if (motion.reduced) 0 else -it },
+            enter = fadeIn(motion.ridingFade()) + slideInHorizontally(motion.ridingSpatial()) { if (motion.reduced) 0 else -it },
         ) {
         Column(
             Modifier

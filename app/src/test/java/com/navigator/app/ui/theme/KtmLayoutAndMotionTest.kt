@@ -1,5 +1,7 @@
 package com.navigator.app.ui.theme
 
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.VisibilityThreshold
@@ -86,12 +88,23 @@ class KtmLayoutAndMotionTest {
     @Test fun everyRidingTokenIsATweenWithinTheCeiling() {
         val m = KtmMotionSpecs(reduced = false)
         listOf(m.ridingSpatial<Float>(), m.ridingSpatial<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS), m.ridingFade<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS),
-            m.ridingSwapOut<Float>(), m.ridingQuick<Float>(), m.ridingColor<Float>()).forEach { spec ->
+            m.ridingSwapOut<Float>(), m.ridingQuick<Float>(), m.ridingColor<Float>(), m.ridingExit<Float>(), m.ridingFadeOut<Float>()).forEach { spec ->
             assertTrue("riding never springs", spec is TweenSpec)
             assertTrue((spec as TweenSpec).durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
         }
         val bar = m.ridingFade<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS) as TweenSpec
         assertTrue("the entrance finishes inside the ceiling plus its stagger", bar.delay + bar.durationMillis <= 2 * KtmMotionSpecs.RIDING_MAX_MS)
+    }
+
+    @Test fun ridingArrivesOnOneUisCurveAndLeavesFasterOnAnEaseIn() {
+        val m = KtmMotionSpecs(reduced = false)
+        assertEquals(KtmMotionSpecs.RIDING_ENTER_EASING, (m.ridingSpatial<Float>() as TweenSpec).easing)
+        assertEquals(KtmMotionSpecs.RIDING_ENTER_EASING, (m.ridingQuick<Float>() as TweenSpec).easing)
+        val exit = m.ridingExit<Float>() as TweenSpec
+        assertTrue("leaving is quicker than arriving", exit.durationMillis < KtmMotionSpecs.RIDING_MAX_MS)
+        assertEquals(FastOutLinearInEasing, exit.easing)
+        assertTrue("a reduced exit is a cut", KtmMotionSpecs(reduced = true).ridingExit<Float>() is SnapSpec)
+        assertEquals(KtmMotionSpecs.EFFECTS_FAST_MS, (m.ridingFadeOut<Float>() as TweenSpec).durationMillis)
     }
 
     @Test fun theMaterialSchemeUsesTheSameTokensAndTheCalmOneNeverBounces() {

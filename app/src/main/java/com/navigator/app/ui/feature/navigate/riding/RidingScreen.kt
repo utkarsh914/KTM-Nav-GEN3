@@ -87,7 +87,7 @@ fun RidingScreen(
     val sheetMax = (maxHeight - cardBottom - sysBottomDp - KtmSpacing.md).coerceAtLeast(SHEET_MIN)
     val close = stringResource(R.string.trip_sheet_close)
     // The scrim covers the whole window (edges included) and closes the sheet on a tap.
-    AnimatedVisibility(sheetOpen, enter = fadeIn(KtmTheme.motion.effectsDefault()), exit = fadeOut(KtmTheme.motion.effectsFast())) {
+    AnimatedVisibility(sheetOpen, enter = fadeIn(KtmTheme.motion.ridingFade()), exit = fadeOut(KtmTheme.motion.ridingFadeOut())) {
         Box(
             Modifier.fillMaxSize().background(KtmScrim)
                 .pointerInput(Unit) { detectTapGestures { actions.onDismissSheet() } }
@@ -101,7 +101,7 @@ fun RidingScreen(
         // MO6: minimising slides the card up and out while the bar shrinks into the strip.
         val stageScope = LocalTripShared.current?.visibility
         val cardExit = if (stageScope == null || motion.reduced) Modifier else with(stageScope) {
-            Modifier.animateEnterExit(enter = EnterTransition.None, exit = fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { -it })
+            Modifier.animateEnterExit(enter = EnterTransition.None, exit = fadeOut(motion.ridingFadeOut()) + slideOutVertically(motion.ridingExit()) { -it })
         }
         AnimatedVisibility(
             visibleState = entered,
@@ -109,7 +109,7 @@ fun RidingScreen(
             enter = fadeIn(motion.ridingFade(KtmMotionSpecs.RIDING_CARD_DELAY_MS)) + slideInVertically(motion.ridingSpatial(KtmMotionSpecs.RIDING_CARD_DELAY_MS)) { if (motion.reduced) 0 else -it },
         ) {
             // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
-            val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.effectsDefault(), label = "cardDim")
+            val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.ridingFade(), label = "cardDim")
             Column(Modifier.graphicsLayer { alpha = cardAlpha }.then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; cardPx.intValue = size[0]; onInsets(size[0], size[1]) }, destination = bar.destination)
                 RidingChipHost(chip)
@@ -122,7 +122,7 @@ fun RidingScreen(
         ) {
           Column(Modifier.fillMaxWidth().onSizeChanged { if (!sheetOpen) { size[1] = it.height + gap + sysBottom; onInsets(size[0], size[1]) } }) {
             // The map control gives way to the sheet: it can't be tapped, or focused, behind it.
-            AnimatedVisibility(!sheetOpen, Modifier.align(Alignment.End), enter = fadeIn(motion.effectsDefault()), exit = fadeOut(motion.effectsFast())) {
+            AnimatedVisibility(!sheetOpen, Modifier.align(Alignment.End), enter = fadeIn(motion.ridingFade()), exit = fadeOut(motion.ridingFadeOut())) {
                 Column {
                     RidingMapButton(recenter = recenter, bearing = bearing, onTap = actions.onMapButton, onNorthUp = actions.onNorthUp)
                     Spacer(Modifier.height(KtmSpacing.sm))

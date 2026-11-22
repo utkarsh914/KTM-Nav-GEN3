@@ -7,7 +7,9 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.DurationBasedAnimationSpec
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
@@ -76,9 +78,16 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)
 
-    /** Riding: a plain ease with no overshoot, and a hard ceiling of [RIDING_MAX_MS]. */
+    /** Riding, arriving or resizing: One UI's basic curve, no overshoot, and a hard ceiling of [RIDING_MAX_MS]. */
     fun <T> ridingSpatial(delayMs: Int = 0): FiniteAnimationSpec<T> =
-        if (reduced) snap() else tween(RIDING_MAX_MS, delayMillis = delayMs)
+        if (reduced) snap() else tween(RIDING_MAX_MS, delayMillis = delayMs, easing = RIDING_ENTER_EASING)
+
+    /** Riding, leaving: eases in and is gone faster than it arrived ([RIDING_EXIT_MS]). */
+    fun <T> ridingExit(): FiniteAnimationSpec<T> =
+        if (reduced) snap() else tween(RIDING_EXIT_MS, easing = FastOutLinearInEasing)
+
+    /** A riding fade out, 100 ms; the matching fade in is [ridingFade]. Riding never uses a spring. */
+    fun <T> ridingFadeOut(): FiniteAnimationSpec<T> = tween(if (reduced) EFFECTS_FAST_MS / 2 else EFFECTS_FAST_MS)
 
     /** A riding fade that starts [delayMs] late (the staggered entrance); reduced motion drops the delay. */
     fun <T> ridingFade(delayMs: Int = 0): FiniteAnimationSpec<T> =
@@ -88,7 +97,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     fun <T> ridingSwapOut(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(RIDING_SWAP_OUT_MS)
 
     /** MO3: the next-maneuver swap, 160 ms; reduced motion jumps the slide and keeps a short fade (see [effectsFast]). */
-    fun <T> ridingQuick(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(MANEUVER_SWAP_MS)
+    fun <T> ridingQuick(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(MANEUVER_SWAP_MS, easing = RIDING_ENTER_EASING)
 
     /** The overspeed colour change: a plain 100 ms fade, never a flash. */
     fun <T> ridingColor(): FiniteAnimationSpec<T> = tween(EFFECTS_FAST_MS)
@@ -127,6 +136,10 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         const val EFFECTS_SLOW_MS = 300
 
         const val RIDING_MAX_MS = 250
+        const val RIDING_EXIT_MS = 200
+
+        /** One UI's basic path interpolator. */
+        val RIDING_ENTER_EASING = CubicBezierEasing(0.22f, 0.25f, 0f, 1f)
         const val MANEUVER_SWAP_MS = 160
         const val RIDING_CARD_DELAY_MS = 100
         const val RIDING_BAR_DELAY_MS = 150

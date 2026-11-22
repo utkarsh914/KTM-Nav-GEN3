@@ -76,8 +76,8 @@ fun RidingMapButton(
             AnimatedContent(
                 targetState = recenter,
                 transitionSpec = {
-                    (fadeIn(motion.effectsDefault()) + scaleIn(motion.ridingSpatial(), initialScale = MORPH_SCALE)) togetherWith
-                        (fadeOut(motion.effectsFast()) + scaleOut(motion.ridingSpatial(), targetScale = MORPH_SCALE))
+                    (fadeIn(motion.ridingFade()) + scaleIn(motion.ridingSpatial(), initialScale = MORPH_SCALE)) togetherWith
+                        (fadeOut(motion.ridingFadeOut()) + scaleOut(motion.ridingExit(), targetScale = MORPH_SCALE))
                 },
                 label = "mapButtonIcon",
             ) { toRecenter ->

@@ -50,8 +50,8 @@ fun RidingChipHost(source: ChipSource?, modifier: Modifier = Modifier) {
         AnimatedContent(
             targetState = source,
             transitionSpec = {
-                ((fadeIn(motion.effectsDefault()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it }) togetherWith
-                    (fadeOut(motion.effectsFast()) + slideOutVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it }))
+                ((fadeIn(motion.ridingFade()) + slideInVertically(motion.ridingSpatial()) { if (motion.reduced) 0 else -it }) togetherWith
+                    (fadeOut(motion.ridingFadeOut()) + slideOutVertically(motion.ridingExit()) { if (motion.reduced) 0 else -it }))
                         .using(SizeTransform(clip = true) { _, _ -> motion.ridingSpatial() })
             },
             contentKey = { chipKey(it) },

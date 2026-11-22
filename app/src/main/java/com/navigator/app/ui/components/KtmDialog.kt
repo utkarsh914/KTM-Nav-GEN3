@@ -93,7 +93,7 @@ fun KtmDialog(
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect { window?.setDimAmount(0f) }
         val scrim = remember { Animatable(0f) }
-        LaunchedEffect(Unit) { scrim.animateTo(KtmScrim.alpha, motion.effectsDefault()) }
+        LaunchedEffect(Unit) { scrim.animateTo(KtmScrim.alpha, if (riding) motion.ridingFade() else motion.effectsDefault()) }
         // A back swipe previews the card shrinking and fading, as the system's does; letting go early eases it back, and
         // a committed swipe finishes the fade before the window goes, so nothing pops out.
         var backProgress by remember { mutableFloatStateOf(0f) }
@@ -107,7 +107,7 @@ fun KtmDialog(
             easing?.cancel()
             try {
                 events.collect { backProgress = it.progress }
-                if (!motion.reduced) animate(backProgress, 1f, animationSpec = if (riding) motion.ridingQuick() else motion.effectsFast()) { v, _ -> backProgress = v }
+                if (!motion.reduced) animate(backProgress, 1f, animationSpec = if (riding) motion.ridingFadeOut() else motion.effectsFast()) { v, _ -> backProgress = v }
                 onDismiss()
                 // If the caller keeps the dialog, it comes back whole.
                 easeTo(0f)
@@ -121,7 +121,7 @@ fun KtmDialog(
         // Tapping outside the card (including its side margins) dismisses: the safe choice.
         AnimatedVisibility(
             visibleState = entered,
-            enter = fadeIn(motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(if (riding) motion.ridingSpatial() else motion.spatialDefault(), initialScale = KtmMotionSpecs.DIALOG_SCALE)),
+            enter = fadeIn(if (riding) motion.ridingFade() else motion.effectsDefault()) + (if (motion.reduced) EnterTransition.None else scaleIn(if (riding) motion.ridingSpatial() else motion.spatialDefault(), initialScale = KtmMotionSpecs.DIALOG_SCALE)),
         ) {
         Box(
             Modifier.fillMaxSize().safeDrawingPadding()

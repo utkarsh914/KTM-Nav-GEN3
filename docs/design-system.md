@@ -62,10 +62,13 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: a press released, a pin dropped; never a page, never riding; the switch is Material's); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
   Stage sheets other than search still fade with a small drift on `spatialDefault`. Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
   never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
-- Riding tier (`RidingTheme`): plain tweens of at most 250 ms, nothing overshoots, numbers never animate; Material
-  components on riding surfaces use `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `ridingSpatial(delayMs)`, `ridingFade(delayMs)`, `ridingQuick()` (160 ms),
-  `ridingSwapOut()`, `ridingColor()` (100 ms); the entrance staggers are `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`.
-  `staggeredFade(index)` is the search results' 20 ms stagger.
+- Riding tier (`RidingTheme`): tweens only, never a spring, at most 250 ms, nothing overshoots, numbers never animate.
+  Arriving and resizing use One UI's basic curve (0.22, 0.25, 0, 1): `ridingSpatial(delayMs)`, `ridingQuick()` (160 ms,
+  the next-maneuver swap); leaving is quicker and eases in: `ridingExit()` (200 ms); fades are `ridingFade(delayMs)` and
+  `ridingFadeOut()` (100 ms), `ridingSwapOut()`, `ridingColor()` (100 ms). The entrance staggers are
+  `RIDING_CARD_DELAY_MS` and `RIDING_BAR_DELAY_MS`. Material components on riding surfaces use
+  `KtmMotionScheme(calm = true)` (critically damped springs, settled within 250 ms). `check-ui-rules.sh` fails if the
+  riding screens or the landscape panel ask for a fluid token. `staggeredFade(index)` is the search results' 20 ms stagger.
 - Overlays and swaps: a dialog (`KtmDialog`) fades and settles in from 92 %; a back swipe previews the card shrinking to
   90 % (riding: 95 %) and fading with its dim, a committed swipe finishes the fade before the window goes (a dialog window
   can't play an exit), a cancelled one eases back; no preview under Remove animations. `contentSwap()` is the one
