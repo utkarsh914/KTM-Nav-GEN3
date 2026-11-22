@@ -21,7 +21,7 @@ import com.navigator.app.app.appContainer
 import com.navigator.app.ui.feature.replay.PlaybackEngine
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
-import com.navigator.app.ui.map.MapSurface
+import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
 import com.navigator.app.ui.shell.LocalFeedback
@@ -61,7 +61,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
     BackHandler(enabled = applying) {}
 
     Box(modifier.fillMaxSize()) {
-        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
+        MapClaim(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
 
         LaunchedEffect(mapReady) {
             if (!mapReady) return@LaunchedEffect

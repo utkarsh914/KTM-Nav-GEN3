@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -53,6 +54,17 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMov
     (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
         (initialState.destination.hasRoute<Route.RideReplay>() && targetState.destination.hasRoute<Route.Rides>())
 
+/**
+ * A map page (transparent over the shared map layer) arriving over, or leaving to, a page that is not one: the other
+ * page is opaque and sits between the map and this page, so a slide would show it through. Both just fade, which
+ * reveals or covers the map in place; map to map and page to page still slide.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapDissolve(mapIsTop: Boolean): Boolean {
+    val map = if (mapIsTop) targetState else initialState
+    val other = if (mapIsTop) initialState else targetState
+    return map.destination.isMapPage() && !other.destination.isMapPage()
+}
+
 /** Tab to tab, and the end of first run into the app: the old screen fades out, then the new one settles in (MO10, ON10). */
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boolean =
     (initialState.destination.tab() != null || initialState.destination.hasRoute<Route.Ready>()) && targetState.destination.tab() != null
@@ -67,25 +79,27 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabEnter(motion: K
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: KtmMotionSpecs, slidePx: Int): EnterTransition = when {
     motion.reduced || isRideContainerMove() -> fadeIn(motion.effectsDefault())
     tabSwitch() -> tabEnter(motion)
+    mapDissolve(mapIsTop = true) -> fadeIn(motion.effectsDefault())
     else -> slideInHorizontally(motion.page()) { slidePx } + fadeIn(motion.effectsDefault())
 }
 
 /** The page underneath a push slides back a little and dims (see [PageHost]); it does not fade, so nothing shows through. */
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs, slidePx: Int): ExitTransition = when {
     motion.reduced || isRideContainerMove() -> fadeOut(motion.effectsFast())
-    tabSwitch() -> fadeOut(motion.effectsFast())
+    tabSwitch() || mapDissolve(mapIsTop = true) -> fadeOut(motion.effectsFast())
     else -> slideOutHorizontally(motion.page()) { -slidePx }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs, slidePx: Int): EnterTransition = when {
     motion.reduced || isRideContainerMove() -> fadeIn(motion.effectsDefault())
     tabSwitch() -> tabEnter(motion)
+    mapDissolve(mapIsTop = false) -> fadeIn(motion.effectsDefault())
     else -> slideInHorizontally(motion.page()) { -slidePx }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs, slidePx: Int): ExitTransition = when {
     motion.reduced || isRideContainerMove() -> fadeOut(motion.effectsFast())
-    tabSwitch() -> fadeOut(motion.effectsFast())
+    tabSwitch() || mapDissolve(mapIsTop = false) -> fadeOut(motion.effectsFast())
     // Also what a predictive back swipe previews: the list page shrinks and fades out early (a map page only slides and fades; MO11).
     else -> slideOutHorizontally(motion.page()) { slidePx } + fadeOut(motion.effectsFast()) +
         (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
@@ -105,7 +119,9 @@ internal inline fun <reified T : Any> NavGraphBuilder.page(
 
 @Composable
 internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, listPage: Boolean, content: @Composable () -> Unit) {
-    Box(if (listPage) Modifier.leavingCorners(scope) else Modifier) {
+    // A map page is transparent over the map layer; every other page covers it with the app's ground.
+    val ground = if (entry.destination.isMapPage()) Modifier else Modifier.background(KtmTheme.colors.bg)
+    Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground)) {
         content()
         PageDim(scope, entry)
     }

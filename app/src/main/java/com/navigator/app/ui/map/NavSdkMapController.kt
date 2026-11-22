@@ -31,7 +31,7 @@ private const val ROUTE_ALT = 0xFF8FA4BF.toInt()      // desaturated blue altern
 
 /**
  * [MapController] on the Navigation SDK's `NavigationView`/`GoogleMap`. One per map screen; it is
- * attached by [MapSurface] when the retained view delivers its map and detached when the screen
+ * attached by [MapClaim] when the retained view delivers its map and detached when the screen
  * leaves (only if another screen has not taken the shared map over meanwhile). Main thread.
  *
  * Verified against navigation-8.1.0: `GoogleMap.followMyLocation(int)` with `CameraPerspective`

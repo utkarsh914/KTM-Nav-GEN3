@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,6 +88,7 @@ import com.navigator.app.ui.feature.settings.SoundsScreen
 import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
+import com.navigator.app.ui.map.MapLayer
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -247,6 +249,8 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                     },
                 ) {
+                    // The one map, behind every page: map pages are transparent over it, other pages cover it.
+                    MapLayer(retainedNav)
                     SharedTransitionLayout {
                         CompositionLocalProvider(LocalPageNav provides navController) {
                             NavHost(
@@ -318,7 +322,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                             onSearchRequestConsumed = intents::consumeOpenSearch,
                                         )
                                     } else {
-                                        Box(Modifier.fillMaxSize()) {
+                                        Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
                                             MirrorScreen(onOpenConnect = { navController.push(Route.Pairing()) })
                                             // A Google Maps link shared in mirror mode: Google Maps does the navigating.
                                             pending.sharedLink?.let { link ->

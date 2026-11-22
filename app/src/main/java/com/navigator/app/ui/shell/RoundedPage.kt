@@ -29,6 +29,10 @@ internal fun NavDestination.isListPage(): Boolean =
     hasRoute<Route.SettingsPage>() || hasRoute<Route.DashApps>() || hasRoute<Route.NavApp>() || hasRoute<Route.CallAudio>() ||
         hasRoute<Route.Logs>() || hasRoute<Route.SymbolTest>() || hasRoute<Route.TurnCalibration>() || hasRoute<Route.EditRide>()
 
+/** The destinations that show the shared map layer through a transparent page: [MapClaim] callers (Navigate hosts it only when there is a map). */
+internal fun NavDestination.isMapPage(): Boolean =
+    hasRoute<Route.Navigate>() || hasRoute<Route.RideReplay>() || hasRoute<Route.TrimRide>() || hasRoute<Route.PickPlace>()
+
 /** Rounds the corners of whatever it is applied to while the page leaves (also what the dim is drawn inside). */
 @Composable
 internal fun Modifier.leavingCorners(scope: AnimatedContentScope): Modifier {

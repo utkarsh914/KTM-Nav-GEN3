@@ -6,7 +6,10 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -27,7 +30,8 @@ class RetainedNavigationView(
     private val context: Context,
     private val lifecycle: Lifecycle,
 ) {
-    var view: NavigationView? = null
+    /** Read by the map layer, which hosts the view as soon as a page creates it. */
+    var view: NavigationView? by mutableStateOf(null)
         private set
 
     /** True once the one-time camera framing has run, so re-entry doesn't snap

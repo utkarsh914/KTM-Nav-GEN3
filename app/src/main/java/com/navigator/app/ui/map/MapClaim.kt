@@ -1,9 +1,5 @@
 package com.navigator.app.ui.map
 
-import android.view.ViewGroup
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,10 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.location.hasLocationPermission
@@ -28,13 +21,13 @@ import com.navigator.app.ui.theme.KtmMotionSpecs
 data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0)
 
 /**
- * Hosts the app-scoped [RetainedNavigationView] and attaches [controller] to its map. Reusing the
- * retained view means returning to the map re-attaches an already-loaded map (no reload flash).
- * Insets, night mode and the SDK chrome follow the arguments; everything the screens draw goes
- * through [controller].
+ * A page takes the one shared map: attaches [controller] to it and follows the arguments for insets, night mode and the
+ * SDK chrome. It has no view of its own: the [MapLayer] in the shell hosts the single [RetainedNavigationView] behind
+ * every page and never moves it, so a page change cannot re-parent, fade or clip the map. Everything the screens draw
+ * goes through [controller]; their controls sit over the layer on transparent pages.
  */
 @Composable
-fun MapSurface(
+fun MapClaim(
     retained: RetainedNavigationView,
     controller: NavSdkMapController,
     navUiEnabled: Boolean,
@@ -43,19 +36,8 @@ fun MapSurface(
     dark: Boolean,
 ) {
     val context = LocalContext.current
+    // Creating the view here (not in the layer) keeps onboarding and the mirror screen free of the map.
     val navView = remember(retained) { retained.getOrCreate() }
-    val density = LocalDensity.current
-    val sysTopPx = WindowInsets.systemBars.getTop(density)
-    val sysBottomPx = WindowInsets.systemBars.getBottom(density)
-    AndroidView(
-        // The retained view may still be attached to a previous parent when we re-enter; detach
-        // before AndroidView re-adds it to avoid an IllegalArgumentException.
-        factory = {
-            (navView.parent as? ViewGroup)?.removeView(navView)
-            navView
-        },
-        modifier = Modifier.fillMaxSize(),
-    )
 
     // (Re)deliver the map on every entry. getMapAsync returns the cached GoogleMap at once for an
     // already-loaded view, so this is cheap.

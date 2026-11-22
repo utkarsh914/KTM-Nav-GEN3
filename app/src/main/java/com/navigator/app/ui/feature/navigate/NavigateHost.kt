@@ -91,7 +91,7 @@ import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
-import com.navigator.app.ui.map.MapSurface
+import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.PreviewPinStyle
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.TripPreviewScene
@@ -504,7 +504,7 @@ fun NavigateHost(
                 }
             }
             // The place and route sheets pad the map to what they leave open (above); search and the pin use all of it
-            // (the browse sheet pads it itself; NAVIGATING is owned by MapSurface).
+            // (the browse sheet pads it itself; NAVIGATING is owned by MapClaim).
             stage == NavStage.SEARCH -> map.setPadding(0, 0, 0, 0)
             else -> {}
         }
@@ -838,10 +838,11 @@ fun NavigateHost(
     )
 
     val motionSpecs = KtmTheme.motion
-    Box(modifier = Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
+    // Transparent over the shell's map layer once the map is ready; the not-ready branch below paints the ground.
+    Box(modifier = Modifier.fillMaxSize()) {
         // --- Map surface -----------------------------------------------------
         when {
-            available && navReady -> MapSurface(
+            available && navReady -> MapClaim(
                 retained = retainedNav,
                 controller = map,
                 navUiEnabled = stage == NavStage.NAVIGATING,

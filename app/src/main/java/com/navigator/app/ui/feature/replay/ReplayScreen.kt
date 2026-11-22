@@ -39,7 +39,7 @@ import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
-import com.navigator.app.ui.map.MapSurface
+import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
@@ -112,7 +112,7 @@ fun ReplayScreen(
     SnackbarClearance(bottom = with(LocalDensity.current) { insets.bottom.toDp() })
 
     Box(modifier.fillMaxSize()) {
-        MapSurface(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
+        MapClaim(retained = retainedNav, controller = map, navUiEnabled = false, dark = KtmTheme.colors.isDark)
 
         // MO8: the card's thumbnail covers the map until the map has framed the track (or a few seconds have gone).
         var mapFramed by remember { mutableStateOf(false) }

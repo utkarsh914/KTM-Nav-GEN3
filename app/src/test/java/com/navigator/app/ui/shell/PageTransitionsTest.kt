@@ -76,4 +76,35 @@ class PageTransitionsTest {
         assertFalse(rides.isListPage())
         assertFalse(places.isListPage())
     }
+
+    @Test fun mapPagesAreTheOnesThatShowTheSharedMapAndDissolveOverOtherPages() {
+        var nav: NavHostController? = null
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = false) {
+                val controller = rememberNavController().also { nav = it }
+                CompositionLocalProvider(LocalPageNav provides controller) {
+                    NavHost(controller, startDestination = Route.Rides) {
+                        page<Route.Rides> { Text("rides") }
+                        page<Route.Navigate> { Text("map") }
+                        page<Route.TrimRide> { Text("trim") }
+                    }
+                }
+            }
+        }
+        val rides = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        rule.runOnIdle { nav!!.navigate(Route.Navigate) }
+        val navigate = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("map").assertIsDisplayed()
+        rule.runOnIdle { nav!!.navigate(Route.TrimRide("r")) }
+        val trim = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("trim").assertIsDisplayed()
+        assertFalse(rides.isMapPage())
+        assertTrue(navigate.isMapPage())
+        assertTrue(trim.isMapPage())
+        rule.runOnIdle { nav!!.popBackStack(); nav!!.popBackStack() }
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.onNodeWithText("rides").assertIsDisplayed()
+    }
 }
