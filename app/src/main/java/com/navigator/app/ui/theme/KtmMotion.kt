@@ -122,8 +122,8 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
 
         const val STAGE_MS = 200
 
-        /** MO10: the new tab starts fading in once the old one has gone. */
-        const val TAB_FADE_DELAY_MS = 90
+        /** MO10: a fade-through: the new screen starts fading in once the old one has gone (text never overlaps). */
+        const val FADE_THROUGH_DELAY_MS = 90
         const val STAGGER_MS = 20
         const val STAGGER_ROWS = 10
         const val SKELETON_PULSE_MS = 900

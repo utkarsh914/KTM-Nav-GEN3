@@ -57,9 +57,9 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   `KtmMotionScheme` (`MaterialExpressiveTheme(motionScheme = …)`), so a sheet, a switch or the nav-bar indicator moves
   like the rest of the app. Off the bike everything is a spring, so an interrupted move (a second tap, a back swipe)
   carries on from where it is instead of restarting.
-- Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets; the page transitions move onto it in M2);
+- Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, tabs, stage sheets);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
-  list placement; a hair of overshoot at most); `playful()` (damping 0.7, stiffness 800: press release, pin drop,
+  list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: press release, pin drop,
   switch only); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
   Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
   never blur; a page that hosts the Nav SDK map is never scaled, clipped or blurred.
@@ -76,10 +76,15 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   `TripBarSheet` (trip bar to trip sheet), `tripStripBounds` (trip bar to the
   activity strip). The sheets are drawn in the tree (not in a window) so they
   can share bounds.
-- Tabs fade through with a 0.92 scale; pushed pages share the X axis (30 dp);
-  predictive back previews the page shrinking to 90 %. Pages without a map (`listPage`: settings pages, pickers,
-  logs, edit ride) take 28 dp corners while they leave; map pages stay square (a clip over the Nav SDK's map view
-  isn't worth the risk).
+- Pages (`ui/shell/PageTransitions.kt`, every page registered with `page<T>`/`listPage<T>`): tabs fade through (the old
+  screen fades out fast, the new one fades in 90 ms later and settles in from 0.92; the Navigate tab, which is the map,
+  only fades). A pushed page slides in 30 dp and fades in; the page underneath slides back 30 dp and dims
+  (`KtmLayout.pageDim`, 25 % black, a plain overlay; it never fades, so nothing shows through, and never blurs). Back
+  slides the page out and fades it out early (the fade is on the fast effects spring, so a predictive back swipe has
+  it gone after about a third of the gesture); the page underneath comes back lit. Only pages with no map (`listPage`:
+  settings pages, pickers, logs, edit ride) shrink to 90 % and take 28 dp corners while they leave; a page that hosts the
+  Nav SDK map is never scaled, clipped or blurred. Tabs and the ride card's shared-bounds move are not dimmed. Onboarding
+  steps use the same page and fade-through tokens. With Remove animations: plain fades, no offset, no scale, no dim.
 - Landscape: one 352 dp (320 below 800 dp) floating panel on the left, also for the browse sheet; the rail shows the
   bike's state as a dot on Navigate. The trim bar and its time labels stay left to right in every language, like the
   chart above them.

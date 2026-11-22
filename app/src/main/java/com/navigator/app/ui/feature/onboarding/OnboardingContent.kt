@@ -65,6 +65,7 @@ import com.navigator.app.ui.components.TonalIconBadge
 import com.navigator.app.ui.feature.permissions.PermissionRow
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -102,7 +103,7 @@ fun OnboardingContent(
                 if (reducedMotion) fadeIn(motion.effectsDefault()).togetherWith(fadeOut(motion.effectsFast()))
                 else {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally(motion.page()) { dir * slidePx } + fadeIn(motion.effectsDefault()))
+                    (slideInHorizontally(motion.page()) { dir * slidePx } + fadeIn(motion.stage(KtmMotionSpecs.FADE_THROUGH_DELAY_MS)))
                         .togetherWith(slideOutHorizontally(motion.page()) { -dir * slidePx } + fadeOut(motion.effectsFast()))
                 }
             },

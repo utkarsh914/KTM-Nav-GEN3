@@ -50,4 +50,30 @@ class PageTransitionsTest {
         rule.mainClock.advanceTimeBy(2_000)
         rule.onNodeWithText("rides").assertIsDisplayed()
     }
+
+    @Test fun aPushDimsThePageUnderneathExceptBetweenTabsAndListPagesAreTheOnesThatShrink() {
+        var nav: NavHostController? = null
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                val controller = rememberNavController().also { nav = it }
+                CompositionLocalProvider(LocalPageNav provides controller) {
+                    NavHost(controller, startDestination = Route.Rides) {
+                        page<Route.Rides> { Text("rides") }
+                        page<Route.Places> { Text("places") }
+                        listPage<Route.Logs> { Text("logs") }
+                    }
+                }
+            }
+        }
+        val rides = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        rule.runOnIdle { nav!!.navigate(Route.Places) }
+        val places = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        rule.runOnIdle { nav!!.navigate(Route.Logs) }
+        val logs = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        assertFalse("two tabs fade through each other", dimsUnder(rides, places))
+        assertTrue("a page pushed over a tab dims it", dimsUnder(places, logs))
+        assertTrue(logs.isListPage())
+        assertFalse(rides.isListPage())
+        assertFalse(places.isListPage())
+    }
 }

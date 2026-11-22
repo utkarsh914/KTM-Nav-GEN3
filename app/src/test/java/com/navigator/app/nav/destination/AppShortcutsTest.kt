@@ -11,6 +11,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowShortcutManager
 
 /** The launcher shortcuts follow the favourites: the fixed two always, Ride home / Ride work only while that slot is set. */
 @RunWith(RobolectricTestRunner::class)
@@ -19,6 +20,7 @@ class AppShortcutsTest {
     private lateinit var ctx: Context
 
     @Before fun setUp() {
+        ShadowShortcutManager.reset()
         ctx = RuntimeEnvironment.getApplication()
         ctx.getSystemService(ShortcutManager::class.java).removeAllDynamicShortcuts()
     }
