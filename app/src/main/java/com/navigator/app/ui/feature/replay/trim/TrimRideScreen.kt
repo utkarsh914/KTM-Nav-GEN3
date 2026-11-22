@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -20,14 +21,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
 import com.navigator.app.ui.feature.replay.PlaybackEngine
 import com.navigator.app.ui.map.LocationMarkerStyle
-import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapClaim
+import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberMapController
+import com.navigator.app.ui.map.settled
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
 import com.navigator.app.ui.shell.PopWhenResumed
+import com.navigator.app.ui.shell.rememberPageSettled
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.flow.filter
 
 /**
  * The trim page (RP5): the route on the map, kept part in the accent over the part that goes, faded; the sheet or panel
@@ -71,18 +76,21 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
         DisposableEffect(map) { onDispose { map.setMapClickListening(false) } }
 
         // Drawn again at every handle move: what the cut keeps is exactly what the map shows.
-        LaunchedEffect(mapReady, ready?.points, ready?.range, kept, removed) {
+        val pageSettled by rememberPageSettled()
+        LaunchedEffect(mapReady, pageSettled, ready?.points, ready?.range, kept, removed) {
             val r = ready ?: return@LaunchedEffect
-            if (!mapReady) return@LaunchedEffect
+            if (!mapReady || !pageSettled) return@LaunchedEffect
             map.showTrimPreview(r.points, r.range.from, r.range.to, kept, removed)
         }
         // The camera frames the whole route once, in what the sheet or panel leaves open.
         var framed by remember { mutableStateOf<Any?>(null) }
-        LaunchedEffect(mapReady, insets, ready?.points) {
+        LaunchedEffect(mapReady, pageSettled, ready?.points) {
             val r = ready ?: return@LaunchedEffect
-            if (!mapReady || insets == MapInsets()) return@LaunchedEffect
-            map.setPadding(insets.left, insets.top, insets.right, insets.bottom)
-            if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
+            if (!mapReady || !pageSettled) return@LaunchedEffect
+            snapshotFlow { insets }.filter { it != MapInsets() }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { open ->
+                map.setPadding(open.left, open.top, open.right, open.bottom)
+                if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
+            }
         }
 
         if (ui == TrimUi.Loading) CircularProgressIndicator(Modifier.align(Alignment.Center), color = KtmTheme.accent.fill)

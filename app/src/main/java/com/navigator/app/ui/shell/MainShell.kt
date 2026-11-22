@@ -31,8 +31,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -43,9 +47,11 @@ import com.navigator.app.R
 import com.navigator.app.ui.components.KtmSnackbarHost
 import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.pillDotColor
+import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
+import kotlin.math.roundToInt
 
 /** The bike's state for the rail's status dot (MR7): its tone and the state in words. */
 data class BikeRailStatus(val tone: PillTone, val state: String)
@@ -73,6 +79,8 @@ fun MainShell(
     onSelectTab: (Tab) -> Unit,
     feedback: Feedback,
     strip: @Composable () -> Unit,
+    /** Where the pages' area sits in the window, so the map layer behind the shell can be padded to it. */
+    onContentInsets: (MapInsets) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val c = KtmTheme.colors
@@ -124,7 +132,7 @@ fun MainShell(
         },
         navigationSuiteType = type,
         navigationSuiteColors = barColors,
-        containerColor = c.bg,
+        containerColor = Color.Transparent,
         contentColor = c.fg,
         state = state,
     ) {
@@ -135,7 +143,13 @@ fun MainShell(
         else Modifier.pageInsets(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
         var drawn by remember(immersive) { mutableStateOf(false) }
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).fillMaxSize()) {
+            val window = LocalWindowInfo.current.containerSize
+            Box(
+                Modifier.weight(1f).fillMaxSize().onGloballyPositioned { at ->
+                    val b = at.boundsInWindow()
+                    onContentInsets(MapInsets(left = b.left.roundToInt(), right = (window.width - b.right).roundToInt().coerceAtLeast(0), bottom = (window.height - b.bottom).roundToInt().coerceAtLeast(0)))
+                },
+            ) {
                 content()
                 // 8 dp above whatever is under it (§3.3): the strip brings its own 8 dp, so only the bare bar needs one here.
                 // Sheets, panels and buttons drawn over the content say so (SnackbarClearance); the inset already applied is not counted twice.

@@ -18,7 +18,9 @@ import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.ui.theme.KtmMotionSpecs
 
 /** What the riding surfaces cover of the map, in px. */
-data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0)
+data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0) {
+    operator fun plus(o: MapInsets) = MapInsets(left + o.left, top + o.top, right + o.right, bottom + o.bottom)
+}
 
 /**
  * A page takes the one shared map: attaches [controller] to it and follows the arguments for insets, night mode and the

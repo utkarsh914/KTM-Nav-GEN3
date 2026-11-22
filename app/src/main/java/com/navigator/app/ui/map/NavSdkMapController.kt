@@ -92,6 +92,7 @@ class NavSdkMapController(
     internal fun attach(map: GoogleMap, view: NavigationView) {
         if (detached) return // the map delivered after the screen was gone
         this.map = map
+        retained.attachMap(map)
         navView = view
         // Whatever the previous screen left on the shared map goes first: only what this screen asks for stays.
         clearListeners(map)
@@ -186,7 +187,7 @@ class NavSdkMapController(
     }
 
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        runCatching { map?.setPadding(left, top, right, bottom) }
+        retained.requestPadding(MapInsets(left, top, right, bottom))
     }
 
     override fun clearOverlays() {
@@ -336,6 +337,7 @@ class NavSdkMapController(
     // Each call individually guarded so an API mismatch degrades gracefully.
     override fun setGuidanceChrome(guidance: Boolean) {
         val view = navView ?: return
+        retained.appliedPadding = null // the SDK may re-pad its own chrome
         runCatching { view.setNavigationUiEnabled(guidance) }
         runCatching { view.setHeaderEnabled(false) }
         runCatching { view.setEtaCardEnabled(false) }

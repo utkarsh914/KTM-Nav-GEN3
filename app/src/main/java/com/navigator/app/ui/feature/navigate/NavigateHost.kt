@@ -502,9 +502,9 @@ fun NavigateHost(
                     map.resetNorth()
                 }
             }
-            // The place and route sheets pad the map to what they leave open (above); search and the pin use all of it
-            // (the browse sheet pads it itself; NAVIGATING is owned by MapClaim).
-            stage == NavStage.SEARCH -> map.setPadding(0, 0, 0, 0)
+            // The place and route sheets pad the map to what they leave open (above); the browse sheet pads it itself;
+            // NAVIGATING is owned by MapClaim. Search covers the map completely: it leaves the padding alone, as every
+            // padding change makes the map re-lay itself out and block the UI thread for several frames.
             else -> {}
         }
     }

@@ -230,6 +230,8 @@ dependencies {
     implementation("androidx.metrics:metrics-performance:1.0.0")
     // Installs the Baseline Profile (src/main/baseline-prof.txt) on first run so the app is AOT-compiled without Play.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // Composable names in system traces (Perfetto) of the benchmark build, for finding what makes a frame slow.
+    "benchmarkImplementation"("androidx.compose.runtime:runtime-tracing:1.0.0-beta01")
 
     // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")

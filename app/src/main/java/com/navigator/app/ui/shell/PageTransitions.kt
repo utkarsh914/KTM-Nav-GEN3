@@ -14,7 +14,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -117,9 +119,12 @@ internal inline fun <reified T : Any> NavGraphBuilder.page(
 internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, listPage: Boolean, content: @Composable () -> Unit) {
     // A map page is transparent over the map layer; every other page covers it with the app's ground.
     val ground = if (entry.destination.paintsOwnGround()) Modifier else Modifier.coverGround()
-    Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground)) {
-        content()
-        PageDim(scope, entry)
+    val settled = remember(scope) { derivedStateOf { !scope.transition.isRunning } }
+    CompositionLocalProvider(LocalPageSettled provides settled) {
+        Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground)) {
+            content()
+            PageDim(scope, entry)
+        }
     }
 }
 

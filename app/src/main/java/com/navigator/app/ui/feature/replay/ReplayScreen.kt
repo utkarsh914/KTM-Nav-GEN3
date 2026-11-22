@@ -37,18 +37,22 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.map.LocationMarkerStyle
+import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapPoint
-import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.RetainedNavigationView
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
 import com.navigator.app.ui.map.rememberMapController
+import com.navigator.app.ui.map.settled
 import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.MERGE_OFFER
 import com.navigator.app.ui.shell.PopWhenResumed
 import com.navigator.app.ui.shell.SnackbarClearance
+import com.navigator.app.ui.shell.rememberPageSettled
+import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 /**
@@ -135,15 +139,16 @@ fun ReplayScreen(
         LaunchedEffect(map) { map.gesturePans.collect { vm.stopFollowing() } }
 
         // The track is drawn again when it, or its smoothing, changes (this puts the marker back where playback is).
-        LaunchedEffect(mapReady, ready?.points, ready?.smoothingMeters) {
+        val pageSettled by rememberPageSettled()
+        LaunchedEffect(mapReady, pageSettled, ready?.points, ready?.smoothingMeters) {
             val r = ready ?: return@LaunchedEffect
-            if (!mapReady) return@LaunchedEffect
+            if (!mapReady || !pageSettled) return@LaunchedEffect
             val at = point(vm.position.value, r.points) ?: return@LaunchedEffect
             map.showReplay(r.points, vm.bands, r.smoothingMeters.toDouble(), at, accent)
         }
-        LaunchedEffect(mapReady, ready?.points, ready?.smoothingMeters) {
+        LaunchedEffect(mapReady, pageSettled, ready?.points, ready?.smoothingMeters) {
             val r = ready ?: return@LaunchedEffect
-            if (!mapReady) return@LaunchedEffect
+            if (!mapReady || !pageSettled) return@LaunchedEffect
             vm.position.collect { index -> point(index, r.points)?.let { map.moveReplayMarker(it, following) } }
         }
         LaunchedEffect(ready?.following) {
@@ -154,20 +159,23 @@ fun ReplayScreen(
         // The "you are here" marker: the track drawing clears the map, so it is put back after each one.
         val heading = rememberDeviceHeadingState()
         val device = rememberDeviceLatLng()
-        LaunchedEffect(mapReady, device, ready?.points, ready?.smoothingMeters) {
-            if (!mapReady) return@LaunchedEffect
+        LaunchedEffect(mapReady, pageSettled, device, ready?.points, ready?.smoothingMeters) {
+            if (!mapReady || !pageSettled) return@LaunchedEffect
             val ll = device ?: return@LaunchedEffect
             snapshotFlow { heading.value }.collect { map.showUserMarker(MapPoint(ll.latitude, ll.longitude), it) }
         }
 
         // The camera frames the whole track in what the sheet or panel leaves open, again for a new track (after a trim).
         var framed by remember { mutableStateOf<Any?>(null) }
-        LaunchedEffect(mapReady, insets, ready?.points) {
+        // Once the page has arrived and the sheet has stopped growing: one padding, one frame.
+        LaunchedEffect(mapReady, pageSettled, ready?.points) {
             val r = ready ?: return@LaunchedEffect
-            if (!mapReady || insets == MapInsets()) return@LaunchedEffect
-            map.setPadding(insets.left, insets.top, insets.right, insets.bottom)
-            if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
-            mapFramed = true
+            if (!mapReady || !pageSettled) return@LaunchedEffect
+            snapshotFlow { insets }.filter { it != MapInsets() }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { open ->
+                map.setPadding(open.left, open.top, open.right, open.bottom)
+                if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
+                mapFramed = true
+            }
         }
         DisposableEffect(map) { onDispose { map.setMapClickListening(false); map.setGestureListening(false) } }
 

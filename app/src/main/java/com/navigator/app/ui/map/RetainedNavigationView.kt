@@ -35,6 +35,29 @@ class RetainedNavigationView(
     var view: NavigationView? by mutableStateOf(null)
         private set
 
+    /** The padding last sent to the shared map, so an equal one is not sent again (null: unknown). */
+    var appliedPadding: MapInsets? = null
+
+    /** What the screen asked for, and what the shell covers of the full-window map layer (bar, rail, strip). */
+    private var requestedPadding = MapInsets()
+    private var shellInsets = MapInsets()
+    private var googleMap: com.google.android.gms.maps.GoogleMap? = null
+
+    internal fun attachMap(map: com.google.android.gms.maps.GoogleMap) { googleMap = map }
+
+    /** A page's padding: the map gets it plus what the shell covers. An equal total is not sent again (each change makes the map re-lay itself out and block the UI thread). */
+    internal fun requestPadding(p: MapInsets) { requestedPadding = p; applyPadding() }
+
+    internal fun setShellInsets(i: MapInsets) { if (i != shellInsets) { shellInsets = i; applyPadding() } }
+
+    private fun applyPadding() {
+        val gm = googleMap ?: return
+        val total = requestedPadding + shellInsets
+        if (appliedPadding == total) return
+        appliedPadding = total
+        runCatching { gm.setPadding(total.left, total.top, total.right, total.bottom) }
+    }
+
     /** How many pages hold the map: with none, the layer behind the pages is hidden from screen readers. */
     var claims: Int by mutableIntStateOf(0)
 
@@ -88,6 +111,8 @@ class RetainedNavigationView(
         runCatching { v.onDestroy() }
         view = null
         mapInitialized = false
+        appliedPadding = null
+        googleMap = null
     }
 }
 

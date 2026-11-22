@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,6 +87,7 @@ import com.navigator.app.ui.feature.settings.SoundsScreen
 import com.navigator.app.ui.feature.settings.picker.AppPickerScreen
 import com.navigator.app.ui.feature.settings.picker.AudioPickerScreen
 import com.navigator.app.ui.feature.settings.picker.NavAppPickerScreen
+import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.MapLayer
 import com.navigator.app.ui.map.rememberRetainedNavigationView
 import com.navigator.app.ui.theme.AppFonts
@@ -125,6 +127,8 @@ fun KtmApp(onQuit: () -> Unit) {
     val feedback = rememberFeedback()
     val scope = rememberCoroutineScope()
     val chrome = remember { ShellChrome() }
+    // Not read in composition: it changes every frame while the tab bar slides in or out.
+    val shellInsets = remember { mutableStateOf(MapInsets()) }
     val retainedNav = rememberRetainedNavigationView()
     // A ride deleted from its replay or edit page: those pages are gone by the time the offer ends, so the shell holds it.
     fun offerUndoDelete(ids: List<String>) = feedback.snackbar(
@@ -223,13 +227,16 @@ fun KtmApp(onQuit: () -> Unit) {
             LocalOpenBikeSettings provides { navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) },
         ) {
             NavWindowEffects()
-            Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
+                // The one map, behind the whole shell at full window size: map pages are transparent over it, other pages cover it.
+                MapLayer(retainedNav, shellInsets = { shellInsets.value })
                 MainShell(
                     currentTab = currentTab,
                     immersive = chrome.immersive,
                     settingsNeedsAttention = permissionState.attentionNeeded,
                     bike = { bikeRail.value },
                     onSelectTab = { navController.openTab(it) },
+                    onContentInsets = { shellInsets.value = it },
                     feedback = feedback,
                     strip = {
                         Column {
@@ -246,8 +253,6 @@ fun KtmApp(onQuit: () -> Unit) {
                         }
                     },
                 ) {
-                    // The one map, behind every page: map pages are transparent over it, other pages cover it.
-                    MapLayer(retainedNav)
                     SharedTransitionLayout {
                         CompositionLocalProvider(LocalPageNav provides navController) {
                             NavHost(
