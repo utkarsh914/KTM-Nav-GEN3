@@ -2,6 +2,8 @@ package com.navigator.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -13,7 +15,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,15 +47,18 @@ fun KtmFilterChip(
     val c = KtmTheme.colors
     val a = KtmTheme.accent
     val haptics = rememberHaptics()
+    // The touch target is 48 dp but the pill is 44: the press shows on the pill, in its shape, not on the whole target.
+    val source = remember { MutableInteractionSource() }
     val content = if (!enabled) c.fg3 else if (selected) a.onContainer else c.fg
     Box(
         modifier.heightIn(min = if (riding) KtmLayout.targetPrimary else KtmLayout.targetRest)
-            .toggleable(value = selected, enabled = enabled, role = Role.Checkbox) { haptics.toggle(it); onClick() },
+            .toggleable(value = selected, enabled = enabled, role = Role.Checkbox, interactionSource = source, indication = null) { haptics.toggle(it); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Row(
             Modifier.heightIn(min = if (riding) KtmLayout.chipRidingHeight else KtmLayout.chipHeight)
                 .clip(KtmShapes.Control)
+                .indication(source, ripple(color = content))
                 .background(if (selected) a.container else Color.Transparent, KtmShapes.Control)
                 .let { if (selected) it else it.border(1.dp, c.line2, KtmShapes.Control) }
                 .padding(horizontal = KtmSpacing.lg),
