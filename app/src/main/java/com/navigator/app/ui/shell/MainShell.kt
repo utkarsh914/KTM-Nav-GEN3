@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -11,19 +13,23 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ShortNavigationBarDefaults
 import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRailDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.ExperimentalMaterial3AdaptiveNavigationSuiteApi
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldState
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -48,6 +53,7 @@ import com.navigator.app.ui.components.KtmSnackbarHost
 import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.components.pillDotColor
 import com.navigator.app.ui.map.MapInsets
+import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
@@ -104,8 +110,7 @@ fun MainShell(
     )
     val attention = stringResource(R.string.tab_needs_attention)
 
-    NavigationSuiteScaffold(
-        navigationItems = {
+    val navigationItems: @Composable () -> Unit = {
             Tab.entries.forEach { tab ->
                 val dot = tab == Tab.Settings && settingsNeedsAttention
                 // The landscape rail's dot repeats the bike pill (which Navigate and Mirror keep, as they open the bike sheet).
@@ -129,13 +134,17 @@ fun MainShell(
                     colors = itemColors,
                 )
             }
-        },
+    }
+    // Not NavigationSuiteScaffold: it wraps everything in a Material Surface, which swallows every touch, and the shared
+    // map sits behind this shell. Same layout and bar animation from its two public parts, minus the Surface (see
+    // docs/ENGINEERING_NOTES.md, "The map layer").
+    CompositionLocalProvider(LocalContentColor provides c.fg) {
+    NavigationSuiteScaffoldLayout(
+        navigationSuite = { NavigationSuite(navigationSuiteType = type, colors = barColors, content = navigationItems) },
         navigationSuiteType = type,
-        navigationSuiteColors = barColors,
-        containerColor = Color.Transparent,
-        contentColor = c.fg,
         state = state,
     ) {
+      Box(Modifier.consumeWindowInsets(barInsets(type, state))) {
         // Only the portrait bar sits under the content and takes the gesture-bar inset. Without it (pushed pages, the
         // landscape rail) nothing above does, so the strip and snackbar take the bottom and cutout insets themselves.
         val ownsBottom = !(showBar && type == NavigationSuiteType.ShortNavigationBarCompact)
@@ -168,5 +177,19 @@ fun MainShell(
                 Box(if (drawn) ownInsets else Modifier) { Box(Modifier.onSizeChanged { drawn = it.height > 0 }) { strip() } }
             }
         }
+      }
+    }
     }
 }
+
+/** What the bar or rail takes of the window insets, as the scaffold would have consumed them. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3AdaptiveNavigationSuiteApi::class)
+@Composable
+private fun barInsets(type: NavigationSuiteType, state: NavigationSuiteScaffoldState): WindowInsets =
+    if (state.currentValue == NavigationSuiteScaffoldValue.Hidden && !state.isAnimating) WindowInsets(0, 0, 0, 0)
+    else when (type) {
+        NavigationSuiteType.ShortNavigationBarCompact ->
+            ShortNavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom).add(WindowInsets(bottom = KtmLayout.tabBar))
+        NavigationSuiteType.WideNavigationRailCollapsed -> WideNavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+        else -> WindowInsets(0, 0, 0, 0)
+    }
