@@ -7,6 +7,42 @@ this way" reference, kept so the reasoning isn't lost to git history alone.
 
 ---
 
+## The map layer: why page transitions are smooth (do not undo)
+
+**Symptom:** stutter on page opens, worst on opening search and opening a ride (all map screens). Measured with
+Perfetto on a 120 Hz phone: the shared map view was resized on almost every frame while a page opened, because the tab
+bar slides away and the map's container resized with it. In 4 ride opens that was 110 full re-layouts of the map,
+6-30 ms each, each blocking the UI thread on the map's own render thread (`GL-Map`, the Navigation SDK draws into a
+TextureView), with stalls of 60-170 ms. A padding change on the map likewise makes it re-lay itself out for several
+frames. The cost was in the map, not in Compose.
+
+**What keeps it fixed (each one has been measured; changing any of them brings the stutter back):**
+1. `MapLayer` (one `RetainedNavigationView`, hosted once) sits in the root of `KtmApp`, behind `MainShell`, at full
+   window size. Never put it inside something that changes size (the shell's content area, a page, an animated
+   container) and never re-parent, fade, scale or clip it.
+2. What the shell covers (tab bar, rail, activity strip) reaches the map as padding, sent once it has held still
+   (`MainShell.onContentInsets`, `RetainedNavigationView.setShellInsets`), never as a resize.
+3. All map padding goes through `PaddingFunnel` (`RetainedNavigationView.requestPadding`): requested + shell insets,
+   an equal total is not sent again. Do not call `GoogleMap.setPadding` directly, and do not reset the padding "to be
+   safe" (search used to, and cost frames for nothing).
+4. Map pages (`isMapPage()`: Navigate, replay, trim) do camera, padding and overlay work only once the page has
+   arrived (`rememberPageSettled()`), after `MapController.awaitPaddingSettled()`, not under the animation.
+5. Pages slide opaque and full width, tabs cross-fade; no page slides and fades at once (a full-screen alpha layer per
+   frame). Guard: `PageTransitions.kt` is checked by the UI rules script.
+6. **Nothing between the screen and the map may swallow touches.** `NavigationSuiteScaffold` wraps its content in a
+   Material `Surface`, which consumes every pointer event, so with the map behind the shell the map could not be panned
+   or tapped. `MainShell` therefore uses `NavigationSuiteScaffoldLayout` + `NavigationSuite` (the scaffold's public
+   parts) without the Surface. Do not put a `Surface`, a clickable background or a catch-all `pointerInput` over map
+   pages. A page that covers the map uses `coverGround()` (opaque, consumes the touches that land on empty spots, but
+   not every event: a parent that consumes small moves cancels its children's taps). `ShellTouchThroughTest` guards it.
+
+**How to measure again:** `benchmark` build type (release-like, debug-signed, R8 + Baseline Profile) on a real phone;
+`adb shell perfetto` with `sched`, `view`, `gfx`, `input` and `wm` categories while a script taps through search /
+a ride / the tabs; look at `AndroidOwner:measureAndLayout` slices over 12 ms and how long the main thread slept inside
+them, and at `MapHost`-style `onLayout(changed=true)` calls on the map's parent (there should be none while a page
+moves). `adb shell dumpsys gfxinfo <package>` gives janky-frame percentiles. Acceptance used: p95 frame time under the
+refresh interval, at most 1 % janky frames, no frame over 32 ms, with animation timings unchanged.
+
 ## Roundabout exit glyph is chosen by exit angle, not ordinal exit count
 
 **Symptom:** in-app Google navigation showed a "sharp right" roundabout glyph on the dash that

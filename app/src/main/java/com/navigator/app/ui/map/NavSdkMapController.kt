@@ -188,6 +188,7 @@ class NavSdkMapController(
         else if (owns) gm.setOnCameraIdleListener(null)
     }
 
+    // Goes through the padding funnel only; never call GoogleMap.setPadding directly (docs/ENGINEERING_NOTES.md, "The map layer").
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
         if (owns) retained.requestPadding(MapInsets(left, top, right, bottom))
     }
