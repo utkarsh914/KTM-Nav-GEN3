@@ -59,7 +59,7 @@ class PageTransitionsTest {
         rule.onNodeWithText("rides").assertIsDisplayed()
     }
 
-    @Test fun aPushDimsThePageUnderneathExceptBetweenTabsAndListPagesAreTheOnesThatShrink() {
+    @Test fun aPushDimsThePageUnderneathExceptBetweenTabs() {
         var nav: NavHostController? = null
         rule.setContent {
             KtmTheme(darkTheme = true, reducedMotion = true) {
@@ -68,7 +68,7 @@ class PageTransitionsTest {
                     NavHost(controller, startDestination = Route.Rides) {
                         page<Route.Rides> { Text("rides") }
                         page<Route.Places> { Text("places") }
-                        listPage<Route.Logs> { Text("logs") }
+                        page<Route.Logs> { Text("logs") }
                     }
                 }
             }
@@ -80,9 +80,6 @@ class PageTransitionsTest {
         val logs = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
         assertFalse("two tabs fade through each other", dimsUnder(rides, places))
         assertTrue("a page pushed over a tab dims it", dimsUnder(places, logs))
-        assertTrue(logs.isListPage())
-        assertFalse(rides.isListPage())
-        assertFalse(places.isListPage())
     }
 
     @Test fun mapPagesAreTheOnesThatShowTheSharedMapAndDissolveOverOtherPages() {

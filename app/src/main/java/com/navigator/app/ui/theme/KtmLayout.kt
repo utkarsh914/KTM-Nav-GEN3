@@ -278,8 +278,6 @@ object KtmLayout {
     val diagGlyph = 40.dp
     val diagThumb = 44.dp
     val diagTile = 56.dp
-    /** The corner radius a page takes on while it shrinks away in a back swipe (Android's own back preview). */
-    val pageLeaveCorner = 28.dp
     /** The big turn glyph in a calibration cell (it fills the cell's tile). */
     val diagGlyphLarge = 56.dp
     /** The square behind a turn glyph in a diagnostics row. */

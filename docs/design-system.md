@@ -92,12 +92,11 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   clipped or blurred. A page takes it with `MapClaim`. Map pages (`isMapPage()`: Navigate, Replay, Trim, Pick on map) are
   transparent over it and only their controls move; every other page paints `coverGround()` (opaque, and it takes the
   touches nobody inside wanted, so nothing falls through to the map). The map is hidden from TalkBack while no page claims it.
-- Pages (`ui/shell/PageTransitions.kt`, every page registered with `page<T>`/`listPage<T>`; D28): a pushed page is opaque
+- Pages (`ui/shell/PageTransitions.kt`, every page registered with `page<T>`; D28): a pushed page is opaque
   and slides in from the right edge, full width, on `page()`, with no alpha at all (`check-ui-rules.sh` fails on slide plus
   fade); the page underneath moves back a quarter of the width and dims (`KtmLayout.pageDim`, 25 % black, a plain overlay
   that never blurs). A map page underneath does not move, it only dims (the map is not part of the page); two map pages cross-fade their controls. Back is the exact
-  reverse (except where the map is between the pages); a predictive back swipe seeks it, and only list pages (`listPage`: settings pages, pickers, logs, edit ride)
-  shrink to 90 % and take 28 dp corners while they leave. Tabs: the new tab fades in over the old one at once (no gap, no
+  reverse (except where the map is between the pages); a predictive back swipe seeks that same slide (no shrink, no corners, so the gesture and the arrow look alike). Tabs: the new tab fades in over the old one at once (no gap, no
   scale, the old one stays put). Where the map is between the pages (a map page over, or back to, an opaque page) both
   dissolve; the ride card's shared-bounds move keeps Rides still while the replay fades and its container carries its own
   ground. Tabs and the card move are not dimmed. Onboarding steps still use the page and fade-through tokens. With Remove

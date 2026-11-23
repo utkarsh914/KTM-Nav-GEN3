@@ -363,7 +363,7 @@ keeps it out of backups) and cleared by Re-pair. The bike sheet shows it under t
 - `notify/`: pure builders (`LiveUpdateBuilder`, `RecordingNotice`, `ConnectionNoticeContent`), channels,
   actions, large icons; the services only post what these build.
 - `ui/shell/`: `KtmApp` (theme, `NavHost` with type-safe `Route`s, tabs, shared transitions, intents, Quit),
-  `MainShell` (tab bar or rail with the bike's state dot, activity strip, snackbars), `RoundedPage` (`listPage`), `Feedback`, `ShellChrome` (immersive riding).
+  `MainShell` (tab bar or rail with the bike's state dot, activity strip, snackbars), `PageKinds` (map pages, ground), `Feedback`, `ShellChrome` (immersive riding).
 - `ui/feature/<name>/`: one folder per area (`navigate`, `rides`, `replay`, `places`, `settings`, `mirror`,
   `onboarding`, `pairing`, `permissions`, `record`, `diagnostics`). `ui/components/` and `ui/theme/` are the
   design system (`docs/design-system.md`).

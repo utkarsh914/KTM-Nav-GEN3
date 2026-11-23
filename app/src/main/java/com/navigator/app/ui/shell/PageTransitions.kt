@@ -6,7 +6,6 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
@@ -22,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -31,6 +31,7 @@ import androidx.navigation.compose.composable
 import com.navigator.app.ui.components.KtmScrim
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmMotionSpecs
+import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -40,7 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * pages (D27), so a map page is transparent: only its controls travel, and a map page underneath only dims. Tabs fade
  * the new tab in over the old one: no scale, no gap. The few moves that cannot slide because the map is between the
  * pages dissolve instead. All of it runs on the tokens of KtmMotionSpecs. A predictive back swipe seeks the same
- * transitions; only list pages shrink and take corners.
+ * transitions: no shrink, no corners.
  */
 
 /** The page under a push moves back by one over this share of the width. */
@@ -129,30 +130,28 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion
     mapToPage() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
     motion.reduced -> holdUntilFaded(motion.effectsFast())
     tabSwitch() -> ExitTransition.None
-    // Also what a predictive back swipe previews: a list page shrinks as it slides away.
-    else -> slideOutHorizontally(motion.page()) { it } +
-        (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
+    // Also what a predictive back swipe previews: the same slide as the arrow, nothing else.
+    else -> slideOutHorizontally(motion.page()) { it }
 }
 
 /** The nav controller, so a page can tell it is covered by one pushed over it. Provided by [KtmApp]. */
 internal val LocalPageNav = staticCompositionLocalOf<NavHostController?> { null }
 
-/** A page of the app: the one place a page gets the dim that goes with a push (and, for [listPage], its corners). */
+/** A page of the app: the one place a page gets the dim that goes with a push. */
 internal inline fun <reified T : Any> NavGraphBuilder.page(
-    listPage: Boolean = false,
     noinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit,
 ) = composable<T> { entry ->
     val scope = this
-    PageHost(scope, entry, listPage) { scope.content(entry) }
+    PageHost(scope, entry) { scope.content(entry) }
 }
 
 @Composable
-internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, listPage: Boolean, content: @Composable () -> Unit) {
+internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, content: @Composable () -> Unit) {
     // A map page is transparent over the map layer; every other page covers it with the app's ground.
     val ground = if (entry.destination.paintsOwnGround()) Modifier else Modifier.coverGround()
     val settled = remember(scope) { derivedStateOf { !scope.transition.isRunning } }
     CompositionLocalProvider(LocalPageSettled provides settled) {
-        Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground).pageFade(scope)) {
+        Box(ground.pageFade(scope)) {
             content()
             PageDim(scope, entry)
         }
@@ -174,10 +173,19 @@ private fun Modifier.pageFade(scope: AnimatedContentScope): Modifier {
     ) { state ->
         if (state == EnterExitState.Visible || fadeOf(parent, nav, entering = state == EnterExitState.PreEnter, reduced = motion.reduced) == null) 1f else 0f
     }
+    // A tab that arrives also settles up into place, on the same progress as its fade (peers fade, they do not slide).
+    val rise = with(LocalDensity.current) { KtmSpacing.sm.toPx() }
     return graphicsLayer {
         this.alpha = alpha.value
         compositingStrategy = CompositingStrategy.ModulateAlpha
+        if (!motion.reduced && scope.transition.targetState == EnterExitState.Visible && isTabMove(parent)) translationY = (1f - alpha.value) * rise
     }
+}
+
+private fun isTabMove(parent: androidx.compose.animation.core.Transition<*>?): Boolean {
+    val initial = (parent?.currentState as? NavBackStackEntry)?.destination ?: return false
+    val target = (parent.targetState as? NavBackStackEntry)?.destination ?: return false
+    return pageMove(initial, target).tab
 }
 
 private fun fadeOf(parent: androidx.compose.animation.core.Transition<*>?, nav: NavHostController?, entering: Boolean, reduced: Boolean): PageFade? {

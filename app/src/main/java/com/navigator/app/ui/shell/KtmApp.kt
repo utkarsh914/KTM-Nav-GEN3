@@ -112,6 +112,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val snap by settings.snapshot.collectAsState()
     val intents = container.intents
     var showQuit by rememberSaveable { mutableStateOf(false) }
+    val requestQuit = { if (QuitPolicy.needsConfirmNow()) showQuit = true else onQuit() }
 
     LaunchedEffect(snap.fontMode) { AppFonts.apply(snap.fontMode) }
 
@@ -206,7 +207,7 @@ fun KtmApp(onQuit: () -> Unit) {
         if (pending.confirmEnd) handle(AppIntent.ConfirmEndTrip, intents::consumeConfirmEnd)
         if (pending.openSearch) handle(AppIntent.OpenSearch, intents::consumeOpenSearch)
         // These open a dialog or a page of the shell itself, wherever the rider is.
-        if (pending.quit) { handle(AppIntent.ConfirmQuit, intents::consumeQuit); showQuit = true }
+        if (pending.quit) { handle(AppIntent.ConfirmQuit, intents::consumeQuit); requestQuit() }
         if (pending.rePair) { handle(AppIntent.OpenRePair, intents::consumeRePair); if (setupDone) navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) }
         pending.rideId?.let { id -> handle(AppIntent.OpenRide(id), intents::consumeRide); if (setupDone) navController.push(Route.RideReplay(id)) }
     }
@@ -371,10 +372,10 @@ fun KtmApp(onQuit: () -> Unit) {
                                     SettingsHomeScreen(
                                         onOpenPage = { page -> navController.push(Route.SettingsPage(page)) },
                                         onRePaired = { navController.push(Route.Pairing(toHome = true)) },
-                                        onQuit = { showQuit = true },
+                                        onQuit = requestQuit,
                                     )
                                 }
-                                listPage<Route.SettingsPage> { backStackEntry ->
+                                page<Route.SettingsPage> { backStackEntry ->
                                     val back = { navController.popFrom(backStackEntry) }
                                     when (backStackEntry.toRoute<Route.SettingsPage>().page) {
                                         SettingsPage.BIKE_DASH -> BikeDashScreen(
@@ -397,12 +398,12 @@ fun KtmApp(onQuit: () -> Unit) {
                                         )
                                     }
                                 }
-                                listPage<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
-                                listPage<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
-                                listPage<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
-                                listPage<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
-                                listPage<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
-                                listPage<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.DashApps> { e -> AppPickerScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.NavApp> { e -> NavAppPickerScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.CallAudio> { e -> AudioPickerScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.Logs> { e -> LogsScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.SymbolTest> { e -> SymbolTestScreen(onBack = { navController.popFrom(e) }) }
+                                page<Route.TurnCalibration> { e -> CalibrationScreen(onBack = { navController.popFrom(e) }) }
                                 page<Route.MergeRides> { backStackEntry ->
                                     MergeScreen(
                                         ids = backStackEntry.toRoute<Route.MergeRides>().rideIds,
@@ -443,7 +444,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                     )
                                     }
                                 }
-                                listPage<Route.EditRide> { backStackEntry ->
+                                page<Route.EditRide> { backStackEntry ->
                                     val id = backStackEntry.toRoute<Route.EditRide>().rideId
                                     EditRideScreen(
                                         rideId = id,
