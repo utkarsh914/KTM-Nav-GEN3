@@ -11,6 +11,7 @@ import com.navigator.app.R
  */
 object NotificationChannels {
     const val GUIDANCE = "nav_guidance"
+    const val GUIDANCE_IDLE = "nav_guidance_idle"
     const val RECORDING = "ride_recording"
     const val RECORDING_QUIET = "ride_recording_quiet"
     const val CONNECTION = "bccu_connection_v2"
@@ -27,6 +28,10 @@ object NotificationChannels {
             val channel = when (id) {
                 GUIDANCE -> NotificationChannel(id, res.getString(R.string.live_channel_guidance), NotificationManager.IMPORTANCE_LOW).apply {
                     description = res.getString(R.string.live_channel_guidance_desc)
+                    setShowBadge(false)
+                }
+                GUIDANCE_IDLE -> NotificationChannel(id, res.getString(R.string.live_channel_idle), NotificationManager.IMPORTANCE_MIN).apply {
+                    description = res.getString(R.string.live_channel_idle_desc)
                     setShowBadge(false)
                 }
                 RECORDING -> NotificationChannel(id, res.getString(R.string.rec_channel), NotificationManager.IMPORTANCE_LOW)

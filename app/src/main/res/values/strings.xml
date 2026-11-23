@@ -1125,6 +1125,9 @@
     <string name="live_alert_at">Alert at %1$d</string>
     <string name="live_rerouting">Rerouting\u2026</string>
     <string name="live_navigating">Navigating</string>
+    <string name="live_idle">Navigation ready</string>
+    <string name="live_channel_idle">Navigation, idle</string>
+    <string name="live_channel_idle_desc">A quiet placeholder the navigation service needs while no trip is running. It has no buttons.</string>
     <string name="live_guidance_active">Guidance active</string>
     <string name="live_finding_route">Finding a new route</string>
     <string name="live_calculating">Calculating route\u2026</string>
@@ -1161,7 +1164,7 @@
     <string name="conn_connected_named">Dash connected · %1$s</string>
     <string name="conn_reconnecting">Reconnecting to the dash</string>
     <string name="conn_reconnecting_named">Reconnecting to %1$s…</string>
-    <string name="conn_reconnecting_fix">Is the ignition on? Retrying automatically</string>
+    <string name="conn_reconnecting_fix">Retrying automatically</string>
     <string name="conn_bt_off">Bluetooth is off</string>
     <string name="conn_bt_off_fix">Turn it on to reconnect to the dash.</string>
     <string name="conn_cant">Can\'t connect to the dash</string>

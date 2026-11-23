@@ -55,10 +55,15 @@ class NavLiveUpdate(
         scope.launch {
             // ~1 Hz is plenty for a notification, and keeps the system from rate-limiting updates. Overspeed and the
             // recording are folded in here so they never become notifications of their own while a trip runs.
+            var wasLive = false
             combine(
                 GoogleNavSdkProvider.state, RideSession.state, SpeedMonitor.overspeedKmh, BccuConnectionService.connectionState,
             ) { state, _, _, _ -> state }.sample(1_000).collect { state ->
                 totalM = NavLiveContentBuilder.trackTotal(totalM, state)
+                // The trip's notification and the idle one are different notifications: swap at once when a trip starts or ends.
+                val live = NavLiveContentBuilder.shouldRefresh(state)
+                if (live != wasLive && foregroundNotificationShown()) runCatching { updateNotification() }
+                wasLive = live
                 // updateNotification() is a plain notify(): only refresh while guidance is live AND
                 // the SDK's foreground service still owns the notification, or a late tick would
                 // resurrect a stale, undismissable "Navigating" card after the trip ended.
@@ -100,6 +105,9 @@ class NavLiveUpdate(
     private fun build(): Notification {
         NotificationChannels.ensure(app, NotificationChannels.GUIDANCE) // idempotent; covers a channel the rider deleted
         val state = GoogleNavSdkProvider.state.value
+        // The SDK raises its foreground service as soon as the map is up, so it needs a notification with no trip too: a
+        // silent placeholder (no buttons, no status bar icon), not the trip's notification.
+        if (!NavLiveContentBuilder.shouldRefresh(state)) return idle()
         val marks = GoogleNavSdkProvider.routeMarks.value
         val paired = settings.bondedDeviceAddress != null
         val content = LiveUpdateBuilder.build(
@@ -146,6 +154,18 @@ class NavLiveUpdate(
         }
         if (liveUpdatesEnabled()) PromotedOngoing.apply(b, content.chip)
         return b.build()
+    }
+
+    private fun idle(): Notification {
+        NotificationChannels.ensure(app, NotificationChannels.GUIDANCE_IDLE)
+        return Notification.Builder(app, NotificationChannels.GUIDANCE_IDLE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(app.getString(R.string.live_idle))
+            .setContentIntent(tapIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(Notification.VISIBILITY_SECRET)
+            .build()
     }
 
     private fun actionFor(action: LiveAction): Notification.Action? {

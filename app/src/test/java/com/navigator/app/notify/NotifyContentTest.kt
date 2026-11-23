@@ -194,7 +194,7 @@ class ConnectionNoticeTest {
 
     @Test fun theTitleSaysTheStateAndTheSecondLineTheFix() {
         assertEquals("Reconnecting to the dash", of(ConnectionNotice.RECONNECTING).title)
-        assertEquals("Is the ignition on? Retrying automatically", of(ConnectionNotice.RECONNECTING).text)
+        assertEquals("Retrying automatically", of(ConnectionNotice.RECONNECTING).text)
         assertEquals("Bluetooth is off", of(ConnectionNotice.BLUETOOTH_OFF).title)
     }
 
