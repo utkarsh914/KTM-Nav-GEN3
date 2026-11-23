@@ -1,6 +1,7 @@
 package com.navigator.app.ui.shell
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
@@ -96,13 +97,13 @@ fun Modifier.searchContainer(fieldSide: Boolean): Modifier {
         this@searchContainer.sharedBounds(
             sharedContentState = rememberSharedContentState(key = SEARCH_KEY),
             animatedVisibilityScope = shared.visibility,
-            enter = fadeIn(motion.effectsDefault()),
-            exit = fadeOut(motion.effectsFast()),
+            enter = EnterTransition.None,
+            exit = holdUntilFaded(motion.effectsFast()),
             boundsTransform = { _, _ -> motion.spatialDefault<Rect>() },
             resizeMode = if (fieldSide) SharedTransitionScope.ResizeMode.RemeasureToBounds
             else SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.FillWidth, Alignment.TopCenter),
             clipInOverlayDuringTransition = OverlayClip(RectangleShape),
-        )
+        ).layerFade(shared.visibility, motion.effectsDefault(), motion.effectsFast())
     }
 }
 

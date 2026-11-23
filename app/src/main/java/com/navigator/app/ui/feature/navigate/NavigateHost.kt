@@ -4,9 +4,8 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -103,6 +102,8 @@ import com.navigator.app.ui.shell.LocalFeedback
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.shell.SharedElements
 import com.navigator.app.ui.shell.coverGround
+import com.navigator.app.ui.shell.holdUntilFaded
+import com.navigator.app.ui.shell.layerFade
 import com.navigator.app.ui.shell.rememberNightNow
 import com.navigator.app.ui.shell.resolveSurfaceDark
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -122,16 +123,16 @@ import kotlinx.coroutines.withContext
 private fun stageTransition(initial: NavStage, target: NavStage, motion: KtmMotionSpecs): ContentTransform = when {
     // The riding screen has its own choreography (MO1, MO6): around it the stage only fades, with no drift and no spring.
     initial == NavStage.NAVIGATING || target == NavStage.NAVIGATING ->
-        fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
+        EnterTransition.None togetherWith holdUntilFaded(motion.effectsFast())
     // The container does the moving (with "Remove animations" there is no container: a plain fade, as the slide has no offset).
     KtmMotionSpecs.SEARCH_CONTAINER && ((initial == NavStage.BROWSE && target == NavStage.SEARCH) || (initial == NavStage.SEARCH && target == NavStage.BROWSE)) ->
-        fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
+        EnterTransition.None togetherWith holdUntilFaded(motion.effectsFast())
     target == NavStage.SEARCH ->
-        (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeIn(motion.effectsDefault())) togetherWith fadeOut(motion.effectsFast())
+        (slideInVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + EnterTransition.None) togetherWith holdUntilFaded(motion.effectsFast())
     initial == NavStage.SEARCH ->
-        fadeIn(motion.effectsDefault()) togetherWith (slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + fadeOut(motion.effectsFast()))
+        EnterTransition.None togetherWith (slideOutVertically(motion.spatialDefault()) { if (motion.reduced) 0 else it } + holdUntilFaded(motion.effectsFast()))
     // The chrome fades; the place and route sheets travel from their own edge (PlanPanel, [stageSheet]).
-    else -> fadeIn(motion.effectsDefault()) togetherWith fadeOut(motion.effectsFast())
+    else -> EnterTransition.None togetherWith holdUntilFaded(motion.effectsFast())
 }
 
 
@@ -862,7 +863,7 @@ fun NavigateHost(
                 label = "navStage",
             ) { s ->
               CompositionLocalProvider(LocalTripShared provides remember(this@SharedTransitionLayout, this) { SharedElements(this@SharedTransitionLayout, this) }) {
-              Box(Modifier.fillMaxSize()) {
+              Box(Modifier.fillMaxSize().layerFade(this, motionSpecs.effectsDefault(), motionSpecs.effectsFast())) {
                 when (s) {
                 NavStage.BROWSE -> NavigateRoute(
                     map = map,
