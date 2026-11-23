@@ -29,12 +29,17 @@ frames. The cost was in the map, not in Compose.
    arrived (`rememberPageSettled()`), after `MapController.awaitPaddingSettled()`, not under the animation.
 5. Pages slide opaque and full width, tabs cross-fade; no page slides and fades at once (a full-screen alpha layer per
    frame). Guard: `PageTransitions.kt` is checked by the UI rules script.
-6. **Nothing between the screen and the map may swallow touches.** `NavigationSuiteScaffold` wraps its content in a
-   Material `Surface`, which consumes every pointer event, so with the map behind the shell the map could not be panned
-   or tapped. `MainShell` therefore uses `NavigationSuiteScaffoldLayout` + `NavigationSuite` (the scaffold's public
-   parts) without the Surface. Do not put a `Surface`, a clickable background or a catch-all `pointerInput` over map
-   pages. A page that covers the map uses `coverGround()` (opaque, consumes the touches that land on empty spots, but
-   not every event: a parent that consumes small moves cancels its children's taps). `ShellTouchThroughTest` guards it.
+6. **Nothing between the screen and the map may swallow touches over the map's empty areas.** `NavigationSuiteScaffold`
+   wraps its content in a Material `Surface`, which consumes every pointer event, so with the map behind the shell the
+   map could not be panned or tapped. `MainShell` therefore uses `NavigationSuiteScaffoldLayout` + `NavigationSuite`
+   (the scaffold's public parts) without the Surface. Do not put a `Surface`, a clickable background or a catch-all
+   `pointerInput` over a map page's empty areas. Whatever is drawn over the map (sheets, panels, covers, an opaque
+   error state) takes its own touches with `consumeMapTouches()`, and an opaque page uses `coverGround()` (opaque,
+   consumes taps but not every event: a parent that consumes small moves cancels its children's taps).
+   `ShellTouchThroughTest` guards the shell only (a stand-in map behind `MainShell`, portrait and landscape); the rest
+   is checked on a device (drag the map on Navigate, replay, trim and pick on map).
+7. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
+   it is picking on the map (`PlacePickScreen`); it follows the same rules.
 
 **How to measure again:** `benchmark` build type (release-like, debug-signed, R8 + Baseline Profile) on a real phone;
 `adb shell perfetto` with `sched`, `view`, `gfx`, `input` and `wm` categories while a script taps through search /

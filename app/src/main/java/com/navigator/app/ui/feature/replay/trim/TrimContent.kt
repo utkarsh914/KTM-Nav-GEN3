@@ -63,11 +63,13 @@ import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.MapControlButton
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.replay.PlaybackEngine
 import com.navigator.app.ui.feature.replay.ReplayFormat
 import com.navigator.app.ui.feature.replay.trackFraction
 import com.navigator.app.ui.map.MapInsets
+import com.navigator.app.ui.shell.coverGround
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -96,7 +98,7 @@ class TrimActions(
 fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit, modifier: Modifier = Modifier) {
     when (ui) {
         TrimUi.Loading -> Unit
-        TrimUi.Gone -> Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
+        TrimUi.Gone -> Column(modifier.fillMaxSize().coverGround()) {
             Row(Modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).padding(KtmSpacing.xs)) {
                 KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), actions.onBack)
             }
@@ -122,7 +124,7 @@ fun TrimContent(ui: TrimUi, actions: TrimActions, onInsets: (MapInsets) -> Unit,
                     Column(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                             .onSizeChanged { onInsets(MapInsets(bottom = it.height)) }
-                            .shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(KtmTheme.colors.surf, KtmShapes.SheetTop)
+                            .shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(KtmTheme.colors.surf, KtmShapes.SheetTop).consumeMapTouches()
                             .pageInsets(WindowInsetsSides.Horizontal)
                             .padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.lg),
                         verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),

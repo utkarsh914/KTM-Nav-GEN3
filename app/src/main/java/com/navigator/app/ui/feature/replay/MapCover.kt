@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.navigator.app.data.rides.ThumbPoint
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.feature.rides.ThumbnailGeometry
 import com.navigator.app.ui.feature.rides.drawRoute
 import com.navigator.app.ui.theme.KtmLayout
@@ -25,7 +26,7 @@ import com.navigator.app.ui.theme.KtmTheme
 fun MapCover(visible: Boolean, points: List<ThumbPoint>?, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     AnimatedVisibility(visible, modifier, exit = fadeOut(KtmTheme.motion.effectsDefault())) {
-        Box(Modifier.fillMaxSize().background(c.surf3).clearAndSetSemantics {}) {
+        Box(Modifier.fillMaxSize().background(c.surf3).consumeMapTouches().clearAndSetSemantics {}) {
             if (!points.isNullOrEmpty()) {
                 val neutral = c.fg2
                 val stroke = KtmLayout.outline

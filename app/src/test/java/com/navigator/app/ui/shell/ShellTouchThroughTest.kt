@@ -54,6 +54,11 @@ class ShellTouchThroughTest {
         }
     }
 
+    private fun tapOnEmptyContent() = rule.onRoot().performTouchInput {
+        val at = Offset(width * 0.6f, height * 0.3f)
+        down(at); moveTo(at + Offset(2f, 1f)); up()
+    }
+
     private fun dragOnEmptyContent() = rule.onRoot().performTouchInput {
         val start = Offset(width * 0.6f, height * 0.3f)
         down(start)
@@ -71,9 +76,7 @@ class ShellTouchThroughTest {
 
     @Test fun aTapOnEmptyContentReachesTheMapBehind() {
         rule.setContent { BehindTheShell() }
-        rule.onRoot().performTouchInput {
-            down(Offset(200f, 400f)); moveTo(Offset(202f, 401f)); up()
-        }
+        tapOnEmptyContent()
         assertEquals(1, taps)
     }
 
@@ -90,7 +93,10 @@ class ShellTouchThroughTest {
         rule.setContent { BehindTheShell() }
         dragOnEmptyContent()
         assertTrue("the map behind got no drag: $drags", drags > 50f)
+        tapOnEmptyContent()
+        assertEquals(1, taps)
         rule.onNodeWithText("Places").performTouchInput { down(center); moveBy(Offset(1f, 1f)); up() }
         assertEquals(listOf(Tab.Places), selected)
+        assertEquals(1, taps)
     }
 }

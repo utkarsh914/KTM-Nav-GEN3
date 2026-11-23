@@ -74,10 +74,12 @@ import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.MapControlButton
 import com.navigator.app.ui.components.SheetHandle
 import com.navigator.app.ui.components.StatTile
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.components.rideDuration
 import com.navigator.app.ui.feature.rides.RideSourceText
 import com.navigator.app.ui.map.MapInsets
 import com.navigator.app.ui.map.rememberOffNorth
+import com.navigator.app.ui.shell.coverGround
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -138,7 +140,7 @@ fun ReplayContent(
 
 @Composable
 private fun NoTrack(hasRide: Boolean, onBack: () -> Unit, modifier: Modifier) {
-    Column(modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
+    Column(modifier.fillMaxSize().coverGround()) {
         Row(Modifier.pageInsets(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).padding(KtmSpacing.xs)) {
             KtmIconButton(KtmIcons.ArrowLeft, stringResource(R.string.common_back), onBack)
         }
@@ -221,6 +223,7 @@ private fun ReplaySheet(
         modifier.fillMaxWidth().heightIn(max = maxHeight)
             .shadow(KtmElevation.sheet, KtmShapes.SheetTop)
             .background(c.surf, KtmShapes.SheetTop)
+            .consumeMapTouches()
             .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         // The bar is 4 dp tall in a 28 dp zone; the touch band is the full 48 dp.

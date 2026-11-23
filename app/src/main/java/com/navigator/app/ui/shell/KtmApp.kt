@@ -228,8 +228,9 @@ fun KtmApp(onQuit: () -> Unit) {
         ) {
             NavWindowEffects()
             Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
-                // DO NOT move this into the shell or a page, resize it or put anything touch-swallowing over map pages: it caused
-                // the page-transition stutter (docs/ENGINEERING_NOTES.md, "The map layer"). The one map, behind the whole shell at full window size: map pages are transparent over it, other pages cover it.
+                // The one map, behind the whole shell at full window size: map pages are transparent over it, other pages cover it.
+                // DO NOT move it into the shell or a page, resize it, or put anything over the empty areas of map pages that takes
+                // touches: that caused the page-transition stutter and the dead map (docs/ENGINEERING_NOTES.md, "The map layer").
                 MapLayer(retainedNav, shellInsets = { shellInsets.value })
                 MainShell(
                     currentTab = currentTab,

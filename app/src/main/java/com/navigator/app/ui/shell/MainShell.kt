@@ -68,8 +68,8 @@ internal fun shellNavigationType(minWidthDp: Int): NavigationSuiteType =
     else NavigationSuiteType.WideNavigationRailCollapsed
 
 /**
- * The shared frame of the four tabs: a bottom bar in portrait, a rail in landscape (the scaffold
- * insets it for the camera cutout and passes the rest of the insets on), the activity strip docked
+ * The shared frame of the four tabs: a bottom bar in portrait, a rail in landscape (the bar and rail inset
+ * themselves for the cutout; the content gets the rest of the insets), the activity strip docked
  * directly above the bar, and the snackbar above that. Pushed pages and riding mode hide the bar
  * ([currentTab] null, or [immersive]); the content stays in one place in the composition, so the
  * map is never rebuilt by the change.
@@ -135,9 +135,9 @@ fun MainShell(
                 )
             }
     }
-    // Not NavigationSuiteScaffold: it wraps everything in a Material Surface, which swallows every touch, and the shared
-    // map sits behind this shell. Same layout and bar animation from its two public parts, minus the Surface (see
-    // docs/ENGINEERING_NOTES.md, "The map layer").
+    // Not NavigationSuiteScaffold: it wraps everything in a Material Surface, which swallows every touch, and the shared map
+    // sits behind this shell. Same layout and bar animation from its two public parts, minus the Surface
+    // (docs/ENGINEERING_NOTES.md, "The map layer").
     CompositionLocalProvider(LocalContentColor provides c.fg) {
     NavigationSuiteScaffoldLayout(
         navigationSuite = { NavigationSuite(navigationSuiteType = type, colors = barColors, content = navigationItems) },
@@ -182,7 +182,10 @@ fun MainShell(
     }
 }
 
-/** What the bar or rail takes of the window insets, as the scaffold would have consumed them. */
+/**
+ * What the bar or rail takes of the window insets: a copy of what NavigationSuiteScaffold consumes (its function is private),
+ * for the two types this shell uses; 64 dp is Material's short navigation bar height.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3AdaptiveNavigationSuiteApi::class)
 @Composable
 private fun barInsets(type: NavigationSuiteType, state: NavigationSuiteScaffoldState): WindowInsets =

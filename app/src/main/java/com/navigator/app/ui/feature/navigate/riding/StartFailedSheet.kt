@@ -31,6 +31,7 @@ import com.navigator.app.ui.components.ButtonStyle
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.KtmSheetContent
 import com.navigator.app.ui.components.SheetHandle
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.theme.KtmElevation
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
@@ -56,7 +57,7 @@ fun StartFailedSheet(failure: StartFailure, canRetry: Boolean, actions: StartFai
     val ui = StartFailureMapper.of(failure)
     val r = KtmTheme.riding
     Column(
-        modifier.widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop)
+        modifier.widthIn(max = if (landscape) KtmLayout.panelWide else Dp.Unspecified).fillMaxWidth().heightIn(max = KtmLayout.startFailedMax).shadow(KtmElevation.sheet, KtmShapes.SheetTop).background(r.surface, KtmShapes.SheetTop).consumeMapTouches()
             .pageInsets(WindowInsetsSides.Horizontal),
     ) {
         SheetHandle()

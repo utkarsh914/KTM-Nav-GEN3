@@ -385,8 +385,8 @@ screens are immersive (no tab bar) and use the riding theme.
 All specs come from `KtmMotionSpecs` and honour "Remove animations" live. Shared transitions: the NavHost is
 wrapped in a `SharedTransitionLayout` (ride card to replay page); the Navigate stage has its own
 (trip bar to trip sheet, trip bar to activity strip). The trip sheet is drawn in the tree for that reason.
-The one map lives in `MapLayer` behind the whole shell at full window size; it is never resized, moved or covered by
-anything that takes touches, and all its padding goes through one funnel. This is what keeps page transitions smooth:
+The one map lives in `MapLayer` behind the whole shell at full window size; it is never resized or moved, nothing
+over its empty areas takes touches, and all its padding goes through one funnel. This is what keeps page transitions smooth:
 read "The map layer" in [`ENGINEERING_NOTES.md`](ENGINEERING_NOTES.md) before touching the shell, `MapLayer` or map padding.
 
 ### 9.5 Testing
