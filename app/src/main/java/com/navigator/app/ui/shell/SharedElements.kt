@@ -45,10 +45,12 @@ fun Modifier.rideContainer(rideId: String, remeasure: Boolean = true): Modifier 
         this@rideContainer.sharedBounds(
             sharedContentState = rememberSharedContentState(key = "ride-$rideId"),
             animatedVisibilityScope = shared.visibility,
+            enter = EnterTransition.None,
+            exit = holdUntilFaded(motion.effectsFast()),
             boundsTransform = { _, _ -> motion.spatialDefault() },
             resizeMode = if (remeasure) SharedTransitionScope.ResizeMode.RemeasureToBounds else SharedTransitionScope.ResizeMode.scaleToBounds(),
             clipInOverlayDuringTransition = OverlayClip(KtmShapes.Card),
-        ).then(ground)
+        ).layerFade(shared.visibility, motion.effectsDefault(), motion.effectsFast()).then(ground)
     }
 }
 

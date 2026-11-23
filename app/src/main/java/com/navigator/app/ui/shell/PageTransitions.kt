@@ -6,8 +6,6 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -22,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -53,35 +53,65 @@ private const val UNDERLAY_SHIFT = 4
  * and the map page and a slide would show it through. The ride card's container move keeps the Rides page opaque and
  * still until the replay has covered it, so a stale map never shows in between.
  */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToPage(): Boolean =
-    initialState.destination.isMapPage() && !targetState.destination.isMapPage()
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.move() = pageMove(initialState.destination, targetState.destination)
 
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.pageToMap(): Boolean =
-    !initialState.destination.isMapPage() && targetState.destination.isMapPage()
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToPage() = move().mapToPage
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.pageToMap() = move().pageToMap
 
 /** Tab to tab, and the end of first run into the app (MO10, ON10). */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch(): Boolean =
-    (initialState.destination.tab() != null || initialState.destination.hasRoute<Route.Ready>()) && targetState.destination.tab() != null
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSwitch() = move().tab
 
 /** MO8: the ride card and the replay page share their bounds; the Rides page itself stays put, the replay fades around them. */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMove(): Boolean =
-    (initialState.destination.hasRoute<Route.Rides>() && targetState.destination.hasRoute<Route.RideReplay>()) ||
-        (initialState.destination.hasRoute<Route.RideReplay>() && targetState.destination.hasRoute<Route.Rides>())
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMove() = move().rideContainer
 
 /** Two map pages: both are transparent over the same map, so only their controls cross-fade (a slide would show two sets). */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToMap(): Boolean =
-    initialState.destination.isMapPage() && targetState.destination.isMapPage() && !isRideContainerMove()
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToMap() = move().mapToMap
+
+/** What a move between two destinations is, for the transitions and for the fades of [PageHost]. */
+internal data class PageMove(val rideContainer: Boolean, val tab: Boolean, val pageToMap: Boolean, val mapToMap: Boolean, val mapToPage: Boolean)
+
+internal fun pageMove(initial: NavDestination, target: NavDestination): PageMove {
+    val rideContainer = (initial.hasRoute<Route.Rides>() && target.hasRoute<Route.RideReplay>()) ||
+        (initial.hasRoute<Route.RideReplay>() && target.hasRoute<Route.Rides>())
+    val tab = (initial.tab() != null || initial.hasRoute<Route.Ready>()) && target.tab() != null
+    return PageMove(
+        rideContainer = rideContainer,
+        tab = tab,
+        pageToMap = !initial.isMapPage() && target.isMapPage(),
+        mapToMap = initial.isMapPage() && target.isMapPage() && !rideContainer,
+        mapToPage = initial.isMapPage() && !target.isMapPage(),
+    )
+}
+
+/** The length of a page's fade: the default effects token, or the fast one (null: the page does not fade). */
+internal enum class PageFade { Default, Fast }
+
+/**
+ * Whether the page on one side of a move fades, and how fast. Pages fade without an offscreen layer ([layerFade]), so
+ * the transitions in [enterFor] and the others only slide; the fades are decided here, in one place. [pop] is a back
+ * move; [entering] is the page that arrives (else the one that leaves). A tab that is left stays under the new one.
+ */
+internal fun pageFade(move: PageMove, entering: Boolean, pop: Boolean, reduced: Boolean): PageFade? = when {
+    !pop && entering -> if (reduced || move.rideContainer || move.tab || move.pageToMap || move.mapToMap) PageFade.Default else null
+    !pop -> if (move.pageToMap || move.mapToMap) PageFade.Default else null
+    entering -> if (!move.rideContainer && (move.tab || move.mapToPage || move.mapToMap)) PageFade.Default else null
+    move.rideContainer -> PageFade.Fast
+    move.mapToPage || move.mapToMap -> PageFade.Default
+    reduced -> PageFade.Fast
+    else -> null
+}
 
 // With "Remove animations" every move is a plain fade: no offset (the tokens collapse to short fades). The page that
 // stays underneath is never faded out while the other fades in, or the ground would show through between them.
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: KtmMotionSpecs): EnterTransition = when {
-    isRideContainerMove() || motion.reduced || tabSwitch() || pageToMap() || mapToMap() -> fadeIn(motion.effectsDefault())
+    isRideContainerMove() || motion.reduced || tabSwitch() || pageToMap() || mapToMap() -> EnterTransition.None
     else -> slideInHorizontally(motion.page()) { it }
 }
 
 /** The page underneath a push moves back a quarter and dims (see [PageHost]); it does not fade, so nothing shows through. */
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs): ExitTransition = when {
-    pageToMap() || mapToMap() -> fadeOut(motion.effectsDefault())
+    pageToMap() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
     isRideContainerMove() || motion.reduced || tabSwitch() -> ExitTransition.None
     initialState.destination.isMapPage() -> ExitTransition.None
     else -> slideOutHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
@@ -89,15 +119,16 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: K
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs): EnterTransition = when {
     isRideContainerMove() -> EnterTransition.None
-    tabSwitch() || mapToPage() || mapToMap() -> fadeIn(motion.effectsDefault())
+    tabSwitch() || mapToPage() || mapToMap() -> EnterTransition.None
     motion.reduced || targetState.destination.isMapPage() -> EnterTransition.None
     else -> slideInHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs): ExitTransition = when {
-    isRideContainerMove() -> fadeOut(motion.effectsFast())
-    mapToPage() || mapToMap() -> fadeOut(motion.effectsDefault())
-    motion.reduced || tabSwitch() -> fadeOut(motion.effectsFast())
+    isRideContainerMove() -> holdUntilFaded(motion.effectsFast())
+    mapToPage() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
+    motion.reduced -> holdUntilFaded(motion.effectsFast())
+    tabSwitch() -> ExitTransition.None
     // Also what a predictive back swipe previews: a list page shrinks as it slides away.
     else -> slideOutHorizontally(motion.page()) { it } +
         (if (initialState.destination.isListPage()) scaleOut(motion.page(), targetScale = KtmMotionSpecs.BACK_SCALE) else ExitTransition.None)
@@ -121,11 +152,44 @@ internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, lis
     val ground = if (entry.destination.paintsOwnGround()) Modifier else Modifier.coverGround()
     val settled = remember(scope) { derivedStateOf { !scope.transition.isRunning } }
     CompositionLocalProvider(LocalPageSettled provides settled) {
-        Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground)) {
+        Box((if (listPage) Modifier.leavingCorners(scope) else Modifier).then(ground).pageFade(scope)) {
             content()
             PageDim(scope, entry)
         }
     }
+}
+
+/** The fade of [PageHost]'s page, decided by [pageFade] from the move the NavHost is making. */
+@Composable
+private fun Modifier.pageFade(scope: AnimatedContentScope): Modifier {
+    val nav = LocalPageNav.current
+    val motion = KtmTheme.motion
+    val parent = scope.transition.parentTransition
+    val alpha = scope.transition.animateFloat(
+        transitionSpec = {
+            val fade = fadeOf(parent, nav, entering = targetState == EnterExitState.Visible, reduced = motion.reduced)
+            if (fade == PageFade.Fast) motion.effectsFast() else motion.effectsDefault()
+        },
+        label = "pageFade",
+    ) { state ->
+        if (state == EnterExitState.Visible || fadeOf(parent, nav, entering = state == EnterExitState.PreEnter, reduced = motion.reduced) == null) 1f else 0f
+    }
+    return graphicsLayer {
+        this.alpha = alpha.value
+        compositingStrategy = CompositingStrategy.ModulateAlpha
+    }
+}
+
+private fun fadeOf(parent: androidx.compose.animation.core.Transition<*>?, nav: NavHostController?, entering: Boolean, reduced: Boolean): PageFade? {
+    val initial = (parent?.currentState as? NavBackStackEntry) ?: return null
+    val target = (parent.targetState as? NavBackStackEntry) ?: return null
+    if (initial.id == target.id) return null
+    // In a back move the page that leaves is still in the visible entries, above the one that returns.
+    val visible = nav?.visibleEntries?.value.orEmpty()
+    val from = visible.indexOfFirst { it.id == initial.id }
+    val to = visible.indexOfFirst { it.id == target.id }
+    val pop = from >= 0 && to >= 0 && from > to
+    return pageFade(pageMove(initial.destination, target.destination), entering, pop, reduced)
 }
 
 /** True when [id] is in the back stack but not on top: another page was pushed over it. */
