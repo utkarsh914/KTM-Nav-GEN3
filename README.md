@@ -1,278 +1,129 @@
 <p align="center">
-  <img src="docs/logo.png" width="128" alt="KTM Navigator logo"/>
+  <img src="docs/logo.png" width="112" alt="KTM Navigator logo"/>
 </p>
 
 <h1 align="center">KTM Navigator</h1>
 
 <p align="center">
-  <b>Turn-by-turn navigation and notifications on your KTM or Husqvarna Gen-3 dashboard — free, private by default, with a phone-first map and an offline notification-mirroring mode.</b>
+  <b>Turn-by-turn navigation on your KTM or Husqvarna Gen-3 dash. Free, private, and built for riding.</b>
 </p>
 
 <p align="center">
-  <i>An independent, open-source companion app. Not affiliated with, or endorsed by, KTM or Husqvarna.</i>
+  <i>An independent open-source app. Not affiliated with or endorsed by KTM or Husqvarna.</i>
 </p>
 
 <p align="center">
   <a href="../../releases/latest"><b>Download the latest APK</b></a>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/navigate.png" width="19%" alt="Navigate home"/>
+  <img src="docs/screenshots/riding-night.png" width="19%" alt="Riding, night"/>
+  <img src="docs/screenshots/riding-day.png" width="19%" alt="Riding, day"/>
+  <img src="docs/screenshots/rides.png" width="19%" alt="Rides"/>
+  <img src="docs/screenshots/replay.png" width="19%" alt="Ride replay"/>
+</p>
+<p align="center"><sub>Design mocks of the app's main screens.</sub></p>
+
 ---
 
 ## What it does
 
-A navigation-only app, all on your phone, with no account and no server of ours. Pick one of
-two mutually-exclusive engines in **Settings → Navigation engine**:
+Pick one of two engines in **Settings → Navigation**:
 
-| | |
+| Engine | How it works |
 |---|---|
-| **In-app maps (Google)** | A phone-first map home: search, long-press to drop a pin, or share a Google Maps link, then preview the route (with alternates) and run turn-by-turn on the phone *and* the bike's dash over Bluetooth. |
-| **Notification mirror** | Navigate in Google Maps as usual; the app mirrors its turn-by-turn to the dash (offline-capable), with a pause/resume control. Also the home when no Google API key is present. |
+| **In-app maps** (Google) | Search, drop a pin or share a Maps link, preview routes, then ride with guidance on the phone and the dash. Needs your own Google API key and internet. |
+| **Notification mirror** | Navigate in Google Maps as usual. The app copies its turns to the dash over Bluetooth. Works offline, and is the default when there is no API key. |
 
-Plus on-device ride recording and replay, phone-notification mirroring to the dash, and a rotating idle screen.
+## Features
 
----
+- **Dash guidance:** turn arrow, distance, road name and ETA on the Gen-3 display. An on-device model reads Google Maps' arrow icons, since Maps sends no turn text.
+- **Silent reconnect:** pair once, then the dash reconnects by itself after every ignition cycle.
+- **Made for riding:** large controls, a maneuver card you can read at a glance, and Day/Night modes for gloves and sunlight.
+- **Trip planning:** alternate routes with traffic delay, stops, saved places, Home and Work shortcuts.
+- **Rides:** every trip is recorded on the phone. Browse, search, replay up to 64×, trim and merge them.
+- **Phone messages on the dash**, with group chats filtered out and a one-tap mute.
+- **Turn beeps** (left ear for left turns, right ear for right) and a loud **overspeed alert**.
+- **Offline-safe:** guidance keeps running without signal, and recording never stops.
+- **Diagnostics:** symbol tests, turn-icon calibration and shareable logs.
 
-## What works today
+## Privacy
 
-**Silent auto-reconnect.** Once paired, cycling the ignition off and on reconnects on its own in about a
-second — no accepting an "add device" prompt on the dash every ride. The app remembers your pairing keys
-and re-presents them, and keeps them across app updates, reinstalls and new phones.
+- No accounts, no analytics, no ads, and no server of ours.
+- The notification-mirror engine stays on the phone. It only reads Maps' notification and sends text over Bluetooth.
+- The in-app maps engine goes online. Your destination and location are sent to Google's Navigation SDK.
 
-**Google Maps turn-by-turn, on your bike's dash.** Start navigating and the Gen-3 centre display shows
-the turn arrow, distance, road name, ETA and remaining distance. The maneuver arrow — including
-roundabout exits, U-turns, keep/fork and ramps — is recognised by a small on-device neural network
-trained on Google Maps' own icons, because Maps puts no maneuver *text* in its notification.
+## Compatibility
 
-**Automatic bike detection.** On connect it reads the dash's model, firmware and capabilities and shows
-what it found in the connection banner. Nothing to configure.
-
-**Made for the KTM Gen-3 dash.** The app is themed for the bike (dark and orange by default, with accent colours of your choice and a Day/Night mode for the riding screens). The riding screens are built for gloves and sunlight: large touch targets, a maneuver card you can read at a glance, and the heavy controls tucked in a trip sheet.
-
-> New screenshots of the redesigned screens will be added after the on-device pass; see `docs/design-system.md` for how the screens are put together.
-
-**Phone-first map home.** Open the app to a full Google map with your live location, a bike-connection
-pill and a search bar. Find a destination by search (with Recents and Home/Work/Saved shortcuts), by
-**long-pressing the map to drop a pin**, or by sharing a Google Maps link into the app; confirm it, preview
-the route with selectable **alternates**, then Start to run turn-by-turn on the phone and the dash at once.
-
-**A location dot that faces where you do.** The live-location marker shows your heading from the phone's
-compass and rotates as you turn, like the Google Maps app, instead of only following GPS course.
-
-**The riding screen is the app's own.** Active guidance draws a maneuver card, a trip bar and a trip sheet built for gloves and sunlight; Google's own navigation UI is switched off.
-
-**Shows over the lock screen.** While navigating, the app stays visible over the lock screen and keeps the
-screen awake — and tapping the navigation notification jumps straight back to the live nav screen.
-
-**Turn sounds.** Optional stereo approach beeps — left ear for a left turn, right for a right — that
-speed up as you near the corner and go quiet when you stop. Adjustable volume, swappable channels.
-
-**Overspeed alert.** Plays on the alarm channel at full volume, so it's audible over wind and engine and
-sounds through Do Not Disturb.
-
-**The dash's idle screen.** When you're not navigating, the dash rotates clock and date.
-
-**Ride recording and replay.** Every trip's GPS track is recorded on-device by default — no API calls, no
-billing. The Rides screen lists your rides with a speed-coloured track and stats (distance, duration, top
-speed), searchable and sortable, and the Replay screen plays each ride back on the map at up to 64×, with
-tap-to-seek, drag-to-scrub, a follow toggle, **tap-the-track to jump to that point**, and the **wall-clock
-time of the current instant** shown as it plays. Zooming stays **smooth even on long (1–2 h) rides** —
-the track is simplified before drawing — and a smoothing row
-in the replay lets you trade line detail for extra smoothness on huge rides. Recording is configurable (minimum distance/duration and a
-"keep last N rides" limit; saved rides are pinned and never pruned). The speed-to-colour mapping is
-configurable too (green ceiling, step size and number of bands, green→red) in Settings → Recording.
-
-**Offline resilience.** If you lose signal mid-route, guidance keeps running from the already-computed
-route. An offline banner appears during navigation, rerouting is paused until you're back online, and the
-dash is told you're offline (and cleared again on reconnect). Ride recording keeps going regardless.
-
-**Per-route traffic delay.** The route preview shows a colour-coded "+N min" on each alternate so you can
-see the live traffic hit before you start — no extra API calls.
-
-**Auto-finish on arrival.** When you reach your destination the app ends navigation automatically and shows
-a rich Trip Finished screen with duration, average and max speed, and your route on the map — with a one-tap
-jump into Replay. You can also leave the active-navigation screen without ending the trip: minimise back to
-the map and a "Resume navigation" pill brings you back.
-
-**Custom accent colour.** Pick the app's accent independently of the app theme — from presets or a full
-colour picker in Settings → Appearance.
-
-**Day/night navigation theme.** The in-app map and guidance UI switch between day and night styles
-automatically based on sunrise/sunset, or you can lock them to follow your app theme.
-
-**Notification mirroring** with group chats and summary notifications filtered out so only real messages
-get through, emoji and unsupported glyphs stripped so text reads cleanly, and a one-tap quick-mute.
-
-**Diagnostics that earn their keep:** symbol testing and turn-icon calibration to match glyphs to your
-exact dash, a per-slot dash text playground, and shareable logs — which is how bug reports get made.
-
----
-
-## Privacy — private by default; one clearly-marked online mode
-
-- No accounts of ours. No analytics. No data collection. No ads. No server of ours.
-- The **Notification-mirror engine** runs on-device: the turn-icon model and notification handling stay
-  on the phone; when you navigate in Google Maps, the app only reads that app's on-screen notification and
-  forwards the text over Bluetooth — nothing of ours leaves the phone.
-- The **In-app maps engine** *does* go online. It needs your own Google Maps Platform API key + Google
-  Play Services; entering a destination runs Google's Navigation SDK, which means your **destination and
-  location are sent to Google**, and it needs internet. Pick the engine any time in
-  **Settings → Navigation engine** (the two are mutually exclusive). While it's navigating, the app's own Live Update
-  notification is the guidance notification.
-
----
-
-## Compatibility and setup
-
-- Tested on a **KTM 390 Adventure (2025)**. It targets the Gen-3 "connected" dash that KTM's and
-  Husqvarna's own apps use for turn-by-turn, so it should work on other 2020+ Gen-3 bikes — but 1290 /
-  890 / SMC and the Husqvarna models are still lightly tested. Reports and logs are very welcome.
-- You likely need the connectivity / Tech Pack active. The turn-by-turn dash feature appears to be gated
-  behind that activation; without it the dash may not expose the nav feature to pair with. Not fully
-  confirmed — testers with and without it, please report.
-- **Pairing tips** if the bike doesn't show up: put the dash into "add device" mode from its own
-  connectivity menu first, make sure Bluetooth is on, and note that the app also lists devices already
-  bonded to your phone. The first pairing needs the physical "add device" confirmation on the dash.
-- **Android 16:** sideloaded apps have notification access blocked until you enable "Allow restricted
-  settings" (App info → three-dot menu) before granting it.
+- Android 16 or newer.
+- Tested on a **KTM 390 Adventure (2025)**. Other 2020+ Gen-3 bikes should work. 1290, 890, SMC and Husqvarna are lightly tested or untested.
+- The bike's connectivity / Tech Pack may need to be active for the dash to offer navigation.
+- First pairing needs the "add device" confirmation on the dash, once per bike.
+- On Android 16, enable **Allow restricted settings** (App info → ⋮) before granting notification access to a sideloaded app.
 
 ## Known issues
 
-1. First pairing needs the physical "add device" confirmation on the dash. Expected, once per bike; every
-   reconnect after that is silent.
-2. Turn-icon accuracy depends on your Google Maps version and your specific dash. If an icon looks wrong,
-   correct it with the Symbol Test and Turn-icon Calibration screens.
-3. Husqvarna support has never been verified on a physical Husqvarna. It runs on the same dash protocol
-   and should work, but all testing so far has been on a KTM.
-4. The in-app maps engine needs a Google Maps Platform API key added at build time (below) plus Google
-   Play Services; without a key the app runs in the offline notification-mirror engine.
-5. Route-token alternate selection is best-effort: when stationary the Nav SDK may road-snap and recompute
-   to the fastest route for some alternates. Expected to be reliable when actually riding.
-6. Full vehicle telemetry (RPM, gear, coolant, fuel, TPMS) exists in the protocol but the dash rejects
-   the writes. It is **not** available — help welcome.
-7. If something crashes or misbehaves, please open an issue or share your logs from
-   Settings → Diagnostics, and include your bike model and firmware if you can.
+- Turn-icon accuracy depends on your Maps version and dash. Fix wrong icons with Symbol Test and Turn-icon Calibration.
+- Alternate-route choice may snap to the fastest route while you are standing still.
+- Live telemetry (RPM, gear, fuel, TPMS) is not available. The dash rejects the writes.
 
----
+## Install
 
-## Install (no build needed)
+Download the APK from the [latest release](../../releases/latest), open it on your phone and allow installs from unknown sources. Then:
 
-Grab the APK from the [latest release](../../releases/latest), copy it to your phone and open it (you'll
-need to allow "install from unknown sources"). First-ever pairing needs the physical "add device"
-confirmation on the bike's dash.
+1. Turn on **Notification access**.
+2. Turn off battery optimisation for the app, so it stays connected.
 
-## Build it yourself
+## Build
 
-Prerequisites: Android Studio (latest) or the command-line Android SDK; JDK 17 (bundled with Android
-Studio); Android SDK Platform 34 and build-tools.
+You need Android Studio (or the command-line SDK) and JDK 17.
 
 ```bash
-git clone <this-repo>
-cd <this-repo>
-
-# point Gradle at your SDK (either export this or create local.properties)
-echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
-# echo "sdk.dir=$HOME/Android/Sdk"        > local.properties   # Linux
-
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # Linux: $HOME/Android/Sdk
 ./gradlew :app:assembleDebug
-# -> app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Install to a connected phone with `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+### Google API key (for the in-app maps engine)
 
-On the phone: enable **Notification access** (required to mirror navigation and notifications) and disable
-battery optimisation so the app stays connected in the background.
+Without a key the app still builds, but runs only in notification-mirror mode.
 
-## Optional: enable the in-app maps engine (Google API key)
+1. In the [Google Cloud Console](https://console.cloud.google.com), enable billing and these four APIs: **Navigation SDK for Android**, **Maps SDK for Android**, **Routes API**, **Places API (New)**.
+2. Create an API key and restrict it:
+   - **Android apps:** package `com.navigator.ktm` plus the SHA-1 of the keystore that signs your APK.
+   - **APIs:** only the four above.
+3. Add it to `local.properties` and rebuild:
 
-The **In-app maps** engine (full-screen map, search, route preview and Google's Navigation SDK) needs a
-Google Maps Platform API key. Without one the app still builds and runs, but only in the offline
-**Notification-mirror** engine — you navigate in Google Maps and the app forwards its turn-by-turn to the
-dash. Note this engine goes online: entering a destination sends it and your location to Google (see the
-Privacy section above).
+   ```properties
+   NAV_SDK_API_KEY=your-key
+   ```
 
-### 1. Create and enable the key
+Get the SHA-1 with `keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android | grep SHA1`. Add both your debug and release fingerprints if you use both. If search or routes fail while everything else works, the SHA-1 is almost always the cause.
 
-1. Open the [Google Cloud Console](https://console.cloud.google.com), create or select a project, and make
-   sure **billing is enabled** (Google Maps Platform requires a billing account, even within the free
-   tier).
-2. Enable **all four** of these APIs (APIs & Services → Library):
-   - **Navigation SDK for Android** — turn-by-turn guidance.
-   - **Maps SDK for Android** — the in-app map and the drop-a-pin picker.
-   - **Routes API** — route preview and alternates.
-   - **Places API (New)** — destination search, autocomplete and place details.
-3. Create the key under **APIs & Services → Credentials → Create credentials → API key**.
+## Docs
 
-### 2. Restrict the key
+- [Architecture](docs/architecture.md)
+- [Design system](docs/design-system.md)
+- [Engineering notes](docs/ENGINEERING_NOTES.md)
+- [Dash BLE protocol](docs/BCCU_BLE_PROTOCOL.md)
+- [Turn-icon model](ml/README.md): trained on Google Maps' own icons, reproducible with `ml/train_maneuver_model.py`
+- [Changelog](CHANGELOG.md)
 
-The app calls these services with an Android-restricted identity (package name + signing certificate), so
-the key **must** be restricted to match, or the requests are rejected:
+## Contributing
 
-- **Application restrictions → Android apps.** Add an entry with:
-  - **Package name:** `com.navigator.ktm`
-  - **SHA-1 certificate fingerprint:** the SHA-1 of the keystore that signs the APK you install (see below).
-- **API restrictions → Restrict key.** Select exactly the four APIs enabled in step 1.
+Help is welcome, whether you ride one of these bikes or just like Android and BLE work. Good places to start:
 
-### 3. Getting the SHA-1
+- Live telemetry over the dash's PRPC channel.
+- A second connection path for older "MY RIDE" bikes.
+- Testing on a Husqvarna and on other Gen-3 bikes and firmware.
+- Better turn-icon training data, UI polish, docs and translations.
 
-The SHA-1 must match the keystore that signs the APK you actually install on the phone. A debug build
-(`assembleDebug`) is signed by the debug keystore; a release build (`assembleRelease`) is signed by your
-release keystore.
-
-```bash
-# Debug keystore (auto-created by the Android SDK; password is "android")
-keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore \
-  -storepass android -keypass android | grep SHA1
-
-# Release keystore (the one referenced by RELEASE_STORE_FILE in local.properties)
-keytool -list -v -alias <your-key-alias> -keystore /path/to/release.keystore | grep SHA1
-```
-
-Add the `SHA1:` value (e.g. `AB:CD:...:EF`) to the Android-app restriction above. You can add both the
-debug and release fingerprints to the same key so one key works for either build.
-
-### 4. Add the key to the build
-
-Put the key in `local.properties` (gitignored) as a single line:
-
-```properties
-NAV_SDK_API_KEY=your-key
-```
-
-This one key feeds both the Navigation SDK (via `BuildConfig`) and the Maps SDK (via the manifest
-placeholder) — there is no separate `MAPS_API_KEY` line to set. Rebuild after adding it.
-
-> If search or route preview returns errors while everything else works, the key's SHA-1 almost certainly
-> doesn't match the keystore that signed the installed APK.
-
-## The turn-icon model (`ml/`)
-
-The classifier is trained from scratch on Google Maps' own publicly shipped, self-labeled maneuver icons
-— no proprietary weights. `ml/train_maneuver_model.py` reproduces
-`app/src/main/res/raw/maneuver_model.tflite` locally or on free Google Colab. The labeled dataset is
-generated by a debug exporter on any device or Play Store emulator with Google Maps (see
-[`ml/README.md`](ml/README.md)). Roundabout labels follow the hardware-verified exit-angle law, and
-the labels file carries a `#labels-v2` header.
-
-## Contributing — help wanted
-
-This is an early, community-driven hobby project and contributions are very welcome, whether you ride one
-of these bikes or just enjoy reverse-engineering and Android/BLE work. Good places to start:
-
-- **Full vehicle telemetry** over the dash's PRPC channel — the service is present but the writes are
-  rejected.
-- **Older "MY RIDE" bikes** need a second connection path (Bluetooth Classic + JSON).
-- **Test on a physical Husqvarna** and report how it goes.
-- Improve the turn-icon model with real captured icons.
-- Testing on other Gen-3 bikes and firmware, and reporting what works.
-- UI polish, docs, translations.
-
-Open an [issue](../../issues) with logs and details, or send a pull request. Please keep the project's
-core promise intact: **on-device only, no data collection.**
+Open an [issue](../../issues) with logs from **Settings → Diagnostics**, or send a pull request. Please keep the core promise: **on-device only, no data collection.**
 
 ## Disclaimer
 
-Unofficial hobby project for Gen-3 KTM and Husqvarna dashes, provided as-is with no warranty. Not
-affiliated with KTM or Husqvarna. Ride responsibly — do not interact with your phone while riding.
+Unofficial hobby project, provided as-is with no warranty. Ride responsibly and do not use your phone while riding.
 
 ## License
 

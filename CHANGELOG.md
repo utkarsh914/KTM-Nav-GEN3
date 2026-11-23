@@ -2,93 +2,69 @@
 
 ## v1.0.0
 
-The redesign release: the version moves from 0.6 to 1.0.
+The redesign release. The version moves from 0.6 to 1.0.
 
-### Redesign (UI and UX, all screens)
-- A new design system across the app: one set of colours, type, shapes and components, light and dark, with your choice of accent colour (any colour, with contrast checked). The riding screens have their own Day/Night mode.
-- New home: a Google map with a Where-to sheet (search, Home and Work, saved and recent places), a bike pill that opens the connection sheet, and a greeting when the bike connects.
-- Riding screen rebuilt for gloves and sunlight: a maneuver card with the next turn and lanes, a trip bar, and a trip sheet (add stop, overview, minimise, beeps, phone messages on the dash, dash status, end trip). The trip bar grows into the trip sheet and shrinks into an activity strip that stays above the tab bar. Landscape has its own panel.
-- Plan a trip step by step: confirm a place, preview routes with alternates and stops, pick a point on the map, search with categories, voice and offline results.
-- Rides: a list with day groups, search, sort, selection, delete with Undo, merge rides (with Undo), a replay with a seek bar and speed, edit and trim, and a new trip-finished screen with the ride's stats.
+### New design
+- One design system for every screen: colours, type, shapes and components, light and dark, with any accent colour (contrast checked). The riding screens have their own Day/Night mode.
+- One KTM look. The brand picker and Husqvarna theming are gone (Husqvarna dashes still work, they share the electronics). Distances are in kilometres everywhere.
+- Motion follows Android's "Remove animations" setting live. Pages slide in and out, tabs fade in with a small rise, and the back swipe follows the same slide as the back arrow.
+- TalkBack labels and actions on controls, an adjustable colour picker, and layouts checked at large font sizes.
+
+### Navigate and riding
+- New home: a full Google map with a Where-to sheet (search, Home and Work, saved and recent places), a bike pill that opens the connection sheet, and a greeting when the bike connects.
+- Plan a trip step by step: confirm a place, preview routes with alternates and stops, pick a point on the map, search by category, voice or offline results.
+- Riding screen rebuilt for gloves and sunlight: a maneuver card with the next turn and lanes, a trip bar, and a trip sheet (add stop, overview, minimise, beeps, phone messages on the dash, dash status, end trip). Landscape has its own panel.
+- An activity strip above the tab bar for a running trip, recording, pause or mirroring.
+- Add a stop while riding with a mic or **Pick on map**. The trip keeps guiding while you place the pin.
+- Multi-stop trips continue past each stop to the final destination.
+- Times follow the phone's 12 or 24 hour setting. The dash stays 24 hour. Haptics follow the system setting.
+
+### Rides and places
+- Rides: day groups, search, sort, selection, delete and merge with Undo, replay with a seek bar and speed, edit and trim, and a trip-finished screen with stats.
+- Selecting or searching folds the title and swaps the bar smoothly, so the list no longer jumps.
 - Places tab (Home, Work, saved places) and a Settings tab with pages for the bike and dash, navigation, recording, sounds, permissions, appearance, backup and restore, and About.
-- First run: welcome, engine choice, Google's terms, your name, permissions, pairing with the bike (with clear errors and help), and a ready screen.
-- Notifications rebuilt: a Live Update for guidance (turn glyph, progress with stops, Mute beeps and End trip), a recording notification with Pause and Stop, a quiet bike-connection notification with its likely fix, and a one-time heads-up if it can't connect. Launcher shortcuts: Record a ride, Where to?, Ride home and Ride work.
-- Diagnostics screens rebuilt (logs with filters and search, symbol testing, turn-icon calibration) and a debug overlay for builds.
-- Motion and accessibility: transitions follow Android's "Remove animations" setting live, TalkBack labels and actions on the controls, the colour picker is adjustable by screen readers, and large-font layouts were checked.
-- The brand picker and Husqvarna theming were removed: the app has one KTM identity (Husqvarna dashes still work, they share the electronics). Distances are shown in kilometres everywhere.
-- Polish pass: the open trip sheet always fits under the maneuver card, rerouting shows in landscape, start and end markers on ride maps, Back from a Home/Work route goes to the map, merged rides show their parts and tell joins from pauses, failed backups leave no empty file, a restart reminder after restoring settings, and higher text contrast in the light theme.
-- More polish: replay keeps real-time pace, tapping the map to seek follows the zoom, onboarding resumes where it was after the app is closed by Android, "Use my current location" asks for permission, the can't-connect alert has Re-pair and Quit, the dash notification line keeps ticking, launcher shortcuts have their own icons and a message when recording can't start, and removed navigation apps show their name.
-- Logs: following live no longer switches itself off after the first scroll, and a screen reader's scroll pauses it; the trim bar's two handles are each adjustable by a screen reader; the corners of the colour panel take touches.
-- Landscape: the Where-to panel is a floating card like the other landscape panels, the rail shows the bike's state on Navigate, pages without a map get rounded corners while they leave (a back swipe shrinks them), and the trim bar keeps its time order in right-to-left languages.
 
-- Design pass over every screen against the mocks: activity strip with a tinted tile (trip, recording, paused, mirroring), first-run progress bar that includes pairing, "Find your bike" with Pair buttons and a help sheet, an all-set screen, ride replay/edit/trim/merge rows, Settings summaries and the backup and restore cards, a custom-accent sheet with a contrast check for both themes, Places "Home & work" and "Saved · N", Logs search icon and a "Problems" chip, a divided symbol-test list.
-- Notifications: "Over your alert · N km/h", "Ride paused · m:ss", titles that name the bike, no second line while connected, a View button on Ride saved. Launcher shortcut order: Ride home, Ride work, Record a ride, Where to?.
-- Fixes found in review: stopping a trip is refused while offline instead of half-working, Quit also ends the trip and the recording, a restore replaces your settings (Settings starts unticked; what the file lacks returns to its default), pairing says "Securing" only once the link is up, pinned Home/Work shortcuts are disabled when the place is cleared, the empty-state tile shrinks on short screens, and the trip bar drops the distance before it cuts the arrival time.
+### Bike and dash
+- The bike sheet has **Retry now** beside Re-pair, and shows **Last seen** under the offline dash preview.
+- First run: welcome, engine choice, Google's terms, your name, permissions, pairing (with clear errors and help) and a ready screen. It resumes where it left off.
+- The can't-connect alert has Re-pair and Quit.
 
-### Bike and trip additions
-- The bike sheet has **Retry now** beside Re-pair (it tries the bike at once, one attempt per tap) and shows **Last seen** under the offline dash preview.
-- Add a stop while riding: a mic beside the search field (what you say opens the search with it typed in) and **Pick on map**, which leads a single scrolling row of categories; the trip keeps guiding while you place the pin.
-- The trip sheet's next stop shows its pin number and how far away it is.
-- Search's Saved list has **See all**, which opens the Places tab.
+### Notifications
+- Guidance Live Update: turn glyph, progress with stops, Mute beeps and End trip.
+- Recording notification with Pause and Stop. A View button on Ride saved.
+- A quiet bike-connection notification with its likely fix. A one-time heads-up if it can't connect.
+- With no trip running, the Navigation SDK's required notification is a silent "Navigation ready" placeholder with no buttons, instead of the trip notification. The SDK always keeps one persistent notification, so it can't be removed.
+- Launcher shortcuts: Ride home, Ride work, Record a ride and Where to?.
+- Diagnostics screens rebuilt: logs with filters and search, symbol testing and turn-icon calibration.
 
-### Navigation
-- Times follow the phone's 12 or 24 hour setting (arrival times, leg lines, the Live Update); the dash stays 24 hour. Haptics follow the system touch-feedback setting.
-- Multi-stop trips: add intermediate stops; in-app guidance continues past each stop to the final
-  destination.
-- Retrained the on-device maneuver model with the corrected labels (all 64 Google Maps icons
-  classified correctly on-device). Merge icons, which Maps draws identically for left/right, are one
-  class resolved by driving side; direction-less roundabout icons give no arrow.
+### Changed behaviour
+- **Quit** in Settings and in the notification quits at once, and only asks first while a trip is running. Quit also ends the trip and the recording.
+- A restore replaces your settings. Settings starts unticked, and anything the file lacks returns to its default.
+- Filter chips press with a pill-shaped highlight, and keep a 48 dp touch target.
+- Stopping a trip while offline is refused instead of half-working.
 
-### Fixes
-- Reconnect robustness: with Bluetooth off at launch, the app could wait forever to "hear" the dash advertise (a dash already linked for media/calls may not) and ignore the dash's own link coming up. The scan is now bounded (45 s, balanced power), then falls back to a direct connect (phone-bonded dash) or a background connect (up to 10 min before recycling). The bike's own link coming up cuts a scan or a parked background connect short and connects directly, without overriding a handshake retry cooldown.
-- Merge (enter-highway) arrows now point the right way. Verified on the dash: code 14 is a ramp on
-  the right bending left, code 15 a ramp on the left bending right. "Merge left" / the SDK's
-  `MERGE_LEFT` was sent as the mirrored glyph; it now uses code 14 (and "merge right" code 15).
-  Unqualified merges still follow the driving side. The phone's merge icons now look like the dash's.
-- If the in-app engine reports a merge but its instruction says to turn ("Turn left onto the ramp
-  to NE 7"), the phone and dash show the turn arrow instead of the merge glyph.
-- In-app navigation logs each step's raw Google maneuver and the icon chosen, to make mismatches
-  traceable from the Logs screen (road/instruction text only in debug builds).
-- "Merge onto Left Bank Expy" no longer reads the road name as the merge side; the "Then" hint uses
-  your driving side; on-device model merge output follows the driving side.
-- If you picked a merge icon (14/15) on the Turn Calibration screen, re-check it: the previews now
-  match what the dash draws.
-- Highway on-ramps now show the real turn on the dash. "Sharp right onto the ramp to NH 48" was being
-  sent as the enter-highway glyph, whose arrow leans *left*; on-ramps now map to the graded turn arrow
-  (slight / normal / sharp), matching the notification-text and on-device-model paths. Sharp off-ramps
-  likewise show the sharp-turn arrow. An unqualified SDK merge now picks the enter-highway lane from
-  the driving side (was: straight arrow). Merge-direction selection is centralised in one helper.
-- Roundabouts when mirroring Google Maps now use the hardware-verified exit-angle glyphs (the
-  in-app path already did). "Take the Nth exit" no longer maps to section N (which showed a sharp
-  right for most roundabouts); the Maps icon is preferred, else the ordinal is converted to an
-  approximate angle for the driving side. The bundled model's mis-labelled roundabout classes are
-  corrected at runtime (now dormant with the retrained model), and the training script is fixed.
-- Starting a second in-app trip no longer bounces straight back to notification mirroring (the
-  previous trip's "stopped" state was mistaken for the new trip ending). In-app guidance is picked
-  up when the bike connects mid-trip, switching sources clears the old guidance, and the service
-  shutting down no longer cancels an in-app trip.
-- The dash never shows the previous step's arrow for an unrecognised new turn (it's blanked), and a
-  new arrow always arrives with its own distance. Throttled updates are flushed, and a phone clock
-  change can no longer freeze distance/ETA.
-- Notification parsing matches whole words ("Rampura", "Leftwich Rd" no longer trigger maneuvers),
-  "Turn left to stay on…" shows a turn, unqualified U-turns follow the driving side, ETAs with
-  localized AM/PM parse correctly, and imperial distances fit the dash ("0.3 mi", not "0.3 m...").
-- Bluetooth: a lost or failed write can no longer freeze the dash — the write queue self-heals,
-  failed guidance writes trigger a resync, and guidance is refreshed every 15 s while navigating.
-  The connect greeting no longer overwrites or blanks live guidance.
-- Text is truncated on whole characters (no broken emoji or Kannada conjuncts), 9.95–9.99 km reads
-  "10 km", the app shows kilometres everywhere (the dash path is unchanged), and the ETA follows time-zone changes.
+### Maneuver icons and dash fixes
+- Retrained the on-device maneuver model. All 64 Google Maps icons classify correctly.
+- Merge arrows point the right way: code 14 is a ramp on the right bending left, code 15 a ramp on the left bending right. Unqualified merges follow the driving side. Merge icons on the phone match the dash. If you picked a merge icon in Turn Calibration, check it again.
+- Highway on-ramps show the real turn (slight, normal or sharp), not the enter-highway glyph. Sharp off-ramps show the sharp-turn arrow.
+- A merge whose instruction says to turn shows the turn arrow. "Merge onto Left Bank Expy" no longer reads the road name as the side.
+- Roundabouts when mirroring Maps use the verified exit-angle glyphs. "Take the Nth exit" no longer shows a sharp right for most roundabouts.
+- Notification parsing matches whole words ("Rampura" and "Leftwich Rd" no longer trigger turns). "Turn left to stay on..." shows a turn, U-turns follow the driving side, localized AM/PM ETAs parse, and imperial distances fit the dash.
+- The dash never shows the previous arrow for an unrecognised turn, and a new arrow always comes with its own distance. A phone clock change can no longer freeze distance or ETA.
+- Text is cut on whole characters (no broken emoji), 9.95 to 9.99 km reads "10 km", and the ETA follows time-zone changes.
+- Each step's raw Google maneuver and chosen icon are logged to trace mismatches.
+
+### Connection and trip fixes
+- Reconnect with Bluetooth off at launch no longer waits forever. The scan is bounded (45 s), then falls back to a direct or background connect. The bike's own link coming up cuts a scan short.
+- A lost or failed Bluetooth write can no longer freeze the dash. The queue recovers, failed writes trigger a resync, and guidance refreshes every 15 s.
+- Starting a second in-app trip no longer drops back to notification mirroring. Guidance is picked up when the bike connects mid-trip, and the service shutting down no longer cancels a trip.
+- If Google ignores the route you picked, you see a "using the recommended route" notice instead of a silent swap.
+- Replay keeps real-time pace, and tapping the map to seek follows the zoom.
+- Other fixes: Back from a Home/Work route goes to the map, failed backups leave no empty file, pairing says "Securing" only once the link is up, pinned shortcuts are disabled when the place is cleared, and "Use my current location" asks for permission.
 
 ### Under the hood
-- Build toolchain: Gradle 9.9.1, Android Gradle Plugin 9.5.1 (built-in Kotlin), Kotlin 2.4.21. The
-  Gradle daemon JDK (25) is pinned in the project and downloaded automatically, so Android Studio
-  and the command line share one daemon.
-- Libraries: Navigation SDK 8.1.0, LiteRT 2.3.2, Compose BOM 2026.09.00, AndroidX (core-ktx 1.19.1,
-  appcompat 1.8.0, activity-compose 1.13.0, lifecycle 2.11.0), Material 1.14.0, Robolectric 4.18.1.
-  compileSdk 37.2 (targetSdk stays 36).
-- In-app navigation starts the previewed route with the Navigation SDK's token-only API, so the
-  route's stops and travel mode always come from the route you picked. If Google ignores the
-  picked route, you now get the "using the recommended route" notice instead of a silent swap.
+- Gradle 9.9.1, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, Navigation SDK 8.1.0, LiteRT 2.3.2, Compose BOM 2026.11.01. compileSdk 37.2, targetSdk and minSdk 36.
+- In-app navigation starts the previewed route with the SDK's token-only API, so stops and travel mode always come from the route you picked.
 
 ## v0.6.0
 
