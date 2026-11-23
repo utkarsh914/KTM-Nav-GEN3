@@ -38,7 +38,15 @@ frames. The cost was in the map, not in Compose.
    consumes taps but not every event: a parent that consumes small moves cancels its children's taps).
    `ShellTouchThroughTest` guards the shell only (a stand-in map behind `MainShell`, portrait and landscape); the rest
    is checked on a device (drag the map on Navigate, replay, trim and pick on map).
-7. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
+7. **No offscreen layers for full-screen fades.** Compose's `fadeIn`/`fadeOut` render the content into an offscreen
+   buffer of its own size while alpha is below 1. For a screen-sized container that is a new 10 MB GPU buffer every
+   frame: opening search allocated 110-180 MB of GPU memory in 12 frames (`gpu_mem_total` in Perfetto), and on a phone
+   short of free RAM (kswapd/kcompactd burning CPU) the render thread then stalled for 90-137 ms in `flush layers`. Use
+   `layerFade` (`ui/shell/LayerFade.kt`, alpha per draw, `ModulateAlpha`) with `EnterTransition.None` and
+   `holdUntilFaded(spec)` for the Navigate stage and the search container; GPU growth per search open fell to 9 MB and
+   the stalls disappeared. Page fades in `PageTransitions.kt` still use `fadeIn`/`fadeOut`: measure `gpu_mem_total`
+   before adding more full-screen alpha anywhere. Memory is part of smoothness on this phone class.
+8. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
    it is picking on the map (`PlacePickScreen`); it follows the same rules.
 
 **How to measure again:** `benchmark` build type (release-like, debug-signed, R8 + Baseline Profile) on a real phone;

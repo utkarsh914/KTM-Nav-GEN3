@@ -41,7 +41,7 @@ class LayerFadeTest {
         rule.mainClock.autoAdvance = false
         show()
         rule.runOnUiThread { target = "B" }
-        repeat(3) { rule.mainClock.advanceTimeByFrame() }
+        repeat(6) { rule.mainClock.advanceTimeByFrame(); rule.waitForIdle() }
         rule.onNodeWithText("A").assertExists()
         rule.onNodeWithText("B").assertExists()
         rule.mainClock.advanceTimeBy(600)
