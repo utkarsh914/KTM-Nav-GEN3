@@ -2,6 +2,11 @@ package com.navigator.app.ui.feature.rides
 
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -117,14 +122,21 @@ fun RidesContent(
 
     Box(modifier.fillMaxSize().background(c.bg)) {
         Column(Modifier.fillMaxSize()) {
-            when {
-                ui == null -> RidesBar(actions, hasRides = false, onSort = {})
-                ui.selecting -> SelectionBar(ui, actions)
-                ui.searchOpen -> SearchBar(ui.query, actions)
-                else -> RidesBar(actions, hasRides = ui.body !is RidesBody.Empty, onSort = { showSort = true })
-            }
-            if (ui == null || (!ui.searchOpen && !ui.selecting)) LargeTitle(stringResource(R.string.rides_title))
             val motionSpecs = KtmTheme.motion
+            // The bar swaps and the title folds away with a short transition, so the list below does not jump up.
+            val barMode = when { ui == null -> BarMode.Plain; ui.selecting -> BarMode.Selecting; ui.searchOpen -> BarMode.Searching; else -> BarMode.Plain }
+            AnimatedContent(targetState = barMode, transitionSpec = { motionSpecs.contentSwap() }, label = "ridesBar") { mode ->
+                when {
+                    mode == BarMode.Selecting && ui != null -> SelectionBar(ui, actions)
+                    mode == BarMode.Searching && ui != null -> SearchBar(ui.query, actions)
+                    else -> RidesBar(actions, hasRides = ui != null && ui.body !is RidesBody.Empty, onSort = { if (ui != null) showSort = true })
+                }
+            }
+            AnimatedVisibility(
+                visible = barMode == BarMode.Plain,
+                enter = expandVertically(motionSpecs.spatialDefault()) + fadeIn(motionSpecs.effectsDefault()),
+                exit = shrinkVertically(motionSpecs.spatialDefault()) + fadeOut(motionSpecs.effectsFast()),
+            ) { LargeTitle(stringResource(R.string.rides_title)) }
             AnimatedContent(targetState = ui, contentKey = { it?.body?.let { b -> b::class } }, transitionSpec = { motionSpecs.contentSwap() }, label = "loading") { shown ->
                 when (val body = shown?.body) {
                     null -> Column { repeat(4) { SkeletonRow(announce = it == 0) } }
@@ -334,3 +346,5 @@ private fun EmptyRides(autoRecordOn: Boolean, recording: Boolean, actions: Rides
         tertiary = if (autoRecordOn) null else StateAction(stringResource(R.string.rides_empty_turn_on), actions.onTurnOnAutoRecord),
     )
 }
+
+private enum class BarMode { Plain, Selecting, Searching }
