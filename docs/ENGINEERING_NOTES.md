@@ -44,8 +44,12 @@ frames. The cost was in the map, not in Compose.
    short of free RAM (kswapd/kcompactd burning CPU) the render thread then stalled for 90-137 ms in `flush layers`. Use
    `layerFade` (`ui/shell/LayerFade.kt`, alpha per draw, `ModulateAlpha`) with `EnterTransition.None` and
    `holdUntilFaded(spec)` for the Navigate stage and the search container; GPU growth per search open fell to 9 MB and
-   the stalls disappeared. Page fades in `PageTransitions.kt` still use `fadeIn`/`fadeOut`: measure `gpu_mem_total`
-   before adding more full-screen alpha anywhere. Memory is part of smoothness on this phone class.
+   the stalls disappeared. Page fades follow the same rule: `PageTransitions.kt` only slides
+   (and holds the leaving page with `holdUntilFaded`); `pageFade()` decides which page fades and how fast, `PageHost`
+   applies it per draw, and `rideContainer`/`searchContainer` fade their shared bounds with `layerFade`. Opening a ride
+   went from 674 MB of GPU buffer churn (one 89 ms frame) to 67 MB (worst frame 14 ms). Never use `fadeIn`/`fadeOut`/
+   `AnimatedVisibility` fades on a screen-sized container, and measure `gpu_mem_total` (add `gpu_mem/gpu_mem_total` to
+   the ftrace events) before adding any large alpha, scale-with-alpha or clip layer. Memory is part of smoothness here.
 8. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
    it is picking on the map (`PlacePickScreen`); it follows the same rules.
 
