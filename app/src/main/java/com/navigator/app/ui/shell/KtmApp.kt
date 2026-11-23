@@ -266,6 +266,9 @@ fun KtmApp(onQuit: () -> Unit) {
                                 exitTransition = { exitFor(pageMotion) },
                                 popEnterTransition = { popEnterFor(pageMotion) },
                                 popExitTransition = { popExitFor(pageMotion) },
+                                // Without these the NavHost's own defaults apply to a back swipe: scale to 0.7 and a fade, not our slide.
+                                predictivePopEnterTransition = { popEnterFor(pageMotion) },
+                                predictivePopExitTransition = { popExitFor(pageMotion) },
                             ) {
                                 page<Route.Onboarding> {
                                     OnboardingScreen(
