@@ -42,7 +42,7 @@
     <string name="tab_needs_attention">Needs attention</string>
     <string name="intent_map_needs_in_app">Map view needs in-app navigation</string>
     <string name="settings_quit">Quit KTM Navigator</string>
-    <string name="settings_quit_supporting">Stops the dash link until you reopen the app</string>
+    <string name="settings_quit_supporting">Stops the dash link, trip and recording until you reopen the app</string>
     <string name="quit_title">Quit KTM Navigator?</string>
     <string name="quit_message">Stops sending to your dash and closes the app. Guidance and recording stop too.</string>
     <string name="quit_confirm">Quit</string>
@@ -1142,11 +1142,10 @@
     <string name="live_finding_route">Finding a new route</string>
     <string name="live_updating">Updating route\u2026</string>
     <string name="status_channel">Ride status</string>
-    <string name="status_channel_desc">The one notification for your trip, recording and dash link</string>
+    <string name="status_channel_desc">Shows your trip, recording and dash link</string>
     <string name="status_ready_title">KTM Navigator</string>
     <string name="status_ready_text">Ready</string>
-    <string name="status_failed">Couldn\'t start navigation</string>
-    <string name="status_mirroring">Sending Google Maps to the dash</string>
+        <string name="status_mirroring">Sending Google Maps to the dash</string>
     <string name="status_mirroring_named">Sending Google Maps to %1$s</string>
     <string name="live_calculating">Calculating route\u2026</string>
     <string name="live_rec">\u25cf Rec %1$s</string>

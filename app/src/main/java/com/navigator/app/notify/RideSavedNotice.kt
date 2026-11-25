@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * app's finish screen, so this is how a recorded ride is found again. It opens the ride.
  */
 object RideSavedNotice {
-    private const val NOTIFICATION_ID = 45
+    const val NOTIFICATION_ID = 45
 
     /** Only a mirrored ride: other rides end in the app, which already shows them. */
     fun shouldPost(ride: RecordedRide): Boolean = ride.source == RideSource.MIRROR

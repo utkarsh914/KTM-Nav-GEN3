@@ -82,8 +82,8 @@ class MainActivity : ComponentActivity() {
         // service up as soon as the app is opened (it's a foreground service and
         // owns its own reconnect loop from there on). The AutoConnectReceiver
         // covers the "app never opened" cases (boot, bike back in range).
-        // Opening the app ends a standing quit (first: the start below is otherwise ignored).
-        settings.quitUntilOpen = false
+        // The rider opening the app ends a standing quit (first: the start below is otherwise ignored); another app starting it does not.
+        if (riderOpened(intent)) settings.quitUntilOpen = false
         settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
 
         // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (settings.quitUntilOpen) {
+        if (settings.quitUntilOpen && riderOpened(intent)) {
             settings.quitUntilOpen = false
             settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
         }
@@ -132,6 +132,8 @@ class MainActivity : ComponentActivity() {
             .filter { freshLaunch || it == AppIntent.OpenNav }
             .forEach { appContainer.intents.post(it) }
     }
+
+    private fun riderOpened(intent: Intent?) = AppIntents.isTrusted(intent) || intent?.action == Intent.ACTION_MAIN
 
     private var maneuverExportReceiver: BroadcastReceiver? = null
 

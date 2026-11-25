@@ -11,7 +11,6 @@ import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
-import com.navigator.app.ui.MainActivity
 
 /**
  * The "Record a ride" shortcut (SY6): a no-UI trampoline that starts the recording service and finishes, so recording
@@ -46,5 +45,5 @@ class RecordRideShortcutActivity : Activity() {
     // The application context: this activity is finishing, and the toast outlives it.
     private fun say(app: Context, @StringRes text: Int) = Toast.makeText(app, text, Toast.LENGTH_LONG).show()
 
-    private fun openApp() = startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    private fun openApp() = startActivity(com.navigator.app.app.AppIntents.internal(this).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

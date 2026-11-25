@@ -87,7 +87,7 @@ class AppStatusTest {
 
     @Test fun aFailedStartOffersOpenAndNamesTheDestination() {
         val c = AppStatusBuilder.build(input(TripPhase.FAILED), res)
-        assertEquals("Couldn't start navigation", c.title)
+        assertEquals("Navigation didn't start", c.title)
         assertEquals("Toit", c.text)
         assertEquals(listOf(StatusAction.OPEN), c.actions)
     }

@@ -5,7 +5,7 @@ package com.navigator.app.notify
  * intent are the same pending intent (the later one rewrites the earlier), so each distinct action needs its own.
  */
 object NotificationRequestCodes {
-    /** Tap on an ongoing notification (connection, recording): front the app on the active trip. */
+    /** Tap on an ongoing notification (the one status notification): front the app on the active trip. */
     const val OPEN_APP = 0
     const val RECORDING_STOP = 1
     const val RECORDING_TOGGLE = 2

@@ -43,9 +43,9 @@ object StatusNotification {
     fun build(context: Context): Notification = try {
         val app = context.applicationContext
         val content = content(app)
-        synchronized(lock) { lastPosted = content }
-        render(app, content)
+        render(app, content).also { synchronized(lock) { lastPosted = content } }
     } catch (e: Throwable) {
+        synchronized(lock) { lastPosted = null }
         AppLogger.log("Notify", "!! status notification build failed (${e.javaClass.simpleName}); using a minimal one")
         NotificationChannels.ensure(context, NotificationChannels.STATUS)
         Notification.Builder(context, NotificationChannels.STATUS)
@@ -118,7 +118,7 @@ object StatusNotification {
             .setContentIntent(NotificationActions.open(app, NotificationRequestCodes.OPEN_APP))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setVisibility(if (c.kind == StatusKind.TRIP) Notification.VISIBILITY_PUBLIC else Notification.VISIBILITY_PRIVATE)
+            .setVisibility(Notification.VISIBILITY_PUBLIC) // low-sensitivity text; hiding it would also hide the buttons on the lock screen
         c.text?.let { b.setContentText(it) }
         c.subText?.let { b.setSubText(it) }
         if (c.kind == StatusKind.TRIP) b.setCategory(Notification.CATEGORY_NAVIGATION)
@@ -170,7 +170,7 @@ object StatusNotification {
             combine(
                 container.trip.phase, GoogleNavSdkProvider.state, RideSession.state, SpeedMonitor.overspeedKmh,
                 BccuConnectionService.notice, BccuConnectionService.connectionState, NotificationNavProvider.state,
-                container.settings.snapshot, GoogleNavSdkProvider.routeMarks,
+                container.settings.snapshot, GoogleNavSdkProvider.routeMarks, container.trip.state, GoogleNavSdkProvider.currentDestination,
             ) { }.sample(1_000).collect { refresh(app) }
         }
     }

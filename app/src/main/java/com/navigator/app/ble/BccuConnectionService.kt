@@ -794,7 +794,8 @@ class BccuConnectionService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        if (fgsStartFailed) {
+        // A start already in flight when the rider quit (boot, the bike appearing) still lands here: it must not stay up.
+        if (fgsStartFailed || AppSettings(this).quitUntilOpen) {
             stopSelf()
             return START_NOT_STICKY
         }

@@ -91,7 +91,7 @@ object AppStatusBuilder {
     }
 
     private fun failed(input: AppStatusInput, res: Resources) = AppStatusContent(
-        kind = StatusKind.FAILED, title = res.getString(R.string.status_failed),
+        kind = StatusKind.FAILED, title = res.getString(R.string.start_failed_title),
         text = input.trip.destination?.takeIf { it.isNotBlank() }, actions = listOf(StatusAction.OPEN),
     )
 

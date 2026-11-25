@@ -7,6 +7,7 @@ import android.content.Intent
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.data.connection.ConnectionRepository
 import com.navigator.app.logging.AppLogger
+import com.navigator.app.notify.RideSavedNotice
 import com.navigator.app.nav.model.isActiveNav
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.ride.RideRecordingService
@@ -113,10 +114,11 @@ private class AndroidQuitSteps(
     }
 
     override suspend fun stopBike() {
-        if (!BccuConnectionService.isRunning) return
-        BccuConnectionService.clearGuidanceIfRunning()
-        delay(DASH_CLEAR_MS) // the clear is a few BLE writes: let them leave before the link goes
-        connection.quit()
+        if (BccuConnectionService.isRunning) {
+            BccuConnectionService.clearGuidanceIfRunning()
+            delay(DASH_CLEAR_MS) // the clear is a few BLE writes: let them leave before the link goes
+        }
+        connection.quit() // also when it is still starting (not "running" yet): its own start check then stops it
         withTimeoutOrNull(BIKE_WAIT_MS) { while (BccuConnectionService.isRunning) delay(50) }
             ?: AppLogger.log("Quit", "bike service still running after $BIKE_WAIT_MS ms")
     }
@@ -126,7 +128,11 @@ private class AndroidQuitSteps(
         app.stopService(Intent().setClassName(app.packageName, NAV_SERVICE))
     }
 
-    override fun cancelNotifications() = app.getSystemService(NotificationManager::class.java).cancelAll()
+    // Not "Ride saved": it is how the rider finds the ride this quit just saved.
+    override fun cancelNotifications() {
+        val nm = app.getSystemService(NotificationManager::class.java)
+        nm.activeNotifications.filter { it.id != RideSavedNotice.NOTIFICATION_ID }.forEach { nm.cancel(it.tag, it.id) }
+    }
 
     override suspend fun finishActivity() = withContext(Dispatchers.Main) { activity()?.finishAndRemoveTask() ?: Unit }
 
