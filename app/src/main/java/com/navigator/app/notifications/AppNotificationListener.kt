@@ -77,6 +77,7 @@ class AppNotificationListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         NotificationRepository.setListenerConnected(false)
+        NotificationRepository.setMapsGuidancePresent(false) // unbound: the resync on reconnect says what is showing
         super.onListenerDisconnected()
     }
 
@@ -86,6 +87,8 @@ class AppNotificationListener : NotificationListenerService() {
         // (Re)bound: pick up a navigation notification that is already showing, instead of
         // waiting for its next update (and track its key for the removal logic).
         runOnWorker("onListenerConnected sync") {
+            // Maps may have ended while the listener was unbound: only what is showing now counts.
+            NotificationRepository.setMapsGuidancePresent(false)
             activeNotifications?.forEach { sbn ->
                 if (isNavigationNotification(sbn, settings)) handlePosted(sbn)
             }

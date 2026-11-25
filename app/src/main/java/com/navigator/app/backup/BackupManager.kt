@@ -92,12 +92,11 @@ class BackupManager(context: Context) {
                 PrefsBackup.applyTo(e, entries)
                 e.commit()
             }
-            // Whatever was ticked, the next prune must not delete the rides just restored.
-            val limitRaisedTo = if (ridesAdded > 0) {
-                val limit = prefs.getInt("ride_history_limit", AppSettings.DEFAULT_RIDE_HISTORY_LIMIT)
-                RideLimitPolicy.raisedFor(rides.list().count { !it.saved }, limit)
-                    ?.also { limit -> prefs.edit { putInt("ride_history_limit", limit) } }
-            } else null
+            // Whatever was ticked (even settings alone, which can lower the limit), the next prune must not delete
+            // rides the phone already holds or just received. commit(): a restart may follow at once.
+            val limit = prefs.getInt("ride_history_limit", AppSettings.DEFAULT_RIDE_HISTORY_LIMIT)
+            val limitRaisedTo = RideLimitPolicy.raisedFor(rides.list().count { !it.saved }, limit)
+                ?.also { raised -> prefs.edit(commit = true) { putInt("ride_history_limit", raised) } }
             AppLogger.log("Backup", "Restored: +$ridesAdded rides, +$placesAdded places, ${entries.size} settings")
             Restored(ridesAdded, placesAdded, entries.size, true, limitRaisedTo)
         } catch (e: Exception) {

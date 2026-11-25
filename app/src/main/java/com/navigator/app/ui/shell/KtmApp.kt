@@ -134,8 +134,8 @@ fun KtmApp(onQuit: () -> Unit) {
     // A ride deleted from its replay or edit page: those pages are gone by the time the offer ends, so the shell holds it.
     fun offerUndoDelete(ids: List<String>) = feedback.snackbar(
         resources.getQuantityString(R.plurals.rides_deleted, ids.size, ids.size), resources.getString(R.string.common_undo),
-        onDismiss = { scope.launch { container.rides.purge(ids) } },
-        onAction = { scope.launch { container.rides.restore(ids) } },
+        onDismiss = { container.appScope.launch { container.rides.purge(ids) } },
+        onAction = { container.appScope.launch { container.rides.restore(ids) } },
     )
 
     // Lowering "Rides to keep" hid some rides: the Undo outlives the Recording page, so the shell offers it.

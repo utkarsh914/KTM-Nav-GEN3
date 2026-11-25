@@ -8,7 +8,9 @@ import com.navigator.app.data.settings.IntSpec
 import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
+import com.navigator.app.logging.AppLogger
 import com.navigator.app.ride.AvgSpeedMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -82,6 +84,7 @@ class RecordingViewModel(
      * Lowering "Rides to keep" removes the extra rides (with Undo) once when the page is left: every stepper tap
      * saves at once, and removing per tap would hide rides while the rider is still stepping down.
      */
+    /** Safe to call twice (page left, then cleared): once the extra rides are hidden nothing is left over the limit. */
     fun commit() {
         val limit = settings.snapshot.value.rideHistoryLimit
         if (limit < limitAtOpen) removeOverLimit(limit, limitAtOpen)
@@ -95,7 +98,15 @@ class RecordingViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>): T = RecordingViewModel(
                 container.settings,
                 removeOverLimit = { limit, previous ->
-                    container.appScope.launch { runCatching { container.rides.removeOverLimit(limit, previous) } }
+                    container.appScope.launch {
+                        try {
+                            container.rides.removeOverLimit(limit, previous)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            AppLogger.log("Ride", "!! removing rides over the limit failed: ${e.javaClass.simpleName}")
+                        }
+                    }
                 },
             ) as T
         }

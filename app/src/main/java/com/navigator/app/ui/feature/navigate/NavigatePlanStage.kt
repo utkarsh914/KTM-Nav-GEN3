@@ -74,8 +74,8 @@ internal class PlanStage(
     val map: MapController,
     val feedback: Feedback,
     val places: PlacesRepository,
-    /** Saves and their Undo must outlive the page: the app scope. */
-    val scope: CoroutineScope,
+    /** The app scope (saves and their Undo must outlive the page): only for work that must not be cancelled with the UI. */
+    val appScope: CoroutineScope,
     val tripRunning: () -> Boolean,
     val onResume: () -> Unit,
     val onBack: () -> Unit,
@@ -115,12 +115,12 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
                     onBack = plan.onBack,
                     onClose = plan.onClose,
                     onToggleSave = {
-                        plan.scope.launch(Dispatchers.IO) {
+                        plan.appScope.launch(Dispatchers.IO) {
                             if (saved) plan.places.removeFavorite(sel) else plan.places.saveFavorite(sel, FavoriteSlot.OTHER)
                         }
                         if (saved) {
                             plan.feedback.snackbar(removedMessage, undoLabel) {
-                                plan.scope.launch(Dispatchers.IO) { plan.places.saveFavorite(sel, FavoriteSlot.OTHER) }
+                                plan.appScope.launch(Dispatchers.IO) { plan.places.saveFavorite(sel, FavoriteSlot.OTHER) }
                             }
                         }
                     },

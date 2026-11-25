@@ -472,8 +472,8 @@
         <item quantity="other">%1$d rides deleted</item>
     </plurals>
     <plurals name="rides_removed_over_limit">
-        <item quantity="one">%1$d ride removed</item>
-        <item quantity="other">%1$d rides removed</item>
+        <item quantity="one">%1$d older ride removed</item>
+        <item quantity="other">%1$d older rides removed</item>
     </plurals>
     <plurals name="rides_delete_starred_title">
         <item quantity="one">1 starred ride included</item>
@@ -962,11 +962,11 @@
         <item quantity="one">Backed up %1$d ride, your places and settings</item>
         <item quantity="other">Backed up %1$d rides, your places and settings</item>
     </plurals>
-    <plurals name="backup_skipped">
-        <item quantity="one"> · %1$d too large to include</item>
-        <item quantity="other"> · %1$d too large to include</item>
+    <plurals name="backup_done_skipped">
+        <item quantity="one">Backed up %1$d ride, your places and settings · %2$d couldn\'t be included</item>
+        <item quantity="other">Backed up %1$d rides, your places and settings · %2$d couldn\'t be included</item>
     </plurals>
-    <string name="backup_limit_raised">Rides to keep raised to %1$d</string>
+    <string name="backup_restored_limit">Restored %1$s · Rides to keep raised to %2$d</string>
     <string name="backup_share">Share</string>
     <string name="backup_share_title">Share backup</string>
     <string name="backup_failed">Backup failed</string>

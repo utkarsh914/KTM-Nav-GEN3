@@ -32,7 +32,7 @@ data class BackupUi(val busy: Boolean = false, val restore: RestoreState? = null
 sealed interface BackupEvent {
     data class BackedUp(val rides: Int, val uri: Uri, val skipped: Int = 0) : BackupEvent
     data object BackupFailed : BackupEvent
-    data class Restored(val parts: List<UiText>, val restartNeeded: Boolean, val note: UiText? = null) : BackupEvent
+    data class Restored(val parts: List<UiText>, val restartNeeded: Boolean, val limitRaisedTo: Int? = null) : BackupEvent
     data class RestoreFailed(val uri: Uri, val rides: Boolean, val places: Boolean, val settings: Boolean) : BackupEvent
 }
 
@@ -92,7 +92,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
             _events.send(
                 if (r.ok) BackupEvent.Restored(
                     restoredParts(r, rides, places, settings), restartNeeded = settings,
-                    note = r.limitRaisedTo?.let { UiText.Res(R.string.backup_limit_raised, listOf(it)) },
+                    limitRaisedTo = r.limitRaisedTo,
                 )
                 else BackupEvent.RestoreFailed(uri, rides, places, settings),
             )

@@ -90,8 +90,9 @@ class RideRecorder(private val context: Context) {
         } catch (e: Exception) {
             AppLogger.log("Ride", "!! start failed: $e")
             runCatching { writer?.close() }
+            // Only a track this start created is ours to delete; if openTrack itself refused, just release the id.
+            if (writer != null) store.discardTrack(id) else store.markTrackClosed(id)
             writer = null
-            store.discardTrack(id)
             ht.quitSafely()
             return false
         }

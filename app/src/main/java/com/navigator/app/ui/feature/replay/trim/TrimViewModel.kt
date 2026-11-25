@@ -122,8 +122,7 @@ class TrimViewModel(
             if (trimmed != null) {
                 _events.send(TrimEvent.Trimmed(r.ride.source == RideSource.MERGED))
                 ready()?.let { _ui.value = it.copy(applying = false, closed = true) }
-            }
-            else if (repo.get(rideId) == null) { _ui.value = TrimUi.Loading; _vanished.value = true }
+            } else if (repo.get(rideId) == null) { _ui.value = TrimUi.Loading; _vanished.value = true }
             else ready()?.let { _ui.value = it.copy(applying = false, failed = true) }
         }
     }

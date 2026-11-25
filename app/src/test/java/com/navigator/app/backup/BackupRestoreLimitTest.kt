@@ -67,6 +67,28 @@ class BackupRestoreLimitTest {
         assertEquals(15, prefs.getInt("ride_history_limit", 0))
     }
 
+    @Test fun settingsAloneWithASmallerLimitNeverLeaveMoreRidesThanTheLimitKeeps() {
+        makeUnsavedRides(15)
+        val file = backupThenWipe(limit = 10)
+        // The rides are already on the phone (nothing to add), the file lowers the limit, a restart follows.
+        BackupManager(ctx).restore(ByteArrayInputStream(file), withRides = true, withPlaces = false, withSettings = false)
+        prefs.edit().putInt("ride_history_limit", 50).commit()
+        val again = ByteArrayOutputStream().also { BackupManager(ctx).backup(it) }.toByteArray()
+        prefs.edit().putInt("ride_history_limit", 20).commit()
+        val r = BackupManager(ctx).restore(ByteArrayInputStream(again), withRides = false, withPlaces = false, withSettings = true)
+        assertEquals(0, r.ridesAdded)
+        assertNull("50 covers 15 rides", r.limitRaisedTo)
+        val low = backupWithLimit(10)
+        val r2 = BackupManager(ctx).restore(ByteArrayInputStream(low), withRides = false, withPlaces = false, withSettings = true)
+        assertEquals(15, r2.limitRaisedTo)
+        assertEquals(15, prefs.getInt("ride_history_limit", 0))
+    }
+
+    private fun backupWithLimit(limit: Int): ByteArray {
+        prefs.edit().putInt("ride_history_limit", limit).commit()
+        return ByteArrayOutputStream().also { BackupManager(ctx).backup(it) }.toByteArray()
+    }
+
     @Test fun noRaiseWhenTheLimitAlreadyCoversTheRides() {
         makeUnsavedRides(5)
         val file = backupThenWipe(limit = 50)
