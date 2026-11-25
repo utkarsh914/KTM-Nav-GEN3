@@ -29,6 +29,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.composable
 import com.navigator.app.ui.components.KtmScrim
 import com.navigator.app.ui.theme.KtmLayout
@@ -42,7 +43,9 @@ import kotlinx.coroutines.flow.StateFlow
  * Page motion (D28). A pushed page is opaque and slides in over the page below from the right edge, full width, with no
  * alpha; the page below moves back a quarter of the width and dims (see PageDim). The map is one layer behind all the
  * pages (D27), so a map page is transparent: only its controls travel, and a map page underneath only dims. Tabs fade
- * the new tab in over the old one: no scale, no gap. The few moves that cannot slide because the map is between the
+ * the new tab in over the old one: no scale, no gap. Back to Navigate from another tab is the reverse: the old tab
+ * fades out on top of a Navigate that is already there. A tab opened from a page pushed over another tab first closes
+ * that page, so it arrives as a plain push of the page (slide and dim), not as a tab fade. The few moves that cannot slide because the map is between the
  * pages dissolve instead. All of it runs on the tokens of KtmMotionSpecs. A predictive back swipe seeks the same
  * transitions: no shrink, no corners.
  */
@@ -230,10 +233,14 @@ private fun fadeOf(parent: androidx.compose.animation.core.Transition<*>?, histo
  * arrives at one that was not (a restored tab keeps its id but was not in the stack either).
  */
 internal class BackStackHistory(private val nav: NavHostController) {
-    private var current: Set<String> = nav.backStack().value.map { it.id }.toSet()
+    private var current: Set<String> = emptySet()
     private var before: Set<String> = emptySet()
 
-    private val listener = NavController.OnDestinationChangedListener { controller, _, _ -> record(controller.backStack().value.map { it.id }) }
+    // The composable navigator's own stack, updated synchronously on push and pop. The listener runs BEFORE the
+    // controller's `currentBackStack` flow is updated, so that one would lag a change behind here.
+    private fun stackIds(): List<String> = nav.navigatorProvider.getNavigator(ComposeNavigator::class.java).backStack.value.map { it.id }
+
+    private val listener = NavController.OnDestinationChangedListener { _, _, _ -> record(stackIds()) }
 
     internal fun record(ids: List<String>) {
         val now = ids.toSet()
@@ -244,7 +251,13 @@ internal class BackStackHistory(private val nav: NavHostController) {
 
     fun isPop(targetId: String): Boolean = targetId in before
 
-    fun start() = nav.addOnDestinationChangedListener(listener)
+    fun start() {
+        // A restored stack has not changed yet: its top is the arriving page of a first back, so everything under it was "before".
+        val ids = stackIds()
+        current = ids.toSet()
+        before = ids.dropLast(1).toSet()
+        nav.addOnDestinationChangedListener(listener)
+    }
     fun stop() = nav.removeOnDestinationChangedListener(listener)
 }
 

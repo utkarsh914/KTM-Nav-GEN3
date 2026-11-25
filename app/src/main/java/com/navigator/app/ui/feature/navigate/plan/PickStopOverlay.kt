@@ -2,10 +2,16 @@ package com.navigator.app.ui.feature.navigate.plan
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import com.navigator.app.ui.theme.KtmMotionSpecs
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.navigator.app.R
@@ -43,6 +49,15 @@ fun PickStopOverlay(
         // No padding reset here: the stage that is shown next pads the map itself (a reset is two relayouts and a shift).
         onDispose { controller.stop() }
     }
+    // The map takes the padding a moment after the panel reports it (it settles first): read the pin's point after that.
+    var footprint by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(footprint) {
+        if (footprint < 0) return@LaunchedEffect
+        map.awaitPaddingSettled()
+        delay(KtmMotionSpecs.INSETS_SETTLE_MS * 2)
+        withFrameNanos { }
+        controller.refresh()
+    }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
         hint = stringResource(R.string.stop_pick_title), title = fallback, stopNumber = number,
@@ -51,6 +66,6 @@ fun PickStopOverlay(
         useEnabled = canAdd,
         guidance = guidance,
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
-        onFootprint = { onFootprint(it); controller.refresh() },
+        onFootprint = { footprint = it; onFootprint(it) },
     )
 }

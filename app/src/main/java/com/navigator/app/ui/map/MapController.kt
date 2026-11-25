@@ -110,7 +110,7 @@ interface MapController {
     fun showTrimPreview(points: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int)
 
     /** Fit the whole track in the visible map; [animate] false jumps (the first frame, behind a cover). */
-    fun frameTrack(points: List<RidePoint>, animate: Boolean = true)
+    fun frameTrack(points: List<RidePoint>, animate: Boolean = true): Boolean
 
     /** The compass-driven "you are here" marker used while not guiding. */
     fun showUserMarker(at: MapPoint, headingDegrees: Float?)

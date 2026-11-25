@@ -14,12 +14,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import com.navigator.app.ui.theme.KtmMotionSpecs
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
@@ -212,9 +216,18 @@ internal fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (Saved
         controller.start()
         onDispose { controller.stop() }
     }
+    // The map takes the padding a moment after the panel reports it: read the pin's point after that.
+    var footprint by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(footprint) {
+        if (footprint < 0) return@LaunchedEffect
+        map.awaitPaddingSettled()
+        delay(KtmMotionSpecs.INSETS_SETTLE_MS * 2)
+        withFrameNanos { }
+        controller.refresh()
+    }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
-        onFootprint = { map.setPadding(it, 0, 0, 0); controller.refresh() },
+        onFootprint = { footprint = it; map.setPadding(it, 0, 0, 0) },
     )
 }

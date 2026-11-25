@@ -39,6 +39,9 @@ class RetainedNavigationView(
     private var funnelMap: com.google.android.gms.maps.GoogleMap? = null
     private var pendingShell = MapInsets()
 
+    /** Whether the SDK's guidance chrome is on, as the last owner left it (null before any): the SDK re-pads its own chrome when it flips. */
+    var guidanceOn: Boolean? = null
+
     /** Which screen the shared map answers to (see [MapOwnership]). */
     val ownership = MapOwnership()
 
@@ -77,21 +80,26 @@ class RetainedNavigationView(
         val v = NavigationView(context)
         v.onCreate(Bundle())
         val state = lifecycle.currentState
-        if (state.isAtLeast(Lifecycle.State.STARTED)) v.onStart()
-        if (state.isAtLeast(Lifecycle.State.RESUMED)) v.onResume()
+        if (state.isAtLeast(Lifecycle.State.STARTED)) { v.onStart(); started = true }
+        if (state.isAtLeast(Lifecycle.State.RESUMED)) { v.onResume(); resumed = true }
         view = v
         return v
     }
 
+    // The view is told each step once: a view created while the activity is resuming would otherwise get onResume from
+    // its creation and again from the lifecycle event, and the SDK throws "Observer already added" on the second.
+    private var started = false
+    private var resumed = false
+
     fun onLifecycleEvent(event: Lifecycle.Event) {
         val v = view ?: return
         when (event) {
-            Lifecycle.Event.ON_START -> v.onStart()
-            Lifecycle.Event.ON_RESUME -> v.onResume()
-            Lifecycle.Event.ON_PAUSE -> v.onPause()
+            Lifecycle.Event.ON_START -> if (!started) { started = true; v.onStart() }
+            Lifecycle.Event.ON_RESUME -> if (!resumed) { resumed = true; v.onResume() }
+            Lifecycle.Event.ON_PAUSE -> if (resumed) { resumed = false; v.onPause() }
             // The activity saves its state after onStop; the view gets the same call. The map is retained
             // in memory (never restored from this bundle), but the SDK expects the call.
-            Lifecycle.Event.ON_STOP -> { v.onStop(); v.onSaveInstanceState(Bundle()) }
+            Lifecycle.Event.ON_STOP -> if (started) { started = false; v.onStop(); v.onSaveInstanceState(Bundle()) }
             else -> {}
         }
     }
@@ -110,6 +118,8 @@ class RetainedNavigationView(
         runCatching { v.onStop() }
         runCatching { v.onDestroy() }
         view = null
+        started = false
+        resumed = false
         mapInitialized = false
         funnel?.detach()
         funnel = null

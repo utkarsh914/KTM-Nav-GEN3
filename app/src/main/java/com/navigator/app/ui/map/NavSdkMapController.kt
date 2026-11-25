@@ -92,7 +92,7 @@ class NavSdkMapController(
     internal val attachments: StateFlow<Int> = _attachments.asStateFlow()
 
     /** The padding this screen last asked for, kept while it does not own the map and replayed when it does. */
-    private var requestedPadding = MapInsets()
+    private var requestedPadding: MapInsets? = null
 
     /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
     internal fun arm() { detached = false }
@@ -117,15 +117,15 @@ class NavSdkMapController(
         if (gesturesWanted) setGestureListening(true)
         if (clicksWanted) setMapClickListening(true)
         // The padding this screen asked for before it had the map (or while it did not own it) goes on now, once.
-        retained.requestPadding(requestedPadding)
+        requestedPadding?.let { retained.requestPadding(it) } // nothing asked yet: the previous owner's padding stands
         _ready.value = true
         _attachments.value++
     }
 
     /**
      * The screen left composition. Our marker is always ours to remove; the shared listeners only
-     * if no other screen has taken the map over (the NEW screen sets up before the OLD one is
-     * disposed during animated route changes).
+     * if no other screen has taken the map over (a screen takes it once it is settled on top, which can be before or
+     * after the old one is disposed).
      */
     internal fun detach() {
         detached = true
@@ -203,8 +203,9 @@ class NavSdkMapController(
 
     // Goes through the padding funnel only; never call GoogleMap.setPadding directly (docs/ENGINEERING_NOTES.md, "The map layer").
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        requestedPadding = MapInsets(left, top, right, bottom)
-        if (owns) retained.requestPadding(requestedPadding)
+        val asked = MapInsets(left, top, right, bottom)
+        requestedPadding = asked
+        if (owns) retained.requestPadding(asked)
     }
 
     override suspend fun awaitPaddingSettled() {
@@ -320,14 +321,13 @@ class NavSdkMapController(
         if (follow) runCatching { map?.moveCamera(CameraUpdateFactory.newLatLng(ll)) }
     }
 
-    override fun frameTrack(points: List<RidePoint>, animate: Boolean) {
-        ownedMap()?.let { frameTrackOn(it, points, animate) }
-    }
+    override fun frameTrack(points: List<RidePoint>, animate: Boolean): Boolean =
+        ownedMap()?.let { frameTrackOn(it, points, animate) } ?: false
 
     /** Same padding and glide as every other frame; a jump when asked (behind a cover) or under reduced motion. */
-    private fun frameTrackOn(gm: GoogleMap, points: List<RidePoint>, animate: Boolean) {
-        val update = trackFrame(points, framePaddingPx) ?: return
-        runCatching { if (animate) gm.glide(update, KtmMotionSpecs.CAMERA_FIT_MS) else gm.moveCamera(update) }
+    private fun frameTrackOn(gm: GoogleMap, points: List<RidePoint>, animate: Boolean): Boolean {
+        val update = trackFrame(points, framePaddingPx) ?: return false
+        return runCatching { if (animate) gm.glide(update, KtmMotionSpecs.CAMERA_FIT_MS) else gm.moveCamera(update) }.isSuccess
     }
 
     override fun showUserMarker(at: MapPoint, headingDegrees: Float?) {
@@ -335,7 +335,7 @@ class NavSdkMapController(
         userMarker.update(gm, LatLng(at.lat, at.lng), headingDegrees)
     }
 
-    override fun hideUserMarker() = userMarker.remove()
+    override fun hideUserMarker() { if (owns) userMarker.remove() }
 
     override fun recenter(at: MapPoint) {
         ownedMap()?.glide(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f), KtmMotionSpecs.CAMERA_RECENTER_MS)
@@ -373,11 +373,10 @@ class NavSdkMapController(
         runCatching { view.setReportIncidentButtonEnabled(false) }
         runCatching { view.setTrafficIncidentCardsEnabled(false) }
         // The SDK may re-pad its own chrome when guidance switches on or off; a replay with the same state changes nothing.
-        if (guidance != lastGuidance) retained.reapplyPadding()
-        lastGuidance = guidance
+        // The state belongs to the shared view, not to this screen: the first screen after a change of owner compares with it.
+        if (retained.guidanceOn != null && guidance != retained.guidanceOn) retained.reapplyPadding()
+        retained.guidanceOn = guidance
     }
-
-    private var lastGuidance: Boolean? = null
 
     override fun setNightMode(dark: Boolean) {
         if (!owns) return

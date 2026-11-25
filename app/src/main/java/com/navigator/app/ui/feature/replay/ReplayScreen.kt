@@ -178,8 +178,8 @@ fun ReplayScreen(
                 if (framed !== r.points) {
                     // The first frame is a jump behind the cover (an animation would show under its fade); a new track after a trim glides.
                     val first = framed == null
+                    if (!map.frameTrack(r.points, animate = !first)) return@collect // not ours to move yet: the cover stays
                     framed = r.points
-                    map.frameTrack(r.points, animate = !first)
                 }
                 // The move is made: one frame later the map has painted it, and the cover may go.
                 androidx.compose.runtime.withFrameNanos { }

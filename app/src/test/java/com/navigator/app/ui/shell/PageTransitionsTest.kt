@@ -251,4 +251,39 @@ class PageTransitionsTest {
         assertEquals(map, top())
         assertTrue("any tab back to Navigate is a pop", history.isPop(map))
     }
+
+    @Test fun revisitingATabIsStillAPushNotABack() {
+        var nav: NavHostController? = null
+        lateinit var history: BackStackHistory
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                val controller = rememberNavController().also { nav = it }
+                history = androidx.compose.runtime.remember(controller) { BackStackHistory(controller) }
+                androidx.compose.runtime.DisposableEffect(history) { history.start(); onDispose { history.stop() } }
+                NavHost(controller, startDestination = Route.Navigate) {
+                    page<Route.Navigate> { Text("map") }
+                    page<Route.Rides> { Text("rides") }
+                    page<Route.Places> { Text("places") }
+                    page<Route.Settings> { Text("settings") }
+                    page<Route.Logs> { Text("logs") }
+                }
+            }
+        }
+        fun top() = rule.runOnIdle { nav!!.currentBackStackEntry!!.id }
+        fun tab(t: Tab): String { rule.runOnIdle { nav!!.openTab(t) }; return top() }
+        tab(Tab.Rides)
+        tab(Tab.Navigate)
+        assertTrue(history.isPop(top()))
+        val rides = tab(Tab.Rides)
+        assertFalse("Navigate, Rides, Navigate, Rides: the second Rides arrives like the first", history.isPop(rides))
+        tab(Tab.Places)
+        val ridesAgain = tab(Tab.Rides)
+        assertFalse("Rides, Places, Rides", history.isPop(ridesAgain))
+        rule.runOnIdle { nav!!.navigate(Route.Logs) }
+        val settings = tab(Tab.Settings)
+        assertFalse("a tab opened from a page pushed over another tab", history.isPop(settings))
+        rule.runOnIdle { nav!!.navigate(Route.Logs) }
+        rule.runOnIdle { nav!!.popBackStack() }
+        assertTrue("back from the page", history.isPop(top()))
+    }
 }

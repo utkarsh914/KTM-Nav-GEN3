@@ -43,7 +43,8 @@ frames. The cost was in the map, not in Compose.
    frame: opening search allocated 110-180 MB of GPU memory in 12 frames (`gpu_mem_total` in Perfetto), and on a phone
    short of free RAM (kswapd/kcompactd burning CPU) the render thread then stalled for 90-137 ms in `flush layers`. Use
    `layerFade` (`ui/shell/LayerFade.kt`, alpha per draw, `ModulateAlpha`) with `EnterTransition.None` and
-   `holdUntilFaded(spec)` for the Navigate stage and the search container (the hold is a tween of the spec's own duration: a fade to the alpha it already has lasts no time at all under a spring); GPU growth per search open fell to 9 MB and
+   `holdUntilFaded(spec)` for the Navigate stage and the search container (the hold is a tween of the spec's own
+   duration: a fade to the alpha it already has lasts no time at all under a spring); GPU growth per search open fell to 9 MB and
    the stalls disappeared. Page fades follow the same rule: `PageTransitions.kt` only slides
    (and holds the leaving page with `holdUntilFaded`); `pageFade()` decides which page fades and how fast, `PageHost`
    applies it per draw, and `rideContainer`/`searchContainer` fade their shared bounds with `layerFade`. Opening a ride
