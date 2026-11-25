@@ -10,7 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -219,7 +221,10 @@ internal fun NavigatingStage(
                     riding.pickingStop = false
                     actions.onApplyMapButton(MapButtonEvent.Tap)
                 }
-                LaunchedEffect(Unit) { actions.onRidingInsets(MapInsets()) }
+                // The landscape panel's side is not map: the riding insets are that and nothing else while picking, so what
+                // "Add stop here" reads is the point under the pin.
+                var pickFootprint by remember { mutableIntStateOf(0) }
+                LaunchedEffect(pickFootprint) { actions.onRidingInsets(MapInsets(left = pickFootprint)) }
                 BackHandler { leave(); riding.showTripStops = true }
                 PickStopOverlay(
                     map = map, number = TripStopRules.nextNumber(tripState.allStops.size, ahead ?: 0), destination = tripState.dest?.label.orEmpty(),
@@ -228,6 +233,7 @@ internal fun NavigatingStage(
                     onUse = { place -> leave(); trip.addStop(place) },
                     // The trip keeps guiding underneath: the next turn stays on screen while the rider picks.
                     guidance = { ManeuverCard(maneuver, Modifier.fillMaxWidth(), destination = bar.destination) },
+                    onFootprint = { pickFootprint = it },
                 )
             }
             if (riding.showTripStops && startFailure == null) {

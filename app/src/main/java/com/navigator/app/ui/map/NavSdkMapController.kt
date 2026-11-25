@@ -85,7 +85,14 @@ class NavSdkMapController(
      * Whether this screen set the shared map up last. Each screen owns its own controller, so a screen that leaves
      * (Replay → Trim and back) must not clear the listeners the arriving one has just set.
      */
-    private val owns: Boolean get() = retained.mapOwner === this
+    private val owns: Boolean get() = retained.ownership.isOwner(this)
+
+    /** Counts the times this controller took the map: what a screen replays on (re)attach is keyed on it. */
+    private val _attachments = MutableStateFlow(0)
+    internal val attachments: StateFlow<Int> = _attachments.asStateFlow()
+
+    /** The padding this screen last asked for, kept while it does not own the map and replayed when it does. */
+    private var requestedPadding = MapInsets()
 
     /** The screen is (again) on show: a map delivered from now on is taken. Pairs with [detach], which refuses late deliveries. */
     internal fun arm() { detached = false }
@@ -98,7 +105,7 @@ class NavSdkMapController(
         navView = view
         // Whatever the previous screen left on the shared map goes first: only what this screen asks for stays.
         clearListeners(map)
-        retained.mapOwner = this
+        retained.ownership.claim(this)
         map.uiSettings.isMyLocationButtonEnabled = false // we draw our own recenter
         map.uiSettings.isCompassEnabled = false          // custom controls instead
         _bearing.value = map.cameraPosition.bearing
@@ -109,7 +116,10 @@ class NavSdkMapController(
         if (poiWanted) setPoiListening(true)
         if (gesturesWanted) setGestureListening(true)
         if (clicksWanted) setMapClickListening(true)
+        // The padding this screen asked for before it had the map (or while it did not own it) goes on now, once.
+        retained.requestPadding(requestedPadding)
         _ready.value = true
+        _attachments.value++
     }
 
     /**
@@ -124,7 +134,7 @@ class NavSdkMapController(
         val gm = map
         if (gm != null && owns) {
             clearListeners(gm)
-            retained.mapOwner = null
+            retained.ownership.release(this)
         }
         map = null
         navView = null
@@ -148,32 +158,35 @@ class NavSdkMapController(
 
     override fun setMapClickListening(enabled: Boolean) {
         clicksWanted = enabled
-        val gm = map ?: return
+        val gm = map?.takeIf { owns } ?: return
         if (enabled) gm.setOnMapClickListener { _mapClicks.tryEmit(MapPoint(it.latitude, it.longitude)) }
-        else if (owns) gm.setOnMapClickListener(null)
+        else gm.setOnMapClickListener(null)
     }
 
     private var gesturesWanted = false
 
     override fun setGestureListening(enabled: Boolean) {
         gesturesWanted = enabled
-        val gm = map ?: return
+        val gm = map?.takeIf { owns } ?: return
         if (enabled) {
             gm.setOnCameraMoveStartedListener { reason ->
                 if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) _gesturePans.tryEmit(Unit)
             }
-        } else if (owns) gm.setOnCameraMoveStartedListener(null)
+        } else gm.setOnCameraMoveStartedListener(null)
     }
 
     private var poiWanted = false
 
     override fun setPoiListening(enabled: Boolean) {
         poiWanted = enabled
-        val gm = map ?: return
+        val gm = map?.takeIf { owns } ?: return
         if (enabled) {
             gm.setOnPoiClickListener { _poiClicks.tryEmit(MapPoi(MapPoint(it.latLng.latitude, it.latLng.longitude), it.name, it.placeId)) }
-        } else if (owns) gm.setOnPoiClickListener(null)
+        } else gm.setOnPoiClickListener(null)
     }
+
+    /** The map, only while this screen owns it: every write goes through here. */
+    private fun ownedMap(): GoogleMap? = map?.takeIf { owns }
 
     override fun cameraCenter(): MapPoint? = map?.cameraPosition?.target?.let { MapPoint(it.latitude, it.longitude) }
 
@@ -183,14 +196,15 @@ class NavSdkMapController(
 
     override fun setCameraIdleListening(enabled: Boolean) {
         idleWanted = enabled
-        val gm = map ?: return
+        val gm = map?.takeIf { owns } ?: return
         if (enabled) gm.setOnCameraIdleListener { cameraCenter()?.let { _cameraIdle.tryEmit(it) } }
-        else if (owns) gm.setOnCameraIdleListener(null)
+        else gm.setOnCameraIdleListener(null)
     }
 
     // Goes through the padding funnel only; never call GoogleMap.setPadding directly (docs/ENGINEERING_NOTES.md, "The map layer").
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
-        if (owns) retained.requestPadding(MapInsets(left, top, right, bottom))
+        requestedPadding = MapInsets(left, top, right, bottom)
+        if (owns) retained.requestPadding(requestedPadding)
     }
 
     override suspend fun awaitPaddingSettled() {
@@ -198,7 +212,7 @@ class NavSdkMapController(
     }
 
     override fun clearOverlays() {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         gm.setOnPolylineClickListener(null)
         gm.setOnMarkerClickListener(null)
         gm.clear()
@@ -209,14 +223,14 @@ class NavSdkMapController(
     }
 
     override fun showPlace(place: MapPoint, title: String?, moveCamera: Boolean) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         val ll = LatLng(place.lat, place.lng)
         gm.addMarker(MarkerOptions().position(ll).title(title))
         if (moveCamera) gm.glide(CameraUpdateFactory.newLatLngZoom(ll, 15f), KtmMotionSpecs.CAMERA_FIT_MS)
     }
 
     override fun showTripPreview(scene: TripPreviewScene) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         val dest = LatLng(scene.destination.lat, scene.destination.lng)
         val pins = scene.style?.let { MapPins(appContext, it) }
         // Numbered stop markers (1..n), then the destination on top.
@@ -274,14 +288,14 @@ class NavSdkMapController(
         ).apply { tag = index; isClickable = true }
 
     override fun showTrack(points: List<RidePoint>, bands: RideMetrics.SpeedBands) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         trimOverlay.forget()
         drawRideTrack(gm, points, bands, endpoints = endpointPins)
-        frameRideTrack(gm, points)
+        frameTrackOn(gm, points, animate = true)
     }
 
     override fun showReplay(points: List<RidePoint>, bands: RideMetrics.SpeedBands, smoothingMeters: Double, markerAt: MapPoint, markerColor: Int) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         // drawRideTrack clears the map, which also drops the user marker: forget its stale handle.
         userMarker.remove()
         trimOverlay.forget()
@@ -293,7 +307,7 @@ class NavSdkMapController(
     }
 
     override fun showTrimPreview(points: List<RidePoint>, from: Int, to: Int, keptColor: Int, removedColor: Int) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         userMarker.remove()
         replayMarker = null
         trimOverlay.update(gm, points, from, to, keptColor, removedColor)
@@ -301,28 +315,35 @@ class NavSdkMapController(
 
     override fun moveReplayMarker(at: MapPoint, follow: Boolean) {
         val ll = LatLng(at.lat, at.lng)
+        if (!owns) return
         replayMarker?.position = ll
         if (follow) runCatching { map?.moveCamera(CameraUpdateFactory.newLatLng(ll)) }
     }
 
-    override fun frameTrack(points: List<RidePoint>) {
-        map?.let { frameRideTrack(it, points) }
+    override fun frameTrack(points: List<RidePoint>, animate: Boolean) {
+        ownedMap()?.let { frameTrackOn(it, points, animate) }
+    }
+
+    /** Same padding and glide as every other frame; a jump when asked (behind a cover) or under reduced motion. */
+    private fun frameTrackOn(gm: GoogleMap, points: List<RidePoint>, animate: Boolean) {
+        val update = trackFrame(points, framePaddingPx) ?: return
+        runCatching { if (animate) gm.glide(update, KtmMotionSpecs.CAMERA_FIT_MS) else gm.moveCamera(update) }
     }
 
     override fun showUserMarker(at: MapPoint, headingDegrees: Float?) {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         userMarker.update(gm, LatLng(at.lat, at.lng), headingDegrees)
     }
 
     override fun hideUserMarker() = userMarker.remove()
 
     override fun recenter(at: MapPoint) {
-        map?.glide(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f), KtmMotionSpecs.CAMERA_RECENTER_MS)
+        ownedMap()?.glide(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f), KtmMotionSpecs.CAMERA_RECENTER_MS)
     }
 
     /** Reset the map to north-up (bearing 0, tilt 0), keeping centre and zoom. */
     override fun resetNorth() {
-        val gm = map ?: return
+        val gm = ownedMap() ?: return
         val north = CameraPosition.Builder(gm.cameraPosition).bearing(0f).tilt(0f).build()
         gm.glide(CameraUpdateFactory.newCameraPosition(north), KtmMotionSpecs.CAMERA_RECENTER_MS)
     }
@@ -334,16 +355,16 @@ class NavSdkMapController(
             FollowMode.NORTH_UP -> GoogleMap.CameraPerspective.TOP_DOWN_NORTH_UP
             FollowMode.HEADING_UP -> GoogleMap.CameraPerspective.TOP_DOWN_HEADING_UP
         }
-        runCatching { map?.followMyLocation(perspective) }
+        runCatching { ownedMap()?.followMyLocation(perspective) }
     }
 
     override fun showRouteOverview() {
-        runCatching { navView?.showRouteOverview() }
+        if (owns) runCatching { navView?.showRouteOverview() }
     }
 
     // Each call individually guarded so an API mismatch degrades gracefully.
     override fun setGuidanceChrome(guidance: Boolean) {
-        val view = navView ?: return
+        val view = navView?.takeIf { owns } ?: return
         runCatching { view.setNavigationUiEnabled(guidance) }
         runCatching { view.setHeaderEnabled(false) }
         runCatching { view.setEtaCardEnabled(false) }
@@ -351,10 +372,15 @@ class NavSdkMapController(
         runCatching { view.setRecenterButtonEnabled(false) }
         runCatching { view.setReportIncidentButtonEnabled(false) }
         runCatching { view.setTrafficIncidentCardsEnabled(false) }
-        retained.reapplyPadding() // the SDK may have re-padded its own chrome
+        // The SDK may re-pad its own chrome when guidance switches on or off; a replay with the same state changes nothing.
+        if (guidance != lastGuidance) retained.reapplyPadding()
+        lastGuidance = guidance
     }
 
+    private var lastGuidance: Boolean? = null
+
     override fun setNightMode(dark: Boolean) {
+        if (!owns) return
         runCatching {
             map?.mapColorScheme = if (dark) com.google.android.gms.maps.model.MapColorScheme.DARK
             else com.google.android.gms.maps.model.MapColorScheme.LIGHT
@@ -370,7 +396,7 @@ class NavSdkMapController(
     /** The SDK puck is only wanted while guiding; the compass-driven marker owns browse and preview. */
     @SuppressLint("MissingPermission") // the caller checks the permission
     internal fun setPuck(enabled: Boolean) {
-        runCatching { map?.isMyLocationEnabled = enabled }
+        if (owns) runCatching { map?.isMyLocationEnabled = enabled }
     }
 }
 

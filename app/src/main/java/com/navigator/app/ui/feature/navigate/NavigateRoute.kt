@@ -210,7 +210,7 @@ internal fun PickOnMapHost(map: MapController, onBack: () -> Unit, onUse: (Saved
     val state by controller.state.collectAsState()
     DisposableEffect(controller) {
         controller.start()
-        onDispose { controller.stop(); map.setPadding(0, 0, 0, 0) }
+        onDispose { controller.stop() }
     }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },

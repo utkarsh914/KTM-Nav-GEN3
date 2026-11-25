@@ -4,8 +4,11 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -37,5 +40,16 @@ fun Modifier.layerFade(
     }
 }
 
-/** An exit that changes nothing and lasts [spec]: keeps the content in the tree while [layerFade] fades it. */
-fun holdUntilFaded(spec: FiniteAnimationSpec<Float>): ExitTransition = fadeOut(spec, targetAlpha = 1f)
+/**
+ * An exit that changes nothing and lasts as long as [spec] takes to fade: keeps the content in the tree while
+ * [layerFade] fades it. A fade to the alpha it already has (1) would last no time at all under a spring, so the hold is
+ * a tween of the spec's own duration.
+ */
+fun holdUntilFaded(spec: FiniteAnimationSpec<Float>): ExitTransition =
+    fadeOut(tween(durationMillis(spec).coerceAtLeast(1)), targetAlpha = 1f)
+
+/** How long [spec] takes to move a value from 0 to 1, whether it is a tween or a spring. */
+internal fun durationMillis(spec: FiniteAnimationSpec<Float>): Int =
+    (spec.vectorize(Float.VectorConverter).getDurationNanos(AnimationVector1D(0f), AnimationVector1D(1f), AnimationVector1D(0f)) / NANOS_PER_MS).toInt()
+
+private const val NANOS_PER_MS = 1_000_000L

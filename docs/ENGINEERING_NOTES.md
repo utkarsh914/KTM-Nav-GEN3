@@ -43,14 +43,19 @@ frames. The cost was in the map, not in Compose.
    frame: opening search allocated 110-180 MB of GPU memory in 12 frames (`gpu_mem_total` in Perfetto), and on a phone
    short of free RAM (kswapd/kcompactd burning CPU) the render thread then stalled for 90-137 ms in `flush layers`. Use
    `layerFade` (`ui/shell/LayerFade.kt`, alpha per draw, `ModulateAlpha`) with `EnterTransition.None` and
-   `holdUntilFaded(spec)` for the Navigate stage and the search container; GPU growth per search open fell to 9 MB and
+   `holdUntilFaded(spec)` for the Navigate stage and the search container (the hold is a tween of the spec's own duration: a fade to the alpha it already has lasts no time at all under a spring); GPU growth per search open fell to 9 MB and
    the stalls disappeared. Page fades follow the same rule: `PageTransitions.kt` only slides
    (and holds the leaving page with `holdUntilFaded`); `pageFade()` decides which page fades and how fast, `PageHost`
    applies it per draw, and `rideContainer`/`searchContainer` fade their shared bounds with `layerFade`. Opening a ride
    went from 674 MB of GPU buffer churn (one 89 ms frame) to 67 MB (worst frame 14 ms). Never use `fadeIn`/`fadeOut`/
    `AnimatedVisibility` fades on a screen-sized container, and measure `gpu_mem_total` (add `gpu_mem/gpu_mem_total` to
    the ftrace events) before adding any large alpha, scale-with-alpha or clip layer. Memory is part of smoothness here.
-8. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
+8. Only the settled top page owns the map (`MapOwnership`, `MapClaim`): a page that is only composing (a back-swipe
+   preview, the page under a push) never claims, a page that lost the map takes it back when it is on top again, and
+   every controller write is a no-op unless it owns. Padding keeps one funnel for the life of the map; a controller keeps
+   its last request and replays it when it takes the map. Pop detection for page fades uses the arriving page
+   (`BackStackHistory`), not the leaving one: a tab switch removes the old tab from the stack and is still a push.
+9. Pick place is not an `isMapPage()`: it is an ordinary opaque page that turns transparent over the map only while
    it is picking on the map (`PlacePickScreen`); it follows the same rules.
 
 **How to measure again:** `benchmark` build type (release-like, debug-signed, R8 + Baseline Profile) on a real phone;

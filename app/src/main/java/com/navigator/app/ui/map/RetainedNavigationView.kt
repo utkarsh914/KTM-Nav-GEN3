@@ -36,12 +36,22 @@ class RetainedNavigationView(
         private set
 
     private var funnel: PaddingFunnel? = null
+    private var funnelMap: com.google.android.gms.maps.GoogleMap? = null
     private var pendingShell = MapInsets()
+
+    /** Which screen the shared map answers to (see [MapOwnership]). */
+    val ownership = MapOwnership()
 
     /** False while the shell's coverage (bar, rail, strip) is still moving: the map is padded for it once it holds still. */
     var shellSettled: Boolean by mutableStateOf(true)
 
+    /**
+     * One funnel for the life of the map: a new owner changes nothing here, it asks for its own padding (the controller
+     * replays it) and only a different total is sent, so the camera does not jump while a page change is under way.
+     */
     internal fun attachMap(map: com.google.android.gms.maps.GoogleMap) {
+        if (funnel != null && funnelMap === map) return
+        funnelMap = map
         funnel = PaddingFunnel { p -> runCatching { map.setPadding(p.left, p.top, p.right, p.bottom) } }
             .also { it.setShell(pendingShell); it.attach() }
     }
@@ -59,11 +69,6 @@ class RetainedNavigationView(
     /** True once the one-time camera framing has run, so re-entry doesn't snap
      *  the camera back to the starting location. */
     var mapInitialized: Boolean = false
-
-    /** Which screen's controller last configured the shared map's listeners/overlays. A screen
-     *  being disposed only cleans the map if it is still the owner - with animated
-     *  route transitions the NEW screen sets up before the OLD one is disposed. */
-    @Volatile var mapOwner: Any? = null
 
     /** Create the view on first use, bringing it up to the current lifecycle
      *  state; subsequent calls return the same retained instance. */
@@ -108,6 +113,7 @@ class RetainedNavigationView(
         mapInitialized = false
         funnel?.detach()
         funnel = null
+        funnelMap = null
     }
 }
 

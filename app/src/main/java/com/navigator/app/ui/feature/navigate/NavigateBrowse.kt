@@ -291,9 +291,9 @@ private fun Overlays(
                     slideOutVertically(motionSpecs.spatialDefault()) { if (motionSpecs.reduced) 0 else -it * 2 },
             ) {
                 val hello = state.greeting
-                if (hello != null) Box(Modifier.fillMaxWidth().padding(top = KtmSpacing.lg), contentAlignment = Alignment.Center) { ConnectGreeting(hello) }
+                if (hello != null) Box(Modifier.fillMaxWidth().padding(top = KtmSpacing.lg), contentAlignment = Alignment.Center) { ConnectGreeting(hello, Modifier.consumeMapTouches()) }
             }
-            if (!locationOk) LocationBanner(location, actions.onFixLocation, Modifier.padding(top = KtmSpacing.lg))
+            if (!locationOk) LocationBanner(location, actions.onFixLocation, Modifier.padding(top = KtmSpacing.lg).consumeMapTouches())
         }
 
         MapStateCard(

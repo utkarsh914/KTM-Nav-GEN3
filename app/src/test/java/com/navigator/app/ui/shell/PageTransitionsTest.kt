@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -147,5 +148,107 @@ class PageTransitionsTest {
         }
         rule.fingerTap("row")
         rule.runOnIdle { assertEquals(1, taps) }
+    }
+
+    private class Destinations(val rides: androidx.navigation.NavDestination, val places: androidx.navigation.NavDestination,
+        val navigate: androidx.navigation.NavDestination, val replay: androidx.navigation.NavDestination,
+        val trim: androidx.navigation.NavDestination, val logs: androidx.navigation.NavDestination)
+
+    private fun realDestinations(): Destinations {
+        var nav: NavHostController? = null
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                val controller = rememberNavController().also { nav = it }
+                NavHost(controller, startDestination = Route.Rides) {
+                    page<Route.Rides> { Text("rides") }
+                    page<Route.Places> { Text("places") }
+                    page<Route.Navigate> { Text("map") }
+                    page<Route.RideReplay> { Text("replay") }
+                    page<Route.TrimRide> { Text("trim") }
+                    page<Route.Logs> { Text("logs") }
+                }
+            }
+        }
+        fun at(route: Route) = rule.runOnIdle { nav!!.navigate(route); nav!!.currentBackStackEntry!!.destination }
+        val rides = rule.runOnIdle { nav!!.currentBackStackEntry!!.destination }
+        return Destinations(rides, at(Route.Places), at(Route.Navigate), at(Route.RideReplay("r")), at(Route.TrimRide("r")), at(Route.Logs))
+    }
+
+    @Test fun openingARideIsTheCardsOwnMoveNotAPageToMapDissolve() {
+        val d = realDestinations()
+        val open = pageMove(d.rides, d.replay)
+        assertTrue(open.rideContainer)
+        assertFalse("Rides must not fade out behind the growing card", open.pageToMap)
+        assertFalse(open.mapToMap)
+        val close = pageMove(d.replay, d.rides, pop = true)
+        assertTrue(close.rideContainer)
+        assertFalse(close.mapToPage)
+        assertNull("Rides stays put while the replay covers it", pageFade(open, entering = false, pop = false, reduced = false))
+        assertNull(pageFade(close, entering = true, pop = true, reduced = false))
+        assertEquals(PageFade.Fast, pageFade(close, entering = false, pop = true, reduced = false))
+    }
+
+    @Test fun everyMoveBetweenRealDestinationsFollowsTheMatrix() {
+        val d = realDestinations()
+        val all = listOf(d.rides, d.places, d.navigate, d.replay, d.trim, d.logs)
+        for (a in all) for (b in all) {
+            if (a === b) continue
+            for (pop in listOf(false, true)) {
+                val m = pageMove(a, b, pop)
+                val enter = pageFade(m, entering = true, pop = pop, reduced = false)
+                val leave = pageFade(m, entering = false, pop = pop, reduced = false)
+                val label = "${a.route} -> ${b.route} pop=$pop"
+                if (m.rideContainer) {
+                    assertFalse(label, m.pageToMap || m.mapToMap || m.mapToPage)
+                    if (!pop) assertNull(label, leave)
+                    if (pop) assertNull(label, enter)
+                }
+                if (pop && m.tab) {
+                    assertNull("$label: the page it returns to does not fade", enter)
+                    assertEquals(label, PageFade.Fast, leave)
+                }
+                if (pop && !m.tab && !m.rideContainer && !m.pageToMap && !m.mapToMap && !m.mapToPage) {
+                    assertNull(label, enter); assertNull(label, leave)
+                }
+                if (!pop && !m.tab && !m.rideContainer && !m.pageToMap && !m.mapToMap && !m.mapToPage) {
+                    assertNull("$label: a plain push only slides", enter); assertNull(label, leave)
+                }
+            }
+        }
+    }
+
+    @Test fun aBackMoveIsRecognisedByTheArrivingPageNotTheLeavingOne() {
+        var nav: NavHostController? = null
+        lateinit var history: BackStackHistory
+        rule.setContent {
+            KtmTheme(darkTheme = true, reducedMotion = true) {
+                val controller = rememberNavController().also { nav = it }
+                history = androidx.compose.runtime.remember(controller) { BackStackHistory(controller) }
+                androidx.compose.runtime.DisposableEffect(history) { history.start(); onDispose { history.stop() } }
+                NavHost(controller, startDestination = Route.Navigate) {
+                    page<Route.Navigate> { Text("map") }
+                    page<Route.Rides> { Text("rides") }
+                    page<Route.Places> { Text("places") }
+                    page<Route.Logs> { Text("logs") }
+                }
+            }
+        }
+        fun top() = rule.runOnIdle { nav!!.currentBackStackEntry!!.id }
+        val map = top()
+        rule.runOnIdle { nav!!.openTab(Tab.Rides) }
+        val rides = top()
+        assertFalse("a tab switch away from Navigate is a push", history.isPop(rides))
+        rule.runOnIdle { nav!!.openTab(Tab.Places) }
+        val places = top()
+        assertFalse("tab to tab is a push too, although the old tab leaves the stack", history.isPop(places))
+        rule.runOnIdle { nav!!.navigate(Route.Logs) }
+        val logs = top()
+        assertFalse(history.isPop(logs))
+        rule.runOnIdle { nav!!.popBackStack() }
+        assertTrue("back to the tab under the page", history.isPop(top()))
+        assertEquals(places, top())
+        rule.runOnIdle { nav!!.openTab(Tab.Navigate) }
+        assertEquals(map, top())
+        assertTrue("any tab back to Navigate is a pop", history.isPop(map))
     }
 }

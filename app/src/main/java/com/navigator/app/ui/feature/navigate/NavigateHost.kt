@@ -90,6 +90,7 @@ import com.navigator.app.ui.map.FollowMode
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.MapInsets
+import com.navigator.app.ui.map.settled
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
 import com.navigator.app.ui.map.PreviewPinStyle
@@ -491,6 +492,14 @@ fun NavigateHost(
         }
     }
 
+    // A rotation or a resized sheet changes what the plan sheets cover: the map follows (padding only, the camera stays),
+    // not just when a new frame is pending.
+    LaunchedEffect(stage, pickingStop, mapReady) {
+        if (!mapReady || pickingStop || (stage != NavStage.PREVIEW && stage != NavStage.CONFIRM)) return@LaunchedEffect
+        // The sheets report their size every frame while they animate: the map follows once they have settled.
+        snapshotFlow { planInsets.value }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { map.setPadding(it.first, 0, 0, it.second) }
+    }
+
     // Draw the just-finished ride's speed-coloured track on the map behind the
     // summary card, framed above the card. Clears the finished padding on return.
     LaunchedEffect(stage, mapReady, finishState.points, finishInsets) {
@@ -771,8 +780,6 @@ fun NavigateHost(
         addStopOnResume = false
     }
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
-    val reducedMotion = KtmTheme.motion.reduced
-    LaunchedEffect(map, reducedMotion) { map.setReducedMotion(reducedMotion) }
     LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }
     // Checked every second while the map is panned: a steady speed emits no new value to react to.
     LaunchedEffect(mapButton.panned, stage, riding.pickingStop) {

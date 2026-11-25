@@ -15,7 +15,14 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
+import androidx.navigation.NavBackStackEntry
+import com.navigator.app.ui.shell.LocalPageEntry
+import com.navigator.app.ui.shell.LocalPageNav
+import com.navigator.app.ui.shell.backStack
+import com.navigator.app.ui.shell.rememberPageSettled
 import com.navigator.app.ui.theme.KtmMotionSpecs
+import com.navigator.app.ui.theme.KtmTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** What the riding surfaces cover of the map, in px. */
 data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0) {
@@ -46,9 +53,18 @@ fun MapClaim(
         onDispose { retained.claims-- }
     }
 
-    // (Re)deliver the map on every entry. getMapAsync returns the cached GoogleMap at once for an
-    // already-loaded view, so this is cheap.
-    LaunchedEffect(navView) {
+    // The map is taken by the page that is on top of the back stack and has arrived, not by one that is only composing (a
+    // back-swipe preview, the page under a push). A page that loses the map and is then on top again takes it back.
+    val nav = LocalPageNav.current
+    val entry = LocalPageEntry.current
+    val stack by (nav?.backStack() ?: remember { MutableStateFlow(emptyList<NavBackStackEntry>()) }).collectAsState()
+    val settled by rememberPageSettled()
+    val active = MapClaimRule.canClaim(stack.lastOrNull()?.id, entry?.id, settled)
+
+    // (Re)deliver the map whenever this page becomes the active one. getMapAsync returns the cached GoogleMap at once for
+    // an already-loaded view, so this is cheap.
+    LaunchedEffect(navView, active) {
+        if (!active) return@LaunchedEffect
         controller.arm()
         navView.getMapAsync { gm ->
             controller.attach(gm, navView)
@@ -64,11 +80,16 @@ fun MapClaim(
     // Map + SDK day/night in its own effect, keyed only on `dark`, so entering and leaving guidance
     // doesn't re-slam the style (that caused a restyle flash).
     val ready by controller.ready.collectAsState()
-    LaunchedEffect(dark, ready) { if (ready) controller.setNightMode(dark) }
+    // Every screen's map follows "Remove animations": camera moves jump instead of gliding.
+    val reduced = KtmTheme.motion.reduced
+    LaunchedEffect(controller, reduced) { controller.setReducedMotion(reduced) }
+    // Each time this screen takes the map it sets its night mode, chrome and padding up again.
+    val attached by controller.attachments.collectAsState()
+    LaunchedEffect(dark, ready, attached) { if (ready) controller.setNightMode(dark) }
 
     // Guidance engine + chrome + padding, keyed on the guidance state. The padding keeps the SDK's tilted follow
     // camera, its logo and the puck inside the part of the screen our riding surfaces leave open.
-    LaunchedEffect(navUiEnabled, ready) {
+    LaunchedEffect(navUiEnabled, ready, attached) {
         if (!ready) return@LaunchedEffect
         controller.setGuidanceChrome(guidance = navUiEnabled)
         if (hasLocationPermission(context)) controller.setPuck(navUiEnabled)
@@ -80,6 +101,7 @@ fun MapClaim(
     var applied by remember { mutableStateOf<MapInsets?>(null) }
     LaunchedEffect(navUiEnabled, ready) {
         if (!ready) return@LaunchedEffect
+        // The controller keeps the last request and replays it when it takes the map: nothing to resend on a re-attach.
         snapshotFlow { if (navUiEnabled) insets() else MapInsets() }
             .settled(KtmMotionSpecs.INSETS_SETTLE_MS)
             .collect {

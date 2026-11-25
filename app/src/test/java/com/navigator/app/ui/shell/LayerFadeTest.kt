@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,5 +49,22 @@ class LayerFadeTest {
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("A").assertDoesNotExist()
         rule.onNodeWithText("B").assertExists()
+    }
+
+    @Test fun aSpringSpecHoldsTheOldContentForItsRealDurationToo() {
+        val spring = androidx.compose.animation.core.spring<Float>(1f, 1600f)
+        assertTrue("a spring takes time to settle: ${durationMillis(spring)} ms", durationMillis(spring) > 50)
+        assertEquals(200, durationMillis(tween(200)))
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            AnimatedContent(
+                target, transitionSpec = { EnterTransition.None togetherWith holdUntilFaded(spring) }, label = "t",
+            ) { s -> Box(Modifier.fillMaxSize().layerFade(this, spring, spring)) { Text(s) } }
+        }
+        rule.runOnUiThread { target = "B" }
+        repeat(3) { rule.mainClock.advanceTimeByFrame(); rule.waitForIdle() }
+        rule.onNodeWithText("A").assertExists()
+        rule.mainClock.advanceTimeBy(1_000)
+        rule.onNodeWithText("A").assertDoesNotExist()
     }
 }

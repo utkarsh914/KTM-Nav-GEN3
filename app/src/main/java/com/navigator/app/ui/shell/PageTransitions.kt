@@ -1,5 +1,6 @@
 package com.navigator.app.ui.shell
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterExitState
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
@@ -34,6 +36,7 @@ import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /*
  * Page motion (D28). A pushed page is opaque and slides in over the page below from the right edge, full width, with no
@@ -70,18 +73,24 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isRideContainerMov
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.mapToMap() = move().mapToMap
 
 /** What a move between two destinations is, for the transitions and for the fades of [PageHost]. */
-internal data class PageMove(val rideContainer: Boolean, val tab: Boolean, val pageToMap: Boolean, val mapToMap: Boolean, val mapToPage: Boolean)
+internal data class PageMove(
+    val rideContainer: Boolean, val tab: Boolean, val pageToMap: Boolean, val mapToMap: Boolean, val mapToPage: Boolean,
+    /** The NavHost is going back to a page it already had (a pop, or a tab switch that returns to Navigate). */
+    val pop: Boolean = false,
+)
 
-internal fun pageMove(initial: NavDestination, target: NavDestination): PageMove {
+internal fun pageMove(initial: NavDestination, target: NavDestination, pop: Boolean = false): PageMove {
     val rideContainer = (initial.hasRoute<Route.Rides>() && target.hasRoute<Route.RideReplay>()) ||
         (initial.hasRoute<Route.RideReplay>() && target.hasRoute<Route.Rides>())
     val tab = (initial.tab() != null || initial.hasRoute<Route.Ready>()) && target.tab() != null
     return PageMove(
         rideContainer = rideContainer,
         tab = tab,
-        pageToMap = !initial.isMapPage() && target.isMapPage(),
+        // The ride card's move is its own: Rides stays put and opaque while the replay grows out of the card.
+        pageToMap = !initial.isMapPage() && target.isMapPage() && !rideContainer,
         mapToMap = initial.isMapPage() && target.isMapPage() && !rideContainer,
-        mapToPage = initial.isMapPage() && !target.isMapPage(),
+        mapToPage = initial.isMapPage() && !target.isMapPage() && !rideContainer,
+        pop = pop,
     )
 }
 
@@ -91,13 +100,30 @@ internal enum class PageFade { Default, Fast }
 /**
  * Whether the page on one side of a move fades, and how fast. Pages fade without an offscreen layer ([layerFade]), so
  * the transitions in [enterFor] and the others only slide; the fades are decided here, in one place. [pop] is a back
- * move; [entering] is the page that arrives (else the one that leaves). A tab that is left stays under the new one.
+ * move; [entering] is the page that arrives (else the one that leaves). The full matrix (S = slides, F = fades, D = dims,
+ * "-" = nothing; no side slides and fades at once except the dissolves):
+ *
+ * | move                    | entering                 | leaving                                    |
+ * |-------------------------|--------------------------|--------------------------------------------|
+ * | push page over page     | S                        | S back a quarter, D                        |
+ * | push, tab to tab        | F + rise                 | - (stays under the new tab)                |
+ * | push, page to map page  | F (controls)             | F, held (the page dissolves away)          |
+ * | push, map to map        | F                        | F, held                                    |
+ * | push, map to page       | S                        | - (the map page only dims)                 |
+ * | push, ride card         | F                        | - (Rides stays opaque, held until covered) |
+ * | pop page                | S back in, lit again     | S out                                      |
+ * | pop, map to page        | F                        | F, held                                    |
+ * | pop, map to map         | F                        | F, held                                    |
+ * | pop, ride card          | -                        | F fast (the replay), held                  |
+ * | pop to Navigate (tab)   | - (fully visible)        | F fast on top, held, no rise               |
+ * | Remove animations       | push: F; pop: -          | push: -; pop: F fast                       |
  */
 internal fun pageFade(move: PageMove, entering: Boolean, pop: Boolean, reduced: Boolean): PageFade? = when {
     !pop && entering -> if (reduced || move.rideContainer || move.tab || move.pageToMap || move.mapToMap) PageFade.Default else null
     !pop -> if (move.pageToMap || move.mapToMap) PageFade.Default else null
-    entering -> if (!move.rideContainer && (move.tab || move.mapToPage || move.mapToMap)) PageFade.Default else null
+    entering -> if (!move.rideContainer && !move.tab && (move.mapToPage || move.mapToMap)) PageFade.Default else null
     move.rideContainer -> PageFade.Fast
+    move.tab -> PageFade.Fast
     move.mapToPage || move.mapToMap -> PageFade.Default
     reduced -> PageFade.Fast
     else -> null
@@ -112,15 +138,15 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enterFor(motion: 
 
 /** The page underneath a push moves back a quarter and dims (see [PageHost]); it does not fade, so nothing shows through. */
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exitFor(motion: KtmMotionSpecs): ExitTransition = when {
-    pageToMap() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
-    isRideContainerMove() || motion.reduced || tabSwitch() -> ExitTransition.None
+    // Rides stays until the replay has covered it, or the stale map would show around the growing card.
+    isRideContainerMove() || pageToMap() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
+    motion.reduced || tabSwitch() -> ExitTransition.None
     initialState.destination.isMapPage() -> ExitTransition.None
     else -> slideOutHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motion: KtmMotionSpecs): EnterTransition = when {
-    isRideContainerMove() -> EnterTransition.None
-    tabSwitch() || mapToPage() || mapToMap() -> EnterTransition.None
+    isRideContainerMove() || tabSwitch() || mapToPage() || mapToMap() -> EnterTransition.None
     motion.reduced || targetState.destination.isMapPage() -> EnterTransition.None
     else -> slideInHorizontally(motion.page()) { -it / UNDERLAY_SHIFT }
 }
@@ -128,8 +154,8 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnterFor(motio
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion: KtmMotionSpecs): ExitTransition = when {
     isRideContainerMove() -> holdUntilFaded(motion.effectsFast())
     mapToPage() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
-    motion.reduced -> holdUntilFaded(motion.effectsFast())
-    tabSwitch() -> ExitTransition.None
+    // Back to Navigate from another tab: the old tab dissolves away on top of a Navigate that is already there.
+    motion.reduced || tabSwitch() -> holdUntilFaded(motion.effectsFast())
     // Also what a predictive back swipe previews: the same slide as the arrow, nothing else.
     else -> slideOutHorizontally(motion.page()) { it }
 }
@@ -150,7 +176,7 @@ internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, con
     // A map page is transparent over the map layer; every other page covers it with the app's ground.
     val ground = if (entry.destination.paintsOwnGround()) Modifier else Modifier.coverGround()
     val settled = remember(scope) { derivedStateOf { !scope.transition.isRunning } }
-    CompositionLocalProvider(LocalPageSettled provides settled) {
+    CompositionLocalProvider(LocalPageSettled provides settled, LocalPageEntry provides entry) {
         Box(ground.pageFade(scope)) {
             content()
             PageDim(scope, entry)
@@ -161,44 +187,78 @@ internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, con
 /** The fade of [PageHost]'s page, decided by [pageFade] from the move the NavHost is making. */
 @Composable
 private fun Modifier.pageFade(scope: AnimatedContentScope): Modifier {
-    val nav = LocalPageNav.current
+    val history = LocalPageHistory.current
     val motion = KtmTheme.motion
     val parent = scope.transition.parentTransition
     val alpha = scope.transition.animateFloat(
         transitionSpec = {
-            val fade = fadeOf(parent, nav, entering = targetState == EnterExitState.Visible, reduced = motion.reduced)
+            val fade = fadeOf(parent, history, entering = targetState == EnterExitState.Visible, reduced = motion.reduced)
             if (fade == PageFade.Fast) motion.effectsFast() else motion.effectsDefault()
         },
         label = "pageFade",
     ) { state ->
-        if (state == EnterExitState.Visible || fadeOf(parent, nav, entering = state == EnterExitState.PreEnter, reduced = motion.reduced) == null) 1f else 0f
+        if (state == EnterExitState.Visible || fadeOf(parent, history, entering = state == EnterExitState.PreEnter, reduced = motion.reduced) == null) 1f else 0f
     }
     // A tab that arrives also settles up into place, on the same progress as its fade (peers fade, they do not slide).
     val rise = with(LocalDensity.current) { KtmSpacing.sm.toPx() }
     return graphicsLayer {
         this.alpha = alpha.value
         compositingStrategy = CompositingStrategy.ModulateAlpha
-        if (!motion.reduced && scope.transition.targetState == EnterExitState.Visible && isTabMove(parent)) translationY = (1f - alpha.value) * rise
+        if (!motion.reduced && scope.transition.targetState == EnterExitState.Visible && isTabMove(parent, history)) translationY = (1f - alpha.value) * rise
     }
 }
 
-private fun isTabMove(parent: androidx.compose.animation.core.Transition<*>?): Boolean {
-    val initial = (parent?.currentState as? NavBackStackEntry)?.destination ?: return false
-    val target = (parent.targetState as? NavBackStackEntry)?.destination ?: return false
-    return pageMove(initial, target).tab
+private fun isTabMove(parent: androidx.compose.animation.core.Transition<*>?, history: BackStackHistory?): Boolean {
+    val initial = parent?.currentState as? NavBackStackEntry ?: return false
+    val target = parent.targetState as? NavBackStackEntry ?: return false
+    // A tab that returns (back to Navigate) is already there: no rise.
+    return pageMove(initial.destination, target.destination).tab && history?.isPop(target.id) != true
 }
 
-private fun fadeOf(parent: androidx.compose.animation.core.Transition<*>?, nav: NavHostController?, entering: Boolean, reduced: Boolean): PageFade? {
+private fun fadeOf(parent: androidx.compose.animation.core.Transition<*>?, history: BackStackHistory?, entering: Boolean, reduced: Boolean): PageFade? {
     val initial = (parent?.currentState as? NavBackStackEntry) ?: return null
     val target = (parent.targetState as? NavBackStackEntry) ?: return null
     if (initial.id == target.id) return null
-    // In a back move the page that leaves is still in the visible entries, above the one that returns.
-    val visible = nav?.visibleEntries?.value.orEmpty()
-    val from = visible.indexOfFirst { it.id == initial.id }
-    val to = visible.indexOfFirst { it.id == target.id }
-    val pop = from >= 0 && to >= 0 && from > to
-    return pageFade(pageMove(initial.destination, target.destination), entering, pop, reduced)
+    val pop = history?.isPop(target.id) == true
+    return pageFade(pageMove(initial.destination, target.destination, pop), entering, pop, reduced)
 }
+
+/**
+ * Whether the NavHost is going back to a page it already had. The NavHost's own flag is internal, and the leaving page
+ * is no use as a witness (a tab switch also removes it from the stack, saving its state, and is still a push). The
+ * arriving page is: a back move returns to an entry that was in the stack before the change, a push or a tab switch
+ * arrives at one that was not (a restored tab keeps its id but was not in the stack either).
+ */
+internal class BackStackHistory(private val nav: NavHostController) {
+    private var current: Set<String> = nav.backStack().value.map { it.id }.toSet()
+    private var before: Set<String> = emptySet()
+
+    private val listener = NavController.OnDestinationChangedListener { controller, _, _ -> record(controller.backStack().value.map { it.id }) }
+
+    internal fun record(ids: List<String>) {
+        val now = ids.toSet()
+        if (now == current) return
+        before = current
+        current = now
+    }
+
+    fun isPop(targetId: String): Boolean = targetId in before
+
+    fun start() = nav.addOnDestinationChangedListener(listener)
+    fun stop() = nav.removeOnDestinationChangedListener(listener)
+}
+
+/** The entry whose page is composing, so a map page can tell whether it is the top of the stack. Provided by [PageHost]. */
+internal val LocalPageEntry = staticCompositionLocalOf<NavBackStackEntry?> { null }
+
+internal val LocalPageHistory = staticCompositionLocalOf<BackStackHistory?> { null }
+
+/**
+ * The real back stack. The public [NavController.visibleEntries] also lists an entry that is being popped (that is what
+ * made every Back dim the leaving page), so the stack itself is read; it is library-group API, wrapped here once.
+ */
+@SuppressLint("RestrictedApi")
+internal fun NavController.backStack(): StateFlow<List<NavBackStackEntry>> = currentBackStack
 
 /** True when [id] is in the back stack but not on top: another page was pushed over it. */
 internal fun isCovered(stackIds: List<String>, id: String): Boolean = id in stackIds && stackIds.lastOrNull() != id
@@ -221,9 +281,11 @@ internal fun dimsUnder(under: NavDestination, top: NavDestination?): Boolean = w
 @Composable
 private fun PageDim(scope: AnimatedContentScope, entry: NavBackStackEntry) {
     val nav = LocalPageNav.current
-    val visible by (nav?.visibleEntries ?: remember { MutableStateFlow(emptyList<NavBackStackEntry>()) }).collectAsState()
-    val top = visible.lastOrNull()?.destination
-    val covered = isCovered(visible.map { it.id }, entry.id) && dimsUnder(entry.destination, top)
+    // The back stack, not the visible entries: a page that is being popped is still visible but no longer in the stack,
+    // and must not be dimmed as if something covered it.
+    val stack by (nav?.backStack() ?: remember { MutableStateFlow(emptyList<NavBackStackEntry>()) }).collectAsState()
+    val top = stack.lastOrNull()?.destination
+    val covered = isCovered(stack.map { it.id }, entry.id) && dimsUnder(entry.destination, top)
     // A page coming back from underneath starts dimmed and clears; a tab revisited does not.
     val returning = scope.transition.targetState == EnterExitState.Visible && !entry.destination.isTabLike()
     val dimmedAway = covered || returning

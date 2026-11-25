@@ -175,7 +175,14 @@ fun ReplayScreen(
             snapshotFlow { insets }.filter { it != MapInsets() }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { open ->
                 map.awaitPaddingSettled()
                 map.setPadding(open.left, open.top, open.right, open.bottom)
-                if (framed !== r.points) { framed = r.points; map.frameTrack(r.points) }
+                if (framed !== r.points) {
+                    // The first frame is a jump behind the cover (an animation would show under its fade); a new track after a trim glides.
+                    val first = framed == null
+                    framed = r.points
+                    map.frameTrack(r.points, animate = !first)
+                }
+                // The move is made: one frame later the map has painted it, and the cover may go.
+                androidx.compose.runtime.withFrameNanos { }
                 mapFramed = true
             }
         }

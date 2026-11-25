@@ -115,12 +115,12 @@ internal fun drawRideTrack(
     }
 }
 
-/** Frame the whole track in the (padded) viewport. */
-internal fun frameRideTrack(map: GoogleMap, pts: List<RidePoint>, padding: Int = 140) {
-    if (pts.isEmpty()) return
+/** The camera update that frames the whole track in the (padded) viewport, or null for no points. */
+internal fun trackFrame(pts: List<RidePoint>, padding: Int): com.google.android.gms.maps.CameraUpdate? {
+    if (pts.isEmpty()) return null
     val bounds = LatLngBounds.builder()
     pts.forEach { bounds.include(LatLng(it.lat, it.lng)) }
-    runCatching { map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), padding)) }
+    return runCatching { CameraUpdateFactory.newLatLngBounds(bounds.build(), padding) }.getOrNull()
 }
 
 // ---- Track reduction (pure, unit-tested) -----------------------------------

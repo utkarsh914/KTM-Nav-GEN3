@@ -1,7 +1,7 @@
 package com.navigator.app.ui.feature.replay
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.EnterTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -13,6 +13,8 @@ import com.navigator.app.data.rides.ThumbPoint
 import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.feature.rides.ThumbnailGeometry
 import com.navigator.app.ui.feature.rides.drawRoute
+import com.navigator.app.ui.shell.holdUntilFaded
+import com.navigator.app.ui.shell.layerFade
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
@@ -25,8 +27,10 @@ import com.navigator.app.ui.theme.KtmTheme
 @Composable
 fun MapCover(visible: Boolean, points: List<ThumbPoint>?, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
-    AnimatedVisibility(visible, modifier, exit = fadeOut(KtmTheme.motion.effectsDefault())) {
-        Box(Modifier.fillMaxSize().background(c.surf3).consumeMapTouches().clearAndSetSemantics {}) {
+    // Full screen: faded per draw (layerFade), never with fadeOut, which would render it into an offscreen buffer.
+    val spec = KtmTheme.motion.effectsDefault<Float>()
+    AnimatedVisibility(visible, modifier, enter = EnterTransition.None, exit = holdUntilFaded(spec)) {
+        Box(Modifier.fillMaxSize().layerFade(this, spec, spec).background(c.surf3).consumeMapTouches().clearAndSetSemantics {}) {
             if (!points.isNullOrEmpty()) {
                 val neutral = c.fg2
                 val stroke = KtmLayout.outline

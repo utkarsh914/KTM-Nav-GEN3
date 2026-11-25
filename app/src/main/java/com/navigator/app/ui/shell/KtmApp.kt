@@ -118,6 +118,8 @@ fun KtmApp(onQuit: () -> Unit) {
     LaunchedEffect(snap.fontMode) { AppFonts.apply(snap.fontMode) }
 
     val navController = rememberNavController()
+    val history = remember(navController) { BackStackHistory(navController) }
+    DisposableEffect(history) { history.start(); onDispose { history.stop() } }
     val entry by navController.currentBackStackEntryAsState()
     val currentTab = entry?.destination.tab()
     JankMonitor.Tag("route", entry?.destination?.route?.substringBefore('/')?.substringBefore('?')?.substringAfterLast('.') ?: "none")
@@ -276,7 +278,7 @@ fun KtmApp(onQuit: () -> Unit) {
                     },
                 ) {
                     SharedTransitionLayout {
-                        CompositionLocalProvider(LocalPageNav provides navController) {
+                        CompositionLocalProvider(LocalPageNav provides navController, LocalPageHistory provides history) {
                             NavHost(
                                 navController = navController,
                                 startDestination = startRoute,

@@ -38,4 +38,17 @@ class PaddingFunnelTest {
         assertEquals(MapInsets(left = 5), sent.last())
         assertEquals(3, sent.size)
     }
+
+    @Test fun `a new owner asking for the same padding changes nothing`() {
+        funnel.attach(); funnel.request(MapInsets(bottom = 700))
+        funnel.request(MapInsets(bottom = 700)) // the next page replays what it wanted: same total
+        assertEquals(listOf(MapInsets(), MapInsets(bottom = 700)), sent)
+    }
+
+    @Test fun `only the new owner's own padding is sent after a change of owner`() {
+        funnel.attach(); funnel.request(MapInsets(bottom = 700))
+        funnel.request(MapInsets(left = 300)) // the next page on top
+        assertEquals(MapInsets(left = 300), sent.last())
+        assertEquals(3, sent.size)
+    }
 }

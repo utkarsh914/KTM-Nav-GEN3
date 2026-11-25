@@ -165,6 +165,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                 canAdd = StopList.canAdd(flow.stops),
                 onBack = { plan.onPickingStop(false) },
                 onUse = { plan.onPickingStop(false); flow.stops = StopList.add(flow.stops, it) },
+                onFootprint = { plan.map.setPadding(it, 0, 0, 0) },
             )
             plan.stopCandidate != null -> PlanPanel(onInsets = plan.onInsets) {
                 plan.stopCandidate.let { candidate ->

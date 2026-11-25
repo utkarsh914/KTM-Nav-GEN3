@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import com.navigator.app.R
 import com.navigator.app.ui.components.KtmScrim
+import com.navigator.app.ui.components.consumeMapTouches
 import com.navigator.app.ui.shell.LocalTripShared
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmMotionSpecs
@@ -110,7 +111,7 @@ fun RidingScreen(
         ) {
             // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
             val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.ridingFade(), label = "cardDim")
-            Column(Modifier.graphicsLayer { alpha = cardAlpha }.then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
+            Column(Modifier.graphicsLayer { alpha = cardAlpha }.consumeMapTouches().then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; cardPx.intValue = size[0]; onInsets(size[0], size[1]) }, destination = bar.destination)
                 RidingChipHost(chip)
             }

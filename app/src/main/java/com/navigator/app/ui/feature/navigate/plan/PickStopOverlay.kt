@@ -29,6 +29,8 @@ fun PickStopOverlay(
     onUse: (SavedPlace) -> Unit,
     /** The next turn, kept in view while a trip runs. */
     guidance: (@Composable () -> Unit)? = null,
+    /** How much of the map's left side the landscape panel covers: the host pads the map for it (the one owner of padding). */
+    onFootprint: (Int) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -38,7 +40,8 @@ fun PickStopOverlay(
     DisposableEffect(controller) {
         // The camera keeps the route in view: the pin is at the middle of the screen, where the point is read.
         controller.start()
-        onDispose { controller.stop(); map.setPadding(0, 0, 0, 0) }
+        // No padding reset here: the stage that is shown next pads the map itself (a reset is two relayouts and a shift).
+        onDispose { controller.stop() }
     }
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
@@ -48,6 +51,6 @@ fun PickStopOverlay(
         useEnabled = canAdd,
         guidance = guidance,
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
-        onFootprint = { map.setPadding(it, 0, 0, 0); controller.refresh() },
+        onFootprint = { onFootprint(it); controller.refresh() },
     )
 }

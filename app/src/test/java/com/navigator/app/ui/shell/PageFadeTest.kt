@@ -19,8 +19,12 @@ class PageFadeTest {
         val tab = none.copy(tab = true)
         assertEquals(PageFade.Default, pageFade(tab, entering = true, pop = false, reduced = false))
         assertNull(pageFade(tab, entering = false, pop = false, reduced = false))
-        assertEquals(PageFade.Default, pageFade(tab, entering = true, pop = true, reduced = false))
-        assertNull(pageFade(tab, entering = false, pop = true, reduced = false))
+    }
+
+    @Test fun backToNavigateLeavesTheOldTabFadingOnTopOfAPageThatIsAlreadyThere() {
+        val tab = none.copy(tab = true, pop = true)
+        assertNull("the page it returns to is fully visible from the first frame", pageFade(tab, entering = true, pop = true, reduced = false))
+        assertEquals(PageFade.Fast, pageFade(tab, entering = false, pop = true, reduced = false))
     }
 
     @Test fun aMapPageOverAPageFadesItsControlsInAndThePageAwayThenBackAgain() {
