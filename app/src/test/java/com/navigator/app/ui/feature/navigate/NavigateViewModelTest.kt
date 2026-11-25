@@ -72,6 +72,8 @@ class NavigateViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
+    private var testTurns = 0
+
     private fun TestScope.vm(): NavigateViewModel {
         val connection = ConnectionRepository(
             backgroundScope, settings,
@@ -81,11 +83,18 @@ class NavigateViewModelTest {
                 deviceName = MutableStateFlow(null), bluetoothOn = MutableStateFlow(true),
             ),
             stopService = { rePaired++ }, cancelNotifications = {},
+            showTestTurn = { testTurns++ },
         )
         val trip = TripController(backgroundScope, guidance, MutableStateFlow(true))
         return NavigateViewModel(settings, connection, places, trip, clock = { 0L }).also { vm ->
             backgroundScope.launch { vm.state.collect { } }
         }
+    }
+
+    @Test fun theBikeSheetTestSendsABannerOnlyNeverATurn() = runTest(UnconfinedTestDispatcher()) {
+        val vm = vm()
+        vm.sendTest("Hello")
+        assertEquals("a turn with no clear would leave a phantom turn on the dash", 0, testTurns)
     }
 
     @Test fun tilesFollowSavedAndRecentPlacesWithoutARefresh() = runTest(UnconfinedTestDispatcher()) {

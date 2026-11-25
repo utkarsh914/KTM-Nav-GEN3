@@ -10,6 +10,7 @@ import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.nav.model.TravelMode
 import com.navigator.app.nav.providers.GoogleNavSdkController
+import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.settings.DrivingSidePreference
 import com.navigator.app.ui.feature.settings.picker.AndroidAppLabels
@@ -41,7 +42,7 @@ class NavigationViewModel(
 ) : ViewModel() {
     private fun build(snap: SettingsSnapshot) = NavigationUi(
         engineAvailable = engineAvailable,
-        engine = if (engineAvailable) snap.engine else NavEngine.MIRROR,
+        engine = NavEngine.inUse(snap.engine, engineAvailable),
         vehicle = snap.vehicleMode,
         marker = snap.locationMarkerStyle,
         liveUpdates = snap.liveUpdatesEnabled,
@@ -76,8 +77,10 @@ class NavigationViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = NavigationViewModel(
                 container.settings, GoogleNavSdkController.isAvailable(app), AndroidAppLabels(app),
-                // Switching to the mirror ends any in-app trip, so the two engines never drive the dash at once.
-                onEngineChanged = { if (it == NavEngine.MIRROR) container.trip.cancel() },
+                // Switching engines ends the other one's trip, so the two never drive the dash at once.
+                onEngineChanged = {
+                    if (it == NavEngine.MIRROR) container.trip.cancel() else NotificationNavProvider.engineDisabled()
+                },
             ) as T
         }
     }

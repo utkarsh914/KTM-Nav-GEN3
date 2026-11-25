@@ -118,11 +118,13 @@ fun BikeDashContent(ui: BikeDashUi, actions: BikeDashActions, modifier: Modifier
                 )
                 KtmButton(
                     stringResource(R.string.bikedash_test_turn), actions.onTestTurn, Modifier.weight(1f),
-                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected, icon = KtmIcons.Dash,
+                    style = ButtonStyle.Tonal, size = ButtonSize.Rest, enabled = ui.connected && !ui.guidanceLive, icon = KtmIcons.Dash,
                 )
             }
             if (!ui.connected) {
                 Text(stringResource(R.string.bikedash_test_offline), style = MaterialTheme.typography.bodySmall, color = c.fg2)
+            } else if (ui.guidanceLive) {
+                Text(stringResource(R.string.bikedash_test_turn_busy), style = MaterialTheme.typography.bodySmall, color = c.fg2)
             }
         }
     }

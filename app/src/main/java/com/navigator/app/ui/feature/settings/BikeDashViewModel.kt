@@ -12,13 +12,18 @@ import com.navigator.app.data.permissions.PermissionId
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.providers.NotificationNavProvider
+import com.navigator.app.trip.isLive
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.feature.settings.picker.AndroidAppInstalled
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
@@ -33,6 +38,8 @@ data class BikeDashUi(
     val latinOnly: Boolean,
     val userName: String,
     val accessGranted: Boolean,
+    /** Guidance (in-app or mirrored) is on the dash: a test turn would replace it. */
+    val guidanceLive: Boolean = false,
 )
 
 /** ST2: everything about the bike and what the dash shows, in one place. */
@@ -44,10 +51,12 @@ class BikeDashViewModel(
     private val installed: (String) -> Boolean = { true },
     /** Installed-app lookups run here, off the main thread. */
     io: CoroutineDispatcher = Dispatchers.IO,
+    /** Any guidance on the dash: an in-app trip that is live, or a mirrored one. */
+    guidanceLive: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
     private fun build(
         snap: SettingsSnapshot, status: BikeStatus, suggested: Boolean,
-        access: Boolean, lookUp: Boolean = true,
+        access: Boolean, lookUp: Boolean = true, live: Boolean = false,
     ) = BikeDashUi(
         bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
         repairSuggested = suggested && snap.isPaired,
@@ -58,10 +67,11 @@ class BikeDashViewModel(
         latinOnly = snap.latinDashText,
         userName = snap.userName.orEmpty(),
         accessGranted = access,
+        guidanceLive = live,
     )
 
-    val ui: StateFlow<BikeDashUi> = combine(settings.snapshot, connection.status, connection.detail, permissions.state) { snap, status, detail, perms ->
-        build(snap, status, detail.repairSuggested, perms[PermissionId.NOTIFICATION_ACCESS].granted)
+    val ui: StateFlow<BikeDashUi> = combine(settings.snapshot, connection.status, connection.detail, permissions.state, guidanceLive) { snap, status, detail, perms, live ->
+        build(snap, status, detail.repairSuggested, perms[PermissionId.NOTIFICATION_ACCESS].granted, live = live)
     }.flowOn(io).stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000),
         // The package lookups run off the main thread; until they have, the count is unknown, not wrong.
@@ -87,7 +97,12 @@ class BikeDashViewModel(
         fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                BikeDashViewModel(container.settings, container.connection, container.permissions, AndroidAppInstalled(context.applicationContext)) as T
+                BikeDashViewModel(
+                    container.settings, container.connection, container.permissions, AndroidAppInstalled(context.applicationContext),
+                    guidanceLive = combine(container.trip.phase, NotificationNavProvider.state) { phase, mirrored ->
+                        phase.isLive || mirrored.sessionState == NavSessionState.ENROUTE
+                    },
+                ) as T
         }
     }
 }

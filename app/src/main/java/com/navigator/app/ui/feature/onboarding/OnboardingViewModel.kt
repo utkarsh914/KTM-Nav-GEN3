@@ -52,7 +52,7 @@ class OnboardingViewModel(
     private val saved: SavedStateHandle,
 ) : ViewModel() {
     private val step = MutableStateFlow(saved.get<String>(KEY_STEP)?.let { name -> OnboardingStep.entries.firstOrNull { it.name == name } } ?: OnboardingStep.WELCOME)
-    private val engine = MutableStateFlow(if (engineAvailable) settings.snapshot.value.engine else NavEngine.MIRROR)
+    private val engine = MutableStateFlow(NavEngine.inUse(settings.snapshot.value.engine, engineAvailable))
     private val name = MutableStateFlow(settings.snapshot.value.userName.orEmpty())
     private val termsDone = MutableStateFlow(termsAcceptedAtStart)
     private var finished = false

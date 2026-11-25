@@ -119,7 +119,7 @@ fun ManeuverCard(
         targetState = ui,
         modifier = modifier.fillMaxWidth().then(if (metrics.fill) Modifier.fillMaxHeight() else Modifier),
         transitionSpec = { maneuverTransition(motion).using(SizeTransform(clip = true) { _, _ -> motion.ridingQuick() }) },
-        contentKey = { if (it is ManeuverUi.Active) ManeuverKey(it.icon, it.road, it.instruction, it.rerouting) else it },
+        contentKey = { if (it is ManeuverUi.Active) ManeuverKey(it.icon, it.road, it.instruction, it.busy) else it },
         label = "maneuver",
     ) { shown ->
         when (shown) {
@@ -161,7 +161,7 @@ private fun StartingCard(m: ManeuverMetrics, destination: String?) {
 
 @Composable
 private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, band: Color, on: Color) {
-    val dim = if (ui.rerouting) 0.6f else 1f
+    val dim = if (ui.busy) 0.6f else 1f
     // The band switching between Then and lanes grows the card smoothly, so the map below moves rather than jumps.
     Column(
         Modifier.fillMaxWidth()
@@ -217,7 +217,7 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
 @Composable
 private fun ManeuverGlyph(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color) {
     Box(Modifier.size(m.glyph), contentAlignment = Alignment.Center) {
-        if (ui.rerouting) CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
+        if (ui.busy) CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
         else TurnIconRef(ui.icon, size = m.glyph, color = on)
     }
 }
@@ -226,9 +226,9 @@ private fun ManeuverGlyph(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color) 
 @Composable
 private fun DistanceLine(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color, dim: Float, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        if (ui.rerouting) {
+        if (ui.busy) {
             Text(
-                stringResource(R.string.riding_rerouting), style = MaterialTheme.typography.headlineSmall, color = on,
+                stringResource(ui.busyLabel), style = MaterialTheme.typography.headlineSmall, color = on,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         } else if (ui.distance != null) {
@@ -237,7 +237,7 @@ private fun DistanceLine(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color, d
                 style = m.distance, color = on, maxLines = 1, modifier = Modifier.alpha(dim),
             )
         }
-        if (ui.exit != null && !ui.rerouting) ExitBadge(ui.exit)
+        if (ui.exit != null && !ui.busy) ExitBadge(ui.exit)
     }
 }
 
@@ -256,7 +256,7 @@ private const val SMALL_UNIT = 0.56f
 @Composable
 private fun InstructionLines(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color, dim: Float) {
     if (ui.instruction.isNotBlank()) {
-        Text(if (ui.rerouting) stringResource(R.string.riding_last_instruction, ui.instruction) else ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
+        Text(if (ui.busy) stringResource(R.string.riding_last_instruction, ui.instruction) else ui.instruction, style = m.instruction, color = on, maxLines = m.instructionLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(dim))
     }
     if (ui.road != null) {
         Text(

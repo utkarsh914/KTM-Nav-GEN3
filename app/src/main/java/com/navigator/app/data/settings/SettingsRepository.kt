@@ -2,9 +2,12 @@ package com.navigator.app.data.settings
 
 import android.content.SharedPreferences
 import com.navigator.app.settings.AppSettings
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * Observable settings. Reads and writes still go through [AppSettings] (so key names, clamping and
@@ -12,7 +15,18 @@ import kotlinx.coroutines.flow.asStateFlow
  * preferences file changes, including writes made by services, restore and other [AppSettings]
  * instances. UI state should come from here, never from a fresh `AppSettings(context)`.
  */
-class SettingsRepository(private val settings: AppSettings) {
+class SettingsRepository(
+    private val settings: AppSettings,
+    /** Whether the in-app engine can run (a key and Play services). Asked once, on first use. */
+    engineAvailable: () -> Boolean = { true },
+) {
+    private val available by lazy(engineAvailable)
+
+    /** The engine that actually drives the app: the stored choice, but only when it can run. The one place this is decided. */
+    fun engineInUse(snap: SettingsSnapshot = snapshot.value): NavEngine = NavEngine.inUse(snap.engine, available)
+
+    val engineInUseFlow: Flow<NavEngine> get() = snapshot.map { engineInUse(it) }.distinctUntilChanged()
+
 
     /**
      * The raw store, for what is not in [snapshot]: per-icon calibration, the paired-before flag and other

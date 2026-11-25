@@ -30,6 +30,8 @@ private class FakeGuidance : GuidanceSource {
     override val arrivals: Flow<Unit> = arrival
     val substituted = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     override val routeSubstituted: Flow<Unit> = substituted
+    val expired = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    override val failedTripExpired: Flow<Unit> = expired
     var target: Pair<Double, Double>? = null
     val started = mutableListOf<NavDestination>()
     var stops = 0
@@ -75,6 +77,65 @@ class TripControllerTest {
         assertEquals(2, e.guidance.started.size)
         e.controller.resetStartDebounce()
         assertTrue(e.controller.start(dest, null, null))
+    }
+
+    @Test fun phaseFollowsTheTripThroughAReplanWithoutFallingBackToStarting() = runTest {
+        val e = Env(backgroundScope)
+        assertEquals(TripPhase.NONE, e.controller.phase.value)
+        e.controller.start(dest, null, null); runCurrent()
+        assertEquals(TripPhase.STARTING, e.controller.phase.value)
+        e.guidance.enroute(); runCurrent()
+        assertEquals(TripPhase.GUIDING, e.controller.phase.value)
+        e.now += 10_000
+        assertTrue(e.controller.addStop(SavedPlace(13.1, 77.6, "Stop")))
+        e.guidance.state.value = NormalizedNavigationState(NavSessionState.IDLE) // the provider publishes IDLE at every start
+        runCurrent()
+        assertEquals(TripPhase.UPDATING, e.controller.phase.value)
+        e.guidance.enroute(); runCurrent()
+        assertEquals(TripPhase.GUIDING, e.controller.phase.value)
+    }
+
+    @Test fun phaseShowsAFailureThenNoneAfterCancelAndFinishedAfterEnd() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null); runCurrent()
+        e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent()
+        assertEquals(TripPhase.FAILED, e.controller.phase.value)
+        e.controller.cancel(); e.guidance.startFailure.value = null; runCurrent()
+        assertEquals(TripPhase.NONE, e.controller.phase.value)
+        e.now += 10_000
+        e.controller.start(dest, null, null); e.guidance.enroute(); runCurrent()
+        e.controller.end(); runCurrent()
+        assertEquals(TripPhase.FINISHED, e.controller.phase.value)
+        e.controller.acknowledgeFinish(); runCurrent()
+        assertEquals(TripPhase.NONE, e.controller.phase.value)
+    }
+
+    @Test fun aFailedStartThatExpiresEndsTheTripToo() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null); runCurrent()
+        e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent()
+        assertEquals(TripPhase.FAILED, e.controller.phase.value)
+        e.guidance.expired.tryEmit(Unit); runCurrent()
+        assertTrue("the trip is cancelled and guidance stopped", e.controller.state.value.arrivalLatched)
+        assertEquals(1, e.guidance.stops)
+        e.guidance.startFailure.value = null; runCurrent() // the provider clears it when it stops
+        assertEquals(TripPhase.NONE, e.controller.phase.value)
+        assertNull("no summary for a trip that never ran", e.controller.state.value.finished)
+    }
+
+    @Test fun anExpiryWithNoTripDoesNothing() = runTest {
+        val e = Env(backgroundScope)
+        e.guidance.expired.tryEmit(Unit); runCurrent()
+        assertEquals(0, e.guidance.stops)
+    }
+
+    @Test fun retryStartsAgainFromStarting() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null); e.guidance.enroute(); runCurrent()
+        e.guidance.state.value = NormalizedNavigationState(NavSessionState.IDLE)
+        e.now += 10_000
+        e.controller.retry(); runCurrent()
+        assertEquals(TripPhase.STARTING, e.controller.phase.value)
     }
 
     @Test fun aMinimisedTripStaysMinimisedUntilResumed() = runTest {

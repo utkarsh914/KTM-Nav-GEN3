@@ -9,7 +9,14 @@ import com.navigator.app.ui.theme.NavThemeMode
 import com.navigator.app.ui.theme.ThemeMode
 
 /** Which navigation source drives the app: Google's engine in-app, or mirroring another app's notifications. */
-enum class NavEngine { IN_APP, MIRROR }
+enum class NavEngine {
+    IN_APP, MIRROR;
+
+    companion object {
+        /** The stored choice, or the mirror when the in-app engine cannot run. */
+        fun inUse(stored: NavEngine, available: Boolean): NavEngine = if (available) stored else MIRROR
+    }
+}
 
 /**
  * Immutable, typed view of every setting the UI reads. Pairing secrets (session keys, paired-before

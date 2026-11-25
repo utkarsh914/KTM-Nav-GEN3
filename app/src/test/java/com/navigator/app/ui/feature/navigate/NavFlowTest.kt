@@ -122,6 +122,16 @@ class NavFlowTest {
         assertEquals(BackEffect.BACK_TO_BROWSE, s.back(false).effect)
     }
 
+    @Test fun backToRouteRebuildsThePreviewFromTheTripInOrder() {
+        val s = NavFlowState(stage = NavStage.NAVIGATING, selected = place(9), stops = listOf(place(8)))
+            .backToRoute(place(0), listOf(place(1), place(2)))
+        assertEquals(NavStage.PREVIEW, s.stage)
+        assertEquals(place(0), s.selected)
+        assertEquals("stops keep their order (unlike ride back)", listOf(place(1), place(2)), s.stops)
+        assertFalse(s.viaConfirm)
+        assertEquals(BackEffect.BACK_TO_BROWSE, s.back(tripLive = false).effect)
+    }
+
     @Test fun rideBackNeverExceedsTheStopCap() {
         val many = (1..MAX_STOPS + 2).map { place(it) }
         assertEquals(MAX_STOPS, NavFlowState().rideBack(place(0), many).stops.size)

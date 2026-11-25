@@ -236,10 +236,10 @@ private fun CompactGuidance(maneuver: ManeuverUi, onBack: () -> Unit) {
                 modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             is ManeuverUi.Active -> {
-                if (maneuver.rerouting) {
+                if (maneuver.busy) {
                     CircularProgressIndicator(Modifier.size(KtmLayout.iconRiding * 0.8f), color = r.onGuidance, strokeWidth = KtmSpacing.xs)
                     Text(
-                        stringResource(R.string.riding_rerouting), style = MaterialTheme.typography.headlineSmall, color = r.onGuidance,
+                        stringResource(maneuver.busyLabel), style = MaterialTheme.typography.headlineSmall, color = r.onGuidance,
                         maxLines = 1, modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 } else {

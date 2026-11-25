@@ -125,6 +125,14 @@ class SettingsViewModelsTest {
         assertFalse("not connected: no test sends", vm.ui.value.connected)
     }
 
+    @Test fun bikeDashKnowsWhenDirectionsAreOnTheDash() = runTest(UnconfinedTestDispatcher()) {
+        val live = MutableStateFlow(false)
+        val vm = BikeDashViewModel(settings, connection(), permissions(), io = Dispatchers.Unconfined, guidanceLive = live).also { it.ui.launchIn(backgroundScope) }
+        assertFalse(vm.ui.value.guidanceLive)
+        live.value = true
+        assertTrue(vm.ui.value.guidanceLive)
+    }
+
     @Test fun bikeDashCountsTheChosenApps() = runTest(UnconfinedTestDispatcher()) {
         val vm = BikeDashViewModel(settings, connection(), permissions(), io = Dispatchers.Unconfined).also { it.ui.launchIn(backgroundScope) }
         settings.update { notificationSourceApps = setOf("a", "b", "c") }
@@ -295,13 +303,20 @@ class SettingsContentTest {
         rule.onNodeWithText("Can't reach your bike").assertDoesNotExist()
     }
 
-    private fun bikeDash(connected: Boolean, access: Boolean = true, apps: Int = 0) = rule.setContent {
+    private fun bikeDash(connected: Boolean, access: Boolean = true, apps: Int = 0, live: Boolean = false) = rule.setContent {
         KtmTheme(darkTheme = false) {
             BikeDashContent(
-                BikeDashUi(bike, false, connected, true, apps, true, true, "", access),
+                BikeDashUi(bike, false, connected, true, apps, true, true, "", access, live),
                 BikeDashActions({}, { log += "repair" }, {}, { log += "apps" }, {}, {}, { log += "perms" }, { log += "name" }, { log += "msg" }, { log += "turn" }),
             )
         }
+    }
+
+    @Test fun aTestTurnWaitsWhileDirectionsAreOnTheDash() {
+        bikeDash(connected = true, live = true)
+        rule.onNode(hasText("Test turn") and hasClickAction()).performScrollTo().assertIsNotEnabled()
+        rule.onNode(hasText("Test message") and hasClickAction()).performScrollTo().assertIsEnabled()
+        rule.onNodeWithText("Not while directions are on the dash.").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun testSendsNeedALiveLink() {

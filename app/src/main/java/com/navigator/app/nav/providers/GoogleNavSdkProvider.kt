@@ -136,6 +136,12 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
     }
 
     private var failureExpiry: Runnable? = null
+    private var stoppedFrameLogged = false
+
+    private val _failedTripExpired = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+
+    /** A failed start that nobody acted on was ended by the provider; the trip owner must drop the trip too. */
+    val failedTripExpired: SharedFlow<Unit> = _failedTripExpired.asSharedFlow()
 
     /** Record a failure that happened before the provider could start the trip
      *  (e.g. no navigator). The trip counts as ended. */
@@ -225,6 +231,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
             return
         }
         val trip = trips.next()
+        stoppedFrameLogged = false
         // Frames from a previous trip still being guided must not update state
         // while the new route is computed (guidanceActive is set again on route OK).
         guidanceActive = false
@@ -320,7 +327,11 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                     RouteResultAction.IGNORE_CANCELED -> failTrip(trip, "token route canceled by the SDK")
                     else -> if (retriesLeft > 0) {
                         AppLogger.log("Nav", "token route failed ($status) - retrying token ($retriesLeft left)")
-                        guideWithToken(nav, trip, waypoints, token, mode, retriesLeft - 1)
+                        if (!guideWithToken(nav, trip, waypoints, token, mode, retriesLeft - 1)) {
+                            // The retry could not even be attempted: don't leave the trip waiting for a result.
+                            notifyRouteSubstituted()
+                            setDestinationAndGuide(nav, trip, waypoints, mode, allowFallback = mode == TravelMode.TWO_WHEELER)
+                        }
                     } else {
                         AppLogger.log("Nav", "token route failed ($status) - falling back to default route")
                         notifyRouteSubstituted()
@@ -414,7 +425,7 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                     return@Runnable
                 }
                 AppLogger.log("Nav", "Failed trip not acted on - ending it")
-                clearStartFailure()
+                _failedTripExpired.tryEmit(Unit)
                 stopNavigation()
             }
         }
@@ -436,6 +447,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         lastEnroute = null
         lastLoggedStep = null
         failureExpiry?.let { mainHandler.removeCallbacks(it) }
+        // A stopped trip has no failure left to show (a later Retry would restart a trip the rider quit).
+        _startFailure.value = null
         clearTrip()
         navigator?.let { nav ->
             runCatching { nav.stopGuidance() }
@@ -467,7 +480,15 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         val session = when (navInfo.navState) {
             NavState.ENROUTE -> NavSessionState.ENROUTE
             NavState.REROUTING -> NavSessionState.REROUTING
-            NavState.STOPPED -> NavSessionState.STOPPED
+            NavState.STOPPED -> {
+                // The provider decides when a trip ends (arrival, stop, failure): a STOPPED frame mid-guidance, as
+                // seen around re-plans, must not blank the dash or the riding screen.
+                if (!stoppedFrameLogged) {
+                    stoppedFrameLogged = true
+                    AppLogger.log("Nav", "SDK STOPPED frame ignored while guiding")
+                }
+                return
+            }
             else -> return // UNKNOWN - ignore
         }
         if (session != NavSessionState.ENROUTE) {
@@ -477,7 +498,6 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
                 lastEnroute?.copy(sessionState = NavSessionState.REROUTING, producedAtMs = now)
                     ?: NormalizedNavigationState(sessionState = session, producedAtMs = now)
             } else {
-                if (session == NavSessionState.STOPPED) lastEnroute = null
                 NormalizedNavigationState(sessionState = session, producedAtMs = now)
             }
             return

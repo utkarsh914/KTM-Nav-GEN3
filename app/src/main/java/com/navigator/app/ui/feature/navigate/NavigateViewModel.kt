@@ -107,7 +107,6 @@ class NavigateViewModel(
     /** [message] is the test banner text, already in the rider's language. */
     fun sendTest(message: String) {
         connection.sendTestNotification(message)
-        connection.sendTestTurn()
     }
 
     fun rePair() = connection.rePair()

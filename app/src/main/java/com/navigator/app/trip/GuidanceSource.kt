@@ -23,6 +23,9 @@ interface GuidanceSource {
     /** One event when the picked route could not be used and guidance went on Google's own route. */
     val routeSubstituted: Flow<Unit> get() = emptyFlow()
 
+    /** One event when a failed start nobody acted on was ended by the engine. */
+    val failedTripExpired: Flow<Unit> get() = emptyFlow()
+
     /** Where guidance is heading right now (the next waypoint), or null when unknown. */
     fun currentTarget(): Pair<Double, Double>?
     fun clearStartFailure()
@@ -36,6 +39,7 @@ class SdkGuidanceSource(private val activity: () -> Activity?) : GuidanceSource 
     override val startFailure get() = GoogleNavSdkProvider.startFailure
     override val arrivals: Flow<Unit> = GoogleNavSdkProvider.tripEnded.map { }
     override val routeSubstituted: Flow<Unit> get() = GoogleNavSdkProvider.routeSubstituted
+    override val failedTripExpired: Flow<Unit> get() = GoogleNavSdkProvider.failedTripExpired
 
     override fun currentTarget() = GoogleNavSdkProvider.currentTarget()
     override fun clearStartFailure() = GoogleNavSdkProvider.clearStartFailure()

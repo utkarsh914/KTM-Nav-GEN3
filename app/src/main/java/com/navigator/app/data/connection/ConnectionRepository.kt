@@ -14,6 +14,7 @@ import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.nav.DashPreview
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,13 +46,18 @@ data class DashSnapshot(val preview: DashPreview.State)
  * Wraps [BccuConnectionService] (whose BLE internals are untouched) and the pairing settings.
  */
 class ConnectionRepository(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val settings: SettingsRepository,
     sources: LinkSources,
     private val stopService: () -> Unit,
     private val cancelNotifications: () -> Unit,
     private val retryService: () -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
+    private val showTestTurn: () -> Unit = {
+        BccuConnectionService.sendTurnIconIfRunning(BccuProtocol.TurnIcon.GO_STRAIGHT)
+        BccuConnectionService.sendGuidanceIfRunning("50 m", "Test Road")
+    },
+    private val clearDash: () -> Unit = BccuConnectionService::clearGuidanceIfRunning,
 ) {
     private val _lastSeenMs = MutableStateFlow(settings.legacy.bondedLastSeenMs.takeIf { it > 0 })
 
@@ -100,9 +106,16 @@ class ConnectionRepository(
         BccuConnectionService.sendNotificationIfRunning(text, BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT)
     }
 
+    private var clearTestJob: Job? = null
+
+    /** A sample turn on the dash, cleared again after [TEST_TURN_MS] so it can't be mistaken for guidance. */
     fun sendTestTurn() {
-        BccuConnectionService.sendTurnIconIfRunning(BccuProtocol.TurnIcon.GO_STRAIGHT)
-        BccuConnectionService.sendGuidanceIfRunning("50 m", "Test Road")
+        showTestTurn()
+        clearTestJob?.cancel()
+        clearTestJob = scope.launch {
+            delay(TEST_TURN_MS)
+            clearDash()
+        }
     }
 
     /**
@@ -133,6 +146,7 @@ class ConnectionRepository(
 
     companion object {
         private const val LAST_SEEN_EVERY_MS = 60_000L
+        const val TEST_TURN_MS = 5_000L
 
         fun create(context: Context, scope: CoroutineScope, settings: SettingsRepository): ConnectionRepository {
             val app = context.applicationContext

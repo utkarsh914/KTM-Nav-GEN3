@@ -1,11 +1,13 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import com.navigator.app.R
 import com.navigator.app.nav.model.DistanceUnits
 import com.navigator.app.nav.model.LaneInfo
 import com.navigator.app.nav.model.LaneShape
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
+import com.navigator.app.trip.TripPhase
 import com.navigator.app.ui.shell.ChipTone
 import com.navigator.app.ui.shell.RidingChipMessage
 import java.time.ZoneOffset
@@ -32,6 +34,32 @@ class RidingModelsTest {
     )
 
     private val lanes = listOf(LaneInfo(listOf(LaneShape.STRAIGHT), false), LaneInfo(listOf(LaneShape.RIGHT), true))
+
+    @Test fun aReplanKeepsTheLastTurnInsteadOfStarting() {
+        val turn = nav()
+        val idle = nav(session = NavSessionState.IDLE)
+        // guiding -> IDLE (UPDATING) -> guiding never yields the Starting card
+        val during = RidingDisplay.select(idle, lastActive = turn, phase = TripPhase.UPDATING)
+        assertTrue(during.updating)
+        val card = ManeuverModel.from(during.nav, during.updating) as ManeuverUi.Active
+        assertTrue(card.updating && card.busy && !card.rerouting)
+        assertEquals(R.string.riding_updating_route, card.busyLabel)
+        assertEquals(ManeuverFooter.None, card.footer)
+        assertEquals("the bar keeps its figures", 1_500, during.nav.remainingTimeSeconds)
+        assertFalse(TripBarModel.from(during.nav, null, null, 20_000, 0L, "Toit").starting)
+        assertFalse(RidingDisplay.select(turn, turn, TripPhase.GUIDING).updating)
+        // the first start still shows the Starting card
+        assertEquals(ManeuverUi.Starting, ManeuverModel.from(RidingDisplay.select(idle, null, TripPhase.STARTING).nav))
+    }
+
+    @Test fun leavingAfterTheTripEndsRendersTheLastTurnNotStarting() {
+        val turn = nav()
+        for (phase in listOf(TripPhase.FINISHED, TripPhase.NONE)) {
+            val shown = RidingDisplay.select(nav(session = NavSessionState.STOPPED), turn, phase)
+            assertTrue(ManeuverModel.from(shown.nav, shown.updating) is ManeuverUi.Active)
+            assertFalse(shown.updating)
+        }
+    }
 
     @Test fun distancesAreMetricWhateverTheDeviceRegionSays() {
         val us = nav().copy(units = DistanceUnits.IMPERIAL)

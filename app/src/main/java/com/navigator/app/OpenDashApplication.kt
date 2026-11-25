@@ -107,7 +107,7 @@ class OpenDashApplication : Application() {
         MirrorAutoRecordController(
             scope = appScope,
             phase = MirrorRecordPolicy.phaseFlow(
-                container.settings.snapshot.map { it.engine == NavEngine.MIRROR }, NotificationRepository.mapsGuidancePresent,
+                container.settings.engineInUseFlow.map { it == NavEngine.MIRROR }, NotificationRepository.mapsGuidancePresent,
             ),
             session = { RideSession.state.value },
             recordingEnabled = { AppSettings(this).rideRecordingEnabled },

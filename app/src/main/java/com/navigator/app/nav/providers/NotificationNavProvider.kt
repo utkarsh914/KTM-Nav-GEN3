@@ -77,6 +77,24 @@ object NotificationNavProvider : NavigationProvider {
         }
     }
 
+    /**
+     * The rider switched to the in-app engine: whatever Google Maps' notification last said is no longer shown. Like
+     * [detach] but publishes STOPPED, which the encoder turns into an immediate clear of the dash (IDLE only schedules
+     * a debounced one), so the frozen turn is not re-sent by the refresh timer.
+     */
+    fun engineDisabled() {
+        synchronized(lock) {
+            generation++
+            endJob?.cancel()
+            endJob = null
+            _state.value = NormalizedNavigationState(
+                sessionState = NavSessionState.STOPPED,
+                producedAtMs = System.currentTimeMillis(),
+            )
+            NotificationRepository.clearNav()
+        }
+    }
+
     /** A fresh guidance update parsed from a nav-app notification. */
     fun pushGuidance(
         distanceText: String?,

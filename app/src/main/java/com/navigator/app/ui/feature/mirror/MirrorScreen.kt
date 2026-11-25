@@ -29,6 +29,8 @@ import com.navigator.app.app.appContainer
 import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.mirror.MirrorStatus
 import com.navigator.app.nav.ktm.EtaFormatter
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.notifications.AppNotificationListener
 import com.navigator.app.ride.RideSession
 import com.navigator.app.ui.components.LandscapePanelSpec
@@ -116,5 +118,7 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
         val sides = if (landscape) top + WindowInsetsSides.Bottom else top
         status?.let { MirrorContent(it, bike, time, landscape, actions, Modifier.pageInsets(sides), recording = recording.active) }
     }
-    if (showBike) BikeSheetHost(tripRunning = false, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
+    // A mirrored trip is on the dash while Google Maps guides: the sheet's test must not replace it.
+    val mirrored by NotificationNavProvider.state.collectAsState()
+    if (showBike) BikeSheetHost(tripRunning = mirrored.sessionState == NavSessionState.ENROUTE, onOpenPairing = onOpenConnect, onDismiss = { showBike = false })
 }

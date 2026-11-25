@@ -13,14 +13,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,6 +51,8 @@ data class TripState(
     /** Set the moment the trip ends, so continued movement can't re-run arrival handling. */
     val arrivalLatched: Boolean = false,
     val finished: FinishedTrip? = null,
+    /** Guidance has been on the route at least once since the last start: a later IDLE is a re-plan, not "starting". */
+    val guided: Boolean = false,
 )
 
 sealed interface TripEvent {
@@ -84,6 +89,13 @@ class TripController(
     private val _state = MutableStateFlow(TripState())
     val state: StateFlow<TripState> = _state.asStateFlow()
 
+    /** The one answer to "is an in-app trip running" (see [TripPhase]). */
+    val phase: StateFlow<TripPhase> = combine(_state, guidance.state, guidance.startFailure) { trip, nav, failure ->
+        TripPhasePolicy.of(trip, nav.sessionState, failure)
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, TripPhase.NONE)
+
+    private fun currentPhase() = TripPhasePolicy.of(_state.value, guidance.state.value.sessionState, guidance.startFailure.value)
+
     /** What guidance is doing now (for the activity card); the engine owns it. */
     val navState: StateFlow<NormalizedNavigationState> get() = guidance.state
 
@@ -104,6 +116,8 @@ class TripController(
 
     init {
         guidance.arrivals.onEach { if (owning) end() }.launchIn(scope)
+        // A failed start nobody acted on: the engine gave up on it, so the trip is over too (not "Starting" for ever).
+        guidance.failedTripExpired.onEach { if (owning) cancel() }.launchIn(scope)
         guidance.routeSubstituted.onEach { if (owning) _events.tryEmit(TripEvent.RouteSubstituted) }.launchIn(scope)
 
         var lastSession: NavSessionState? = null
@@ -113,6 +127,9 @@ class TripController(
             // transition: the old route's ENROUTE frames keep arriving until the re-plan starts.
             if (session == NavSessionState.ENROUTE && lastSession != NavSessionState.ENROUTE) beforeStop = null
             lastSession = session
+            if (owning && (session == NavSessionState.ENROUTE || session == NavSessionState.REROUTING) && !_state.value.guided) {
+                _state.update { it.copy(guided = true) }
+            }
             if (owning && session == NavSessionState.ARRIVED) {
                 end()
                 return@onEach
@@ -170,7 +187,7 @@ class TripController(
         // A double tap would supersede the first start mid-compute, as with start().
         if (now - lastStartAtMs < START_DEBOUNCE_MS) return
         lastStartAtMs = now
-        _state.update { it.copy(arrivalLatched = false, minimised = false, finished = null) }
+        _state.update { it.copy(arrivalLatched = false, minimised = false, finished = null, guided = false) }
         nearSince = null
         RideEvents.clear()
         guidance.start(dest)
@@ -273,10 +290,10 @@ class TripController(
 
     private fun check(forSearch: Boolean, removing: Boolean = false): StopAddCheck {
         val trip = _state.value
-        val nav = guidance.state.value
         val result = TripPolicies.checkAddStop(
             hasTrip = trip.dest != null,
-            sessionActive = nav.sessionState.isActiveNav(),
+            // Computed now, not read from [phase], whose collector may lag a frame behind the sources.
+            sessionActive = currentPhase().let { it == TripPhase.GUIDING || it == TripPhase.UPDATING },
             arrivalLatched = trip.arrivalLatched,
             online = isOnline.value,
             lastAddMs = lastStopAddMs,

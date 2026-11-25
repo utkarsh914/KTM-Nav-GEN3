@@ -240,6 +240,14 @@ class BccuConnectionService : LifecycleService() {
             runningInstance?.setNavProvider(provider)
         }
 
+        /** Whether the bike service is up (a hard quit waits for this to turn false). */
+        val isRunning: Boolean get() = runningInstance != null
+
+        /** Blank the dash's guidance view (a test turn, a hard quit); nothing happens when the service is not running. */
+        fun clearGuidanceIfRunning() {
+            runningInstance?.clearGuidance()
+        }
+
         /** Updates the dash's center guidance view (distance/road/ETA/remaining distance), not the bottom notification banner. */
         fun sendGuidanceIfRunning(distanceText: String?, roadText: String?, etaText: String? = null, remainingDistanceText: String? = null) {
             runningInstance?.sendGuidance(distanceText, roadText, etaText, remainingDistanceText)

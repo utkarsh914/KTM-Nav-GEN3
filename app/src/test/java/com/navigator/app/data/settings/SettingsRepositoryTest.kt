@@ -42,6 +42,13 @@ class SettingsRepositoryTest {
         assertFalse(s.onboardingComplete)
     }
 
+    @Test fun engineInUseIsTheStoredChoiceOnlyWhenTheInAppEngineCanRun() {
+        assertEquals(NavEngine.IN_APP, repo.engineInUse())
+        assertEquals(NavEngine.MIRROR, SettingsRepository(AppSettings(ctx)) { false }.engineInUse())
+        assertEquals(NavEngine.MIRROR, NavEngine.inUse(NavEngine.MIRROR, available = true))
+        assertEquals(NavEngine.MIRROR, NavEngine.inUse(NavEngine.IN_APP, available = false))
+    }
+
     @Test fun updateEmitsNewSnapshot() {
         repo.update { themeMode = ThemeMode.LIGHT; googleNavEnabled = false; userName = "Asha" }
         val s = repo.snapshot.value

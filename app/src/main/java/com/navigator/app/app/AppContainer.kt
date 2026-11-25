@@ -19,6 +19,7 @@ import com.navigator.app.nav.destination.LinkResolution
 import com.navigator.app.nav.destination.MapsUrlResolver
 import com.navigator.app.nav.destination.PlacesClient
 import com.navigator.app.nav.destination.SavedPlace
+import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
@@ -63,7 +64,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val appContext = context.applicationContext
 
     override val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    override val settings = SettingsRepository(AppSettings(appContext))
+    override val settings = SettingsRepository(AppSettings(appContext)) { GoogleNavSdkController.isAvailable(appContext) }
     override val intents = AppIntents()
     override val activityHolder = ActivityHolder()
     override val sharedLink by lazy {

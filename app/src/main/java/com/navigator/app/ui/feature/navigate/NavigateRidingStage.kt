@@ -27,6 +27,7 @@ import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.StartFailure
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.trip.TripController
+import com.navigator.app.trip.TripPhase
 import com.navigator.app.trip.TripState
 import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.components.isNarrowWindow
@@ -39,6 +40,7 @@ import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
 import com.navigator.app.ui.feature.navigate.riding.MapButtonState
 import com.navigator.app.ui.feature.navigate.riding.RidingActions
 import com.navigator.app.ui.feature.navigate.riding.RidingChips
+import com.navigator.app.ui.feature.navigate.riding.RidingDisplay
 import com.navigator.app.ui.feature.navigate.riding.RidingLandscape
 import com.navigator.app.ui.feature.navigate.riding.RidingScreen
 import com.navigator.app.ui.feature.navigate.riding.StartFailedActions
@@ -81,6 +83,7 @@ internal fun NavigatingStage(
     startFailure: StartFailure?,
     tripState: TripState,
     navState: NormalizedNavigationState,
+    tripPhase: TripPhase,
     selected: SavedPlace?,
     navSpeedKmh: Float?,
     initialRemainingM: Int?,
@@ -134,9 +137,13 @@ internal fun NavigatingStage(
                     landscape = landscape,
                 )
             }
+            // Between turns of a re-plan (and while the screen leaves) the last real guidance stays on show.
+            val lastActive = remember(tripState.startMs) { arrayOfNulls<NormalizedNavigationState>(1) }
+            if (RidingDisplay.isGuiding(navState)) lastActive[0] = navState
+            val shown = RidingDisplay.select(navState, lastActive[0], tripPhase)
             val destinationName = tripState.dest?.label ?: selected?.label
             val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
-            val bar = TripBarModel.from(navState, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
+            val bar = TripBarModel.from(shown.nav, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)
             // The failure card owns the screen: no riding chrome (or trip sheet) behind it.
             val ridingActions = RidingActions(
                 onOpenSheet = { riding.showTripSheet = true },
@@ -156,7 +163,7 @@ internal fun NavigatingStage(
             val dashState = stringResource(dashText.title, dashText.arg ?: 0)
             // NV7: one line, the bike's name then its state, with a dot in the pill's tone.
             val dashStatus = dashPill.labelArg?.let { stringResource(R.string.trip_dash_line, it, dashState) } ?: dashState
-            val canAddStop = tripState.dest != null && navState.sessionState.isActiveNav()
+            val canAddStop = tripState.dest != null && (tripPhase == TripPhase.GUIDING || tripPhase == TripPhase.UPDATING)
             val tripActions = TripSheetActions(
                 onAddStop = { riding.showTripSheet = false; riding.showTripStops = true },
                 onOverview = { riding.showTripSheet = false; riding.mapButton = MapButtonState(overview = true); map.showRouteOverview() },
@@ -169,7 +176,7 @@ internal fun NavigatingStage(
                 onDismiss = { riding.showTripSheet = false },
             )
             // Also read by the pick screen, which keeps the next turn in view.
-            val maneuver = remember(navState) { ManeuverModel.from(navState) }
+            val maneuver = remember(shown) { ManeuverModel.from(shown.nav, shown.updating) }
             if (startFailure == null && !riding.pickingStop) {
                 if (landscape) RidingLandscape(
                     maneuver = maneuver,

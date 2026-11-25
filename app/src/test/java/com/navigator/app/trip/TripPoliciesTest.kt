@@ -39,6 +39,13 @@ class TripPoliciesTest {
         assertTrue(check(lastAdd = 100_000L - STOP_ADD_SETTLE_MS) is StopAddCheck.Ok)
     }
 
+    @Test fun insideAReplanTheIdleSessionSaysSettlingNotEnded() {
+        // adapted by design (RF2.3): SETTLING is checked before the session
+        assertEquals(StopAddProblem.SETTLING, problem(check(active = false, lastAdd = 100_000L - 1_000L)))
+        assertEquals(StopAddProblem.SETTLING, problem(check(active = false, forSearch = true, lastAdd = 100_000L - 1_000L)))
+        assertEquals("after the window an idle session is still ended", StopAddProblem.ENDED, problem(check(active = false)))
+    }
+
     @Test fun refusesWhenTheNextStopIsUnknownOrTheTripIsFull() {
         assertEquals(StopAddProblem.UNKNOWN_NEXT, problem(check(ahead = null)))
         assertEquals(StopAddProblem.MAX_STOPS, problem(check(ahead = (1..MAX_STOPS).map(::stop))))

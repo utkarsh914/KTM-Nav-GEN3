@@ -44,7 +44,7 @@ class SettingsHomeViewModel(
         SettingsHomeUi(
             bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
             repairSuggested = detail.repairSuggested && snap.isPaired,
-            rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, perms, version)) },
+            rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, perms, version, settings.engineInUse(snap))) },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial(settings, connection, permissions, version))
 
@@ -58,7 +58,7 @@ class SettingsHomeViewModel(
             return SettingsHomeUi(
                 bike = BikeCard(snap.bondedDeviceName ?: status.nameOrNull(), BikePillMapper.map(status), snap.isPaired, snap.bondedPairedMs.takeIf { it > 0 }),
                 repairSuggested = connection.detail.value.repairSuggested && snap.isPaired,
-                rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, permissions.state.value, version)) },
+                rows = SettingsPage.entries.map { CategoryRow(it, SettingsSummary.of(it, snap, status, permissions.state.value, version, settings.engineInUse(snap))) },
             )
         }
 

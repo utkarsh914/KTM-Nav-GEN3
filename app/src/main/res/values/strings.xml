@@ -266,6 +266,7 @@
     <!-- Riding (NV1–NV8, DL2) -->
     <string name="riding_starting">Starting navigation</string>
     <string name="riding_rerouting">Rerouting…</string>
+    <string name="riding_updating_route">Updating route…</string>
     <string name="riding_last_instruction">Last: %1$s</string>
     <string name="riding_exit">Exit %1$s</string>
     <string name="riding_then">Then</string>
@@ -751,6 +752,7 @@
     <string name="bikedash_section_test">Check your dash</string>
     <string name="bikedash_test_message">Test message</string>
     <string name="bikedash_test_turn">Test turn</string>
+    <string name="bikedash_test_turn_busy">Not while directions are on the dash.</string>
     <string name="bikedash_test_offline">Connect your bike to send a test.</string>
     <string name="bikedash_test_sent">Sent to the dash</string>
 

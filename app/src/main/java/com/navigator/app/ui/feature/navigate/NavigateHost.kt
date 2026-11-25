@@ -62,6 +62,7 @@ import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RideStore
 import com.navigator.app.trip.FinishedTrip
+import com.navigator.app.trip.isLive
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
 import com.navigator.app.ui.feature.navigate.MapState
@@ -324,6 +325,7 @@ fun NavigateHost(
     // TripController, so it survives leaving this screen.
     val trip = remember { context.appContainer.trip }
     val tripState by trip.state.collectAsState()
+    val tripPhase by trip.phase.collectAsState()
     // The rider stepped away from the active-navigation view (Back / minimise)
     // without ending the trip; suppresses auto-resume so they stay on the map,
     // and drives the "Resume navigation" pill.
@@ -360,8 +362,7 @@ fun NavigateHost(
     val places = remember { context.appContainer.places }
     val savedPlaces by places.favorites.collectAsState()
     /** A trip is running (even stepped away from), so starting another asks first. */
-    fun tripRunning(): Boolean = !tripState.arrivalLatched &&
-        ((GoogleNavSdkProvider.activeTrip.value != null && startFailure == null) || navState.sessionState.isActiveNav())
+    fun tripRunning(): Boolean = tripPhase.isLive
 
     // Internet reachability, for the offline banner during active navigation.
     val isOnline by ConnectivityMonitor.isOnline.collectAsState()
@@ -593,6 +594,13 @@ fun NavigateHost(
         val tripStops = plan.tripStops.map { SavedPlace(it.lat, it.lng, it.label ?: stopFallback) }
         backToBrowse()
         flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, rideBackLabel), tripStops) }
+    }
+
+    // "Back to route" after a failed start: the preview is built from the trip itself, not from what the flow still holds.
+    fun backToRoute() {
+        val d = tripState.dest ?: return backToBrowse()
+        val place = SavedPlace(d.lat, d.lng, d.label ?: resources.getString(R.string.trip_destination_unnamed))
+        flow.update { it.backToRoute(place, d.stops.map { s -> SavedPlace(s.lat, s.lng, s.label ?: stopFallback) }) }
     }
 
     /** DL3 "Add as a stop instead" and PL1 "Add as stop": the place becomes a stop of the running trip. */
@@ -926,13 +934,13 @@ fun NavigateHost(
 
                 NavStage.NAVIGATING -> NavigatingStage(
                     riding = riding, ridingDark = ridingDark, settingsSnap = settingsSnap, startFailure = startFailure,
-                    tripState = tripState, navState = navState, selected = selected, navSpeedKmh = navSpeedKmh,
+                    tripState = tripState, navState = navState, tripPhase = tripPhase, selected = selected, navSpeedKmh = navSpeedKmh,
                     initialRemainingM = initialRemainingM, mapBearing = mapBearing, isOnline = isOnline,
                     rerouteOfflinePaused = rerouteOfflinePaused, bikeStatus = bikeStatus, trip = trip,
                     settings = container.settings, map = map, feedback = feedback,
                     actions = NavigatingStageActions(
                         onRidingInsets = { ridingInsets.value = it }, onApplyMapButton = ::applyMapButton,
-                        onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = { stage = NavStage.PREVIEW },
+                        onRetryStart = ::retryStart, onBackToBrowse = ::backToBrowse, onBackToPreview = ::backToRoute,
                         onMoveAway = ::moveAwayFromNav, onOpenTripStopSearch = { openTripStopSearch(it) }, onOpenConnect = onOpenConnect,
                     ),
                 )

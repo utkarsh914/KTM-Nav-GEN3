@@ -116,6 +116,8 @@ object GoogleNavSdkController {
         })
     }
 
+    private val startRequests = StartRequests()
+
     fun startNavigation(activity: Activity, dest: NavDestination) {
         GoogleNavSdkProvider.clearStartFailure()
         if (!isAvailable(activity)) {
@@ -128,9 +130,14 @@ object GoogleNavSdkController {
             apiKeySet = true
         }
         ensureNavNotification(activity)
+        val request = startRequests.begin()
         // getNavigator(Activity, ...) shows the ToS dialog itself if not accepted.
         NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
             override fun onNavigatorReady(navigator: Navigator) {
+                if (!startRequests.isCurrent(request)) {
+                    AppLogger.log("Nav", "stale start dropped (cancelled before the navigator was ready)")
+                    return
+                }
                 AppLogger.log("Nav", "Navigator ready - starting guidance to ${AppLogger.sensitive(dest.label)}")
                 GoogleNavSdkProvider.onNavigatorReady(navigator, activity.applicationContext)
                 BccuConnectionService.setNavProviderIfRunning(GoogleNavSdkProvider)
@@ -139,6 +146,7 @@ object GoogleNavSdkController {
 
             override fun onError(errorCode: Int) {
                 AppLogger.log("Nav", "!! getNavigator error code=$errorCode (see NavigationApi.ErrorCode)")
+                if (!startRequests.isCurrent(request)) return
                 GoogleNavSdkProvider.reportStartFailure(StartFailure.NAVIGATOR_UNAVAILABLE)
             }
         })
@@ -146,6 +154,7 @@ object GoogleNavSdkController {
 
     /** Stop Google navigation and hand the dash back to the notification path. */
     fun stop() {
+        startRequests.invalidate()
         GoogleNavSdkProvider.stopNavigation()
         BccuConnectionService.setNavProviderIfRunning(NotificationNavProvider)
     }

@@ -91,6 +91,13 @@ internal data class NavFlowState(
             stops = tripStops.asReversed().take(MAX_STOPS), confirmFromSearch = false, viaConfirm = false,
         )
 
+    /** "Back to route" from the start-failed card: the preview of the trip as it was handed to guidance (stops in order). */
+    fun backToRoute(dest: SavedPlace, tripStops: List<SavedPlace>): NavFlowState =
+        NavFlowState(
+            stage = NavStage.PREVIEW, selected = dest,
+            stops = tripStops.take(MAX_STOPS), confirmFromSearch = false, viaConfirm = false,
+        )
+
     fun back(tripLive: Boolean): BackOutcome = when (stage) {
         NavStage.PREVIEW ->
             if (viaConfirm) BackOutcome(copy(stage = NavStage.CONFIRM)) else BackOutcome(this, BackEffect.BACK_TO_BROWSE)

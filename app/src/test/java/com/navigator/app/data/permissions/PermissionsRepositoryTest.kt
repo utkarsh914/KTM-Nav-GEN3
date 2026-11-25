@@ -50,6 +50,16 @@ class PermissionsRepositoryTest {
         assertFalse(repo.state.value.anyMissing)
     }
 
+    @Test fun withoutTheInAppEngineNotificationAccessIsRequiredEvenIfInAppIsStored() {
+        val ctx: Context = RuntimeEnvironment.getApplication()
+        val noKey = SettingsRepository(AppSettings(ctx)) { false }
+        assertEquals("stored default", NavEngine.IN_APP, noKey.snapshot.value.engine)
+        assertEquals("what runs", NavEngine.MIRROR, noKey.engineInUse())
+        grants = PermissionGrants(true, true, false, true, false, false)
+        val repo = PermissionsRepository({ grants }, noKey, scope)
+        assertTrue("notification access is missing and required", repo.state.value.attentionNeeded)
+    }
+
     @Test fun engineSwitchChangesWhatIsRequired() {
         grants = PermissionGrants(true, true, false, true, false, false)
         val repo = PermissionsRepository({ grants }, settings, scope)

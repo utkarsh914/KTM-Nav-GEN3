@@ -36,7 +36,7 @@ data class ReadyUi(
                 else -> null
             } ?: snap.bondedDeviceName,
             connected = status is BikeStatus.Connected,
-            engine = if (engineAvailable) snap.engine else NavEngine.MIRROR,
+            engine = NavEngine.inUse(snap.engine, engineAvailable),
             userName = snap.userName.orEmpty().trim(),
             optionalMissing = optionalMissing,
         )

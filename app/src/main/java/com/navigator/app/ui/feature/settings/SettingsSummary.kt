@@ -13,7 +13,7 @@ data class CategorySummary(val parts: List<UiText>, val attention: Boolean = fal
 
 /** The pure rules behind the live summaries (ST1). */
 object SettingsSummary {
-    fun of(page: SettingsPage, snap: SettingsSnapshot, bike: BikeStatus, permissions: PermissionsState, version: String): CategorySummary =
+    fun of(page: SettingsPage, snap: SettingsSnapshot, bike: BikeStatus, permissions: PermissionsState, version: String, engine: NavEngine = snap.engine): CategorySummary =
         when (page) {
             SettingsPage.BIKE_DASH -> CategorySummary(
                 listOf(
@@ -24,7 +24,7 @@ object SettingsSummary {
             )
             SettingsPage.NAVIGATION -> CategorySummary(
                 listOf(
-                    UiText.Res(if (snap.engine == NavEngine.IN_APP) R.string.settings_sum_in_app else R.string.settings_sum_mirror),
+                    UiText.Res(if (engine == NavEngine.IN_APP) R.string.settings_sum_in_app else R.string.settings_sum_mirror),
                     UiText.Res(if (snap.vehicleMode == TravelMode.DRIVING) R.string.settings_sum_vehicle_car else R.string.settings_sum_vehicle_bike),
                 ),
             )

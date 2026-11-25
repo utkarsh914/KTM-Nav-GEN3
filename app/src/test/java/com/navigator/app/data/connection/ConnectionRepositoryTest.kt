@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,6 +56,30 @@ class ConnectionRepositoryTest {
         retryService = { retried++ },
         now = { clock },
     )
+
+    @Test fun aTestTurnClearsItselfAfterFiveSeconds() = runTest {
+        var shown = 0; var cleared = 0
+        val repo = ConnectionRepository(
+            scope = backgroundScope, settings = settings,
+            sources = LinkSources(
+                state = state, scanning = MutableStateFlow(false), attempt = MutableStateFlow(0),
+                repairHint = hint, lastError = MutableStateFlow(null), deviceName = MutableStateFlow(null), bluetoothOn = btOn,
+            ),
+            stopService = {}, cancelNotifications = {}, now = { clock },
+            showTestTurn = { shown++ }, clearDash = { cleared++ },
+        )
+        repo.sendTestTurn()
+        assertEquals(1, shown)
+        advanceTimeBy(ConnectionRepository.TEST_TURN_MS - 1)
+        assertEquals("still showing", 0, cleared)
+        advanceTimeBy(2)
+        assertEquals(1, cleared)
+        repo.sendTestTurn(); advanceTimeBy(2_000); repo.sendTestTurn() // a second tap restarts the 5 s
+        advanceTimeBy(ConnectionRepository.TEST_TURN_MS - 1)
+        assertEquals(1, cleared)
+        advanceTimeBy(2)
+        assertEquals(2, cleared)
+    }
 
     @Test fun retryNowAsksTheServiceOnceAndForgetsNothing() = runTest(UnconfinedTestDispatcher()) {
         settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"

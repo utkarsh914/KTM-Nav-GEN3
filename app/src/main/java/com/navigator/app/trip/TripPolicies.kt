@@ -65,14 +65,12 @@ internal object TripPolicies {
         ahead: () -> List<Stop>?,
     ): StopAddCheck {
         if (!hasTrip) return StopAddCheck.Rejected(StopAddProblem.NOT_NAVIGATING)
-        if (forSearch) {
-            if (!sessionActive) return StopAddCheck.Rejected(StopAddProblem.NOT_NAVIGATING)
-        } else if (arrivalLatched || !sessionActive) {
-            return StopAddCheck.Rejected(StopAddProblem.ENDED)
-        }
+        if (!forSearch && arrivalLatched) return StopAddCheck.Rejected(StopAddProblem.ENDED)
+        // First: inside a re-plan the session reads IDLE, which must say "still updating", not "ended" / "start first".
+        if (nowMs - lastAddMs < STOP_ADD_SETTLE_MS) return StopAddCheck.Rejected(StopAddProblem.SETTLING)
+        if (!sessionActive) return StopAddCheck.Rejected(if (forSearch) StopAddProblem.NOT_NAVIGATING else StopAddProblem.ENDED)
         // Every re-plan needs a connection: offline it fails and would tear down a route the SDK can still guide.
         if (!online) return StopAddCheck.Rejected(StopAddProblem.OFFLINE)
-        if (nowMs - lastAddMs < STOP_ADD_SETTLE_MS) return StopAddCheck.Rejected(StopAddProblem.SETTLING)
         val remaining = ahead() ?: return StopAddCheck.Rejected(StopAddProblem.UNKNOWN_NEXT)
         if (!removing && remaining.size >= MAX_STOPS) return StopAddCheck.Rejected(StopAddProblem.MAX_STOPS)
         return StopAddCheck.Ok(remaining)

@@ -1,5 +1,7 @@
 package com.navigator.app.ui.feature.navigate.riding
 
+import androidx.annotation.StringRes
+import com.navigator.app.R
 import com.navigator.app.ble.BccuProtocol.TurnIcon
 import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.ktm.DistanceFormatter
@@ -10,6 +12,7 @@ import com.navigator.app.nav.model.LaneInfo
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.model.NormalizedManeuver
 import com.navigator.app.nav.model.NormalizedNavigationState
+import com.navigator.app.trip.TripPhase
 import com.navigator.app.ui.shell.RidingChipMessage
 import com.navigator.app.ui.theme.SunTimes
 import com.navigator.app.ui.theme.isNightTime
@@ -40,14 +43,20 @@ sealed interface ManeuverUi {
         val exit: String?,
         val footer: ManeuverFooter,
         val rerouting: Boolean,
-    ) : ManeuverUi
+        /** The route is being re-planned (a stop added or removed): the last turn stays, dimmed, like rerouting. */
+        val updating: Boolean = false,
+    ) : ManeuverUi {
+        val busy: Boolean get() = rerouting || updating
+
+        @get:StringRes val busyLabel: Int get() = if (updating) R.string.riding_updating_route else R.string.riding_rerouting
+    }
 }
 
 object ManeuverModel {
     /** Lane arrows replace the "Then" band once the turn is this close. */
     const val LANES_WITHIN_M = 400
 
-    fun from(nav: NormalizedNavigationState): ManeuverUi {
+    fun from(nav: NormalizedNavigationState, updating: Boolean = false): ManeuverUi {
         if (nav.sessionState == NavSessionState.IDLE || nav.sessionState == NavSessionState.STOPPED) return ManeuverUi.Starting
         val rerouting = nav.sessionState == NavSessionState.REROUTING
         val (instruction, road) = splitRoad(nav.fullInstruction, nav.roadName)
@@ -55,7 +64,7 @@ object ManeuverModel {
         val near = nav.distanceToManeuverMeters?.let { it <= LANES_WITHIN_M } ?: false
         val next = nav.nextManeuver
         val footer = when {
-            rerouting -> ManeuverFooter.None
+            rerouting || updating -> ManeuverFooter.None
             nav.lanes.isNotEmpty() && near -> ManeuverFooter.Lanes(nav.lanes)
             next != null && next != NormalizedManeuver.UNKNOWN ->
                 ManeuverFooter.Then(KtmManeuverMapping.toTurnIcon(next, drivingSide = nav.drivingSide))
@@ -69,6 +78,7 @@ object ManeuverModel {
             exit = exit,
             footer = footer,
             rerouting = rerouting,
+            updating = updating,
         )
     }
 
@@ -87,6 +97,23 @@ object ManeuverModel {
         }
         return text to name
     }
+}
+
+/**
+ * What the riding screen renders from guidance. Between turns of a re-plan (a stop added or removed) guidance reads
+ * IDLE: the last real state stays on screen instead of the "Starting navigation" card.
+ */
+object RidingDisplay {
+    data class Shown(val nav: NormalizedNavigationState, val updating: Boolean)
+
+    fun select(current: NormalizedNavigationState, lastActive: NormalizedNavigationState?, phase: TripPhase): Shown = when (phase) {
+        TripPhase.GUIDING, TripPhase.STARTING, TripPhase.FAILED -> Shown(current, false)
+        TripPhase.UPDATING -> Shown(lastActive ?: current, lastActive != null)
+        TripPhase.FINISHED, TripPhase.NONE -> Shown(lastActive ?: current, false)
+    }
+
+    fun isGuiding(nav: NormalizedNavigationState) =
+        nav.sessionState == NavSessionState.ENROUTE || nav.sessionState == NavSessionState.REROUTING
 }
 
 /** Remaining time as the bar shows it: minutes, hours and minutes, or whole hours from ten hours on. */

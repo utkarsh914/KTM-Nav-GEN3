@@ -9,8 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -28,14 +26,14 @@ class PermissionsRepository(
 
     private val lock = Any()
     private var grants = readGrants()
-    private val _state = MutableStateFlow(PermissionPolicy.build(grants, settings.snapshot.value.engine))
+    private val _state = MutableStateFlow(PermissionPolicy.build(grants, settings.engineInUse()))
 
     /** [refresh] updates this before it returns; an engine change in settings follows on [scope]. */
     val state: StateFlow<PermissionsState> = _state.asStateFlow()
 
     init {
         scope.launch {
-            settings.snapshot.map { it.engine }.distinctUntilChanged().collect { publish() }
+            settings.engineInUseFlow.collect { publish() }
         }
     }
 
@@ -45,7 +43,7 @@ class PermissionsRepository(
     }
 
     private fun publish() {
-        synchronized(lock) { _state.value = PermissionPolicy.build(grants, settings.snapshot.value.engine) }
+        synchronized(lock) { _state.value = PermissionPolicy.build(grants, settings.engineInUse()) }
     }
 
     private companion object {

@@ -46,6 +46,7 @@ import com.navigator.app.app.AppReadiness
 import com.navigator.app.app.IntentOutcome
 import com.navigator.app.app.RejectReason
 import com.navigator.app.app.appContainer
+import com.navigator.app.data.settings.NavEngine
 import com.navigator.app.logging.JankMonitor
 import com.navigator.app.nav.destination.MapsUrlResolver
 import com.navigator.app.nav.providers.GoogleNavSdkController
@@ -170,7 +171,7 @@ fun KtmApp(onQuit: () -> Unit) {
 
     // In-app Google navigation is offered when a key + Play Services are present AND the rider
     // hasn't switched to mirror-only in Settings.
-    val inAppMaps = remember(snap.engine) { GoogleNavSdkController.isActive(context, legacy) }
+    val inAppMaps = remember(snap.engine) { settings.engineInUse(snap) == NavEngine.IN_APP }
     val inAppState = rememberUpdatedState(inAppMaps)
     // First-run screens are not a place to land on: a request waits until setup has finished and
     // the stack has been replaced by Navigate.
