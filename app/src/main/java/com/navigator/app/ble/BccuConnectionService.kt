@@ -465,7 +465,7 @@ class BccuConnectionService : LifecycleService() {
         // Drop any op stranded in flight on the dead link - otherwise the queue stays busy
         // and every op on the next connection stalls behind it.
         gattOps.clear()
-        if (cancelHandshakeTimer) { handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null }
+        if (cancelHandshakeTimer) { handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null; _retryAvailableAtMs.value = null }
         if (resetCrypto) {
             tempIv = null; tempSecret = null; sessionKeys = null; activeSessionKey = null
         }
@@ -499,7 +499,6 @@ class BccuConnectionService : LifecycleService() {
      */
     private fun resetAbsentBackoff(reason: String, rescan: Boolean = true) {
         absentFailures = 0
-        if (reason == "bike link up") _bikeAbsent.value = false
         // The caller connects directly: a scan started here would be cut short again at once.
         if (!rescan) return
         lifecycleScope.launch {
@@ -809,7 +808,7 @@ class BccuConnectionService : LifecycleService() {
                 AppLogger.log("BLE", "Start (present=$present) during a handshake retry cooldown - leaving it to the cooldown")
                 return START_STICKY
             }
-            if (present) resetAbsentBackoff("bike link up", rescan = false)
+            if (present) { _bikeAbsent.value = false; resetAbsentBackoff("bike link up", rescan = false) }
             if (ReconnectPolicy.shouldPreemptBackgroundConnect(present, pendingAutoConnect, gatt != null, linkUp)) {
                 // A background connect request is parked but nothing linked up, yet
                 // the bike's own link is here: recycle it into a direct connect.
@@ -861,6 +860,7 @@ class BccuConnectionService : LifecycleService() {
             bluetoothOn.value = false
             return
         }
+        bluetoothOn.value = true
         try {
             val device = adapter.getRemoteDevice(address)
             _deviceName.value = settingsStore.bondedDeviceName ?: device.name
@@ -1009,6 +1009,8 @@ class BccuConnectionService : LifecycleService() {
     private var alertShown = false
 
     /** The notification says what the app says: both come from [ConnectionMapping] over the same facts. */
+    private var firstNotice = true
+
     private fun watchNotice() {
         val facts = combine(_connectionState, _linkUp, _scanning, _attempt, _repairHint) { st, up, scan, attempt, hint -> arrayOf<Any?>(st, up, scan, attempt, hint) }
         val more = combine(_lastError, _bikeAbsent, _reconnecting, bluetoothOn) { err, absent, re, bt -> arrayOf<Any?>(err, absent, re, bt) }
@@ -1022,7 +1024,12 @@ class BccuConnectionService : LifecycleService() {
                         lastError = b[0] as String?, linkUp = a[1] as Boolean, bikeAbsent = b[1] as Boolean, reconnecting = b[2] as Boolean,
                     ),
                 )
-            }.distinctUntilChanged().collect { updateForegroundNotification(it) }
+            }.distinctUntilChanged().collect {
+                // The service starts as "connecting" (its foreground notice): not "not connected" for the moment before connect() runs.
+                val settling = firstNotice && it == ConnectionNotice.DISCONNECTED
+                firstNotice = false
+                if (!settling) updateForegroundNotification(it)
+            }
         }
     }
 
@@ -1118,8 +1125,10 @@ class BccuConnectionService : LifecycleService() {
                             scheduleRescan(1_500L)
                         }
                         linkWasUp -> {
-                            _reconnecting.value = true
-                            if (currentDeviceAddress?.let { settingsStore.hasPairedBefore(it) } == true) {
+                            val known = currentDeviceAddress?.let { settingsStore.hasPairedBefore(it) } == true
+                            // A first pairing that drops is still pairing: it must not read as a reconnect.
+                            if (known) _reconnecting.value = true
+                            if (known) {
                                 preAuthDrops++
                                 suggestRepairIfNeeded(currentDeviceAddress)
                             }
@@ -1136,6 +1145,7 @@ class BccuConnectionService : LifecycleService() {
                             if (absentFailures >= ConnectionMapping.BIKE_ABSENT_AFTER_FAILURES) {
                                 _bikeAbsent.value = true
                                 _reconnecting.value = false
+                                preAuthDrops = 0 // a bike that is simply off is not a lost key
                             }
                             _lastError.value = "Bike not found"
                             val wait = absentBackoffMs(absentFailures)
@@ -1403,8 +1413,9 @@ class BccuConnectionService : LifecycleService() {
                     val link = gatt
                     lifecycleScope.launch {
                         authCompleting = false
-                        if (destroyed || link == null || link !== gatt) return@launch // the link was recycled meanwhile
+                        if (destroyed || link == null || link !== gatt || !linkUp) return@launch // the link was recycled meanwhile
                         handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
+                        _retryAvailableAtMs.value = null
                         handshakeRecoveries = 0
                         preAuthDrops = 0
                         absentFailures = 0
@@ -1471,6 +1482,8 @@ class BccuConnectionService : LifecycleService() {
             val addr = currentDeviceAddress ?: return@launch
             val known = AppSettings(this@BccuConnectionService).hasPairedBefore(addr)
             val budget = if (known) HANDSHAKE_TIMEOUT_KNOWN_MS else HANDSHAKE_TIMEOUT_FIRST_PAIR_MS
+            // A tap during the handshake is ignored too: say when it will act again.
+            _retryAvailableAtMs.value = System.currentTimeMillis() + budget
             delay(budget)
             // Main thread, like the bookkeeping of a handshake that just finished: the two cannot interleave.
             if (_connectionState.value == ConnectionState.AUTHENTICATED || authCompleting || destroyed) return@launch

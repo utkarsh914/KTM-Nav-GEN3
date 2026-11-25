@@ -198,6 +198,15 @@ class ConnectionNoticeTest {
         assertEquals("Bluetooth is off", of(ConnectionNotice.BLUETOOTH_OFF).title)
     }
 
+    @Test fun aParkedBikeSaysNotConnectedAndOffersOnlyQuit() {
+        val c = of(ConnectionNotice.DISCONNECTED)
+        assertEquals("Dash not connected", c.title)
+        assertEquals("It connects when the bike is on and near.", c.text)
+        assertEquals(listOf(ConnectionAction.QUIT), c.actions)
+        assertFalse(c.alert)
+        assertEquals("KTM 7F21 not connected", ConnectionNoticeContent.of(ConnectionNotice.DISCONNECTED, null, res, "KTM 7F21").title)
+    }
+
     @Test fun theTitleNamesTheBikeWhenItIsKnown() {
         val named = ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, "KTM 7F21")
         assertEquals("Dash connected \u00b7 KTM 7F21", named.title)

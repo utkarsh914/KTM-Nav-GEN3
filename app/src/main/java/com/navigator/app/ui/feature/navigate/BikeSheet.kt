@@ -90,7 +90,7 @@ object RetryCountdown {
     fun secondsLeft(atMs: Long?, nowMs: Long): Int? =
         atMs?.let { ((it - nowMs + 999) / 1000).toInt() }?.takeIf { it > 0 }
 
-    fun format(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+    fun format(seconds: Int): String = String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60)
 }
 
 /** "Last seen" for the bike sheet: the time today (the phone's 12/24 h), with the day in front when it was before. */
@@ -213,6 +213,7 @@ fun BikeSheet(
             var retried by remember { mutableStateOf(false) }
             // 1 s ticks, no animation: only while a cooldown is on.
             val now by produceState(System.currentTimeMillis(), retryAtMs) {
+                value = System.currentTimeMillis() // a restarted producer keeps its last value: never a stale clock
                 while (retryAtMs != null && value < retryAtMs) { delay(1_000); value = System.currentTimeMillis() }
             }
             val waiting = RetryCountdown.secondsLeft(retryAtMs, now)

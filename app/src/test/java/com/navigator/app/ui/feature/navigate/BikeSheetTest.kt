@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.navigator.app.R
 import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.ui.shell.LocalOpenBikeSettings
@@ -60,6 +61,11 @@ class BikeSheetTest {
         show(BikeStatus.Reconnecting("KTM 7F21", 2), retryAtMs = System.currentTimeMillis() + 12_500)
         rule.onNodeWithText("Retry in 0:13").assertIsNotEnabled()
         rule.onAllNodesWithText("Retry now").assertCountEquals(0)
+    }
+
+    @Test fun reconnectingWithoutAnAttemptNumberSaysJustReconnecting() {
+        assertEquals(R.string.bike_sheet_reconnecting_plain, BikeSheetMapper.status(BikeStatus.Reconnecting("KTM", 0)).title)
+        assertEquals(R.string.bike_sheet_reconnecting, BikeSheetMapper.status(BikeStatus.Reconnecting("KTM", 2)).title)
     }
 
     @Test fun theCountdownIsWholeSecondsRoundedUpAndEndsAtZero() {

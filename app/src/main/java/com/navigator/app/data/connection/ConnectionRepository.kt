@@ -116,7 +116,7 @@ class ConnectionRepository(
      * GENERATE_KEYS and stall if the dash lost its keys.
      */
     fun rePair() {
-        // The link goes first: a service still running must not see a half-forgotten bike (or stamp "last seen" on nobody).
+        // Asked first (the service stops a moment later): its last-seen stamp skips a bike that is gone.
         stopService()
         val s = settings.legacy
         s.bondedDeviceAddress?.let { s.clearPairedBefore(it) }
