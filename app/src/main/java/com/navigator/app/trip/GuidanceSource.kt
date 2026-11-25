@@ -49,6 +49,7 @@ class SdkGuidanceSource(private val activity: () -> Activity?) : GuidanceSource 
         if (host == null) {
             // getNavigator needs an Activity (it may show the terms dialog), so a start with the app gone fails visibly.
             AppLogger.log("Nav", "!! no activity to start guidance from")
+            GoogleNavSdkController.cancelPendingStart()
             GoogleNavSdkProvider.reportStartFailure(StartFailure.NAVIGATOR_UNAVAILABLE)
             return
         }

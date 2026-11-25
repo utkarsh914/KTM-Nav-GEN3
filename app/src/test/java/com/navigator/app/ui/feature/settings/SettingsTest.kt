@@ -180,7 +180,7 @@ class SettingsSummaryTest {
     }
 
     private fun summary(page: SettingsPage, snap: SettingsSnapshot = snap(), bike: BikeStatus = BikeStatus.NotPaired, p: PermissionsState = perms) =
-        SettingsSummary.of(page, snap, bike, p, "9.9")
+        SettingsSummary.of(page, snap, bike, p, "9.9", snap.engine)
 
     @Test fun everyCategoryHasASummary() {
         SettingsPage.entries.forEach { assertTrue(it.name, summary(it).parts.isNotEmpty()) }

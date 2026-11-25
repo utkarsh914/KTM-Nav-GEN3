@@ -118,7 +118,11 @@ object GoogleNavSdkController {
 
     private val startRequests = StartRequests()
 
+    /** A start that failed before asking for the navigator still supersedes an earlier one that is waiting for it. */
+    fun cancelPendingStart() = startRequests.invalidate()
+
     fun startNavigation(activity: Activity, dest: NavDestination) {
+        startRequests.invalidate()
         GoogleNavSdkProvider.clearStartFailure()
         if (!isAvailable(activity)) {
             AppLogger.log("Nav", "Google Nav SDK unavailable (no key or Play services); ignoring")

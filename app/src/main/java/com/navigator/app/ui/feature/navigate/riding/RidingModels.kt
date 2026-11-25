@@ -107,7 +107,10 @@ object RidingDisplay {
     data class Shown(val nav: NormalizedNavigationState, val updating: Boolean)
 
     fun select(current: NormalizedNavigationState, lastActive: NormalizedNavigationState?, phase: TripPhase): Shown = when (phase) {
-        TripPhase.GUIDING, TripPhase.STARTING, TripPhase.FAILED -> Shown(current, false)
+        // The phase can be a frame behind guidance: a live phase over an IDLE frame is a re-plan, not a start.
+        TripPhase.GUIDING ->
+            if (!isGuiding(current) && lastActive != null) Shown(lastActive, true) else Shown(current, false)
+        TripPhase.STARTING, TripPhase.FAILED -> Shown(current, false)
         TripPhase.UPDATING -> Shown(lastActive ?: current, lastActive != null)
         TripPhase.FINISHED, TripPhase.NONE -> Shown(lastActive ?: current, false)
     }

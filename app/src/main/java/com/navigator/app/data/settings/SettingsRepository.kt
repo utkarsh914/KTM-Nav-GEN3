@@ -27,7 +27,6 @@ class SettingsRepository(
 
     val engineInUseFlow: Flow<NavEngine> get() = snapshot.map { engineInUse(it) }.distinctUntilChanged()
 
-
     /**
      * The raw store, for what is not in [snapshot]: per-icon calibration, the paired-before flag and other
      * service-side keys. Writes through it still reach [snapshot]. UI state comes from [snapshot].

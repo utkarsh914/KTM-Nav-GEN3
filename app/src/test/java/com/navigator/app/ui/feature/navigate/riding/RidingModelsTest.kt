@@ -52,6 +52,13 @@ class RidingModelsTest {
         assertEquals(ManeuverUi.Starting, ManeuverModel.from(RidingDisplay.select(idle, null, TripPhase.STARTING).nav))
     }
 
+    @Test fun aLivePhaseOverAnIdleFrameIsAReplanNotAStart() {
+        // the phase can be a frame behind guidance
+        val shown = RidingDisplay.select(nav(session = NavSessionState.IDLE), lastActive = nav(), phase = TripPhase.GUIDING)
+        assertTrue(shown.updating)
+        assertEquals(NavSessionState.ENROUTE, shown.nav.sessionState)
+    }
+
     @Test fun leavingAfterTheTripEndsRendersTheLastTurnNotStarting() {
         val turn = nav()
         for (phase in listOf(TripPhase.FINISHED, TripPhase.NONE)) {

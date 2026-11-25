@@ -494,12 +494,8 @@ object GoogleNavSdkProvider : RoutingNavigationProvider {
         if (session != NavSessionState.ENROUTE) {
             // While rerouting, keep the last turn (the UI dims it) rather than
             // blanking. The dash encoder still blanks on sessionState, unaffected.
-            _state.value = if (session == NavSessionState.REROUTING) {
-                lastEnroute?.copy(sessionState = NavSessionState.REROUTING, producedAtMs = now)
-                    ?: NormalizedNavigationState(sessionState = session, producedAtMs = now)
-            } else {
-                NormalizedNavigationState(sessionState = session, producedAtMs = now)
-            }
+            _state.value = lastEnroute?.copy(sessionState = NavSessionState.REROUTING, producedAtMs = now)
+                ?: NormalizedNavigationState(sessionState = session, producedAtMs = now)
             return
         }
 

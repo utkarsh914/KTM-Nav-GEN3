@@ -13,6 +13,10 @@ import com.navigator.app.ble.BccuConnectionService.ConnectionState
 import com.navigator.app.ble.BccuProtocol
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.nav.DashPreview
+import com.navigator.app.nav.model.NavSessionState
+import com.navigator.app.nav.model.isActiveNav
+import com.navigator.app.nav.providers.GoogleNavSdkProvider
+import com.navigator.app.nav.providers.NotificationNavProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +62,8 @@ class ConnectionRepository(
         BccuConnectionService.sendGuidanceIfRunning("50 m", "Test Road")
     },
     private val clearDash: () -> Unit = BccuConnectionService::clearGuidanceIfRunning,
+    /** Real directions are on the dash: the test turn's delayed clear must leave them alone. */
+    private val guidanceLive: () -> Boolean = { false },
 ) {
     private val _lastSeenMs = MutableStateFlow(settings.legacy.bondedLastSeenMs.takeIf { it > 0 })
 
@@ -114,7 +120,7 @@ class ConnectionRepository(
         clearTestJob?.cancel()
         clearTestJob = scope.launch {
             delay(TEST_TURN_MS)
-            clearDash()
+            if (!guidanceLive()) clearDash()
         }
     }
 
@@ -165,6 +171,10 @@ class ConnectionRepository(
                 stopService = { BccuConnectionService.stop(app) },
                 cancelNotifications = { app.getSystemService(NotificationManager::class.java).cancelAll() },
                 retryService = { BccuConnectionService.retryNow(app) },
+                guidanceLive = {
+                    GoogleNavSdkProvider.state.value.sessionState.isActiveNav() ||
+                        NotificationNavProvider.state.value.sessionState == NavSessionState.ENROUTE
+                },
             )
         }
     }

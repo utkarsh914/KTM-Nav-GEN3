@@ -129,6 +129,36 @@ class TripControllerTest {
         assertEquals(0, e.guidance.stops)
     }
 
+    @Test fun aSecondStopInsideTheReplanSaysSettling() = runTest {
+        val e = Env(backgroundScope)
+        val events = mutableListOf<TripEvent>()
+        backgroundScope.launch { e.controller.events.toList(events) }
+        runCurrent() // the collector must be subscribed before anything is emitted
+        e.controller.start(dest, null, null); e.guidance.enroute(); runCurrent()
+        e.now += 10_000
+        assertTrue(e.controller.addStop(SavedPlace(13.1, 77.6, "One")))
+        e.guidance.state.value = NormalizedNavigationState(NavSessionState.IDLE) // the re-plan is under way
+        runCurrent()
+        e.now += 1_000
+        assertFalse(e.controller.addStop(SavedPlace(13.2, 77.7, "Two")))
+        runCurrent()
+        assertTrue(events.contains(TripEvent.StopAddRejected(StopAddProblem.SETTLING)))
+    }
+
+    @Test fun aFailedReplanRollsBackAndTheTripIsUpdatingThenGuidingAgain() = runTest {
+        val e = Env(backgroundScope)
+        e.controller.start(dest, null, null); e.guidance.enroute(); runCurrent()
+        e.now += 10_000
+        e.controller.addStop(SavedPlace(13.1, 77.6, "One"))
+        e.guidance.state.value = NormalizedNavigationState(NavSessionState.IDLE)
+        e.guidance.startFailure.value = StartFailure.ROUTE; runCurrent() // the re-plan failed: rolled back, failure cleared
+        assertEquals("the rider's earlier trip is started again", 3, e.guidance.started.size)
+        assertNull(e.guidance.startFailure.value)
+        assertEquals(TripPhase.UPDATING, e.controller.phase.value)
+        e.guidance.enroute(); runCurrent()
+        assertEquals(TripPhase.GUIDING, e.controller.phase.value)
+    }
+
     @Test fun retryStartsAgainFromStarting() = runTest {
         val e = Env(backgroundScope)
         e.controller.start(dest, null, null); e.guidance.enroute(); runCurrent()

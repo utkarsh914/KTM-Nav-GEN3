@@ -3,6 +3,7 @@ package com.navigator.app.ui.feature.navigate
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.navigator.app.nav.model.NormalizedNavigationState
 import com.navigator.app.ui.feature.navigate.riding.MapButtonState
 
 /**
@@ -19,6 +20,18 @@ internal class RidingOverlayState {
     /** Picking the next stop on the map (SE4): the riding screen steps aside, guidance carries on underneath. */
     var pickingStop by mutableStateOf(false)
     var mapButton by mutableStateOf(MapButtonState())
+
+    /**
+     * The last real guidance of this trip (not state: written while the riding screen composes). Held here, not in the
+     * stage, so coming back to the riding screen in the middle of a re-plan still has a turn to show.
+     */
+    var lastActive: NormalizedNavigationState? = null
+    private var lastActiveTrip = -1L
+
+    fun rememberActive(trip: Long, nav: NormalizedNavigationState, guiding: Boolean) {
+        if (trip != lastActiveTrip) { lastActiveTrip = trip; lastActive = null }
+        if (guiding) lastActive = nav
+    }
 
     /**
      * The stage changed: sheets close. The end-trip confirm only outlives a change *into* the riding stage (a

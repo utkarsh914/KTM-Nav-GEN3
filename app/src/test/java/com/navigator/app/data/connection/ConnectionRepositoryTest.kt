@@ -81,6 +81,24 @@ class ConnectionRepositoryTest {
         assertEquals(2, cleared)
     }
 
+    @Test fun aTestTurnLeavesRealDirectionsAlone() = runTest {
+        var cleared = 0
+        var live = false
+        val repo = ConnectionRepository(
+            scope = backgroundScope, settings = settings,
+            sources = LinkSources(
+                state = state, scanning = MutableStateFlow(false), attempt = MutableStateFlow(0),
+                repairHint = hint, lastError = MutableStateFlow(null), deviceName = MutableStateFlow(null), bluetoothOn = btOn,
+            ),
+            stopService = {}, cancelNotifications = {}, now = { clock },
+            showTestTurn = {}, clearDash = { cleared++ }, guidanceLive = { live },
+        )
+        repo.sendTestTurn()
+        live = true // a trip started within the five seconds
+        advanceTimeBy(ConnectionRepository.TEST_TURN_MS + 1)
+        assertEquals(0, cleared)
+    }
+
     @Test fun retryNowAsksTheServiceOnceAndForgetsNothing() = runTest(UnconfinedTestDispatcher()) {
         settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
         repo().retryNow()

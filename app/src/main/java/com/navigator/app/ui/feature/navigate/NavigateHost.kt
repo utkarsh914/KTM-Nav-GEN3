@@ -62,6 +62,7 @@ import com.navigator.app.ride.RideEvents
 import com.navigator.app.ride.RideMetrics
 import com.navigator.app.ride.RideStore
 import com.navigator.app.trip.FinishedTrip
+import com.navigator.app.trip.TripPhase
 import com.navigator.app.trip.isLive
 import com.navigator.app.ui.feature.navigate.ActivityCard
 import com.navigator.app.ui.feature.navigate.LocationState
@@ -326,6 +327,8 @@ fun NavigateHost(
     val trip = remember { context.appContainer.trip }
     val tripState by trip.state.collectAsState()
     val tripPhase by trip.phase.collectAsState()
+    // Guiding or re-planning: unlike the SDK's session state, this does not read "no trip" between the turns of a re-plan.
+    val tripActive = tripPhase == TripPhase.GUIDING || tripPhase == TripPhase.UPDATING
     // The rider stepped away from the active-navigation view (Back / minimise)
     // without ending the trip; suppresses auto-resume so they stay on the map,
     // and drives the "Resume navigation" pill.
@@ -555,7 +558,7 @@ fun NavigateHost(
         routeVm.clear()
         // Keep the "stepped away" flag while a trip is still running so arrival/auto-resume
         // logic still treats this screen as owning it (only reset once nothing is live).
-        if (!navState.sessionState.isActiveNav()) trip.setMinimised(false)
+        if (!tripActive) trip.setMinimised(false)
         trip.acknowledgeFinish()
     }
 
@@ -651,27 +654,27 @@ fun NavigateHost(
     // away on the map with a trip still running — arrival should finish it either way.
     LaunchedEffect(navState.sessionState) {
         // A trip the rider just replaced or closed (latched) is not resumed by a late frame of its session.
-        if (!tripState.arrivalLatched && NavFlowRules.shouldAutoResume(navState.sessionState.isActiveNav(), stage, leftNavManually)) {
+        if (!tripState.arrivalLatched && NavFlowRules.shouldAutoResume(tripActive, stage, leftNavManually)) {
             stage = NavStage.NAVIGATING
         }
     }
 
     // Notification tap while stepped-away resumes the live guidance view.
     LaunchedEffect(openNavRequest) {
-        if (openNavRequest && navState.sessionState.isActiveNav()) resumeNav()
+        if (openNavRequest && tripActive) resumeNav()
     }
 
     LaunchedEffect(confirmEndRequest) {
         if (!confirmEndRequest) return@LaunchedEffect
         onConfirmEndConsumed()
-        if (navState.sessionState.isActiveNav()) { resumeNav(); showEndConfirm = true }
+        if (tripActive) { resumeNav(); showEndConfirm = true }
     }
 
     LaunchedEffect(searchRequest) {
         if (!searchRequest) return@LaunchedEffect
         onSearchRequestConsumed()
         // A running trip keeps its screen: a shortcut must not pull the rider out of guidance.
-        if (navState.sessionState.isActiveNav() || stage == NavStage.SEARCH) return@LaunchedEffect
+        if (tripActive || stage == NavStage.SEARCH) return@LaunchedEffect
         // From a place card, a preview or the finished card the shortcut still means "search": leave it first.
         if (stage != NavStage.BROWSE) backToBrowse()
         openSearch()
@@ -807,7 +810,7 @@ fun NavigateHost(
 
     // One back path for the system Back and the on-screen arrows (they must never disagree).
     fun performBack() {
-        val outcome = flow.state.back(tripLive = navState.sessionState.isActiveNav())
+        val outcome = flow.state.back(tripLive = tripActive)
         flow.update { outcome.state }
         when (outcome.effect) {
             BackEffect.NONE -> {}
@@ -818,7 +821,7 @@ fun NavigateHost(
         }
     }
     // At the map with nothing running there is nothing to step back to: Back is the system's (it leaves the app).
-    BackHandler(enabled = stage != NavStage.BROWSE || navState.sessionState.isActiveNav()) { performBack() }
+    BackHandler(enabled = stage != NavStage.BROWSE || tripActive) { performBack() }
     // Registered after the stage's: picking a stop (or a proposed one) is left first.
     BackHandler(enabled = pickingStop || stopCandidate != null) {
         if (pickingStop) pickingStop = false else stopCandidate = null
@@ -834,7 +837,7 @@ fun NavigateHost(
     fun planStage() = PlanStage(
         selected = selected, savedPlaces = savedPlaces, origin = origin, routePreview = routePreview,
         pickingStop = pickingStop, stopCandidate = stopCandidate,
-        showResumePill = navState.sessionState.isActiveNav() && leftNavManually, leftInsetPx = { planInsets.value.first },
+        showResumePill = tripActive && leftNavManually, leftInsetPx = { planInsets.value.first },
         mapReadyForControls = available && navReady, mapBearing = mapBearing, map = map, feedback = feedback,
         places = places, appScope = container.appScope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
@@ -919,7 +922,7 @@ fun NavigateHost(
                             SearchTarget.DESTINATION -> null
                         }
                     },
-                    activity = if (navState.sessionState.isActiveNav() && leftNavManually && searchTarget != SearchTarget.TRIP_STOP) {
+                    activity = if (tripActive && leftNavManually && searchTarget != SearchTarget.TRIP_STOP) {
                         ActivityCard.build(tripState, navState, System.currentTimeMillis())
                     } else null,
                     onResumeTrip = ::resumeNav,

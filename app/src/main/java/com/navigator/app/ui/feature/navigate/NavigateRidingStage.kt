@@ -138,9 +138,8 @@ internal fun NavigatingStage(
                 )
             }
             // Between turns of a re-plan (and while the screen leaves) the last real guidance stays on show.
-            val lastActive = remember(tripState.startMs) { arrayOfNulls<NormalizedNavigationState>(1) }
-            if (RidingDisplay.isGuiding(navState)) lastActive[0] = navState
-            val shown = RidingDisplay.select(navState, lastActive[0], tripPhase)
+            riding.rememberActive(tripState.startMs, navState, RidingDisplay.isGuiding(navState))
+            val shown = RidingDisplay.select(navState, riding.lastActive, tripPhase)
             val destinationName = tripState.dest?.label ?: selected?.label
             val limit = if (settingsSnap.overspeedEnabled) settingsSnap.overspeedLimitKmh else null
             val bar = TripBarModel.from(shown.nav, navSpeedKmh, limit, initialRemainingM, System.currentTimeMillis(), destinationName)

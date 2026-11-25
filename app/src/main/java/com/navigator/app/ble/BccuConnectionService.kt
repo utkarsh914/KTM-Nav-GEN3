@@ -245,7 +245,9 @@ class BccuConnectionService : LifecycleService() {
 
         /** Blank the dash's guidance view (a test turn, a hard quit); nothing happens when the service is not running. */
         fun clearGuidanceIfRunning() {
-            runningInstance?.clearGuidance()
+            // Callers may be on any thread; the guidance state machine is main-thread territory.
+            val svc = runningInstance ?: return
+            svc.lifecycleScope.launch { svc.clearGuidance() }
         }
 
         /** Updates the dash's center guidance view (distance/road/ETA/remaining distance), not the bottom notification banner. */
