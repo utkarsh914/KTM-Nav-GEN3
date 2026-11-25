@@ -102,7 +102,8 @@ fun ReplayScreen(
         }
     }
 
-    PopWhenResumed(gone, onBack)
+    val closed by vm.closed.collectAsState()
+    PopWhenResumed(gone || closed, onBack)
 
     // Playback must not keep walking the marker under a covered page or a backgrounded app.
     DisposableEffect(vm) {

@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.settings
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,11 +9,11 @@ import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.data.settings.SettingsSnapshot
 import com.navigator.app.ride.AvgSpeedMode
-import com.navigator.app.ride.RideStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** The numbers on the Recording page, each with its own range. */
 enum class RecordingField(val spec: IntSpec) {
@@ -49,8 +48,8 @@ data class RecordingUi(
 /** ST5: auto-record, which average to show, what to keep, and the track's speed colours. */
 class RecordingViewModel(
     private val settings: SettingsRepository,
-    /** Deletes the oldest rides beyond a limit. Slow (files), so the caller runs it off the main thread. */
-    private val prune: (Int) -> Unit = {},
+    /** Hides the oldest rides beyond the new limit with an Undo (new limit, previous limit); runs in the app scope. */
+    private val removeOverLimit: (limit: Int, previous: Int) -> Unit = { _, _ -> },
 ) : ViewModel() {
     private val limitAtOpen = settings.snapshot.value.rideHistoryLimit
 
@@ -80,22 +79,24 @@ class RecordingViewModel(
     }
 
     /**
-     * Lowering "Rides to keep" prunes now, as the old screen did, but once when the page is left: every stepper tap
-     * saves at once, and pruning per tap would delete rides while the rider is still stepping down.
+     * Lowering "Rides to keep" removes the extra rides (with Undo) once when the page is left: every stepper tap
+     * saves at once, and removing per tap would hide rides while the rider is still stepping down.
      */
     fun commit() {
         val limit = settings.snapshot.value.rideHistoryLimit
-        if (limit < limitAtOpen) prune(limit)
+        if (limit < limitAtOpen) removeOverLimit(limit, limitAtOpen)
     }
 
     override fun onCleared() = commit()
 
     companion object {
-        fun factory(container: AppContainer, appContext: Context) = object : ViewModelProvider.Factory {
+        fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = RecordingViewModel(
                 container.settings,
-                prune = { limit -> kotlin.concurrent.thread { runCatching { RideStore(appContext).pruneToLimit(limit) } } },
+                removeOverLimit = { limit, previous ->
+                    container.appScope.launch { runCatching { container.rides.removeOverLimit(limit, previous) } }
+                },
             ) as T
         }
     }

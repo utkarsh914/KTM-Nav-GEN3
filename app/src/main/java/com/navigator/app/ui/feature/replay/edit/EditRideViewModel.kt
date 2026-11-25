@@ -51,6 +51,10 @@ class EditRideViewModel(
     private val _events = Channel<EditEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    /** The ride was deleted from here: the page leaves as state (see ReplayViewModel.closed). */
+    private val _closed = MutableStateFlow(false)
+    val closed: StateFlow<Boolean> = _closed.asStateFlow()
+
     private var pending: Job? = null
     private var dirty = false
     private var merged = false
@@ -121,6 +125,7 @@ class EditRideViewModel(
             if (dirty) save()
             val gone = repo.softDelete(listOf(rideId))
             if (gone.isEmpty()) deleting = false else {
+                _closed.value = true
                 _events.send(EditEvent.Deleted(gone))
             }
         }

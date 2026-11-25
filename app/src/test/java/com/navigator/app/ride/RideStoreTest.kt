@@ -21,7 +21,8 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+// The plain Application: OpenDashApplication's launch work (orphan recovery, pruning) would race with these tests' files.
+@Config(sdk = [36], application = android.app.Application::class)
 class RideStoreTest {
     @get:Rule val tmp = TemporaryFolder()
     private lateinit var ctx: Context
@@ -72,6 +73,32 @@ class RideStoreTest {
         val pruned = store.pruneToLimit(1)
         assertEquals(listOf(b.id), pruned)
         assertEquals(setOf(a.id, c.id), store.list().map { it.id }.toSet())
+    }
+
+    @Test fun softDeleteOverLimitHidesTheOldestUnsavedAndRestoreBringsThemBack() {
+        val a = importRide(startMs = 1_000_000L)
+        val b = importRide(startMs = 2_000_000L)
+        val c = importRide(startMs = 3_000_000L)
+        store.setSaved(b.id, false); store.setSaved(c.id, false)
+        // a stays saved: it never counts toward the limit
+        val hidden = store.softDeleteOverLimit(1)
+        assertEquals(listOf(b.id), hidden)
+        assertEquals(setOf(a.id, c.id), store.list().map { it.id }.toSet())
+        assertTrue(store.trackFile(b.id).exists())
+        assertEquals(listOf(b.id), store.restore(hidden))
+        assertEquals(3, store.list().size)
+    }
+
+    @Test fun repositoryReportsALimitRemovalOnlyWhenSomethingWasHidden() = kotlinx.coroutines.runBlocking {
+        val repo = com.navigator.app.data.rides.RidesRepository(store, io = kotlinx.coroutines.Dispatchers.Unconfined)
+        val a = importRide(startMs = 1_000_000L); val b = importRide(startMs = 2_000_000L)
+        store.setSaved(a.id, false); store.setSaved(b.id, false)
+        repo.removeOverLimit(10, 10)
+        assertNull(repo.limitRemoval.value)
+        repo.removeOverLimit(1, 100)
+        assertEquals(com.navigator.app.data.rides.LimitRemoval(listOf(a.id), 100), repo.limitRemoval.value)
+        repo.consumeLimitRemoval()
+        assertNull(repo.limitRemoval.value)
     }
 
     // ---- rename / notes ----
@@ -205,6 +232,54 @@ class RideStoreTest {
         val tmpFile = File(store.trackFile("9").parentFile, "9.jsonl.tmp").apply { writeText("x") }
         store.recoverOrphans(100, 10)
         assertFalse(tmpFile.exists())
+    }
+
+    @Test fun anOrphanFinalisedAfterTheScanSnapshotIsKeptNotDeleted() {
+        val id = "777"
+        val short = pts(3, 700_000L)
+        store.trackFile(id).writeText(short.joinToString("\n") { RideJson.pointLine(it) } + "\n")
+        val stats = RideMetrics.summarize(short)
+        store.recoverOrphans(100, 10) {
+            // the recorder finalises the ride after the scan took its snapshot of the index
+            store.finalizeRide(RecordedRide(id, stats.startMs, stats.endMs, stats.distanceMeters, stats.durationSeconds))
+        }
+        assertTrue("a short ride the index now owns must not be treated as junk", store.trackFile(id).exists())
+        assertEquals(listOf(id), store.list().map { it.id })
+    }
+
+    @Test fun allocateIdAvoidsTheIndexTrackFilesTrimLeftoversAndActiveTracks() {
+        val now = System.currentTimeMillis()
+        val dir = store.trackFile("1").parentFile
+        // Block a run of ids, one reason each: index, track file, trim leftover, active recording.
+        for (n in now..now + 11) {
+            when ((n - now) % 4) {
+                0L -> store.finalizeRide(RecordedRide(n.toString(), 1, 2, 100, 10))
+                1L -> store.trackFile(n.toString()).writeText("x")
+                2L -> File(dir, "$n.jsonl.tmp").writeText("x")
+                else -> store.setActiveForTest(n.toString())
+            }
+        }
+        val blocked = (now..now + 11).map { it.toString() }.toSet()
+        val a = store.allocateId(); val b = store.allocateId()
+        assertFalse(a in blocked); assertFalse(b in blocked)
+        assertTrue("two allocations in the same millisecond differ", a != b)
+    }
+
+    @Test fun openTrackRefusesAnExistingFile() {
+        store.trackFile("31").writeText("keep\n")
+        assertTrue(runCatching { store.openTrack("31", null, null, null) }.isFailure)
+        assertEquals("keep\n", store.trackFile("31").readText())
+        store.markTrackClosed("31")
+    }
+
+    @Test fun savedIdsAreBackfilledSoARecoveredRideKeepsItsPin() {
+        val r = importRide(60) // imported rides are saved
+        val prefs = ctx.getSharedPreferences("ride_store", Context.MODE_PRIVATE)
+        prefs.edit().remove("saved_ids").commit() // as before the mirror existed
+        store.backfillSavedIds()
+        prefs.edit().remove("index").commit() // the index is lost: recovery rebuilds from the track
+        store.recoverOrphans(100, 10)
+        assertTrue(store.get(r.id)!!.saved)
     }
 
     // ---- duplicates ----

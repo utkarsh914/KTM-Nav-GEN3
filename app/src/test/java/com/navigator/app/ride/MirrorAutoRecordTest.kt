@@ -1,5 +1,7 @@
 package com.navigator.app.ride
 
+import com.navigator.app.nav.providers.NotificationNavProvider
+import com.navigator.app.notifications.NotificationRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
@@ -16,13 +18,6 @@ class MirrorRecordPolicyTest {
         assertEquals(MirrorPhase.Off, MirrorRecordPolicy.phase(mirrorEngine = false, guiding = true))
         assertEquals(MirrorPhase.Guiding, MirrorRecordPolicy.phase(true, true))
         assertEquals(MirrorPhase.Idle, MirrorRecordPolicy.phase(true, false))
-    }
-
-    @Test fun pausingTheDashDoesNotLookLikeTheTripEnding() {
-        assertTrue(MirrorRecordPolicy.guiding(raw = false, paused = true, last = true))
-        assertFalse("nothing was guiding before", MirrorRecordPolicy.guiding(raw = false, paused = true, last = false))
-        assertTrue(MirrorRecordPolicy.guiding(raw = true, paused = true, last = false))
-        assertFalse("not paused: the raw state rules", MirrorRecordPolicy.guiding(raw = false, paused = false, last = true))
     }
 
     @Test fun startsOnlyWhenGuidingAndAllowedAndNothingElseRecords() {
@@ -62,6 +57,32 @@ class MirrorAutoRecordControllerTest {
         assertEquals("still inside the grace", 0, e.stops)
         advanceTimeBy(2_000)
         assertEquals(1, e.stops)
+    }
+
+    @Test fun pausingTheDashDoesNotChangeWhetherMapsIsGuiding() {
+        NotificationRepository.setMapsGuidancePresent(true)
+        NotificationNavProvider.setPaused(true) // clears the mirrored turn, as a pause does
+        assertTrue(NotificationRepository.mapsGuidancePresent.value)
+        NotificationNavProvider.setPaused(false)
+        NotificationRepository.setMapsGuidancePresent(false)
+        assertFalse(NotificationRepository.mapsGuidancePresent.value)
+    }
+
+    @Test fun mapsEndingWhilePausedStopsTheRideAfterTheGrace() = runTest(UnconfinedTestDispatcher()) {
+        val engine = MutableStateFlow(true)
+        val maps = MutableStateFlow(false)
+        var starts = 0; var stops = 0
+        var session = RideSessionState()
+        MirrorAutoRecordController(
+            backgroundScope, MirrorRecordPolicy.phaseFlow(engine, maps), { session }, { true }, { true },
+            startRecording = { starts++; session = RideSessionState(active = true); true },
+            stopRecording = { stops++; session = RideSessionState() },
+        ).start()
+        maps.value = true
+        assertEquals(1, starts)
+        maps.value = false // Maps ended while the dash was paused: the pause no longer hides it
+        advanceTimeBy(121_000)
+        assertEquals(1, stops)
     }
 
     @Test fun aRestartInsideTheGraceIsTheSameRide() = runTest(UnconfinedTestDispatcher()) {

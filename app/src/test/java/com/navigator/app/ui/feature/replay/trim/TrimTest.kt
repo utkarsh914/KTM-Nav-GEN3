@@ -131,6 +131,7 @@ class TrimViewModelTest {
         val range = v.ready().range
         v.apply()
         assertEquals(listOf<TrimEvent>(TrimEvent.Trimmed(merged = false)), seen)
+        assertTrue("closes as state and stops spinning", v.ready().closed && !v.ready().applying)
         assertEquals(range.to - range.from + 1, store.get(r.id)!!.pointCount)
     }
 

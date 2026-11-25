@@ -13,13 +13,13 @@ import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
-import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.notifications.NotificationRepository
 import com.navigator.app.notify.RideSavedNotice
 import com.navigator.app.ride.AutoRecordController
 import com.navigator.app.ride.MirrorAutoRecordController
 import com.navigator.app.ride.MirrorRecordPolicy
+import com.navigator.app.ride.RideLimitPolicy
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideSession
 import com.navigator.app.ride.RideSource
@@ -27,8 +27,6 @@ import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.theme.AppFonts
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -71,11 +69,18 @@ class OpenDashApplication : Application() {
             runCatching {
                 val settings = AppSettings(this@OpenDashApplication)
                 val store = RideStore(this@OpenDashApplication)
+                store.backfillSavedIds()
                 store.recoverOrphans(
                     minDistanceMeters = settings.rideMinDistanceMeters,
                     minDurationSeconds = settings.rideMinDurationSeconds,
                 )
                 store.purgeDeleted(System.currentTimeMillis() - RideStore.UNDO_WINDOW_MS)
+                // A new phone holds transferred rides but no stored limit: don't prune them to the default.
+                if (!settings.hasStoredRideHistoryLimit()) {
+                    RideLimitPolicy.initial(
+                        null, store.list().count { !it.saved }, AppSettings.DEFAULT_RIDE_HISTORY_LIMIT,
+                    )?.let { settings.rideHistoryLimit = it }
+                }
                 store.pruneToLimit(settings.rideHistoryLimit)
                 store.backfillMovingStats()
             }.onFailure { AppLogger.log("Ride", "!! orphan recovery failed: $it") }
@@ -99,19 +104,11 @@ class OpenDashApplication : Application() {
             stopRecording = { RideRecordingService.stop(this) },
         ).start()
         // Mirror mode: Google Maps' guidance is the trip (Q11).
-        val guiding = kotlinx.coroutines.flow.flow {
-            var last = false
-            combine(
-                NotificationRepository.navGuidance, NotificationRepository.currentNavText, NotificationRepository.currentNavPackage,
-                NotificationNavProvider.paused,
-            ) { g, t, pkg, paused ->
-                MirrorRecordPolicy.guiding(pkg != null && (g != null || t != null), paused, last).also { last = it }
-            }.collect { emit(it) }
-        }
         MirrorAutoRecordController(
             scope = appScope,
-            phase = combine(container.settings.snapshot.map { it.engine == NavEngine.MIRROR }, guiding, MirrorRecordPolicy::phase)
-                .distinctUntilChanged(),
+            phase = MirrorRecordPolicy.phaseFlow(
+                container.settings.snapshot.map { it.engine == NavEngine.MIRROR }, NotificationRepository.mapsGuidancePresent,
+            ),
             session = { RideSession.state.value },
             recordingEnabled = { AppSettings(this).rideRecordingEnabled },
             locationGranted = ::hasLocationPermission,

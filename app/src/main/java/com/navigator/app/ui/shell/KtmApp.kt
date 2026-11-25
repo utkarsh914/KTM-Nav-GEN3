@@ -138,6 +138,24 @@ fun KtmApp(onQuit: () -> Unit) {
         onAction = { scope.launch { container.rides.restore(ids) } },
     )
 
+    // Lowering "Rides to keep" hid some rides: the Undo outlives the Recording page, so the shell offers it.
+    val limitRemoval by container.rides.limitRemoval.collectAsState()
+    LaunchedEffect(limitRemoval) {
+        val removal = limitRemoval ?: return@LaunchedEffect
+        container.rides.consumeLimitRemoval()
+        feedback.snackbar(
+            resources.getQuantityString(R.plurals.rides_removed_over_limit, removal.ids.size, removal.ids.size),
+            resources.getString(R.string.common_undo),
+            onDismiss = { container.appScope.launch { container.rides.purge(removal.ids) } },
+            onAction = {
+                container.appScope.launch {
+                    container.rides.restore(removal.ids)
+                    settings.update { rideHistoryLimit = removal.previousLimit }
+                }
+            },
+        )
+    }
+
     // Permission state is re-read whenever the app comes back to the front (the rider may have
     // changed it in system settings).
     val permissions = container.permissions
@@ -443,7 +461,7 @@ fun KtmApp(onQuit: () -> Unit) {
                                         onBack = { navController.popFrom(backStackEntry) },
                                         onEdit = { navController.push(Route.EditRide(id)) },
                                         onTrim = { navController.push(Route.TrimRide(id)) },
-                                        onDeleted = { ids -> navController.popFrom(backStackEntry); offerUndoDelete(ids) },
+                                        onDeleted = ::offerUndoDelete,
                                     )
                                     }
                                 }
@@ -453,15 +471,8 @@ fun KtmApp(onQuit: () -> Unit) {
                                         rideId = id,
                                         onBack = { navController.popFrom(backStackEntry) },
                                         onTrim = { navController.push(Route.TrimRide(id)) },
-                                        onDeleted = { ids ->
-                                            // The replay beneath shows a ride that is gone: leave it too.
-                                            navController.popFrom(backStackEntry)
-                                            val below = navController.currentBackStackEntry
-                                            if (below?.destination?.hasRoute<Route.RideReplay>() == true && below.toRoute<Route.RideReplay>().rideId == id) {
-                                                navController.popBackStack()
-                                            }
-                                            offerUndoDelete(ids)
-                                        },
+                                        // The page closes itself (state); the replay beneath sees the ride gone and leaves when it is shown.
+                                        onDeleted = ::offerUndoDelete,
                                     )
                                 }
                                 page<Route.PickPlace> { backStackEntry ->

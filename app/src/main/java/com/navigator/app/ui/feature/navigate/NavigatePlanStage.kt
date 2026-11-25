@@ -74,6 +74,7 @@ internal class PlanStage(
     val map: MapController,
     val feedback: Feedback,
     val places: PlacesRepository,
+    /** Saves and their Undo must outlive the page: the app scope. */
     val scope: CoroutineScope,
     val tripRunning: () -> Boolean,
     val onResume: () -> Unit,

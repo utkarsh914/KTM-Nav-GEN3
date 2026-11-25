@@ -75,7 +75,7 @@ class RideRecorder(private val context: Context) {
         this.destLabel = destLabel
         this.destLat = destLat
         this.destLng = destLng
-        val id = System.currentTimeMillis().toString()
+        val id = store.allocateId()
         val ht = HandlerThread("ride-recorder").also { it.start() }
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         try {

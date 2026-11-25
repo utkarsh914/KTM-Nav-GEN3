@@ -1,9 +1,11 @@
 package com.navigator.app.backup
 
 import android.content.Context
+import androidx.core.content.edit
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.PlacesJson
 import com.navigator.app.nav.destination.PlacesStore
+import com.navigator.app.ride.RideLimitPolicy
 import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
 import java.io.File
@@ -19,19 +21,28 @@ class BackupManager(context: Context) {
     private val places = PlacesStore(app)
     private val prefs get() = app.getSharedPreferences("opendash_pairing", Context.MODE_PRIVATE)
 
-    class Summary(val rides: Int, val ok: Boolean)
-    class Restored(val ridesAdded: Int, val placesAdded: Int, val settingsApplied: Int, val ok: Boolean)
+    /** [rides] were written; [skipped] were left out because their track is too large. */
+    class Summary(val rides: Int, val ok: Boolean, val skipped: Int = 0)
+    class Restored(
+        val ridesAdded: Int,
+        val placesAdded: Int,
+        val settingsApplied: Int,
+        val ok: Boolean,
+        /** The "Rides to keep" value written so the restored rides survive the next prune, or null. */
+        val limitRaisedTo: Int? = null,
+    )
 
     fun backup(out: OutputStream): Summary = try {
         val all = rides.list()
         val (recents, favorites) = places.exportRaw()
         val placesJson = JSONObject().put("recents", recents).put("favorites", favorites).toString()
-        BackupArchive.write(
+        val written = BackupArchive.write(
             out, all, { id -> rides.trackFile(id) }, placesJson, PrefsBackup.encode(prefs.all),
             System.currentTimeMillis(),
         )
-        AppLogger.log("Backup", "Backed up ${all.size} rides")
-        Summary(all.size, true)
+        val skipped = (all.size - written).coerceAtLeast(0)
+        AppLogger.log("Backup", "Backed up $written rides" + if (skipped > 0) ", skipped $skipped (too large or no track)" else "")
+        Summary(written, true, skipped)
     } catch (e: Exception) {
         AppLogger.log("Backup", "!! backup failed: ${e.javaClass.simpleName}")
         Summary(0, false)
@@ -79,14 +90,16 @@ class BackupManager(context: Context) {
                 // The file replaces the settings: what it does not mention returns to its default, not the old value.
                 PrefsBackup.absentFrom(entries).forEach { e.remove(it) }
                 PrefsBackup.applyTo(e, entries)
-                // A smaller history limit from the backup must not prune the rides just restored.
-                val have = rides.list().size
-                val limit = (entries["ride_history_limit"] as? Int) ?: AppSettings.DEFAULT_RIDE_HISTORY_LIMIT
-                if (limit < have) e.putInt("ride_history_limit", have.coerceAtMost(1_000))
                 e.commit()
             }
+            // Whatever was ticked, the next prune must not delete the rides just restored.
+            val limitRaisedTo = if (ridesAdded > 0) {
+                val limit = prefs.getInt("ride_history_limit", AppSettings.DEFAULT_RIDE_HISTORY_LIMIT)
+                RideLimitPolicy.raisedFor(rides.list().count { !it.saved }, limit)
+                    ?.also { limit -> prefs.edit { putInt("ride_history_limit", limit) } }
+            } else null
             AppLogger.log("Backup", "Restored: +$ridesAdded rides, +$placesAdded places, ${entries.size} settings")
-            Restored(ridesAdded, placesAdded, entries.size, true)
+            Restored(ridesAdded, placesAdded, entries.size, true, limitRaisedTo)
         } catch (e: Exception) {
             AppLogger.log("Backup", "!! restore failed: ${e.javaClass.simpleName}")
             Restored(0, 0, 0, false)

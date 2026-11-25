@@ -42,6 +42,14 @@ class BackupTest {
         assertEquals("""{"a":1}""", c.prefsJson)
     }
 
+    @Test fun anOverLimitTrackIsLeftOutAndCounted() {
+        val src = tmp.newFolder("big")
+        File(src, "111.jsonl").writeText("{\"lat\":1}\n")
+        java.io.RandomAccessFile(File(src, "222.jsonl"), "rw").use { it.setLength(BackupArchive.MAX_TRACK_BYTES + 1) }
+        val written = BackupArchive.write(ByteArrayOutputStream(), listOf(ride("111"), ride("222")), { File(src, "$it.jsonl") }, "{}", "{}", 1L)
+        assertEquals(1, written)
+    }
+
     private fun zip(vararg entries: Pair<String, String>): ByteArray {
         val bos = ByteArrayOutputStream()
         ZipOutputStream(bos).use { z -> entries.forEach { (n, b) -> z.putNextEntry(ZipEntry(n)); z.write(b.toByteArray()); z.closeEntry() } }

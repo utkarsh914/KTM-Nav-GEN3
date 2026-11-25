@@ -136,20 +136,20 @@ class SettingsB16bViewModelsTest {
         assertEquals(300, vm.ui.value.minDistanceM)
     }
 
-    @Test fun loweringTheHistoryLimitPrunesOnceWhenThePageIsLeft() = runTest(UnconfinedTestDispatcher()) {
+    @Test fun loweringTheHistoryLimitRemovesOnceWhenThePageIsLeft() = runTest(UnconfinedTestDispatcher()) {
         settings.update { rideHistoryLimit = 100 }
-        val pruned = mutableListOf<Int>()
-        val vm = RecordingViewModel(settings) { pruned += it }.also { it.ui.launchIn(backgroundScope) }
+        val pruned = mutableListOf<Pair<Int, Int>>()
+        val vm = RecordingViewModel(settings) { limit, previous -> pruned += limit to previous }.also { it.ui.launchIn(backgroundScope) }
         vm.set(RecordingField.HISTORY, 90); vm.set(RecordingField.HISTORY, 80)
         assertTrue("no prune while stepping", pruned.isEmpty())
         vm.commit()
-        assertEquals(listOf(80), pruned)
+        assertEquals(listOf(80 to 100), pruned)
     }
 
     @Test fun raisingOrKeepingTheLimitPrunesNothing() = runTest(UnconfinedTestDispatcher()) {
         settings.update { rideHistoryLimit = 50 }
-        val pruned = mutableListOf<Int>()
-        val vm = RecordingViewModel(settings) { pruned += it }.also { it.ui.launchIn(backgroundScope) }
+        val pruned = mutableListOf<Pair<Int, Int>>()
+        val vm = RecordingViewModel(settings) { limit, previous -> pruned += limit to previous }.also { it.ui.launchIn(backgroundScope) }
         vm.commit(); vm.set(RecordingField.HISTORY, 100); vm.commit()
         assertTrue(pruned.isEmpty())
     }

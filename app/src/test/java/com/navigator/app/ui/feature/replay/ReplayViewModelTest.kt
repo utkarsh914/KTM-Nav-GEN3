@@ -176,6 +176,7 @@ class ReplayViewModelTest {
         val seen = events(v)
         v.delete()
         assertEquals(listOf<ReplayEvent>(ReplayEvent.Deleted(listOf(r.id))), seen)
+        assertTrue("the page closes as state, not only by an event", v.closed.value)
         assertTrue(store.list().isEmpty())
     }
 

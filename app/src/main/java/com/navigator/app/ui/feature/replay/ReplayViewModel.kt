@@ -89,6 +89,10 @@ class ReplayViewModel(
     private val _events = Channel<ReplayEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    /** The ride was deleted from here: the page leaves as state, so a close that arrives while the app is away is not lost. */
+    private val _closed = MutableStateFlow(false)
+    val closed: StateFlow<Boolean> = _closed.asStateFlow()
+
     private var playJob: Job? = null
     private var deleting = false
 
@@ -224,7 +228,7 @@ class ReplayViewModel(
         deleting = true
         viewModelScope.launch {
             val gone = repo.softDelete(listOf(r.ride.id))
-            if (gone.isEmpty()) deleting = false else _events.send(ReplayEvent.Deleted(gone))
+            if (gone.isEmpty()) deleting = false else { _closed.value = true; _events.send(ReplayEvent.Deleted(gone)) }
         }
     }
 

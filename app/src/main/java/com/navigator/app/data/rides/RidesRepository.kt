@@ -14,6 +14,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -29,6 +32,9 @@ object RideSearch {
     }
 }
 
+/** Rides hidden because the rider lowered "Rides to keep"; Undo restores them and [previousLimit]. */
+data class LimitRemoval(val ids: List<String>, val previousLimit: Int)
+
 /** What the Rides screens read and do: a live list, search, and the delete/merge operations with their undo. */
 class RidesRepository(
     private val store: RideStore,
@@ -37,6 +43,21 @@ class RidesRepository(
 ) {
     /** Newest first, re-read whenever any ride changes. */
     val rides: Flow<List<RecordedRide>> = store.changes.map { withContext(io) { store.list() } }
+
+    private val _limitRemoval = MutableStateFlow<LimitRemoval?>(null)
+
+    /** Set when lowering the limit hid rides; the shell shows the Undo and calls [consumeLimitRemoval]. */
+    val limitRemoval: StateFlow<LimitRemoval?> = _limitRemoval.asStateFlow()
+
+    suspend fun removeOverLimit(limit: Int, previous: Int) {
+        val ids = withContext(io + NonCancellable) {
+            store.purgeDeleted(System.currentTimeMillis() - RideStore.UNDO_WINDOW_MS)
+            store.softDeleteOverLimit(limit)
+        }
+        if (ids.isNotEmpty()) _limitRemoval.value = LimitRemoval(ids, previous)
+    }
+
+    fun consumeLimitRemoval() { _limitRemoval.value = null }
 
     fun search(query: String): Flow<List<RecordedRide>> = rides.map { RideSearch.filter(it, query) }
 

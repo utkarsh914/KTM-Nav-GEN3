@@ -139,6 +139,7 @@ class EditRideViewModelTest {
         vm.delete()
         advanceTimeBy(1_000); runCurrent()
         assertEquals(listOf<EditEvent>(EditEvent.Deleted(listOf(r.id))), seen)
+        assertTrue("the page closes as state, not only by an event", vm.closed.value)
         assertTrue(store.list().isEmpty())
     }
 

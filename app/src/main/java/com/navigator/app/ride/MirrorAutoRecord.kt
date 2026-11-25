@@ -4,6 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /** Where mirror mode stands for recording: not the engine, between trips, or Google Maps is guiding. */
@@ -19,11 +21,9 @@ object MirrorRecordPolicy {
         else -> MirrorPhase.Idle
     }
 
-    /**
-     * Pausing the dash clears what Google Maps sent, which would look like the trip ending: while paused, a trip that was
-     * guiding stays guiding ([last] is the previous result).
-     */
-    fun guiding(raw: Boolean, paused: Boolean, last: Boolean): Boolean = if (paused) last || raw else raw
+    /** The trip is whatever Google Maps is doing, not what the dash shows: pausing the dash does not change it. */
+    fun phaseFlow(mirrorEngine: Flow<Boolean>, mapsGuidancePresent: Flow<Boolean>): Flow<MirrorPhase> =
+        combine(mirrorEngine, mapsGuidancePresent, ::phase).distinctUntilChanged()
 
     fun shouldStart(
         phase: MirrorPhase,

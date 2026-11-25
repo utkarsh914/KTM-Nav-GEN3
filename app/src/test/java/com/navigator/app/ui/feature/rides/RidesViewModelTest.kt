@@ -1,14 +1,19 @@
 package com.navigator.app.ui.feature.rides
 
 import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import com.navigator.app.data.rides.ImportResult
 import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.Gpx
 import com.navigator.app.ride.RidePoint
 import com.navigator.app.ride.RideStore
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.test.TestScope
@@ -29,11 +34,13 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+// The plain Application: OpenDashApplication's launch work (orphan recovery, pruning) would race with these tests' files.
+@Config(sdk = [36], application = android.app.Application::class)
 class RidesViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var store: RideStore
     private lateinit var vm: RidesViewModel
+    private val viewModels = ViewModelStore()
 
     @Before fun setUp() {
         Dispatchers.setMain(dispatcher)
@@ -41,7 +48,12 @@ class RidesViewModelTest {
         File(ctx.filesDir, "rides").deleteRecursively()
         ctx.getSharedPreferences("ride_store", Context.MODE_PRIVATE).edit().clear().commit()
         store = RideStore(ctx).also { it.resetStaticsForTest() }
-        vm = RidesViewModel(RidesRepository(store, io = dispatcher))
+        vm = RidesViewModel(RidesRepository(store, io = dispatcher), CoroutineScope(SupervisorJob() + dispatcher))
+        // Held in a store so a test can clear the view model the way leaving the page does.
+        vm = ViewModelProvider(viewModels, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = vm as T
+        })[RidesViewModel::class.java]
     }
 
     @After fun tearDown() = Dispatchers.resetMain()
@@ -98,6 +110,29 @@ class RidesViewModelTest {
         assertEquals(listOf(b.id), store.list().map { it.id })
         vm.undoDelete(deleted.ids)
         assertEquals(setOf(a.id, b.id), store.list().map { it.id }.toSet())
+    }
+
+    @Test fun undoAndPurgeStillWorkAfterThePageIsGone() = runTest(dispatcher) {
+        val a = ride(1_000_000L, "A"); val b = ride(2_000_000L, "B")
+        store.softDelete(listOf(a.id, b.id))
+        viewModels.clear() // Back popped Rides: the snackbar and its Undo live on in the shell
+        vm.undoDelete(listOf(a.id))
+        assertEquals(listOf(a.id), store.list().map { it.id })
+        vm.purge(listOf(b.id))
+        assertFalse(store.trackFile(b.id).exists())
+    }
+
+    @Test fun starringAMergedRideEndsTheMergeOffer() = runTest(dispatcher) {
+        watch()
+        val a = ride(1_000_000L, "A"); val b = ride(2_000_000L, "B")
+        val merged = (store.mergeRides(listOf(a.id, b.id)) as com.navigator.app.ride.MergeResult.Merged).ride
+        val plain = ride(5_000_000L, "C")
+        val events = mutableListOf<RidesEvent>()
+        vm.events.onEach { events += it }.launchIn(backgroundScope)
+        vm.toggleStar(plain.id)
+        assertTrue(events.isEmpty())
+        vm.toggleStar(merged.id)
+        assertEquals(listOf<RidesEvent>(RidesEvent.MergedRideChanged(merged.id)), events)
     }
 
     @Test fun purgeAfterTheOfferRemovesThemForGood() = runTest(dispatcher) {

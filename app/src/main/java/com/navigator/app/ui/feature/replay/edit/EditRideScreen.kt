@@ -23,7 +23,7 @@ import com.navigator.app.ui.shell.MERGE_OFFER
 import com.navigator.app.ui.shell.PopWhenResumed
 
 /**
- * The edit page: wires [EditRideContent] to its ViewModel. [onDeleted] leaves and offers Undo (the shell owns the
+ * The edit page: wires [EditRideContent] to its ViewModel. [onDeleted] offers Undo (the shell owns the
  * snackbar); [onTrim] opens the trim page. What was typed is saved when the page is left, whichever way.
  */
 @Composable
@@ -53,7 +53,8 @@ fun EditRideScreen(
             }
         }
     }
-    PopWhenResumed(gone, onBack)
+    val closed by vm.closed.collectAsState()
+    PopWhenResumed(gone || closed, onBack)
     DisposableEffect(vm) { onDispose { vm.flush() } }
 
     EditRideContent(

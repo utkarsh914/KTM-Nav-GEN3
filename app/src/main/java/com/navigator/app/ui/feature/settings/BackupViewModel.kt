@@ -30,9 +30,9 @@ data class BackupUi(val busy: Boolean = false, val restore: RestoreState? = null
 
 /** A result the page tells the rider about in a snackbar, with the action that helps. */
 sealed interface BackupEvent {
-    data class BackedUp(val rides: Int, val uri: Uri) : BackupEvent
+    data class BackedUp(val rides: Int, val uri: Uri, val skipped: Int = 0) : BackupEvent
     data object BackupFailed : BackupEvent
-    data class Restored(val parts: List<UiText>, val restartNeeded: Boolean) : BackupEvent
+    data class Restored(val parts: List<UiText>, val restartNeeded: Boolean, val note: UiText? = null) : BackupEvent
     data class RestoreFailed(val uri: Uri, val rides: Boolean, val places: Boolean, val settings: Boolean) : BackupEvent
 }
 
@@ -60,7 +60,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         viewModelScope.launch {
             val r = gateway.backup(uri)
             _ui.update { it.copy(busy = false, restoring = false) }
-            _events.send(if (r.ok) BackupEvent.BackedUp(r.rides, uri) else BackupEvent.BackupFailed)
+            _events.send(if (r.ok) BackupEvent.BackedUp(r.rides, uri, r.skipped) else BackupEvent.BackupFailed)
         }
     }
 
@@ -90,7 +90,10 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
             _ui.update { it.copy(busy = false, restoring = false, restartPending = it.restartPending || (r.ok && settings)) }
             if (r.ok) onRestored()
             _events.send(
-                if (r.ok) BackupEvent.Restored(restoredParts(r, rides, places, settings), restartNeeded = settings)
+                if (r.ok) BackupEvent.Restored(
+                    restoredParts(r, rides, places, settings), restartNeeded = settings,
+                    note = r.limitRaisedTo?.let { UiText.Res(R.string.backup_limit_raised, listOf(it)) },
+                )
                 else BackupEvent.RestoreFailed(uri, rides, places, settings),
             )
         }

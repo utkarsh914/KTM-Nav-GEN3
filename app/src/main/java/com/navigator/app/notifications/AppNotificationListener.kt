@@ -129,6 +129,8 @@ class AppNotificationListener : NotificationListenerService() {
             if (GoogleNavSdkController.isActive(this, settings) ||
                 GoogleNavSdkProvider.isTripInProgress
             ) return
+            // Before anything that can skip the update (pause, beeps): the trip exists whatever the dash is doing.
+            NotificationRepository.setMapsGuidancePresent(true)
             val navText = if (title.isNotBlank()) "$title $text" else text
             // The title is only the dash's distance field when it looks like a distance.
             val distanceTitle = NavSubtextParser.dashDistanceLabel(title)
@@ -280,6 +282,7 @@ class AppNotificationListener : NotificationListenerService() {
             // The phone's mirror home clears together with the dash (when the debounced end
             // fires), not on every transient remove+repost; if no end is pending (paused /
             // not navigating) there is nothing to wait for, so clear now.
+            NotificationRepository.setMapsGuidancePresent(false)
             if (!NotificationNavProvider.pushRemoved()) NotificationRepository.clearNav()
         }
     }

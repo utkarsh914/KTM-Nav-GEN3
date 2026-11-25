@@ -30,6 +30,7 @@ import com.navigator.app.ui.components.DialogAction
 import com.navigator.app.ui.components.KtmDialog
 import com.navigator.app.ui.feature.record.rememberStartRecording
 import com.navigator.app.ui.shell.LocalFeedback
+import com.navigator.app.ui.shell.MERGE_OFFER
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -66,6 +67,7 @@ fun RidesScreen(onOpenRide: (String) -> Unit, onMerge: (List<String>) -> Unit, o
                     onAction = { vm.undoDelete(event.ids) },
                     onDismiss = { vm.purge(event.ids) },
                 )
+                is RidesEvent.MergedRideChanged -> feedback.endOffer(MERGE_OFFER + event.id)
                 is RidesEvent.Imported -> feedback.snackbar(
                     when (val r = event.result) {
                         is ImportResult.Imported -> resources.getString(

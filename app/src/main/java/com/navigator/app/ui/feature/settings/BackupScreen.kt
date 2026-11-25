@@ -51,7 +51,9 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         vm.events.collect { event ->
             when (event) {
                 is BackupEvent.BackedUp -> feedback.snackbar(
-                    resources.getQuantityString(R.plurals.backup_done, event.rides, event.rides), resources.getString(R.string.backup_share),
+                    resources.getQuantityString(R.plurals.backup_done, event.rides, event.rides) +
+                        if (event.skipped > 0) resources.getQuantityString(R.plurals.backup_skipped, event.skipped, event.skipped) else "",
+                    resources.getString(R.string.backup_share),
                     onAction = {
                         val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, event.uri)
                             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -62,7 +64,8 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     resources.getString(R.string.backup_failed), resources.getString(R.string.backup_retry), tag = RETRY_OFFER, onAction = { startBackup() },
                 )
                 is BackupEvent.Restored -> {
-                    val message = resources.getString(R.string.backup_restored, event.parts.joinToString(", ") { it.text(resources) })
+                    val message = resources.getString(R.string.backup_restored, event.parts.joinToString(", ") { it.text(resources) }) +
+                        (event.note?.let { " · " + it.text(resources) } ?: "")
                     if (event.restartNeeded) {
                         feedback.snackbar(message, resources.getString(R.string.backup_restart_now), onAction = { AppRestart.now(context) })
                     } else feedback.snackbar(message)

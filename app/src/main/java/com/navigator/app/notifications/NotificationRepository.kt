@@ -37,6 +37,17 @@ object NotificationRepository {
     private val _lastUpdateMs = MutableStateFlow(0L)
     val lastUpdateMs: StateFlow<Long> = _lastUpdateMs
 
+    /**
+     * Whether Google Maps (or the chosen nav app) has a navigation notification up. Unlike the fields above it is not
+     * touched by pausing the dash or by [clearNav]: it says whether the trip exists, which mirror recording follows.
+     */
+    private val _mapsGuidancePresent = MutableStateFlow(false)
+    val mapsGuidancePresent: StateFlow<Boolean> = _mapsGuidancePresent
+
+    fun setMapsGuidancePresent(present: Boolean) {
+        _mapsGuidancePresent.value = present
+    }
+
     /** Whether the notification listener is currently bound by the system. */
     private val _listenerConnected = MutableStateFlow(false)
     val listenerConnected: StateFlow<Boolean> = _listenerConnected

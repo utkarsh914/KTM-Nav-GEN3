@@ -7,7 +7,9 @@ import com.navigator.app.app.AppContainer
 import com.navigator.app.data.rides.ImportResult
 import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.ride.RecordedRide
+import com.navigator.app.ride.RideSource
 import java.io.InputStream
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +50,9 @@ sealed interface RidesEvent {
     data class Deleted(val ids: List<String>) : RidesEvent
 
     data class Imported(val result: ImportResult) : RidesEvent
+
+    /** A merged ride was starred or unstarred: the merge's Undo offer ends (Undo would delete a ride the rider just edited). */
+    data class MergedRideChanged(val id: String) : RidesEvent
 }
 
 private data class Local(
@@ -58,7 +63,8 @@ private data class Local(
     val selected: Set<String> = emptySet(),
 )
 
-class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
+/** [appScope] runs Undo and purge: the shell's snackbar outlives this page and its view model. */
+class RidesViewModel(private val repo: RidesRepository, private val appScope: CoroutineScope) : ViewModel() {
     private val local = MutableStateFlow(Local())
     private val _events = Channel<RidesEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -113,6 +119,7 @@ class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
 
     fun toggleStar(id: String) {
         val ride = rides.firstOrNull { it.id == id } ?: return
+        endMergeOfferFor(listOf(ride))
         viewModelScope.launch { repo.setSaved(id, !ride.saved) }
     }
 
@@ -121,7 +128,12 @@ class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
         val ids = ui.value?.selected.orEmpty()
         val chosen = rides.filter { it.id in ids }
         val star = RideSelection.starTarget(chosen)
+        endMergeOfferFor(chosen.filter { it.saved != star })
         viewModelScope.launch { chosen.filter { it.saved != star }.forEach { repo.setSaved(it.id, star) } }
+    }
+
+    private fun endMergeOfferFor(changing: List<RecordedRide>) {
+        changing.filter { it.source == RideSource.MERGED }.forEach { _events.trySend(RidesEvent.MergedRideChanged(it.id)) }
     }
 
     fun deleteSelected() {
@@ -135,12 +147,12 @@ class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
     }
 
     fun undoDelete(ids: List<String>) {
-        viewModelScope.launch { repo.restore(ids) }
+        appScope.launch { repo.restore(ids) }
     }
 
     /** The Undo offer is over (taken, replaced or timed out): nothing more to restore. */
     fun purge(ids: List<String>) {
-        viewModelScope.launch { repo.purge(ids) }
+        appScope.launch { repo.purge(ids) }
     }
 
     fun importGpx(open: () -> InputStream?, name: String?) {
@@ -150,7 +162,7 @@ class RidesViewModel(private val repo: RidesRepository) : ViewModel() {
     companion object {
         fun factory(container: AppContainer) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = RidesViewModel(container.rides) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = RidesViewModel(container.rides, container.appScope) as T
         }
     }
 }

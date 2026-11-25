@@ -281,6 +281,8 @@ class AppSettings(context: Context) {
         set(value) = pairingPrefs.edit()
             .putInt(KEY_RIDE_HISTORY_LIMIT, value.coerceIn(RIDE_HISTORY_LIMIT_MIN, RIDE_HISTORY_LIMIT_MAX)).apply()
 
+    fun hasStoredRideHistoryLimit(): Boolean = pairingPrefs.contains(KEY_RIDE_HISTORY_LIMIT)
+
     /**
      * Which navigation source feeds the dash. [NAV_PROVIDER_NOTIFICATION] mirrors
      * another nav app's notifications (offline-capable, current default);

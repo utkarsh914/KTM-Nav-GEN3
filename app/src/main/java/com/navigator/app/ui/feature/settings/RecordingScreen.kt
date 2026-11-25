@@ -14,7 +14,7 @@ import com.navigator.app.app.appContainer
 /** The Recording page: [RecordingContent] over its view model, with the type-a-number sheet. */
 @Composable
 fun RecordingScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val vm: RecordingViewModel = viewModel(factory = RecordingViewModel.factory(LocalContext.current.appContainer, LocalContext.current.applicationContext))
+    val vm: RecordingViewModel = viewModel(factory = RecordingViewModel.factory(LocalContext.current.appContainer))
     val ui by vm.ui.collectAsState()
     var editing by rememberSaveable { mutableStateOf<RecordingField?>(null) }
     RecordingContent(

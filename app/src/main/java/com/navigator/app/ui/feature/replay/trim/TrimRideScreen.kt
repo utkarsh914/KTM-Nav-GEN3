@@ -45,7 +45,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
     val vm: TrimViewModel = viewModel(factory = TrimViewModel.factory(rideId, container))
     val ui by vm.ui.collectAsState()
     val vanished by vm.vanished.collectAsState()
-    PopWhenResumed(vanished, onBack)
+    PopWhenResumed(vanished || (ui as? TrimUi.Ready)?.closed == true, onBack)
     val map = rememberMapController(retainedNav, LocationMarkerStyle.fromId(container.settings.legacy.locationMarkerStyle))
     val mapReady by map.ready.collectAsState()
     var insets by remember { mutableStateOf(MapInsets()) }
@@ -56,7 +56,7 @@ fun TrimRideScreen(rideId: String, retainedNav: RetainedNavigationView, onBack: 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
-                is TrimEvent.Trimmed -> { if (event.merged) feedback.endOffer(MERGE_OFFER + rideId); onBack() }
+                is TrimEvent.Trimmed -> if (event.merged) feedback.endOffer(MERGE_OFFER + rideId)
             }
         }
     }

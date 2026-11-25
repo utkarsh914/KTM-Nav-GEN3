@@ -38,6 +38,8 @@ sealed interface TrimUi {
         val applying: Boolean = false,
         /** The store refused: shown on the page, under the button's reason. */
         val failed: Boolean = false,
+        /** The cut is stored: the page leaves (as state, so a close that arrives while the app is away is not lost). */
+        val closed: Boolean = false,
     ) : TrimUi {
         val canApply: Boolean get() = range.changed && settled && kept != null && !applying
     }
@@ -117,7 +119,10 @@ class TrimViewModel(
         _ui.value = r.copy(applying = true, failed = false)
         viewModelScope.launch {
             val trimmed = repo.trim(rideId, r.range.from, r.range.to, expectedCount = r.points.size)
-            if (trimmed != null) _events.send(TrimEvent.Trimmed(r.ride.source == RideSource.MERGED))
+            if (trimmed != null) {
+                _events.send(TrimEvent.Trimmed(r.ride.source == RideSource.MERGED))
+                ready()?.let { _ui.value = it.copy(applying = false, closed = true) }
+            }
             else if (repo.get(rideId) == null) { _ui.value = TrimUi.Loading; _vanished.value = true }
             else ready()?.let { _ui.value = it.copy(applying = false, failed = true) }
         }

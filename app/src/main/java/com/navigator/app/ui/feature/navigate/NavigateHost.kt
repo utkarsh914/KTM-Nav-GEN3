@@ -828,7 +828,7 @@ fun NavigateHost(
         pickingStop = pickingStop, stopCandidate = stopCandidate,
         showResumePill = navState.sessionState.isActiveNav() && leftNavManually, leftInsetPx = { planInsets.value.first },
         mapReadyForControls = available && navReady, mapBearing = mapBearing, map = map, feedback = feedback,
-        places = places, scope = scope, tripRunning = ::tripRunning,
+        places = places, scope = container.appScope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
         onInsets = { left, bottom -> planInsets.value = left to bottom },
         onAskReplace = { replaceRequest = it }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
