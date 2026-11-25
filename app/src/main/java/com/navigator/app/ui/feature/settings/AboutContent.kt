@@ -34,6 +34,7 @@ class AboutActions(
     val onSymbols: () -> Unit,
     val onCalibration: () -> Unit,
     val onOverlay: (Boolean) -> Unit,
+    val onPresenceTest: () -> Unit = {},
 )
 
 /** ST9: developer tools grouped and described in plain words; the overlay shows in debug builds only. Stateless. */
@@ -81,6 +82,11 @@ fun AboutContent(ui: AboutUi, actions: AboutActions, modifier: Modifier = Modifi
                 stringResource(R.string.about_overlay), ui.overlay, actions.onOverlay,
                 supporting = stringResource(R.string.about_overlay_hint), supportingLines = 2,
                 badge = stringResource(R.string.about_debug_badge),
+            )
+            ListDivider(withIcon = false)
+            ListRow(
+                title = "Bike presence test", supporting = "RF4b spike: associate the bike, then switch the ignition on and off with the app closed.",
+                supportingLines = 2, onClick = actions.onPresenceTest,
             )
         }
     }
