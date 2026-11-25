@@ -73,6 +73,15 @@ class AppSettings(context: Context) {
         editor.remove(KEY_RETIRED_BRAND).apply()
     }
 
+    /**
+     * A hard quit stands until the rider opens the app: nothing starts the bike link, a recording or the dash feed by
+     * itself (boot, Bluetooth, the bike appearing). Device-local: the `device_` prefix keeps it out of backups, and it is
+     * written synchronously because the process may end right after the quit.
+     */
+    var quitUntilOpen: Boolean
+        get() = prefs.getBoolean(KEY_QUIT_UNTIL_OPEN, false)
+        set(value) { prefs.edit(commit = true) { putBoolean(KEY_QUIT_UNTIL_OPEN, value) } }
+
     /** Whether the first-run onboarding (name + permissions) has been completed. */
     var onboardingComplete: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
@@ -413,6 +422,7 @@ class AppSettings(context: Context) {
         private const val KEY_DASH_PREVIEW_OVERLAY = "dash_preview_overlay"
         private const val KEY_BONDED_ADDRESS = "bonded_device_address"
         private const val KEY_BONDED_NAME = "bonded_device_name"
+        private const val KEY_QUIT_UNTIL_OPEN = "device_quit_until_open"
         private const val KEY_BONDED_LAST_SEEN = "bonded_last_seen_ms"
         private const val KEY_BONDED_PAIRED = "bonded_paired_ms"
 

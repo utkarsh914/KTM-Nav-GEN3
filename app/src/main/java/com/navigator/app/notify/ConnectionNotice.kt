@@ -10,7 +10,7 @@ enum class ConnectionAction { TURN_ON, REPAIR, QUIT }
 
 data class ConnectionContent(
     val title: String,
-    /** The second line: the likely fix; none while connected with nothing to add (SY5). */
+    /** The second line: the likely fix; none while connected (SY5). */
     val text: String?,
     val actions: List<ConnectionAction>,
     /** A real problem gets one heads-up on the alert channel; the other states stay silent. */
@@ -18,19 +18,12 @@ data class ConnectionContent(
 )
 
 object ConnectionNoticeContent {
-    /**
-     * Whether the ongoing notification is re-posted for the one-liner: when the line changed, including back to
-     * none (a trip or recording ended), so the old line does not stay. Never off a connected link.
-     */
-    fun repostForLine(connected: Boolean, line: String?, last: String?): Boolean = connected && line != last
-
-    /** [mirrorLine] is the "Mirroring to dash · 350 m · Turn right · ● Rec" one-liner; only a connected link shows it. */
-    fun of(notice: ConnectionNotice, mirrorLine: String?, res: Resources, bikeName: String? = null): ConnectionContent = when (notice) {
+    fun of(notice: ConnectionNotice, res: Resources, bikeName: String? = null): ConnectionContent = when (notice) {
         ConnectionNotice.CONNECTING -> ConnectionContent(
             named(res, R.string.conn_connecting, R.string.conn_connecting_named, bikeName), res.getString(R.string.conn_connecting_fix), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.CONNECTED -> ConnectionContent(
-            named(res, R.string.conn_connected, R.string.conn_connected_named, bikeName), mirrorLine, listOf(ConnectionAction.QUIT), alert = false,
+            named(res, R.string.conn_connected, R.string.conn_connected_named, bikeName), null, listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.RECONNECTING -> ConnectionContent(
             named(res, R.string.conn_reconnecting, R.string.conn_reconnecting_named, bikeName), res.getString(R.string.conn_reconnecting_fix), listOf(ConnectionAction.QUIT), alert = false,
@@ -51,9 +44,4 @@ object ConnectionNoticeContent {
     /** The title with the bike's name when it is known (SY5): which bike, not just "the dash". */
     private fun named(res: Resources, plain: Int, withName: Int, name: String?): String =
         if (name.isNullOrBlank()) res.getString(plain) else res.getString(withName, name)
-
-    /** "Mirroring to dash · 350 m · Turn right · ● Rec" from whatever parts are known. */
-    fun mirrorLine(toTurn: String?, turn: String?, recording: String?, res: Resources): String =
-        listOfNotNull(res.getString(R.string.conn_mirroring), toTurn, turn, recording?.let { res.getString(R.string.live_rec, it) })
-            .joinToString(" \u00b7 ")
 }

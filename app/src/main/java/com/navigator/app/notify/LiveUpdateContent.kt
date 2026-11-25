@@ -33,6 +33,8 @@ data class LiveInput(
     val stopMarks: List<Int> = emptyList(),
     /** Route length in metres, when known from the route itself. */
     val routeTotalM: Int = 0,
+    /** Between guided legs (a stop was added or removed and the route is being re-planned): the last figures stay. */
+    val updating: Boolean = false,
 )
 
 /** What the guidance notification says. [turn] is the dash glyph for the large icon. */
@@ -69,6 +71,7 @@ object LiveUpdateBuilder {
         val title = when {
             overspeed -> res.getString(R.string.live_overspeed, input.overspeedKmh)
             rerouting -> res.getString(R.string.live_rerouting)
+            input.updating -> res.getString(R.string.live_updating)
             !enroute -> res.getString(R.string.live_navigating)
             else -> turnLine
         }
@@ -78,6 +81,7 @@ object LiveUpdateBuilder {
             ).joinToString(SEP)
             enroute -> tripLine.ifEmpty { res.getString(R.string.live_guidance_active) }
             rerouting -> tripLine.ifEmpty { res.getString(R.string.live_finding_route) }
+            input.updating -> tripLine.ifEmpty { res.getString(R.string.live_finding_route) }
             else -> res.getString(R.string.live_calculating)
         }
 
@@ -113,10 +117,17 @@ object LiveChips {
     fun pick(
         overspeedKmh: Int?, toTurn: String?, recording: String?, eta: String?, rerouting: Boolean, res: Resources,
     ): String? = when {
-        overspeedKmh != null -> res.getString(R.string.live_chip_speed, overspeedKmh)
+        // The unit goes before the number does: "125" says more than "125 km/".
+        overspeedKmh != null -> fit(res.getString(R.string.live_chip_speed, overspeedKmh)) ?: overspeedKmh.toString()
         rerouting -> res.getString(R.string.live_chip_reroute)
-        toTurn != null -> toTurn
+        // A decimal is the first thing to go: "123 km" is still true, "123.4 k" is not.
+        toTurn != null -> fit(toTurn) ?: fit(toTurn.replace(DECIMALS, ""))
         recording != null -> recording
-        else -> eta
-    }?.take(MAX)
+        else -> eta?.let { fit(it) ?: fit(it.replace(MERIDIEM, "")) }
+    }?.takeIf { it.length <= MAX }
+
+    private fun fit(text: String): String? = text.takeIf { it.length <= MAX }
+
+    private val DECIMALS = Regex("""\.\d+""")
+    private val MERIDIEM = Regex("""\s*[ap]\.?m\.?$""", RegexOption.IGNORE_CASE)
 }

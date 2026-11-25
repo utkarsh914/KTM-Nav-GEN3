@@ -201,4 +201,8 @@ class BackupTest {
             PrefsBackup.decode("""{"brand":{"t":"s","v":"husqvarna"},"theme_mode":{"t":"s","v":"dark"}}"""),
         )
     }
+
+    @Test fun aStandingQuitNeverLeavesThePhone() {
+        assertTrue(PrefsBackup.isExcluded("device_quit_until_open"))
+    }
 }

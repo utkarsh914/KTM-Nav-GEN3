@@ -36,6 +36,11 @@ object RideSavedNotice {
         }
     }
 
+    /** The "View" button does not dismiss the row by itself: opening the ride does. */
+    fun cancel(context: Context) {
+        runCatching { context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID) }
+    }
+
     private fun post(context: Context, ride: RecordedRide) {
         runCatching {
             NotificationChannels.ensure(context, NotificationChannels.RIDE_SAVED)

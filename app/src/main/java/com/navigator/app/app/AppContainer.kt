@@ -50,6 +50,9 @@ interface AppContainer {
     val connection: ConnectionRepository
     val places: PlacesRepository
 
+    /** The hard quit (Settings' Quit row and every notification Quit button). */
+    val quit: QuitController
+
     /** A shared Google Maps link being resolved; app-scoped so it survives leaving the Navigate tab. */
     val sharedLink: SharedLinkController
 
@@ -105,6 +108,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
         )
     }
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
+    override val quit by lazy { QuitController.create(appContext, trip, connection) { activityHolder.current } }
     override val permissions by lazy { PermissionsRepository(appContext, settings, appScope) }
     override val mirror by lazy { MirrorRepository(permissions) }
     override val rides by lazy { RidesRepository(RideStore(appContext)) }

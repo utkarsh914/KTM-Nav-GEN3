@@ -106,6 +106,8 @@ class AppNotificationListener : NotificationListenerService() {
     private val lastMessageText = ConcurrentHashMap<String, String>()
 
     private fun handlePosted(sbn: StatusBarNotification) {
+        // A quit stands until the rider reopens the app: nothing is mirrored, beeped or recorded in the meantime.
+        if (settings.quitUntilOpen) return
         val packageName = sbn.packageName
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()

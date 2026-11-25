@@ -9,7 +9,6 @@ import com.navigator.app.R
 import com.navigator.app.app.AppIntents
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.ride.RecordRideShortcutActivity
-import com.navigator.app.ui.MainActivity
 
 /**
  * Launcher shortcuts (long-press the app icon, SY6): Record a ride (starts recording without opening the app, the
@@ -76,11 +75,13 @@ object AppShortcuts {
             if (!ShortcutManagerCompat.addDynamicShortcuts(app, shortcuts)) {
                 AppLogger.log("Places", "shortcut update rate-limited; will retry at next start")
             }
+            // A copy the rider pinned keeps the intent it was pinned with: update it too, so an old one reaches the app's own entry.
+            runCatching { ShortcutManagerCompat.updateShortcuts(app, shortcuts) }
         }.onFailure { AppLogger.log("Places", "shortcut sync failed: ${it.javaClass.simpleName}") }
     }
 
     /** Reach a running singleTask activity through onNewIntent instead of letting the launcher clear and recreate the task. */
-    private fun mainIntent(app: Context) = Intent(app, MainActivity::class.java)
+    private fun mainIntent(app: Context) = AppIntents.internal(app)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
     /** Tell the launcher a shortcut was used, so it ranks it (and keeps it) properly. */

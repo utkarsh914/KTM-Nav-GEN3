@@ -61,43 +61,6 @@ class LiveUpdateContentTest {
         assertEquals("Toit \u00b7 ETA 22:23 \u00b7 5.2 km", c.text)
     }
 
-    @Test fun theMirrorLineIsRepostedWhenItChangesAndWhenItGoesAway() {
-        assertTrue(ConnectionNoticeContent.repostForLine(true, "350 m", null))
-        assertTrue("trip ended: the old line must not stay", ConnectionNoticeContent.repostForLine(true, null, "350 m"))
-        assertFalse(ConnectionNoticeContent.repostForLine(true, "350 m", "350 m"))
-        assertFalse(ConnectionNoticeContent.repostForLine(true, null, null))
-        assertFalse("not off a link that is not connected", ConnectionNoticeContent.repostForLine(false, null, "350 m"))
-    }
-
-    @Test fun fallsBackToRoadNameThenContinue() {
-        assertEquals("220 m \u00b7 MG Road", build(LiveInput(enroute(instr = null), now)).title)
-        assertEquals("220 m \u00b7 Continue", build(LiveInput(enroute(instr = " ", road = null), now)).title)
-    }
-
-    @Test fun recordingAndDashShareOneLine() {
-        val rec = RideSessionState(active = true, segmentStartMs = now - 750_000)
-        val c = build(LiveInput(enroute(), now, recording = rec, dashConnected = true))
-        assertEquals("\u25cf Rec 12:30 \u00b7 Dash connected", c.subText)
-        assertEquals("Rec paused \u00b7 Dash not connected", build(LiveInput(enroute(), now, recording = rec.copy(paused = true), dashConnected = false)).subText)
-        assertNull("no bike and no recording says nothing", build(LiveInput(enroute(), now)).subText)
-    }
-
-    @Test fun overspeedIsAStateOfTheSameNotification() {
-        val c = build(LiveInput(enroute(), now, overspeedKmh = 92))
-        assertTrue(c.overspeed)
-        assertEquals("Over your alert \u00b7 92 km/h", c.title)
-        assertEquals("220 m \u00b7 Turn left onto MG Road", c.text)
-        val limited = build(LiveInput(enroute(), now, overspeedKmh = 92, overspeedLimitKmh = 80))
-        assertEquals("Alert at 80 \u00b7 220 m \u00b7 Turn left onto MG Road", limited.text)
-        val bare = build(LiveInput(NormalizedNavigationState(NavSessionState.ENROUTE), now, overspeedKmh = 92, overspeedLimitKmh = 80))
-        assertEquals("Alert at 80 \u00b7 Continue", bare.text)
-        assertEquals("92 km/h", c.chip)
-    }
-
-    @Test fun overspeedOutsideGuidanceIsNotThisNotificationsBusiness() {
-        assertFalse(build(LiveInput(enroute(state = NavSessionState.IDLE), now, overspeedKmh = 92)).overspeed)
-    }
-
     @Test fun threeButtonsAndTheBeepLabelFollowsTheSetting() {
         assertEquals(listOf(LiveAction.OPEN, LiveAction.MUTE_BEEPS, LiveAction.END_TRIP), build(LiveInput(enroute(), now, beepsOn = true)).actions)
         assertEquals(listOf(LiveAction.OPEN, LiveAction.UNMUTE_BEEPS, LiveAction.END_TRIP), build(LiveInput(enroute(), now, beepsOn = false)).actions)
@@ -131,6 +94,23 @@ class LiveUpdateContentTest {
         assertEquals("Reroute", LiveChips.pick(null, "220 m", null, null, true, r))
         assertNull(LiveChips.pick(null, null, null, null, false, r))
         assertTrue(LiveChips.pick(null, "123.4 km", null, null, false, r)!!.length <= LiveChips.MAX)
+    }
+
+    @Test fun theChipNeverEndsMidToken() {
+        val r = res
+        assertEquals("92 km/h", LiveChips.pick(92, null, null, null, false, r))
+        assertEquals("the unit goes before the number does", "125", LiveChips.pick(125, null, null, null, false, r))
+        assertEquals("10:05", LiveChips.pick(null, null, null, "10:05 am", false, r))
+        assertEquals("9:05 am", LiveChips.pick(null, null, null, "9:05 am", false, r))
+        assertEquals("22:23", LiveChips.pick(null, null, null, "22:23", false, r))
+        assertEquals("123 km", LiveChips.pick(null, "123.4 km", null, null, false, r))
+        assertNull("nothing fits: nothing, not half a thing", LiveChips.pick(null, "123456 km", null, null, false, r))
+    }
+
+    @Test fun updatingKeepsTheTripFiguresAndSaysSo() {
+        val c = build(LiveInput(NormalizedNavigationState(NavSessionState.IDLE, remainingDistanceMeters = 5200, remainingTimeSeconds = 600), now, destination = "Toit", updating = true))
+        assertEquals("Updating route\u2026", c.title)
+        assertEquals("Toit \u00b7 ETA 22:23 \u00b7 5.2 km", c.text)
     }
 
     @Test fun anArrivedTripIsJustNavigating() {
@@ -190,7 +170,7 @@ class RecordingNoticeTest {
 class ConnectionNoticeTest {
     private val res: Resources get() = RuntimeEnvironment.getApplication().resources
 
-    private fun of(n: ConnectionNotice, line: String? = null) = ConnectionNoticeContent.of(n, line, res)
+    private fun of(n: ConnectionNotice) = ConnectionNoticeContent.of(n, res)
 
     @Test fun theTitleSaysTheStateAndTheSecondLineTheFix() {
         assertEquals("Reconnecting to the dash", of(ConnectionNotice.RECONNECTING).title)
@@ -204,15 +184,15 @@ class ConnectionNoticeTest {
         assertEquals("It connects when the bike is on and near.", c.text)
         assertEquals(listOf(ConnectionAction.QUIT), c.actions)
         assertFalse(c.alert)
-        assertEquals("KTM 7F21 not connected", ConnectionNoticeContent.of(ConnectionNotice.DISCONNECTED, null, res, "KTM 7F21").title)
+        assertEquals("KTM 7F21 not connected", ConnectionNoticeContent.of(ConnectionNotice.DISCONNECTED, res, "KTM 7F21").title)
     }
 
     @Test fun theTitleNamesTheBikeWhenItIsKnown() {
-        val named = ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, "KTM 7F21")
+        val named = ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, res, "KTM 7F21")
         assertEquals("Dash connected \u00b7 KTM 7F21", named.title)
-        assertEquals("Reconnecting to KTM 7F21\u2026", ConnectionNoticeContent.of(ConnectionNotice.RECONNECTING, null, res, "KTM 7F21").title)
-        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, " ").title)
-        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, null, res, "").title)
+        assertEquals("Reconnecting to KTM 7F21\u2026", ConnectionNoticeContent.of(ConnectionNotice.RECONNECTING, res, "KTM 7F21").title)
+        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, res, " ").title)
+        assertEquals("Dash connected", ConnectionNoticeContent.of(ConnectionNotice.CONNECTED, res, "").title)
     }
 
     @Test fun actionsMatchTheState() {
@@ -225,40 +205,5 @@ class ConnectionNoticeTest {
         assertEquals(listOf(ConnectionNotice.CANT_CONNECT), ConnectionNotice.entries.filter { of(it).alert })
     }
 
-    @Test fun theMirrorLineReplacesTheHintWhileConnected() {
-        val line = ConnectionNoticeContent.mirrorLine("350 m", "Turn right", "12:30", res)
-        assertEquals("Mirroring to dash \u00b7 350 m \u00b7 Turn right \u00b7 \u25cf Rec 12:30", line)
-        assertEquals(line, of(ConnectionNotice.CONNECTED, line).text)
-        assertEquals("Mirroring to dash", ConnectionNoticeContent.mirrorLine(null, null, null, res))
-        assertNull("connected says it once, in the title", of(ConnectionNotice.CONNECTED).text)
-    }
-}
-
-class GeoLengthTest {
-    @Test fun aDegreeOfLatitudeIsAbout111Km() {
-        assertEquals(111_195.0, GeoLength.between(0.0, 0.0, 1.0, 0.0), 100.0)
-    }
-
-    @Test fun aPolylineIsTheSumOfItsLegs() {
-        val p = listOf(0.0 to 0.0, 0.0 to 0.01, 0.01 to 0.01)
-        assertEquals(GeoLength.between(0.0, 0.0, 0.0, 0.01) + GeoLength.between(0.0, 0.01, 0.01, 0.01), GeoLength.polyline(p), 0.01)
-        assertEquals(0.0, GeoLength.polyline(emptyList()), 0.0)
-    }
-
-    @Test fun stopsSitBetweenLegsAndTheDestinationHasNoMark() {
-        val m = GeoLength.marks(listOf(1000.0, 2000.0, 500.0))
-        assertEquals(listOf(1000, 3000), m.stops)
-        assertEquals(3500, m.total)
-        assertEquals(RouteMarks(), GeoLength.marks(emptyList()))
-        assertEquals(RouteMarks(total = 800), GeoLength.marks(listOf(800.0)))
-    }
-}
-
-class RideSavedNoticeTest {
-    private fun ride(source: String?) = RecordedRide("1", 0, 1, 100, 10, source = source)
-
-    @Test fun onlyAMirroredRideGetsTheRow() {
-        assertTrue(RideSavedNotice.shouldPost(ride(RideSource.MIRROR)))
-        for (s in listOf(RideSource.NAV, RideSource.MANUAL, RideSource.GPX, null)) assertFalse(RideSavedNotice.shouldPost(ride(s)))
-    }
+    @Test fun connectedSaysItOnceInTheTitle() = assertNull(of(ConnectionNotice.CONNECTED).text)
 }

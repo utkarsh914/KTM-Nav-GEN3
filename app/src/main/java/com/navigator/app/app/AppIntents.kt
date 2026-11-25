@@ -1,5 +1,6 @@
 package com.navigator.app.app
 
+import android.content.Context
 import android.content.Intent
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.AppShortcuts
@@ -164,11 +165,13 @@ class AppIntents {
          */
         fun parse(
             action: String?, type: String?, text: String?, openNav: Boolean, shortcutSlot: FavoriteSlot?,
-            request: String? = null, rideId: String? = null,
+            request: String? = null, rideId: String? = null, trusted: Boolean = true,
         ): List<AppIntent> =
             buildList {
                 if (action == Intent.ACTION_SEND && type == "text/plain" && !text.isNullOrBlank()) add(AppIntent.SharedLink(text.trim()))
                 if (openNav) add(AppIntent.OpenNav)
+                // Another app can start the exported activity: a quit, a re-pair or a ride id only count from our own entry.
+                if (!trusted) return@buildList
                 shortcutSlot?.let { add(AppIntent.QuickRoute(it)) }
                 when (request) {
                     REQUEST_END_TRIP -> add(AppIntent.ConfirmEndTrip)
@@ -178,6 +181,14 @@ class AppIntents {
                     REQUEST_RIDE -> rideId?.takeIf { it.isNotBlank() }?.let { add(AppIntent.OpenRide(it)) }
                 }
             }
+
+        /** The entry point only this app can start (a non-exported alias of MainActivity); see [internal]. */
+        const val INTERNAL_ENTRY = "com.navigator.app.ui.InternalEntry"
+
+        /** Every intent the app sends itself (notification buttons, shortcuts, the SDK's tap) starts MainActivity through this. */
+        fun internal(context: Context): Intent = Intent().setClassName(context.packageName, INTERNAL_ENTRY)
+
+        fun isTrusted(intent: Intent?): Boolean = intent?.component?.className == INTERNAL_ENTRY
 
         fun fromIntent(intent: Intent?): List<AppIntent> {
             intent ?: return emptyList()
@@ -189,6 +200,7 @@ class AppIntents {
                 shortcutSlot = AppShortcuts.slotFrom(intent),
                 request = intent.getStringExtra(EXTRA_REQUEST),
                 rideId = intent.getStringExtra(EXTRA_RIDE_ID),
+                trusted = isTrusted(intent),
             )
             parsed.filterIsInstance<AppIntent.SharedLink>().firstOrNull()?.let {
                 AppLogger.log("MapsUrl", "Received shared text (${it.text.length} chars)")

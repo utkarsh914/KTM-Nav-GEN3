@@ -22,6 +22,8 @@ class RecordRideShortcutActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = applicationContext
+        // Starting a recording is the rider's own act: it ends a standing quit.
+        com.navigator.app.settings.AppSettings(app).quitUntilOpen = false
         val setUp = appContainer.settings.snapshot.value.onboardingComplete
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (!setUp) {

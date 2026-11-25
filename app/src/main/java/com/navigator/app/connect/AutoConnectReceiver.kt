@@ -25,6 +25,11 @@ class AutoConnectReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         AppLogger.init(context) // safe no-op if Application.onCreate already ran
+        // A quit stands until the rider opens the app: not the bike, not boot, not Bluetooth coming back.
+        if (AppSettings(context).quitUntilOpen) {
+            AppLogger.log("AutoConnect", "Quit by the rider - ignoring ${intent.action}")
+            return
+        }
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 val device = getDeviceExtra(intent) ?: return

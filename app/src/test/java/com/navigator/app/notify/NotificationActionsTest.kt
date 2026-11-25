@@ -24,6 +24,13 @@ class NotificationActionsTest {
 
     private fun intentOf(pending: PendingIntent): Intent = shadowOf(pending).savedIntent
 
+    @Test fun everyIntentWeSendOurselvesGoesThroughTheInternalEntry() {
+        val intent = intentOf(NotificationActions.open(ctx, 3, AppIntents.REQUEST_QUIT))
+        assertEquals(AppIntents.INTERNAL_ENTRY, intent.component!!.className)
+        assertTrue(AppIntents.isTrusted(intent))
+        assertFalse("an intent for MainActivity itself is another app's", AppIntents.isTrusted(Intent(ctx, com.navigator.app.ui.MainActivity::class.java)))
+    }
+
     @Test fun aRequestButtonOpensTheAppOnThatRequestWithoutTheNavScreen() {
         val intent = intentOf(NotificationActions.open(ctx, 3, AppIntents.REQUEST_REPAIR))
         assertEquals(AppIntents.REQUEST_REPAIR, intent.getStringExtra(AppIntents.EXTRA_REQUEST))

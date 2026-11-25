@@ -48,12 +48,12 @@ import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.NotificationNavProvider
-import com.navigator.app.notify.ConnectionAction
 import com.navigator.app.notify.ConnectionNotice
 import com.navigator.app.notify.ConnectionNoticeContent
 import com.navigator.app.notify.NotificationActions
 import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.notify.NotificationRequestCodes
+import com.navigator.app.notify.StatusNotification
 import com.navigator.app.ride.RideSession
 import com.navigator.app.ride.formatElapsed
 import com.navigator.app.settings.AppSettings
@@ -80,9 +80,7 @@ class BccuConnectionService : LifecycleService() {
     enum class ConnectionState { DISCONNECTED, CONNECTING, AUTHENTICATED }
 
     companion object {
-        private const val NOTIFICATION_ID = 1
         private const val ALERT_ID = 44
-        private const val MIRROR_LINE_MS = 5_000L
         private const val NOTIFICATION_CLEAR_DELAY_MS = 5000L
         /** The dash's bottom banner shows at most 16 characters. */
         private const val NOTIFICATION_BANNER_CHARS = 16
@@ -187,6 +185,10 @@ class BccuConnectionService : LifecycleService() {
         val lastError: StateFlow<String?> = _lastError
 
         fun start(context: Context, deviceAddress: String, bikePresent: Boolean = false) {
+            if (AppSettings(context).quitUntilOpen) {
+                AppLogger.log("BLE", "Start ignored: the rider quit and has not reopened the app")
+                return
+            }
             val intent = Intent(context, BccuConnectionService::class.java)
                 .putExtra(EXTRA_DEVICE_ADDRESS, deviceAddress)
                 .putExtra(EXTRA_BIKE_PRESENT, bikePresent)
@@ -255,6 +257,10 @@ class BccuConnectionService : LifecycleService() {
         fun setNavProviderIfRunning(provider: NavigationProvider) {
             runningInstance?.setNavProvider(provider)
         }
+
+        /** What the bike link says right now, for the app notification; null while the service is not running. */
+        private val _notice = MutableStateFlow<ConnectionNotice?>(null)
+        val notice: StateFlow<ConnectionNotice?> = _notice
 
         /** Whether the bike service is up (a hard quit waits for this to turn false). */
         val isRunning: Boolean get() = runningInstance != null
@@ -408,11 +414,10 @@ class BccuConnectionService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        watchMirrorLine()
         watchLastSeen()
         try {
-            startForegroundWithTypes(ConnectionNotice.CONNECTING)
+            _notice.value = ConnectionNotice.CONNECTING
+            startForegroundWithTypes()
         } catch (e: Exception) {
             // e.g. Nearby-devices (BLUETOOTH_CONNECT) revoked, or FGS start not allowed.
             AppLogger.log("BLE", "!! cannot start foreground service: ${e.javaClass.simpleName}: ${e.message}")
@@ -560,7 +565,7 @@ class BccuConnectionService : LifecycleService() {
      * the boot/ACL receiver starts us before the rider grants location.
      * Safe to call again later to UPGRADE the type once permissions arrive.
      */
-    private fun startForegroundWithTypes(status: ConnectionNotice) {
+    private fun startForegroundWithTypes() {
         var fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         val fine = ContextCompat.checkSelfPermission(
             this, android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -572,7 +577,7 @@ class BccuConnectionService : LifecycleService() {
             fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
         ServiceCompat.startForeground(
-            this, NOTIFICATION_ID, buildForegroundNotification(status), fgsType
+            this, StatusNotification.ID, StatusNotification.build(this), fgsType
         )
     }
 
@@ -584,13 +589,12 @@ class BccuConnectionService : LifecycleService() {
      * the location type until the next reboot.
      */
     private fun reevaluateLocationFeatures() {
-        runCatching { startForegroundWithTypes(notice) }
+        runCatching { startForegroundWithTypes() }
         speedMonitor?.start()
         // App came to the foreground: the rider is probably about to ride - skip any long wait.
         resetAbsentBackoff("app foreground")
     }
 
-    private var notice: ConnectionNotice = ConnectionNotice.CONNECTING
     private val bluetoothOn = MutableStateFlow(true)
 
     /**
@@ -911,6 +915,7 @@ class BccuConnectionService : LifecycleService() {
         _reconnecting.value = false
         _retryAvailableAtMs.value = null
         _deviceName.value = null
+        _notice.value = null
         DashPreview.reset() // nothing on the dash any more, and no banner text kept
         if (runningInstance === this) runningInstance = null
         super.onDestroy()
@@ -923,54 +928,6 @@ class BccuConnectionService : LifecycleService() {
 
     // --- Foreground notification plumbing ---
 
-    private fun createNotificationChannel() = NotificationChannels.ensure(this, NotificationChannels.CONNECTION)
-
-    private fun buildForegroundNotification(status: ConnectionNotice): Notification {
-        val content = ConnectionNoticeContent.of(status, mirrorLine(status), resources, settingsStore.bondedDeviceName)
-        val builder = NotificationCompat.Builder(this, NotificationChannels.CONNECTION)
-            .setContentTitle(content.title)
-            .setContentText(content.text)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            // Tapping fronts the existing task (launchMode=singleTask) and shows the active navigation screen.
-            .setContentIntent(NotificationActions.open(this, NotificationRequestCodes.OPEN_APP))
-        content.actions.forEach { action ->
-            when (action) {
-                ConnectionAction.TURN_ON -> builder.addAction(
-                    0, getString(R.string.conn_action_turn_on),
-                    PendingIntent.getActivity(
-                        this, NotificationRequestCodes.BLUETOOTH_TURN_ON, Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        PendingIntent.FLAG_IMMUTABLE,
-                    ),
-                )
-                // Re-pairing and quitting each ask for their confirm in the app (DL5, DL1).
-                ConnectionAction.REPAIR -> builder.addAction(
-                    0, getString(R.string.conn_action_repair), NotificationActions.open(this, NotificationRequestCodes.CONNECTION_REPAIR, AppIntents.REQUEST_REPAIR),
-                )
-                ConnectionAction.QUIT -> builder.addAction(
-                    0, getString(R.string.conn_action_quit), NotificationActions.open(this, NotificationRequestCodes.CONNECTION_QUIT, AppIntents.REQUEST_QUIT),
-                )
-            }
-        }
-        return builder.build()
-    }
-
-    /** The "Mirroring to dash · 350 m · ● Rec" line, only while connected in mirror mode. */
-    private fun mirrorLine(status: ConnectionNotice): String? {
-        if (status != ConnectionNotice.CONNECTED) return null
-        if (GoogleNavSdkController.isActive(this, AppSettings(this))) return null
-        val nav = NotificationNavProvider.state.value
-        val session = RideSession.state.value
-        val toTurn = nav.preformattedDistance?.takeIf { nav.sessionState == NavSessionState.ENROUTE }
-        // Idle and connected is just Dash connected: the one-liner is for a trip or a recording.
-        if (toTurn == null && !session.active) return null
-        return ConnectionNoticeContent.mirrorLine(
-            toTurn = toTurn, turn = null,
-            recording = session.takeIf { it.active }?.let { formatElapsed(it.elapsedMs(System.currentTimeMillis())) }, res = resources,
-        )
-    }
-
     private fun updateForegroundNotification(status: ConnectionNotice) {
         // GATT callbacks run on the BLE thread; the notice, the heads-up flag and the notification itself are main-thread state.
         if (Looper.myLooper() !== Looper.getMainLooper()) {
@@ -978,15 +935,15 @@ class BccuConnectionService : LifecycleService() {
             return
         }
         if (destroyed) return
-        notice = status
+        _notice.value = status
+        StatusNotification.refresh(this)
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, buildForegroundNotification(status))
         // A real problem gets one heads-up on its own channel; it goes again when the problem goes.
         if (status == ConnectionNotice.CANT_CONNECT) {
             if (!alertShown) {
                 alertShown = true
                 NotificationChannels.ensure(this, NotificationChannels.CONNECTION_ALERT)
-                val content = ConnectionNoticeContent.of(status, null, resources, settingsStore.bondedDeviceName)
+                val content = ConnectionNoticeContent.of(status, resources, settingsStore.bondedDeviceName)
                 manager.notify(
                     ALERT_ID,
                     NotificationCompat.Builder(this, NotificationChannels.CONNECTION_ALERT)
@@ -1032,21 +989,6 @@ class BccuConnectionService : LifecycleService() {
             }
         }
     }
-
-    /** Keeps the mirror one-liner (turn distance, recording time) current while connected: it ticks even when nothing else changes. */
-    private fun watchMirrorLine() {
-        lifecycleScope.launch {
-            while (true) {
-                delay(MIRROR_LINE_MS)
-                val line = if (notice == ConnectionNotice.CONNECTED) mirrorLine(notice) else null
-                // Re-post only when the line changed (also back to none): an identical notification is churn.
-                if (ConnectionNoticeContent.repostForLine(notice == ConnectionNotice.CONNECTED, line, lastMirrorLine)) updateForegroundNotification(notice)
-                lastMirrorLine = line
-            }
-        }
-    }
-
-    private var lastMirrorLine: String? = null
 
     /** The bike is linked now: remember it for "Last seen" (not after Re-pair, which leaves no bike to stamp). */
     private fun stampLastSeen() {

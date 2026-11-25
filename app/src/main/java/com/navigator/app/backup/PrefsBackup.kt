@@ -41,10 +41,13 @@ object PrefsBackup {
     private const val MAX_FAMILY_KEYS = 500
     private const val MAX_SET = 200
 
-    /** Never leave the phone: pairing (only valid with THIS phone + dash) and the onboarding flag (a new phone must still set up permissions). */
+    /**
+     * Never leave the phone: pairing (only valid with THIS phone + dash), the onboarding flag (a new phone must still set
+     * up permissions) and `device_` state such as a standing quit.
+     */
     fun isExcluded(key: String): Boolean =
         key.startsWith("bonded_") || key.startsWith("paired_before_") || key.startsWith("session_keys_") ||
-            key == "onboarding_complete"
+            key.startsWith("device_") || key == "onboarding_complete"
 
     private fun ruleFor(key: String): Rule? =
         if (isExcluded(key)) null else RULES[key] ?: FAMILIES.firstOrNull { key.startsWith(it.first) }?.second

@@ -11,12 +11,12 @@ object NotificationRequestCodes {
     const val RECORDING_TOGGLE = 2
     const val BLUETOOTH_TURN_ON = 3
     const val CONNECTION_REPAIR = 4
-    const val CONNECTION_QUIT = 5
+    const val STATUS_QUIT_NOW = 5
     const val ALERT_OPEN = 6
     const val ALERT_REPAIR = 7
     const val ALERT_QUIT = 8
     const val TOGGLE_BEEPS = 71
     const val LIVE_END_TRIP = 72
     const val RIDE_SAVED = 73
-    const val LIVE_TAP = 74
+    const val STATUS_QUIT_CONFIRM = 74
 }

@@ -71,6 +71,15 @@ class AppShortcutsTest {
         assertEquals(setOf("record_ride", "where_to"), syncedIds(listOf(fav(FavoriteSlot.OTHER)), setOf("record_ride", "where_to")))
     }
 
+    @Test fun theShortcutsThatOpenTheAppGoThroughItsOwnEntry() {
+        syncedIds(listOf(fav(FavoriteSlot.HOME)), setOf("record_ride", "where_to", "ride_home"))
+        val manager = ctx.getSystemService(ShortcutManager::class.java)
+        val byId = manager.dynamicShortcuts.associateBy { it.id }
+        listOf("where_to", "ride_home").forEach { id ->
+            assertEquals(id, com.navigator.app.app.AppIntents.INTERNAL_ENTRY, byId.getValue(id).intent!!.component!!.className)
+        }
+    }
+
     private companion object {
         const val MAX_READS = 40
         const val SYNC_ATTEMPTS = 4

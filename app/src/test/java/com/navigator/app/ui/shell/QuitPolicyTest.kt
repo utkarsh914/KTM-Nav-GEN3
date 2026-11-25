@@ -5,10 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QuitPolicyTest {
-    @Test fun quitsAtOnceWhenNothingIsNavigating() = assertFalse(QuitPolicy.needsConfirm(sdkNavigating = false, mirrorNavigating = false))
+    @Test fun quitsAtOnceWhenNothingIsRunning() = assertFalse(QuitPolicy.needsConfirm(tripLive = false, recording = false, mirrorGuiding = false))
 
-    @Test fun asksWhileEitherEngineNavigates() {
-        assertTrue(QuitPolicy.needsConfirm(sdkNavigating = true, mirrorNavigating = false))
-        assertTrue(QuitPolicy.needsConfirm(sdkNavigating = false, mirrorNavigating = true))
+    @Test fun asksWhileATripARecordingOrAMirroredTripRuns() {
+        assertTrue(QuitPolicy.needsConfirm(tripLive = true, recording = false, mirrorGuiding = false))
+        assertTrue(QuitPolicy.needsConfirm(tripLive = false, recording = true, mirrorGuiding = false))
+        assertTrue(QuitPolicy.needsConfirm(tripLive = false, recording = false, mirrorGuiding = true))
     }
 }

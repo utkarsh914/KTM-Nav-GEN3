@@ -17,9 +17,8 @@ import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
-import com.navigator.app.nav.model.isActiveNav
-import com.navigator.app.nav.providers.GoogleNavSdkProvider
-import com.navigator.app.nav.providers.NavLiveUpdate
+import com.navigator.app.app.appContainer
+import com.navigator.app.trip.TripPhase
 import com.navigator.app.notify.LargeIcons
 import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.settings.AppSettings
@@ -151,7 +150,7 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         val nm = context.getSystemService(NotificationManager::class.java)
         _overspeedKmh.value = kmh.toInt()
         // While a trip is guiding, overspeed is a state of its Live Update (SY3), not a notification of its own.
-        if (GoogleNavSdkProvider.state.value.sessionState.isActiveNav() && NavLiveUpdate.isShowing) {
+        if (tripShowsIt()) {
             nm.cancel(NOTIFICATION_ID)
         } else {
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -182,6 +181,9 @@ class SpeedMonitor(private val context: Context) : LocationListener {
         staleHandler.removeCallbacks(staleClear)
         staleHandler.postDelayed(staleClear, STALE_FIX_MS)
     }
+
+    /** A guiding trip's notification carries the overspeed state itself (before and between legs it has no turn to show it on). */
+    private fun tripShowsIt(): Boolean = runCatching { context.appContainer.trip.phase.value == TripPhase.GUIDING }.getOrDefault(false)
 
     private fun clearAlert() {
         alerting = false

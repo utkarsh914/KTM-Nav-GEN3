@@ -12,8 +12,8 @@ import com.navigator.app.app.AppIntents
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.NavDestination
+import com.navigator.app.notify.StatusNotification
 import com.navigator.app.settings.AppSettings
-import com.navigator.app.ui.MainActivity
 
 /**
  * Orchestrates the Activity-side handshake the Navigation SDK requires (API key,
@@ -24,36 +24,28 @@ object GoogleNavSdkController {
 
     @Volatile private var apiKeySet = false
 
-    /** Notification id for the SDK's own turn-by-turn foreground notification
-     *  (distinct from the BLE service = 1 and overspeed = 42). */
-    private const val NAV_NOTIFICATION_ID = NavLiveUpdate.NOTIFICATION_ID
+    /** The SDK service's foreground id: the app's one status notification (shared with the bike link and the recording). */
+    private const val NAV_NOTIFICATION_ID = StatusNotification.ID
 
     @Volatile private var navNotificationInit = false
 
     /**
-     * Point the Nav SDK's own navigation notification (the maneuver/ETA one it
-     * shows while guiding) at our activity, so tapping it returns to the active
-     * navigation screen - matching the BLE connection notification. Must run once
-     * per process before guidance starts; the SDK throws if initialised twice, so
-     * it's guarded and wrapped defensively.
+     * Give the Nav SDK's foreground service the app's status notification. Must run once per process before
+     * guidance starts; the SDK throws if initialised twice, so it's guarded and wrapped defensively.
      */
     private fun ensureNavNotification(activity: Activity) {
         if (navNotificationInit) return
         runCatching {
             val app = activity.application
-            val resumeIntent = Intent(app, MainActivity::class.java).apply {
+            val resumeIntent = AppIntents.internal(app).apply {
                 putExtra(AppIntents.EXTRA_OPEN_NAV, true)
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            var live: NavLiveUpdate? = null
             try {
-                // Our own notification (instruction, distance, ETA, progress; Live Update on
-                // Android 16 QPR2+) instead of the SDK's generic one.
-                live = NavLiveUpdate(app, resumeIntent)
-                NavigationApi.initForegroundServiceManagerProvider(app, NAV_NOTIFICATION_ID, live)
+                // The app's one notification (it shares its id with the bike link and the recording) instead of the SDK's own.
+                NavigationApi.initForegroundServiceManagerProvider(app, NAV_NOTIFICATION_ID, NavLiveUpdate(app))
             } catch (e: Throwable) {
-                live?.close() // an abandoned provider must not keep refreshing the fallback notification
-                AppLogger.log("Nav", "!! live-update notification unavailable (${e.javaClass.simpleName}); using the SDK default")
+                AppLogger.log("Nav", "!! status notification unavailable (${e.javaClass.simpleName}); using the SDK default")
                 NavigationApi.clearForegroundServiceManager()
                 NavigationApi.initForegroundServiceManagerMessageAndIntent(
                     app, NAV_NOTIFICATION_ID, "Navigating", resumeIntent,

@@ -25,7 +25,7 @@ import com.navigator.app.logging.JankMonitor
 import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.destination.AppShortcuts
 import com.navigator.app.notifications.MapsIconExporter
-import com.navigator.app.ride.RideRecordingService
+import com.navigator.app.notify.RideSavedNotice
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.shell.KtmApp
 import com.navigator.app.ui.theme.AppFonts
@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
         // service up as soon as the app is opened (it's a foreground service and
         // owns its own reconnect loop from there on). The AutoConnectReceiver
         // covers the "app never opened" cases (boot, bike back in range).
+        // Opening the app ends a standing quit (first: the start below is otherwise ignored).
+        settings.quitUntilOpen = false
         settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
 
         // A recreated activity re-delivers the original shortcut intent: only act on a fresh launch.
@@ -111,6 +113,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (settings.quitUntilOpen) {
+            settings.quitUntilOpen = false
+            settings.bondedDeviceAddress?.let { BccuConnectionService.start(this, it) }
+        }
         forwardIntent(intent, freshLaunch = true)
     }
 
@@ -119,6 +125,8 @@ class MainActivity : ComponentActivity() {
         // Reopened from Recents: the intent is the old launch's, and its share or request was already served.
         if (intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         if (freshLaunch) AppShortcuts.reportUsed(this, intent)
+        val request = intent?.getStringExtra(AppIntents.EXTRA_REQUEST)
+        if (freshLaunch && AppIntents.isTrusted(intent) && request == AppIntents.REQUEST_RIDE) RideSavedNotice.cancel(this)
         AppIntents.fromIntent(intent)
             // A recreated activity must not re-open a dialog or page the rider already used.
             .filter { freshLaunch || it == AppIntent.OpenNav }
@@ -145,16 +153,10 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Fully quit: end the in-app trip, stop the ride recording, stop the dash-link foreground service
-     * (removes its ongoing notification), cancel any of our notifications, then remove the app task entirely. Invoked
-     * from the Quit confirm (Settings' Quit row or the notification's Quit).
+     * Fully quit, from the Quit confirm or Settings' Quit row: see [com.navigator.app.app.QuitController].
      */
     private fun exitApp() {
-        // What the Quit dialog promises: guidance and recording stop too, not just the dash link.
-        appContainer.trip.cancel()
-        RideRecordingService.stop(this)
-        appContainer.connection.quit()
-        finishAndRemoveTask()
+        appContainer.appScope.launch { appContainer.quit.quit() }
     }
 
     /**

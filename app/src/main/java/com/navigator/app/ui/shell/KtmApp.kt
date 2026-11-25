@@ -113,7 +113,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val snap by settings.snapshot.collectAsState()
     val intents = container.intents
     var showQuit by rememberSaveable { mutableStateOf(false) }
-    val requestQuit = { if (QuitPolicy.needsConfirmNow()) showQuit = true else onQuit() }
+    val requestQuit = { if (container.quit.needsConfirm()) showQuit = true else onQuit() }
 
     LaunchedEffect(snap.fontMode) { AppFonts.apply(snap.fontMode) }
 

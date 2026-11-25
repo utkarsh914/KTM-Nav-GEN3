@@ -15,7 +15,9 @@ import com.navigator.app.nav.ktm.ClockFormat
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.net.ConnectivityMonitor
 import com.navigator.app.notifications.NotificationRepository
+import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.notify.RideSavedNotice
+import com.navigator.app.notify.StatusNotification
 import com.navigator.app.ride.AutoRecordController
 import com.navigator.app.ride.MirrorAutoRecordController
 import com.navigator.app.ride.MirrorRecordPolicy
@@ -51,9 +53,11 @@ class OpenDashApplication : Application() {
         DashText.transliterate = DashText.icuTransliterator()
         DashText.enabled = runCatching { AppSettings(this).latinDashText }.getOrDefault(true)
         recoverOrphanRides()
+        appScope.launch(Dispatchers.IO) { NotificationChannels.deleteRetired(this@OpenDashApplication) }
         container.trip // start watching for arrival even before any screen is shown
         startAutoRecording()
         RideSavedNotice.start(this, appScope)
+        StatusNotification.startRefresher(this, container, appScope)
         appScope.launch(Dispatchers.IO) {
             runCatching { PlacesStore(this@OpenDashApplication).syncShortcuts() }
         }
@@ -91,12 +95,15 @@ class OpenDashApplication : Application() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** The recording switch is on and the rider has not quit (a quit stands until they reopen the app). */
+    private fun autoRecordingAllowed(): Boolean = AppSettings(this).let { it.rideRecordingEnabled && !it.quitUntilOpen }
+
     private fun startAutoRecording() {
         AutoRecordController(
             scope = appScope,
             trips = GoogleNavSdkProvider.activeTrip,
             session = { RideSession.state.value },
-            recordingEnabled = { AppSettings(this).rideRecordingEnabled },
+            recordingEnabled = ::autoRecordingAllowed,
             locationGranted = ::hasLocationPermission,
             startRecording = { trip ->
                 RideRecordingService.start(this, trip.dest.label, trip.dest.lat, trip.dest.lng)
@@ -110,7 +117,7 @@ class OpenDashApplication : Application() {
                 container.settings.engineInUseFlow.map { it == NavEngine.MIRROR }, NotificationRepository.mapsGuidancePresent,
             ),
             session = { RideSession.state.value },
-            recordingEnabled = { AppSettings(this).rideRecordingEnabled },
+            recordingEnabled = ::autoRecordingAllowed,
             locationGranted = ::hasLocationPermission,
             startRecording = { RideRecordingService.start(this, null, null, null, RideSource.MIRROR) },
             stopRecording = { RideRecordingService.stop(this) },

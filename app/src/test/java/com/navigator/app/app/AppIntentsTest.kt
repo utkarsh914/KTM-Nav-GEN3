@@ -138,4 +138,22 @@ class AppIntentsTest {
         intents.consumeConfirmEnd(); intents.consumeOpenSearch(); intents.consumeQuit(); intents.consumeRePair(); intents.consumeRide()
         assertTrue(intents.pending.value.isEmpty)
     }
+
+    @Test fun anotherAppCanOnlyShareALinkOrOpenNavigation() {
+        val untrusted = AppIntents.parse(
+            Intent.ACTION_SEND, "text/plain", "https://maps.app.goo.gl/x", true, FavoriteSlot.HOME, request = AppIntents.REQUEST_QUIT, rideId = "42", trusted = false,
+        )
+        assertEquals(listOf(AppIntent.SharedLink("https://maps.app.goo.gl/x"), AppIntent.OpenNav), untrusted)
+        for (request in listOf(AppIntents.REQUEST_QUIT, AppIntents.REQUEST_REPAIR, AppIntents.REQUEST_END_TRIP, AppIntents.REQUEST_SEARCH, AppIntents.REQUEST_RIDE)) {
+            assertTrue(request, AppIntents.parse(Intent.ACTION_MAIN, null, null, false, null, request = request, rideId = "42", trusted = false).isEmpty())
+        }
+        assertTrue("a shortcut slot is ours too", AppIntents.parse(Intent.ACTION_MAIN, null, null, false, FavoriteSlot.WORK, trusted = false).isEmpty())
+    }
+
+    @Test fun ourOwnEntryKeepsEverything() {
+        assertEquals(
+            listOf<AppIntent>(AppIntent.ConfirmQuit),
+            AppIntents.parse(Intent.ACTION_MAIN, null, null, false, null, request = AppIntents.REQUEST_QUIT, trusted = true),
+        )
+    }
 }

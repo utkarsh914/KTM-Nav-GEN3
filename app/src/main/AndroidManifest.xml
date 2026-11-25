@@ -76,6 +76,14 @@
             </intent-filter>
         </activity>
 
+        <!-- The app's own way into MainActivity: notification buttons, shortcuts and the SDK's tap. Not exported, so only
+             intents from this app reach it; MainActivity itself (exported for the launcher and Share) honours only a
+             shared link and "open navigation" from outside. -->
+        <activity-alias
+            android:name=".ui.InternalEntry"
+            android:targetActivity=".ui.MainActivity"
+            android:exported="false" />
+
         <!-- The "Record a ride" launcher shortcut: starts recording and finishes, no UI. -->
         <activity
             android:name=".ride.RecordRideShortcutActivity"
