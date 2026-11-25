@@ -27,14 +27,14 @@ class BikeSheetTest {
     @get:Rule val rule = createComposeRule()
     private val log = mutableListOf<String>()
 
-    private fun show(status: BikeStatus, tripRunning: Boolean = false, lastSeen: Long? = null, settings: (() -> Unit)? = { log += "settings" }) = rule.setContent {
+    private fun show(status: BikeStatus, tripRunning: Boolean = false, lastSeen: Long? = null, retryAtMs: Long? = null, settings: (() -> Unit)? = { log += "settings" }) = rule.setContent {
         KtmTheme(darkTheme = true) {
             CompositionLocalProvider(LocalOpenBikeSettings provides settings) {
                 BikeSheet(
                     state = NavigateUiState(bikeStatus = status, bike = BikePillMapper.map(status)),
                     dashTime = "6:12",
                     onBeeps = {}, onMessages = {}, onSendTest = { log += "test" }, onRePair = { log += "repair" }, onRetryNow = { log += "retry" },
-                    onDismiss = { log += "dismiss" }, tripRunning = tripRunning, lastSeenMs = lastSeen,
+                    onDismiss = { log += "dismiss" }, tripRunning = tripRunning, lastSeenMs = lastSeen, retryAtMs = retryAtMs,
                 )
             }
         }
@@ -54,6 +54,21 @@ class BikeSheetTest {
     @Test fun theTestWaitsWhileATripIsGuiding() {
         show(BikeStatus.Connected("KTM 7F21"), tripRunning = true)
         rule.onNodeWithText("Send a test").assertIsNotEnabled()
+    }
+
+    @Test fun duringTheDashCooldownRetryCountsDownAndIsDisabled() {
+        show(BikeStatus.Reconnecting("KTM 7F21", 2), retryAtMs = System.currentTimeMillis() + 12_500)
+        rule.onNodeWithText("Retry in 0:13").assertIsNotEnabled()
+        rule.onAllNodesWithText("Retry now").assertCountEquals(0)
+    }
+
+    @Test fun theCountdownIsWholeSecondsRoundedUpAndEndsAtZero() {
+        assertEquals(13, RetryCountdown.secondsLeft(12_500, 0))
+        assertEquals(1, RetryCountdown.secondsLeft(1, 0))
+        assertEquals(null, RetryCountdown.secondsLeft(5_000, 5_000))
+        assertEquals(null, RetryCountdown.secondsLeft(null, 5_000))
+        assertEquals("1:05", RetryCountdown.format(65))
+        assertEquals("0:09", RetryCountdown.format(9))
     }
 
     @Test fun reconnectingListsWhatToCheckAndKeepsRePairAwayFromTheToggles() {

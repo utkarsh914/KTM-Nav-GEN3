@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.OpenDashPermissions
@@ -88,11 +89,29 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
     private val handler = Handler(Looper.getMainLooper())
     private val stopRunnable = Runnable { stop() }
 
+    // A low-latency scan reports every advertisement (several per second per device): the list is published at most every
+    // THROTTLE_MS, so the screen does not recompose and re-sort on each one.
+    private var latest: List<ScannedBike> = emptyList()
+    private var lastPublishMs = 0L
+    private val flushRunnable = Runnable { publish() }
+
+    private fun publish() {
+        handler.removeCallbacks(flushRunnable)
+        lastPublishMs = SystemClock.uptimeMillis()
+        _results.value = latest
+    }
+
+    private fun publishSoon() {
+        val wait = lastPublishMs + THROTTLE_MS - SystemClock.uptimeMillis()
+        if (wait <= 0) publish() else if (!handler.hasCallbacks(flushRunnable)) handler.postDelayed(flushRunnable, wait)
+    }
+
     private val callback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val dev = result.device
             val name = result.scanRecord?.deviceName ?: runCatching { dev.name }.getOrNull()
-            _results.value = BikeScanning.merge(_results.value, dev.toBike(result.rssi, name))
+            latest = BikeScanning.merge(latest, dev.toBike(result.rssi, name))
+            publishSoon()
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -110,15 +129,17 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
         if (_scanning.value) stop()
         _scanError.value = null
         if (scanner == null) {
-            _results.value = emptyList()
+            latest = emptyList()
+            publish()
             return
         }
-        _results.value = runCatching {
+        latest = runCatching {
             adapter.bondedDevices.orEmpty().map { it.toBike(null) }
         }.getOrElse {
             AppLogger.log("Pairing", "bondedDevices read denied: ${it.message}")
             emptyList()
         }
+        publish()
         try {
             scanner.startScan(
                 null,
@@ -134,6 +155,7 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
 
     override fun stop() {
         handler.removeCallbacks(stopRunnable)
+        if (handler.hasCallbacks(flushRunnable)) publish() // what was heard is not lost with the scan
         if (!_scanning.value) return
         _scanning.value = false
         runCatching { context.getSystemService(BluetoothManager::class.java)?.adapter?.bluetoothLeScanner?.stopScan(callback) }
@@ -149,5 +171,6 @@ class BikeScanner(private val context: Context, private val settings: () -> AppS
 
     companion object {
         const val WINDOW_MS = 8_000L
+        const val THROTTLE_MS = 250L
     }
 }

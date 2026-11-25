@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,12 +75,22 @@ object BikeSheetMapper {
             KtmIcons.Bluetooth,
             if (status.firstPair) R.string.bike_sheet_connecting_first else R.string.bike_sheet_connecting, null, null,
         )
-        is BikeStatus.Reconnecting -> BikeStatusText(KtmIcons.Bluetooth, R.string.bike_sheet_reconnecting, status.attempt, null)
+        is BikeStatus.Reconnecting ->
+            if (status.attempt > 0) BikeStatusText(KtmIcons.Bluetooth, R.string.bike_sheet_reconnecting, status.attempt, null)
+            else BikeStatusText(KtmIcons.Bluetooth, R.string.bike_sheet_reconnecting_plain, null, null)
         is BikeStatus.NeedsRepair -> BikeStatusText(KtmIcons.Warning, R.string.bike_sheet_cant_connect, null, R.string.bike_sheet_cant_connect_hint)
         BikeStatus.BluetoothOff -> BikeStatusText(KtmIcons.BluetoothOff, R.string.bike_sheet_bluetooth_off, null, R.string.bike_sheet_bluetooth_off_hint)
         is BikeStatus.Disconnected, BikeStatus.NotPaired ->
             BikeStatusText(KtmIcons.Bluetooth, R.string.bike_sheet_disconnected, null, R.string.bike_sheet_disconnected_hint)
     }
+}
+
+/** The Retry button while the dash's handshake cooldown runs: the seconds left, whole and rounded up. */
+object RetryCountdown {
+    fun secondsLeft(atMs: Long?, nowMs: Long): Int? =
+        atMs?.let { ((it - nowMs + 999) / 1000).toInt() }?.takeIf { it > 0 }
+
+    fun format(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
 }
 
 /** "Last seen" for the bike sheet: the time today (the phone's 12/24 h), with the day in front when it was before. */
@@ -111,6 +122,8 @@ fun BikeSheet(
     tripRunning: Boolean = state.activity != null,
     /** When the bike was last linked (epoch ms); shown under the preview while it is not. */
     lastSeenMs: Long? = null,
+    /** While the dash's handshake cooldown runs, when Retry now acts again (epoch ms): the button counts down instead of pretending to try. */
+    retryAtMs: Long? = null,
 ) {
     var confirmRePair by remember { mutableStateOf(false) }
     var trouble by remember { mutableStateOf(false) }
@@ -198,14 +211,23 @@ fun BikeSheet(
             val rePairFirst = status is BikeStatus.NeedsRepair
             val canRetry = status is BikeStatus.Reconnecting || status is BikeStatus.Disconnected || rePairFirst
             var retried by remember { mutableStateOf(false) }
+            // 1 s ticks, no animation: only while a cooldown is on.
+            val now by produceState(System.currentTimeMillis(), retryAtMs) {
+                while (retryAtMs != null && value < retryAtMs) { delay(1_000); value = System.currentTimeMillis() }
+            }
+            val waiting = RetryCountdown.secondsLeft(retryAtMs, now)
             // One tap is one attempt: the button rests for as long as the service ignores a second tap.
             LaunchedEffect(retried) { if (retried) { delay(ReconnectPolicy.RETRY_NOW_MIN_GAP_MS); retried = false } }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 if (canRetry) {
                     KtmButton(
-                        stringResource(if (retried) R.string.bike_sheet_retrying else R.string.bike_sheet_retry_now),
+                        when {
+                            waiting != null -> stringResource(R.string.bike_sheet_retry_in, RetryCountdown.format(waiting))
+                            retried -> stringResource(R.string.bike_sheet_retrying)
+                            else -> stringResource(R.string.bike_sheet_retry_now)
+                        },
                         { retried = true; onRetryNow() }, Modifier.weight(1f), icon = KtmIcons.Refresh,
-                        style = if (rePairFirst) ButtonStyle.Outline else ButtonStyle.Primary, enabled = !retried,
+                        style = if (rePairFirst) ButtonStyle.Outline else ButtonStyle.Primary, enabled = !retried && waiting == null,
                     )
                 }
                 KtmButton(

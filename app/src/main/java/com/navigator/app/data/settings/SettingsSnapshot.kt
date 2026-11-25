@@ -67,6 +67,8 @@ data class SettingsSnapshot(
     val dashPreviewOverlay: Boolean,
     /** When the bike was paired (0 = unknown). */
     val bondedPairedMs: Long = 0L,
+    /** When the service last had the bike linked (device-local); the service writes it, the UI only reads it. */
+    val bondedLastSeenMs: Long = 0L,
 ) {
     val isPaired: Boolean get() = !bondedDeviceAddress.isNullOrBlank()
 
@@ -106,6 +108,7 @@ data class SettingsSnapshot(
             speedBandCount = s.speedBandCount,
             dashPreviewOverlay = s.dashPreviewOverlay,
             bondedPairedMs = s.bondedPairedMs,
+            bondedLastSeenMs = s.bondedLastSeenMs,
         )
     }
 }

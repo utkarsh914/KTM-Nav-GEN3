@@ -46,6 +46,11 @@ class PairingPolicyTest {
     @Test fun twoMinutesIsTheLimit() {
         assertFalse(PairingPolicy.timedOut(1_000, 120_999))
         assertTrue(PairingPolicy.timedOut(1_000, 121_000))
+        // the link came up late: the rider may be confirming on the dash, so the deadline follows it by 75 s
+        assertFalse(PairingPolicy.timedOut(1_000, 121_000, linkUpAtMs = 100_000))
+        assertFalse(PairingPolicy.timedOut(1_000, 174_999, linkUpAtMs = 100_000))
+        assertTrue(PairingPolicy.timedOut(1_000, 175_000, linkUpAtMs = 100_000))
+        assertTrue("an early link-up does not shorten it", PairingPolicy.timedOut(1_000, 121_000, linkUpAtMs = 5_000))
     }
 
     @Test fun aClockGoingBackwardsNeverShowsANegativeTime() {

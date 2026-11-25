@@ -19,6 +19,7 @@ fun BikeSheetHost(tripRunning: Boolean, onOpenPairing: () -> Unit, onDismiss: ()
     val vm: NavigateViewModel = viewModel(factory = NavigateViewModel.factory(container))
     val state by vm.state.collectAsState()
     val lastSeen by container.connection.lastSeenMs.collectAsState()
+    val retryAtMs by container.connection.retryAvailableAtMs.collectAsState()
     val time = remember { EtaFormatter.format(System.currentTimeMillis()) }
     BikeSheet(
         state = state, dashTime = time,
@@ -28,5 +29,6 @@ fun BikeSheetHost(tripRunning: Boolean, onOpenPairing: () -> Unit, onDismiss: ()
         onDismiss = onDismiss,
         tripRunning = tripRunning,
         lastSeenMs = lastSeen,
+        retryAtMs = retryAtMs,
     )
 }

@@ -25,6 +25,7 @@ import android.content.pm.ServiceInfo
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.os.Looper
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -62,6 +63,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
@@ -137,6 +140,7 @@ class BccuConnectionService : LifecycleService() {
         private val ABSENT_BACKOFF_MS = longArrayOf(1_500L, 5_000L, 15_000L, 30_000L)
         /** Handshake stalls/drops for a KNOWN bike before suggesting a re-pair. */
         private const val REPAIR_HINT_AFTER = 4
+        private const val LAST_SEEN_EVERY_MS = 60_000L
         // Stuck-connect limits (direct vs. background autoConnect) live in [ReconnectPolicy].
         const val EXTRA_DEVICE_ADDRESS = "device_address"
         /** Set by the ACL receiver: the bike's own link just came up, so it is certainly in range. */
@@ -161,6 +165,18 @@ class BccuConnectionService : LifecycleService() {
         /** True while a reconnect/pairing scan is running. */
         private val _scanning = MutableStateFlow(false)
         val scanning: StateFlow<Boolean> = _scanning
+
+        /** The bike is not there: connects to it keep failing (parked, ignition off). Cleared the moment it is seen again. */
+        private val _bikeAbsent = MutableStateFlow(false)
+        val bikeAbsent: StateFlow<Boolean> = _bikeAbsent
+
+        /** A link that worked has just dropped and the service is getting it back (cleared on success or when the bike proves absent). */
+        private val _reconnecting = MutableStateFlow(false)
+        val reconnecting: StateFlow<Boolean> = _reconnecting
+
+        /** When "Retry now" would act again (wall-clock ms): the end of the handshake cooldown, which a tap does not cut short (D36). Null when a tap would act. */
+        private val _retryAvailableAtMs = MutableStateFlow<Long?>(null)
+        val retryAvailableAtMs: StateFlow<Long?> = _retryAvailableAtMs
 
         /** Failed attempts since the last success (handshake stalls plus connects to an absent bike); 0 when fine. */
         private val _attempt = MutableStateFlow(0)
@@ -269,8 +285,8 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var guidanceClearJob: Job? = null
     private var lastNotificationIcon: BccuProtocol.NotificationIcon = BccuProtocol.NotificationIcon.NOTIFICATION_WAYPOINT
     private var reconnectWatchdogJob: Job? = null
-    private var handshakeTimeoutJob: Job? = null
-    private var handshakeRecoveries: Int = 0
+    @Volatile private var handshakeTimeoutJob: Job? = null
+    @Volatile private var handshakeRecoveries: Int = 0
         set(value) { field = value; publishAttempt() }
     /** Pending scan-found -> connect delay (dash boot grace); active means "we will connect shortly". */
     private var settleJob: Job? = null
@@ -295,13 +311,20 @@ class BccuConnectionService : LifecycleService() {
     @Volatile private var livenessLogged = false
     /** Pending delayed rescan (handshake cooldown or absent-bike backoff); mutated on main only. */
     @Volatile private var rescanJob: Job? = null
-    @Volatile private var rescanIsHandshakeCooldown = false
     /** Consecutive failed connects to an absent bike; drives [ABSENT_BACKOFF_MS]. */
     @Volatile private var absentFailures = 0
         set(value) { field = value; publishAttempt() }
 
+    /**
+     * Drops of a link that came up but never authenticated, for a known bike (a dash that lost its keys may kick
+     * such links before the handshake timer fires). They count toward the re-pair hint and the attempt number only:
+     * no cooldown, no change to scan timing.
+     */
+    @Volatile private var preAuthDrops = 0
+        set(value) { field = value; publishAttempt() }
+
     private fun publishAttempt() {
-        _attempt.value = ConnectionMapping.attempt(handshakeRecoveries, absentFailures)
+        _attempt.value = ConnectionMapping.attempt(handshakeRecoveries, absentFailures, preAuthDrops)
     }
 
     // Serialises all GATT reads/writes (Android allows one outstanding op at a
@@ -334,8 +357,14 @@ class BccuConnectionService : LifecycleService() {
         }
     }
 
-    private var connectingSinceMs: Long = 0L
-    private var pendingAutoConnect: Boolean = false
+    @Volatile private var connectingSinceMs: Long = 0L
+    @Volatile private var pendingAutoConnect: Boolean = false
+
+    /** Set first in [onDestroy]: a late GATT callback or posted runnable must not touch the dead service. */
+    @Volatile private var destroyed = false
+
+    /** The dash's key selection arrived on the GATT thread and its bookkeeping is queued for main: the handshake timer must not tear the link down in that gap. */
+    @Volatile private var authCompleting = false
 
     /**
      * Bridges the navigation pipeline (provider -> encoder -> DashWrite) to this
@@ -381,6 +410,7 @@ class BccuConnectionService : LifecycleService() {
         super.onCreate()
         createNotificationChannel()
         watchMirrorLine()
+        watchLastSeen()
         try {
             startForegroundWithTypes(ConnectionNotice.CONNECTING)
         } catch (e: Exception) {
@@ -393,6 +423,8 @@ class BccuConnectionService : LifecycleService() {
         bleThread = HandlerThread("BccuGatt").apply { start() }
         bleHandler = Handler(bleThread!!.looper)
         runningInstance = this
+        bluetoothOn.value = (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter?.isEnabled != false
+        watchNotice()
         startReconnectWatchdog()
         registerAdapterStateReceiver()
         startNavigationCoordinator()
@@ -449,10 +481,9 @@ class BccuConnectionService : LifecycleService() {
         if (recoveries <= 1) RETRY_COOLDOWN_FIRST_MS else RETRY_COOLDOWN_LATER_MS
 
     /** Rescan for the bonded bike after [delayMs] unless something else connects/scans first. */
-    private fun scheduleRescan(delayMs: Long, handshakeCooldown: Boolean) {
+    private fun scheduleRescan(delayMs: Long) {
         lifecycleScope.launch {
             rescanJob?.cancel()
-            rescanIsHandshakeCooldown = handshakeCooldown
             rescanJob = launch {
                 delay(delayMs)
                 val addr = AppSettings(this@BccuConnectionService).bondedDeviceAddress
@@ -464,12 +495,15 @@ class BccuConnectionService : LifecycleService() {
     /**
      * A sign the bike is here (its classic link came up, Bluetooth switched on, the app came
      * to the foreground): forget the absent-bike backoff and, if a long wait is pending,
-     * rescan now. A handshake cooldown is deliberately left alone.
+     * rescan now. A handshake cooldown is left alone: it runs in the handshake timer, not in [rescanJob].
      */
-    private fun resetAbsentBackoff(reason: String) {
+    private fun resetAbsentBackoff(reason: String, rescan: Boolean = true) {
         absentFailures = 0
+        if (reason == "bike link up") _bikeAbsent.value = false
+        // The caller connects directly: a scan started here would be cut short again at once.
+        if (!rescan) return
         lifecycleScope.launch {
-            if (rescanJob?.isActive == true && !rescanIsHandshakeCooldown && gatt == null) {
+            if (rescanJob?.isActive == true && gatt == null) {
                 AppLogger.log("BLE", "Backoff reset ($reason) - rescanning now")
                 rescanJob?.cancel(); rescanJob = null
                 AppSettings(this@BccuConnectionService).bondedDeviceAddress?.let { startBleScan(it) }
@@ -504,11 +538,14 @@ class BccuConnectionService : LifecycleService() {
 
     private fun noteHandshakeFailure(addr: String?) {
         handshakeRecoveries++
-        if (addr != null && handshakeRecoveries >= REPAIR_HINT_AFTER &&
+        suggestRepairIfNeeded(addr)
+    }
+
+    private fun suggestRepairIfNeeded(addr: String?) {
+        if (addr != null && handshakeRecoveries + preAuthDrops >= REPAIR_HINT_AFTER &&
             AppSettings(this).hasPairedBefore(addr) && !_repairHint.value
         ) {
             _repairHint.value = true
-            updateForegroundNotification(ConnectionNotice.CANT_CONNECT)
         }
     }
 
@@ -555,6 +592,7 @@ class BccuConnectionService : LifecycleService() {
     }
 
     private var notice: ConnectionNotice = ConnectionNotice.CONNECTING
+    private val bluetoothOn = MutableStateFlow(true)
 
     /**
      * Android does NOT reliably deliver onConnectionStateChange when the LOCAL
@@ -574,12 +612,12 @@ class BccuConnectionService : LifecycleService() {
                         stopBleScan()
                         settleJob?.cancel(); settleJob = null
                         rescanJob?.cancel(); rescanJob = null
+                        bluetoothOn.value = false
                         teardownLink("adapter off")
-                        updateForegroundNotification(ConnectionNotice.BLUETOOTH_OFF)
                     }
                     BluetoothAdapter.STATE_ON -> {
                         AppLogger.log("BLE", "Bluetooth adapter turned ON - resuming reconnect scan")
-                        updateForegroundNotification(ConnectionNotice.RECONNECTING)
+                        bluetoothOn.value = true
                         absentFailures = 0
                         rescanJob?.cancel(); rescanJob = null
                         val addr = AppSettings(this@BccuConnectionService).bondedDeviceAddress
@@ -683,6 +721,7 @@ class BccuConnectionService : LifecycleService() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val dev = result.device ?: return
                 if (dev.address?.uppercase() != target) return
+                _bikeAbsent.value = false
                 AppLogger.log("BLE", "Scan: found bike ${dev.address} (rssi=${result.rssi}) - settling ${CONNECT_SETTLE_MS / 1000}s before connect (dash boot grace)")
                 stopBleScan()
                 if (gatt != null || settleJob?.isActive == true) return
@@ -762,15 +801,15 @@ class BccuConnectionService : LifecycleService() {
             // A stalled/dropped handshake is cooling down: neither the bike's classic link coming
             // up (R21) nor ANY other start (app open, boot, sticky restart) may cut that pacing
             // short and direct-connect into the same stall. Only for the same bike.
+            // (The cooldown runs inside the handshake timer job, which is what makes it active here.)
             val inHandshakeCooldown = gatt == null &&
                 address.equals(currentDeviceAddress, ignoreCase = true) &&
-                (handshakeTimeoutJob?.isActive == true ||
-                    (rescanJob?.isActive == true && rescanIsHandshakeCooldown))
+                handshakeTimeoutJob?.isActive == true
             if (inHandshakeCooldown) {
                 AppLogger.log("BLE", "Start (present=$present) during a handshake retry cooldown - leaving it to the cooldown")
                 return START_STICKY
             }
-            if (present) resetAbsentBackoff("bike link up")
+            if (present) resetAbsentBackoff("bike link up", rescan = false)
             if (ReconnectPolicy.shouldPreemptBackgroundConnect(present, pendingAutoConnect, gatt != null, linkUp)) {
                 // A background connect request is parked but nothing linked up, yet
                 // the bike's own link is here: recycle it into a direct connect.
@@ -819,7 +858,7 @@ class BccuConnectionService : LifecycleService() {
             // Bluetooth is off; stay CONNECTING and let the AutoConnectReceiver's
             // adapter-on broadcast (or the next onStartCommand) retry.
             AppLogger.log("BLE", "Bluetooth adapter unavailable/off, deferring connect")
-            updateForegroundNotification(ConnectionNotice.BLUETOOTH_OFF)
+            bluetoothOn.value = false
             return
         }
         try {
@@ -846,6 +885,7 @@ class BccuConnectionService : LifecycleService() {
     private var fgsStartFailed = false
 
     override fun onDestroy() {
+        destroyed = true
         AppLogger.log("BLE", "Service destroyed")
         runCatching { getSystemService(NotificationManager::class.java).cancel(ALERT_ID) }
         adapterStateReceiver?.let { runCatching { unregisterReceiver(it) } }
@@ -857,9 +897,9 @@ class BccuConnectionService : LifecycleService() {
         reconnectWatchdogJob?.cancel(); reconnectWatchdogJob = null
         rescanJob?.cancel(); rescanJob = null
         handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
-        gatt?.disconnect()
-        gatt?.close()
-        gatt = null
+        // Under the lock the callbacks use: a connect() still publishing its client can't slip one in after this.
+        val g = synchronized(gattLock) { gatt.also { gatt = null } }
+        runCatching { g?.disconnect(); g?.close() }
         bleThread?.quitSafely(); bleThread = null; bleHandler = null
         _connectionState.value = ConnectionState.DISCONNECTED
         _linkUp.value = false
@@ -867,6 +907,10 @@ class BccuConnectionService : LifecycleService() {
         _attempt.value = 0
         _lastError.value = null
         _repairHint.value = false
+        _bikeAbsent.value = false
+        _reconnecting.value = false
+        _retryAvailableAtMs.value = null
+        _deviceName.value = null
         DashPreview.reset() // nothing on the dash any more, and no banner text kept
         if (runningInstance === this) runningInstance = null
         super.onDestroy()
@@ -928,6 +972,12 @@ class BccuConnectionService : LifecycleService() {
     }
 
     private fun updateForegroundNotification(status: ConnectionNotice) {
+        // GATT callbacks run on the BLE thread; the notice, the heads-up flag and the notification itself are main-thread state.
+        if (Looper.myLooper() !== Looper.getMainLooper()) {
+            lifecycleScope.launch { updateForegroundNotification(status) }
+            return
+        }
+        if (destroyed) return
         notice = status
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildForegroundNotification(status))
@@ -948,13 +998,33 @@ class BccuConnectionService : LifecycleService() {
                         .build(),
                 )
             }
-        } else if (alertShown) {
+        } else if (alertShown && status == ConnectionNotice.CONNECTED) {
+            // Only a working link (or Re-pair, which stops the service) takes the heads-up away: while the problem
+            // stands it stays, whatever the link is doing in between.
             alertShown = false
             manager.cancel(ALERT_ID)
         }
     }
 
     private var alertShown = false
+
+    /** The notification says what the app says: both come from [ConnectionMapping] over the same facts. */
+    private fun watchNotice() {
+        val facts = combine(_connectionState, _linkUp, _scanning, _attempt, _repairHint) { st, up, scan, attempt, hint -> arrayOf<Any?>(st, up, scan, attempt, hint) }
+        val more = combine(_lastError, _bikeAbsent, _reconnecting, bluetoothOn) { err, absent, re, bt -> arrayOf<Any?>(err, absent, re, bt) }
+        lifecycleScope.launch {
+            combine(facts, more) { a, b ->
+                val addr = settingsStore.bondedDeviceAddress
+                ConnectionMapping.notice(
+                    ConnectionMapping.detail(
+                        state = a[0] as ConnectionState, bluetoothOn = b[3] as Boolean, scanning = a[2] as Boolean, attempt = a[3] as Int,
+                        repairHint = a[4] as Boolean, paired = addr?.let { settingsStore.hasPairedBefore(it) } ?: false,
+                        lastError = b[0] as String?, linkUp = a[1] as Boolean, bikeAbsent = b[1] as Boolean, reconnecting = b[2] as Boolean,
+                    ),
+                )
+            }.distinctUntilChanged().collect { updateForegroundNotification(it) }
+        }
+    }
 
     /** Keeps the mirror one-liner (turn distance, recording time) current while connected: it ticks even when nothing else changes. */
     private fun watchMirrorLine() {
@@ -971,6 +1041,22 @@ class BccuConnectionService : LifecycleService() {
 
     private var lastMirrorLine: String? = null
 
+    /** The bike is linked now: remember it for "Last seen" (not after Re-pair, which leaves no bike to stamp). */
+    private fun stampLastSeen() {
+        if (settingsStore.bondedDeviceAddress == null) return
+        settingsStore.bondedLastSeenMs = System.currentTimeMillis()
+    }
+
+    /** While linked the time keeps moving, so a killed app or process is not far off. */
+    private fun watchLastSeen() {
+        lifecycleScope.launch {
+            while (true) {
+                delay(LAST_SEEN_EVERY_MS)
+                if (_connectionState.value == ConnectionState.AUTHENTICATED) stampLastSeen()
+            }
+        }
+    }
+
     /**
      * Every override here runs try/catch-wrapped. BLE stack callbacks are a
      * classic place for a rare/edge-case exception (stale GATT reference,
@@ -981,6 +1067,7 @@ class BccuConnectionService : LifecycleService() {
     private val callback = object : BluetoothGattCallback() {
 
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            if (destroyed) return
             try {
                 AppLogger.log("BLE", "onConnectionStateChange status=$status newState=$newState")
                 // A late callback from a client we already recycled (adapter-off
@@ -994,6 +1081,7 @@ class BccuConnectionService : LifecycleService() {
                     return
                 }
                 if (newState == BluetoothGatt.STATE_CONNECTED) {
+                    _bikeAbsent.value = false
                     linkUp = true
                     absentFailures = 0
                     connectingSinceMs = SystemClock.elapsedRealtime()
@@ -1007,15 +1095,16 @@ class BccuConnectionService : LifecycleService() {
                     // range) closes this boot cycle - the next one deserves a
                     // fresh retry budget, not leftovers from the last stall.
                     val wasAuthenticated = _connectionState.value == ConnectionState.AUTHENTICATED
+                    // The drop is the last moment it was there.
+                    if (wasAuthenticated) stampLastSeen()
                     // Whether the link ever came up decides if this was a failed CONNECT (bike
                     // absent) or a drop of a real link.
                     val linkWasUp = linkUp
-                    if (wasAuthenticated) handshakeRecoveries = 0
+                    if (wasAuthenticated) { handshakeRecoveries = 0; preAuthDrops = 0 }
                     // Release the old GATT client fully before requesting a new
                     // one - reusing a disconnected BluetoothGatt is a known source
                     // of silent reconnect failures (status 133).
                     teardownLink("peer disconnected (status=$status)", disconnectFirst = false)
-                    updateForegroundNotification(ConnectionNotice.RECONNECTING)
                     // Reconnect by actively SCANNING for the bike and connecting the
                     // moment it advertises again. Field logs showed connectGatt(
                     // autoConnect=true) silently never relinks on some phones, and a
@@ -1024,24 +1113,34 @@ class BccuConnectionService : LifecycleService() {
                     // Scanning is the reliable signal that the dash is actually back.
                     when {
                         wasAuthenticated -> {
+                            _reconnecting.value = true
                             absentFailures = 0
-                            scheduleRescan(1_500L, handshakeCooldown = false)
+                            scheduleRescan(1_500L)
                         }
                         linkWasUp -> {
+                            _reconnecting.value = true
+                            if (currentDeviceAddress?.let { settingsStore.hasPairedBefore(it) } == true) {
+                                preAuthDrops++
+                                suggestRepairIfNeeded(currentDeviceAddress)
+                            }
                             // The dash dropped a link before auth finished (it kicks
                             // unauthenticated links at ~15 s). Keep the historical quick
                             // rescan: a dash that is still waking up is covered by the
                             // handshake watchdog, and slowing this would delay a normal
                             // ignition-on connect.
-                            scheduleRescan(1_500L, handshakeCooldown = false)
+                            scheduleRescan(1_500L)
                         }
                         else -> {
                             // Connect attempt failed outright (bike off / out of range): back off.
                             absentFailures++
+                            if (absentFailures >= ConnectionMapping.BIKE_ABSENT_AFTER_FAILURES) {
+                                _bikeAbsent.value = true
+                                _reconnecting.value = false
+                            }
                             _lastError.value = "Bike not found"
                             val wait = absentBackoffMs(absentFailures)
                             AppLogger.log("BLE", "Connect failed - bike absent? rescanning in ${wait / 1000}s (failure $absentFailures)")
-                            scheduleRescan(wait, handshakeCooldown = false)
+                            scheduleRescan(wait)
                         }
                     }
                 }
@@ -1051,6 +1150,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+            if (destroyed) return
             try {
                 AppLogger.log("BLE", "onServicesDiscovered status=$status, ${g.services.size} services")
                 if (status != BluetoothGatt.GATT_SUCCESS) AppLogger.log("BLE", "!! service discovery status=$status")
@@ -1069,6 +1169,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            if (destroyed) return
             try {
                 AppLogger.log("BLE", "onMtuChanged mtu=$mtu status=$status")
                 if (status != BluetoothGatt.GATT_SUCCESS || mtu < MIN_COMFORTABLE_MTU) {
@@ -1091,6 +1192,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
+            if (destroyed) return
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onDescriptorWrite ${d.characteristic?.uuid} -> $statusName")
@@ -1106,6 +1208,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
+            if (destroyed) return
             try {
                 val statusName = if (status == BluetoothGatt.GATT_SUCCESS) "SUCCESS" else "FAILED($status)"
                 AppLogger.log("BLE", "onCharacteristicWrite ${c.uuid} -> $statusName")
@@ -1120,6 +1223,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray) {
+            if (destroyed) return
             try {
                 handleIncoming(c.uuid, value)
             } catch (e: Exception) {
@@ -1128,6 +1232,7 @@ class BccuConnectionService : LifecycleService() {
         }
 
         override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray, status: Int) {
+            if (destroyed) return
             try {
                 logProbeValue(readLabel(c, status), value)
             } catch (e: Exception) {
@@ -1290,17 +1395,28 @@ class BccuConnectionService : LifecycleService() {
                 }
                 activeSessionKey = keys[keyIndex]
                 replyControl(BccuProtocol.CMD_KEY_ACK_BASE or keyIndex)
-                if (_connectionState.value != ConnectionState.AUTHENTICATED) {
+                if (_connectionState.value != ConnectionState.AUTHENTICATED && !authCompleting) {
                     AppLogger.log("Auth", ">>> AUTHENTICATED <<< (key index $keyIndex)")
-                    handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
-                    handshakeRecoveries = 0
-                    absentFailures = 0
-                    _repairHint.value = false
-                    _lastError.value = null
-                    lastAuthMsgMs = SystemClock.elapsedRealtime()
-                    livenessLogged = false
-                    stopBleScan()
-                    _connectionState.value = ConnectionState.AUTHENTICATED
+                    // The state and its bookkeeping are main-thread business (the handshake timer runs there):
+                    // queued, and the timer is told it is coming, so a handshake finishing as the timer fires keeps its link.
+                    authCompleting = true
+                    val link = gatt
+                    lifecycleScope.launch {
+                        authCompleting = false
+                        if (destroyed || link == null || link !== gatt) return@launch // the link was recycled meanwhile
+                        handshakeTimeoutJob?.cancel(); handshakeTimeoutJob = null
+                        handshakeRecoveries = 0
+                        preAuthDrops = 0
+                        absentFailures = 0
+                        _repairHint.value = false
+                        _reconnecting.value = false
+                        _lastError.value = null
+                        lastAuthMsgMs = SystemClock.elapsedRealtime()
+                        livenessLogged = false
+                        stopBleScan()
+                        _connectionState.value = ConnectionState.AUTHENTICATED
+                        stampLastSeen()
+                    }
                     currentDeviceAddress?.let {
                         val s = AppSettings(this@BccuConnectionService)
                         s.markPairedBefore(it)
@@ -1309,7 +1425,6 @@ class BccuConnectionService : LifecycleService() {
                         // genuine first run) - narrows the reconnect-prompt bug.
                         AppLogger.log("Auth", "markPairedBefore($it) persisted=${s.hasPairedBefore(it)}")
                     }
-                    updateForegroundNotification(ConnectionNotice.CONNECTED)
                     enableNotification(BccuProtocol.TBT_NAV_REQUEST)
                     sendNavigationState(guidanceOn = true, gpsIconOn = true)
                     // Re-push any active guidance snapshot so a reconnect never
@@ -1357,7 +1472,8 @@ class BccuConnectionService : LifecycleService() {
             val known = AppSettings(this@BccuConnectionService).hasPairedBefore(addr)
             val budget = if (known) HANDSHAKE_TIMEOUT_KNOWN_MS else HANDSHAKE_TIMEOUT_FIRST_PAIR_MS
             delay(budget)
-            if (_connectionState.value == ConnectionState.AUTHENTICATED) return@launch
+            // Main thread, like the bookkeeping of a handshake that just finished: the two cannot interleave.
+            if (_connectionState.value == ConnectionState.AUTHENTICATED || authCompleting || destroyed) return@launch
             noteHandshakeFailure(addr)
             // Back off instead of looping: one quickish retry, then long
             // cooldowns. Rapid drop/reconnect cycles against a booting dash
@@ -1369,8 +1485,13 @@ class BccuConnectionService : LifecycleService() {
             // (Stale-GATT guard: the late DISCONNECTED callback no longer clears the queue
             // for us, so teardownLink does it.) This job is the handshake timer: don't cancel it.
             teardownLink("handshake timeout", cancelHandshakeTimer = false)
-            delay(cooldown)
-            if (gatt == null) startBleScan(addr)
+            _retryAvailableAtMs.value = System.currentTimeMillis() + cooldown
+            try {
+                delay(cooldown)
+            } finally {
+                _retryAvailableAtMs.value = null
+            }
+            if (!destroyed && gatt == null) startBleScan(addr)
         }
     }
 

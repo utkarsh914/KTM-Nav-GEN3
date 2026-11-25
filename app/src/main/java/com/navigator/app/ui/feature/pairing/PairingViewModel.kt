@@ -61,6 +61,9 @@ class PairingViewModel(
     private val now = MutableStateFlow(clock())
     private var timer: Job? = null
 
+    /** When the GATT link first came up in this attempt: the timeout then waits for the dash prompt. */
+    @Volatile private var linkUpAtMs: Long? = null
+
     private val _events = Channel<PairingEvent>(Channel.BUFFERED)
     val events: Flow<PairingEvent> = _events.receiveAsFlow()
 
@@ -86,6 +89,7 @@ class PairingViewModel(
         // Only leave once the handshake genuinely completes, never on the tap itself.
         viewModelScope.launch {
             combine(attempt, connection) { a, link ->
+                if (a != null && link.linkUp && linkUpAtMs == null) linkUpAtMs = clock()
                 if (a != null && link.phase != ConnectionPhase.AUTHENTICATED) linkDropped.value = true
                 a != null && link.phase == ConnectionPhase.AUTHENTICATED && linkDropped.value
             }.collect { done ->
@@ -110,6 +114,7 @@ class PairingViewModel(
         val start = clock()
         now.value = start
         linkDropped.value = false
+        linkUpAtMs = null
         session.begin(bike.address, bike.name)
         attempt.value = Attempt(bike.address, bike.name, start)
         timer?.cancel()
@@ -118,7 +123,7 @@ class PairingViewModel(
                 delay(TICK_MS)
                 now.value = clock()
                 val a = attempt.value ?: break
-                if (PairingPolicy.timedOut(a.startedAtMs, now.value)) { giveUp(); break }
+                if (PairingPolicy.timedOut(a.startedAtMs, now.value, linkUpAtMs)) { giveUp(); break }
             }
         }
     }

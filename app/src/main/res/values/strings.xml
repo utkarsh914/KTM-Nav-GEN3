@@ -127,6 +127,7 @@
     <string name="bike_sheet_connected">Connected</string>
     <string name="bike_sheet_connecting">Connecting…</string>
     <string name="bike_sheet_connecting_first">Connecting · confirm on the dash</string>
+    <string name="bike_sheet_reconnecting_plain">Reconnecting</string>
     <string name="bike_sheet_reconnecting">Reconnecting · attempt %1$d</string>
     <string name="bike_sheet_cant_connect">Can\'t connect</string>
     <string name="bike_sheet_cant_connect_hint">The dash may have lost its pairing. Re-pair to fix it.</string>
@@ -142,6 +143,7 @@
     <string name="bike_sheet_test_on_trip">Available when you\'re not on a trip, so it can\'t replace your directions.</string>
     <string name="bike_sheet_last_seen">Last seen %1$s</string>
     <string name="bike_sheet_retry_now">Retry now</string>
+    <string name="bike_sheet_retry_in">Retry in %1$s</string>
     <string name="bike_sheet_retrying">Trying…</string>
     <string name="bike_sheet_repair">Re-pair…</string>
     <string name="bike_repair_confirm">Re-pair</string>
@@ -1176,6 +1178,9 @@
     <string name="conn_reconnecting">Reconnecting to the dash</string>
     <string name="conn_reconnecting_named">Reconnecting to %1$s…</string>
     <string name="conn_reconnecting_fix">Retrying automatically</string>
+    <string name="conn_disconnected">Dash not connected</string>
+    <string name="conn_disconnected_named">%1$s not connected</string>
+    <string name="conn_disconnected_fix">It connects when the bike is on and near.</string>
     <string name="conn_bt_off">Bluetooth is off</string>
     <string name="conn_bt_off_fix">Turn it on to reconnect to the dash.</string>
     <string name="conn_cant">Can\'t connect to the dash</string>

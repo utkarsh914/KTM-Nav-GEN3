@@ -4,7 +4,7 @@ import android.content.res.Resources
 import com.navigator.app.R
 
 /** The states the bike-connection notification can be in (SY5). */
-enum class ConnectionNotice { CONNECTING, CONNECTED, RECONNECTING, BLUETOOTH_OFF, CANT_CONNECT }
+enum class ConnectionNotice { CONNECTING, CONNECTED, RECONNECTING, BLUETOOTH_OFF, CANT_CONNECT, DISCONNECTED }
 
 enum class ConnectionAction { TURN_ON, REPAIR, QUIT }
 
@@ -34,6 +34,9 @@ object ConnectionNoticeContent {
         )
         ConnectionNotice.RECONNECTING -> ConnectionContent(
             named(res, R.string.conn_reconnecting, R.string.conn_reconnecting_named, bikeName), res.getString(R.string.conn_reconnecting_fix), listOf(ConnectionAction.QUIT), alert = false,
+        )
+        ConnectionNotice.DISCONNECTED -> ConnectionContent(
+            named(res, R.string.conn_disconnected, R.string.conn_disconnected_named, bikeName), res.getString(R.string.conn_disconnected_fix), listOf(ConnectionAction.QUIT), alert = false,
         )
         ConnectionNotice.BLUETOOTH_OFF -> ConnectionContent(
             res.getString(R.string.conn_bt_off), res.getString(R.string.conn_bt_off_fix),

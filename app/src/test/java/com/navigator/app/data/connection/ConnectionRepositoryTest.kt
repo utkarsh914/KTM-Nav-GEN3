@@ -35,7 +35,6 @@ class ConnectionRepositoryTest {
     private var stopped = 0
     private var cancelled = 0
     private var retried = 0
-    private var clock = 1_000_000L
 
     @Before fun setUp() {
         ctx = RuntimeEnvironment.getApplication()
@@ -54,7 +53,6 @@ class ConnectionRepositoryTest {
         stopService = { stopped++ },
         cancelNotifications = { cancelled++ },
         retryService = { retried++ },
-        now = { clock },
     )
 
     @Test fun aTestTurnClearsItselfAfterFiveSeconds() = runTest {
@@ -65,7 +63,7 @@ class ConnectionRepositoryTest {
                 state = state, scanning = MutableStateFlow(false), attempt = MutableStateFlow(0),
                 repairHint = hint, lastError = MutableStateFlow(null), deviceName = MutableStateFlow(null), bluetoothOn = btOn,
             ),
-            stopService = {}, cancelNotifications = {}, now = { clock },
+            stopService = {}, cancelNotifications = {},
             showTestTurn = { shown++ }, clearDash = { cleared++ },
         )
         repo.sendTestTurn()
@@ -90,7 +88,7 @@ class ConnectionRepositoryTest {
                 state = state, scanning = MutableStateFlow(false), attempt = MutableStateFlow(0),
                 repairHint = hint, lastError = MutableStateFlow(null), deviceName = MutableStateFlow(null), bluetoothOn = btOn,
             ),
-            stopService = {}, cancelNotifications = {}, now = { clock },
+            stopService = {}, cancelNotifications = {},
             showTestTurn = {}, clearDash = { cleared++ }, guidanceLive = { live },
         )
         repo.sendTestTurn()
@@ -107,26 +105,27 @@ class ConnectionRepositoryTest {
         assertEquals("AA:BB:CC:DD:EE:FF", settings.legacy.bondedDeviceAddress)
     }
 
-    @Test fun lastSeenIsWhenTheBikeWasLastLinkedAndSurvivesARestart() = runTest(UnconfinedTestDispatcher()) {
+    @Test fun lastSeenIsReadFromTheSettingsTheServiceWrites() = runTest(UnconfinedTestDispatcher()) {
         settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
         val repo = repo()
         assertEquals(null, repo.lastSeenMs.value)
-        clock = 2_000_000L
-        state.value = ConnectionState.AUTHENTICATED
-        assertEquals(2_000_000L, repo.lastSeenMs.value)
-        clock = 3_000_000L
-        state.value = ConnectionState.DISCONNECTED
-        assertEquals("the drop is the last moment it was there", 3_000_000L, repo.lastSeenMs.value)
-        clock = 9_000_000L
-        assertEquals("kept while offline", 3_000_000L, repo.lastSeenMs.value)
+        settings.legacy.bondedLastSeenMs = 3_000_000L // the service stamps it, even with the app closed
+        assertEquals(3_000_000L, repo.lastSeenMs.value)
         assertEquals("read back by a new session", 3_000_000L, repo().lastSeenMs.value)
+    }
+
+    @Test fun theRepositoryNoLongerWritesLastSeen() = runTest(UnconfinedTestDispatcher()) {
+        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
+        repo()
+        state.value = ConnectionState.AUTHENTICATED
+        state.value = ConnectionState.DISCONNECTED
+        assertEquals(0L, settings.legacy.bondedLastSeenMs)
     }
 
     @Test fun rePairForgetsWhenTheOldBikeWasSeen() = runTest(UnconfinedTestDispatcher()) {
         settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
         val repo = repo()
-        state.value = ConnectionState.AUTHENTICATED
-        state.value = ConnectionState.DISCONNECTED
+        settings.legacy.bondedLastSeenMs = 3_000_000L
         settings.legacy.bondedPairedMs = 1_000L
         repo.rePair()
         assertEquals(null, repo.lastSeenMs.value)
@@ -141,16 +140,6 @@ class ConnectionRepositoryTest {
         assertTrue(settings.legacy.bondedPairedMs > 0L)
         assertTrue("the bike card reads the snapshot", settings.snapshot.value.bondedPairedMs > 0L)
         assertTrue("device-local: never in a backup", com.navigator.app.backup.PrefsBackup.isExcluded("bonded_paired_ms"))
-    }
-
-    @Test fun rePairWhileLinkedLeavesNoLastSeenBehind() = runTest(UnconfinedTestDispatcher()) {
-        settings.legacy.bondedDeviceAddress = "AA:BB:CC:DD:EE:FF"
-        val repo = repo()
-        state.value = ConnectionState.AUTHENTICATED
-        repo.rePair()
-        state.value = ConnectionState.DISCONNECTED
-        assertEquals(null, repo.lastSeenMs.value)
-        assertEquals(0L, settings.legacy.bondedLastSeenMs)
     }
 
     @Test fun lastSeenNeverGoesIntoABackup() {

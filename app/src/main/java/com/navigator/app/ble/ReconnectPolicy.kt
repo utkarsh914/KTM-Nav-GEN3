@@ -52,8 +52,10 @@ object ReconnectPolicy {
     enum class RetryNow { Ignore, ScanNow, RecycleAndScan }
 
     /**
-     * An explicit retry skips any wait (the absent-bike backoff, a handshake cooldown) and scans at once. It never
-     * piles onto an attempt already under way: a scan, a pending connect after a find, a handshake or a live link,
+     * An explicit retry skips the absent-bike backoff and scans at once. It never cuts a handshake cooldown short
+     * (that pacing protects the dash; the cooldown runs inside the handshake timer, so [handshaking] covers it and the
+     * sheet counts down to [BccuConnectionService.retryAvailableAtMs]). It never piles onto an attempt already under
+     * way: a scan, a pending connect after a find, a handshake or a live link,
      * nor onto a tap that came a moment ago. A parked background connect request is recycled into the scan.
      */
     fun retryNow(

@@ -49,7 +49,11 @@ object PairingPolicy {
 
     fun elapsedSec(startedAtMs: Long, nowMs: Long): Int = (maxOf(0L, nowMs - startedAtMs) / 1000).toInt()
 
-    fun timedOut(startedAtMs: Long, nowMs: Long): Boolean = nowMs - startedAtMs >= TIMEOUT_MS
+    /** Once the link is up the rider may be confirming on the dash (~30 s, up to the service's 75 s budget): never cut that short. */
+    const val LINK_UP_BUDGET_MS = 75_000L
+
+    fun timedOut(startedAtMs: Long, nowMs: Long, linkUpAtMs: Long? = null): Boolean =
+        nowMs >= maxOf(startedAtMs + TIMEOUT_MS, (linkUpAtMs ?: Long.MIN_VALUE / 2) + LINK_UP_BUDGET_MS)
 
     /** m:ss for the timer on ON7. */
     fun clock(seconds: Int): String = com.navigator.app.ride.formatElapsed(seconds * 1000L)

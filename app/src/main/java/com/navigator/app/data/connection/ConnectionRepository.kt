@@ -39,8 +39,13 @@ class LinkSources(
     val lastError: StateFlow<String?> = BccuConnectionService.lastError,
     val deviceName: StateFlow<String?> = BccuConnectionService.deviceName,
     val linkUp: StateFlow<Boolean> = BccuConnectionService.linkUpState,
+    val bikeAbsent: StateFlow<Boolean> = BccuConnectionService.bikeAbsent,
+    val reconnecting: StateFlow<Boolean> = BccuConnectionService.reconnecting,
+    val retryAvailableAtMs: StateFlow<Long?> = BccuConnectionService.retryAvailableAtMs,
     val bluetoothOn: StateFlow<Boolean>,
 )
+
+private data class LinkFacts(val attempt: Int, val linkUp: Boolean, val bikeAbsent: Boolean, val reconnecting: Boolean)
 
 /** What the dash is currently told to show, as the status screen wants it. */
 data class DashSnapshot(val preview: DashPreview.State)
@@ -56,7 +61,6 @@ class ConnectionRepository(
     private val stopService: () -> Unit,
     private val cancelNotifications: () -> Unit,
     private val retryService: () -> Unit = {},
-    private val now: () -> Long = System::currentTimeMillis,
     private val showTestTurn: () -> Unit = {
         BccuConnectionService.sendTurnIconIfRunning(BccuProtocol.TurnIcon.GO_STRAIGHT)
         BccuConnectionService.sendGuidanceIfRunning("50 m", "Test Road")
@@ -65,39 +69,21 @@ class ConnectionRepository(
     /** Real directions are on the dash: the test turn's delayed clear must leave them alone. */
     private val guidanceLive: () -> Boolean = { false },
 ) {
-    private val _lastSeenMs = MutableStateFlow(settings.legacy.bondedLastSeenMs.takeIf { it > 0 })
+    /** When the bike was last linked, kept across restarts; null when it never was (or after Re-pair). The service writes it. */
+    val lastSeenMs: StateFlow<Long?> = settings.snapshot.map { it.bondedLastSeenMs.takeIf { t -> t > 0 } }
+        .stateIn(scope, SharingStarted.Eagerly, settings.snapshot.value.bondedLastSeenMs.takeIf { it > 0 })
 
-    /** When the bike was last linked, kept across restarts; null when it never was (or after Re-pair). */
-    val lastSeenMs: StateFlow<Long?> = _lastSeenMs.asStateFlow()
-
-    init {
-        scope.launch {
-            var wasUp = false
-            sources.state.collectLatest { st ->
-                val up = st == ConnectionState.AUTHENTICATED
-                // The drop is the last moment it was there; while it is, the time keeps moving so a killed app is not far off.
-                if (wasUp && !up) markSeen()
-                wasUp = up
-                while (up) { markSeen(); delay(LAST_SEEN_EVERY_MS) }
-            }
-        }
-    }
-
-    private fun markSeen() {
-        // Re-pair forgets the bike: its drop must not stamp a time on nobody.
-        if (settings.legacy.bondedDeviceAddress == null) return
-        val t = now()
-        _lastSeenMs.value = t
-        settings.legacy.bondedLastSeenMs = t
-    }
+    /** When a Retry now would act again, while the dash's handshake cooldown runs (null otherwise). */
+    val retryAvailableAtMs: StateFlow<Long?> = sources.retryAvailableAtMs
 
     val detail: StateFlow<ConnectionDetail> = combine(
-        sources.state, sources.bluetoothOn, sources.scanning, combine(sources.attempt, sources.linkUp) { a, up -> a to up },
+        sources.state, sources.bluetoothOn, sources.scanning,
+        combine(sources.attempt, sources.linkUp, sources.bikeAbsent, sources.reconnecting) { a, up, absent, re -> LinkFacts(a, up, absent, re) },
         combine(sources.repairHint, sources.lastError, settings.snapshot) { hint, error, snap -> Triple(hint, error, snap) },
-    ) { state, btOn, scanning, (attempt, linkUp), (hint, error, snap) ->
+    ) { state, btOn, scanning, (attempt, linkUp, absent, reconnecting), (hint, error, snap) ->
         // Read on every change of the link: the service marks a bike paired in the raw prefs, which the snapshot does not see.
         val paired = snap.bondedDeviceAddress?.let { settings.legacy.hasPairedBefore(it) } ?: false
-        ConnectionMapping.detail(state, btOn, scanning, attempt, hint, paired, error, linkUp)
+        ConnectionMapping.detail(state, btOn, scanning, attempt, hint, paired, error, linkUp, absent, reconnecting)
     }.stateIn(scope, SharingStarted.Eagerly, ConnectionDetail())
 
     val status: StateFlow<BikeStatus> = combine(detail, settings.snapshot, sources.deviceName) { d, snap, live ->
@@ -130,14 +116,14 @@ class ConnectionRepository(
      * GENERATE_KEYS and stall if the dash lost its keys.
      */
     fun rePair() {
+        // The link goes first: a service still running must not see a half-forgotten bike (or stamp "last seen" on nobody).
+        stopService()
         val s = settings.legacy
         s.bondedDeviceAddress?.let { s.clearPairedBefore(it) }
         s.bondedDeviceAddress = null
         s.bondedDeviceName = null
         s.bondedLastSeenMs = 0L
         s.bondedPairedMs = 0L
-        _lastSeenMs.value = null
-        stopService()
         settings.refresh()
     }
 
@@ -151,7 +137,6 @@ class ConnectionRepository(
     }
 
     companion object {
-        private const val LAST_SEEN_EVERY_MS = 60_000L
         const val TEST_TURN_MS = 5_000L
 
         fun create(context: Context, scope: CoroutineScope, settings: SettingsRepository): ConnectionRepository {

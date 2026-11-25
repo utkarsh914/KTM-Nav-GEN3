@@ -1,6 +1,7 @@
 package com.navigator.app.data.connection
 
 import com.navigator.app.ble.BccuConnectionService.ConnectionState
+import com.navigator.app.notify.ConnectionNotice
 
 enum class ConnectionPhase { IDLE, CONNECTING, HANDSHAKE_FIRST_PAIR, RECONNECTING, AUTHENTICATED, FAILED }
 
@@ -36,13 +37,16 @@ object ConnectionMapping {
     /** After this many failed connects to an absent bike the bike is simply not there (parked, ignition off). */
     const val ABSENT_AFTER_FAILURES = 3
 
+    /** Consecutive failed connects after which the service calls the bike absent (parked): no more spinner. */
+    const val BIKE_ABSENT_AFTER_FAILURES = 2
+
     /**
      * The attempt count the rider sees. Handshake recoveries mean the bike is there but not answering, so
-     * they count from the first; failed connects to an absent bike count only for the first few, after
+     * they count from the first, as do links that dropped before authenticating ([preAuthDrops]); failed connects to an absent bike count only for the first few, after
      * which the service keeps scanning quietly and the status reads Not connected.
      */
-    fun attempt(handshakeRecoveries: Int, absentFailures: Int): Int =
-        maxOf(handshakeRecoveries, if (absentFailures >= ABSENT_AFTER_FAILURES) 0 else absentFailures)
+    fun attempt(handshakeRecoveries: Int, absentFailures: Int, preAuthDrops: Int = 0): Int =
+        maxOf(handshakeRecoveries + preAuthDrops, if (absentFailures >= ABSENT_AFTER_FAILURES) 0 else absentFailures)
 
     fun detail(
         state: ConnectionState,
@@ -53,13 +57,19 @@ object ConnectionMapping {
         paired: Boolean,
         lastError: String?,
         linkUp: Boolean = false,
+        /** The service heard nothing of the bike for a while (parked): it keeps scanning quietly. */
+        bikeAbsent: Boolean = false,
+        /** A link that worked just dropped and is being recovered. */
+        reconnecting: Boolean = false,
     ): ConnectionDetail {
         val phase = when {
             !bluetoothOn -> ConnectionPhase.IDLE
             state == ConnectionState.AUTHENTICATED -> ConnectionPhase.AUTHENTICATED
             repairHint -> ConnectionPhase.FAILED
+            // A parked bike: each quiet scan would read "connecting" most of the time. It is simply not there.
+            bikeAbsent && !linkUp -> ConnectionPhase.IDLE
             // Between attempts the service reads DISCONNECTED (rescan delay, backoff, cooldown) but is retrying.
-            attempt > 0 -> ConnectionPhase.RECONNECTING
+            attempt > 0 || reconnecting -> ConnectionPhase.RECONNECTING
             state == ConnectionState.CONNECTING -> when {
                 !paired -> ConnectionPhase.HANDSHAKE_FIRST_PAIR
                 else -> ConnectionPhase.CONNECTING
@@ -67,6 +77,18 @@ object ConnectionMapping {
             else -> ConnectionPhase.IDLE
         }
         return ConnectionDetail(bluetoothOn, scanning, phase, attempt, repairHint, lastError, linkUp)
+    }
+
+    /** What the ongoing notification says: the same facts as [status], so the app and the notification agree. */
+    fun notice(detail: ConnectionDetail): ConnectionNotice = when {
+        !detail.bluetoothOn -> ConnectionNotice.BLUETOOTH_OFF
+        else -> when (detail.phase) {
+            ConnectionPhase.AUTHENTICATED -> ConnectionNotice.CONNECTED
+            ConnectionPhase.FAILED -> ConnectionNotice.CANT_CONNECT
+            ConnectionPhase.RECONNECTING -> ConnectionNotice.RECONNECTING
+            ConnectionPhase.CONNECTING, ConnectionPhase.HANDSHAKE_FIRST_PAIR -> ConnectionNotice.CONNECTING
+            ConnectionPhase.IDLE -> ConnectionNotice.DISCONNECTED
+        }
     }
 
     fun status(detail: ConnectionDetail, bondedAddress: String?, name: String?): BikeStatus = when {
