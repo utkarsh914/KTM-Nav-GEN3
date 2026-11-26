@@ -57,7 +57,7 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   `KtmMotionScheme` (`MaterialExpressiveTheme(motionScheme = …)`), so a sheet, a switch or the nav-bar indicator moves
   like the rest of the app. Off the bike everything is a spring, so an interrupted move (a second tap, a back swipe)
   carries on from where it is instead of restarting.
-- Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, predictive back, the plan sheet's entrance);
+- Tokens (fluid tier): `page()` (critically damped, stiffness 400, visually settled in about 250 ms: pages, the plan sheet's entrance);
   `spatialFast/Default/Slow()` (damping 0.85/0.85/0.9, stiffness 800/380/200: sheets, dialogs, chips, shared bounds,
   list placement; a hair of overshoot at most); `stage(delayMs)` (a named 200 ms tween for staged choreography: fade-through); `playful()` (damping 0.7, stiffness 800: a press released, a pin dropped; never a page, never riding; the switch is Material's); `effectsFast/Default/Slow()` (damping 1, stiffness 3800/1600/800: alpha, colour, scrim; never bounce).
   The Navigate stages: the chrome fades, the plan sheets (`PlanPanel`, `stageSheet()`) travel in from their own edge on `spatialDefault` and leave on `spatialFast`. Pages never visibly overshoot. Rules for new code: exits use the fast tokens; behind a pushed page or a dialog we dim,
@@ -96,7 +96,7 @@ A control in a corner of the map (Back, the compass, the pick hint) uses `mapCor
   and slides in from the right edge, full width, on `page()`, with no alpha at all (`check-ui-rules.sh` fails on slide plus
   fade); the page underneath moves back a quarter of the width and dims (`KtmLayout.pageDim`, 25 % black, a plain overlay
   that never blurs). A map page underneath does not move, it only dims (the map is not part of the page); two map pages cross-fade their controls. Back is the exact
-  reverse (except where the map is between the pages); a predictive back swipe seeks that same slide (no shrink, no corners, so the gesture and the arrow look alike). Tabs: the new tab fades in over the old one at once (no gap, no
+  reverse (except where the map is between the pages); the system Back (button or swipe) is the arrow: every page handles it by closing itself, so nothing follows the finger and the release plays the arrow's own transition, tab bar included (D41; dialogs and the trip sheet do follow the finger). Tabs: the new tab fades in over the old one at once (no gap, no
   scale, the old one stays put). Where the map is between the pages (a map page over, or back to, an opaque page) both
   dissolve; the ride card's shared-bounds move keeps Rides still while the replay fades and its container carries its own
   ground. Tabs and the card move are not dimmed. Onboarding steps still use the page and fade-through tokens. With Remove

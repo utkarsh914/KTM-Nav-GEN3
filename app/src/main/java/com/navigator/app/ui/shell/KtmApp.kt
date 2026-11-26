@@ -287,7 +287,8 @@ fun KtmApp(onQuit: () -> Unit) {
                                 exitTransition = { exitFor(pageMotion) },
                                 popEnterTransition = { popEnterFor(pageMotion) },
                                 popExitTransition = { popExitFor(pageMotion) },
-                                // Without these the NavHost's own defaults apply to a back swipe: scale to 0.7 and a fade, not our slide.
+                                // Only a fallback: every page handles Back itself (PageBack), so these should never run. Without them
+                                // the NavHost's own defaults (scale to 0.7 and a fade) would apply to a swipe that got through.
                                 predictivePopEnterTransition = { popEnterFor(pageMotion) },
                                 predictivePopExitTransition = { popExitFor(pageMotion) },
                             ) {
@@ -553,17 +554,30 @@ private fun NavHostController.currentIsPushedPage(): Boolean {
     return Tab.entries.none { d.hasRoute(it.route::class) }
 }
 
-/** Open a page over the current one, once: a second tap while it animates in must not stack a copy. */
+/**
+ * Open a page over the current one, once: a second tap while it animates in must not stack a copy. The page on top is
+ * the same one when it has the same route; the Settings sections share one destination and are told apart by which
+ * section they show (launchSingleTop would have replaced Bike & dash with Permissions instead of opening it over it).
+ */
 fun NavHostController.push(route: Route) {
-    navigate(route) { launchSingleTop = true }
+    val top = currentBackStackEntry
+    if (top != null && isSamePage(top, route)) return
+    navigate(route)
+}
+
+internal fun isSamePage(top: NavBackStackEntry, route: Route): Boolean = when {
+    !top.destination.hasRoute(route::class) -> false
+    route is Route.SettingsPage -> top.toRoute<Route.SettingsPage>() == route
+    else -> true
 }
 
 /**
- * Close [entry]'s page. Only while it is the resumed page: a second tap during the exit animation would
- * otherwise pop whatever lies underneath (down to the root, leaving a blank screen).
+ * Close [entry]'s page: the one thing the top-left arrow and the system Back (button or swipe) both do. Only while it is
+ * the page on top with a page under it: a second tap during the exit animation finds the page already gone from the stack
+ * and must not pop whatever lies underneath (down to the root, leaving a blank screen).
  */
 fun NavHostController.popFrom(entry: NavBackStackEntry) {
-    if (entry.lifecycle.currentState == Lifecycle.State.RESUMED) popBackStack()
+    if (canClose(pageStackIds(), entry.id)) popBackStack()
 }
 
 /** Replace everything with [route] (end of first-run pairing, or after re-pairing). */

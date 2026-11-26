@@ -1,6 +1,7 @@
 package com.navigator.app.ui.shell
 
 import android.annotation.SuppressLint
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterExitState
@@ -27,6 +28,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.ComposeNavigator
@@ -46,8 +48,8 @@ import kotlinx.coroutines.flow.StateFlow
  * the new tab in over the old one: no scale, no gap. Back to Navigate from another tab is the reverse: the old tab
  * fades out on top of a Navigate that is already there. A tab opened from a page pushed over another tab first closes
  * that page, so it arrives as a plain push of the page (slide and dim), not as a tab fade. The few moves that cannot slide because the map is between the
- * pages dissolve instead. All of it runs on the tokens of KtmMotionSpecs. A predictive back swipe seeks the same
- * transitions: no shrink, no corners.
+ * pages dissolve instead. All of it runs on the tokens of KtmMotionSpecs. System Back (button or swipe) is the arrow: see
+ * [PageBack]. Nothing follows the finger, so the swipe, the button and the arrow play the same transition.
  */
 
 /** The page under a push moves back by one over this share of the width. */
@@ -181,6 +183,7 @@ internal fun PageHost(scope: AnimatedContentScope, entry: NavBackStackEntry, con
     val settled = remember(scope) { derivedStateOf { !scope.transition.isRunning } }
     CompositionLocalProvider(LocalPageSettled provides settled, LocalPageEntry provides entry) {
         Box(ground.pageFade(scope)) {
+            PageBack(entry)
             content()
             PageDim(scope, entry)
         }
@@ -259,6 +262,28 @@ internal class BackStackHistory(private val nav: NavHostController) {
         nav.addOnDestinationChangedListener(listener)
     }
     fun stop() = nav.removeOnDestinationChangedListener(listener)
+}
+
+/** The composable navigator's own stack of page ids: synchronous on push and pop, and without the graph's entry. */
+internal fun NavController.pageStackIds(): List<String> =
+    navigatorProvider.getNavigator(ComposeNavigator::class.java).backStack.value.map { it.id }
+
+/** A page can close itself when it is the top page and there is one under it. */
+internal fun canClose(stackIds: List<String>, id: String): Boolean = stackIds.size > 1 && stackIds.last() == id
+
+/**
+ * System Back, by button or by swipe, closes the page like the top-left arrow does (D41): the same function, so the same
+ * transition. Nothing follows the finger during a swipe, so the NavHost's own predictive handling (which would drag the
+ * transition by the finger and lose the tab bar's slide) is shadowed for good. Registered before the page's content, so
+ * whatever the page itself opens (a sheet, search, a selection) still gets Back first.
+ */
+@Composable
+private fun PageBack(entry: NavBackStackEntry) {
+    val nav = LocalPageNav.current ?: return
+    // Read from the controller's flow so a change of the stack recomposes this handler only, not the page.
+    val stack by nav.backStack().collectAsState()
+    val ids = stack.filter { it.destination !is NavGraph }.map { it.id }
+    BackHandler(enabled = canClose(ids, entry.id)) { nav.popFrom(entry) }
 }
 
 /** The entry whose page is composing, so a map page can tell whether it is the top of the stack. Provided by [PageHost]. */
