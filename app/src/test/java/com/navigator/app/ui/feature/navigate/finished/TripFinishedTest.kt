@@ -85,6 +85,18 @@ class TripFinishedViewModelTest {
         assertEquals(FinishUi.NoRecording(NoRecordingReason.RecordingOff), vm.state.value.ui)
     }
 
+    @Test fun theRecordingSettingIsReadOnceSoTurningItOnFromTheSummaryDoesNotChangeThisBanner() = runTest(UnconfinedTestDispatcher()) {
+        var enabled = false
+        val finish = MutableStateFlow<RideFinish?>(null)
+        val vm = TripFinishedViewModel(finish, { points }, { enabled }, scope = backgroundScope)
+        vm.begin()
+        assertEquals(FinishUi.NoRecording(NoRecordingReason.RecordingOff), vm.state.value.ui)
+        enabled = true
+        finish.value = null // anything that re-runs the resolution
+        advanceTimeBy(7_000)
+        assertEquals("still the banner of the trip that was not recorded", FinishUi.NoRecording(NoRecordingReason.RecordingOff), vm.state.value.ui)
+    }
+
     @Test fun beginAgainWhileRunningKeepsWhatIsShown() = runTest(UnconfinedTestDispatcher()) {
         val finish = MutableStateFlow<RideFinish?>(RideFinish.Saved(ride))
         val vm = TripFinishedViewModel(finish, { points }, { true }, scope = backgroundScope)

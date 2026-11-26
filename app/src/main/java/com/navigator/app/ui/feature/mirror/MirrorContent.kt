@@ -105,15 +105,20 @@ fun MirrorContent(
     modifier: Modifier = Modifier,
     /** A recording is running (an auto ride in its grace, or the rider's own): Record a ride gives way to the strip. */
     recording: Boolean = false,
+    /**
+     * How long ago guidance last arrived. A lambda, read only by the dash line: it changes every second, and the rest of
+     * the page must not recompose with it. The default reads [status] (previews and tests).
+     */
+    freshness: () -> Freshness = { (status as? MirrorStatus.Live)?.freshness ?: Freshness.JustNow },
 ) {
     if (landscape && status is MirrorStatus.Live) {
         // MR6/MR7: the dash's own black panel on the left; the bike, the pause switch and Maps in a column beside it.
         Row(modifier.fillMaxSize().padding(KtmSpacing.ridingEdge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.ridingEdge)) {
-            DashPanel(status, Modifier.weight(1f).fillMaxHeight())
+            DashPanel(status, freshness, Modifier.weight(1f).fillMaxHeight())
             Column(Modifier.width(KtmLayout.panelWide).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-                    Header(status, bike, actions, dot = isNarrowWindow(), onDashLine = false)
-                    if (status.stale) StaleBanner(status.freshness)
+                    Header(status, bike, actions, freshness, dot = isNarrowWindow(), onDashLine = false)
+                    if (status.stale) StaleBanner()
                     PauseRow(status.paused, actions.onSending, KtmSpacing.ridingEdge, compact = true)
                 }
                 // Google Maps stays at the foot, where the thumb rests on the mount.
@@ -123,7 +128,7 @@ fun MirrorContent(
     } else if (landscape) {
         Row(modifier.fillMaxSize().padding(KtmSpacing.ridingEdge), horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
-                Header(status, bike, actions, dot = isNarrowWindow())
+                Header(status, bike, actions, freshness, dot = isNarrowWindow())
                 Spacer(Modifier.height(KtmSpacing.md))
                 when (status) {
                     is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = true)
@@ -141,7 +146,7 @@ fun MirrorContent(
             modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
             verticalArrangement = Arrangement.spacedBy(KtmSpacing.md),
         ) {
-            Header(status, bike, actions)
+            Header(status, bike, actions, freshness)
             when (status) {
                 is MirrorStatus.Setup -> Checklist(status.rows, actions, KtmSpacing.lg)
                 is MirrorStatus.Ready -> ReadyArea(status, time, actions, compact = false)
@@ -151,7 +156,7 @@ fun MirrorContent(
                         Modifier.alpha(if (status.paused) PAUSED_ALPHA else 1f),
                     )
                     // Under the preview (MR5): the preview keeps its place when the banner appears.
-                    if (status.stale) StaleBanner(status.freshness)
+                    if (status.stale) StaleBanner()
                 }
             }
             Controls(status, actions, landscape = false, recording)
@@ -162,7 +167,7 @@ fun MirrorContent(
 private const val PAUSED_ALPHA = 0.45f
 
 @Composable
-private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, dot: Boolean = false, onDashLine: Boolean = true) {
+private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorActions, freshness: () -> Freshness, dot: Boolean = false, onDashLine: Boolean = true) {
     val c = KtmTheme.colors
     // MR1: the bike on the left, the mode as a badge on the right; what the page is about comes under it.
     Column(verticalArrangement = Arrangement.spacedBy(KtmSpacing.md)) {
@@ -177,7 +182,7 @@ private fun Header(status: MirrorStatus, bike: MirrorBike, actions: MirrorAction
                 Text(stringResource(R.string.mirror_setup_intro), style = MaterialTheme.typography.bodyMedium, color = c.fg2)
             }
             // MR3/MR5: what the dash shows, and how fresh it is (amber with the gap when it has gone quiet).
-            is MirrorStatus.Live -> if (onDashLine) OnDashLine(status, c.fg2, if (status.stale) c.warn else c.fg2)
+            is MirrorStatus.Live -> if (onDashLine) OnDashLine(status, c.fg2, if (status.stale) c.warn else c.fg2, freshness)
             is MirrorStatus.Ready -> {}
         }
     }
@@ -198,7 +203,7 @@ private fun ageText(f: Freshness): String = when (f) {
 }
 
 @Composable
-private fun StaleBanner(f: Freshness) {
+private fun StaleBanner() {
     InfoBanner(
         title = stringResource(R.string.mirror_stale_title),
         message = stringResource(R.string.mirror_stale_body),
@@ -348,7 +353,7 @@ private fun turnPreview(t: MirrorTurn, time: String) = DashPreviewState.Turn(
 
 /** "On your dash now" with how fresh it is: a live dot and age, amber when it has gone quiet, a Paused badge when paused (MR3-MR5). */
 @Composable
-private fun OnDashLine(status: MirrorStatus.Live, label: Color, age: Color, modifier: Modifier = Modifier) {
+private fun OnDashLine(status: MirrorStatus.Live, label: Color, age: Color, freshness: () -> Freshness, modifier: Modifier = Modifier) {
     val c = KtmTheme.colors
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
         Text(
@@ -361,14 +366,14 @@ private fun OnDashLine(status: MirrorStatus.Live, label: Color, age: Color, modi
         } else {
             Box(Modifier.size(KtmSpacing.sm).background(if (status.stale) c.warn else c.ok, CircleShape))
             // Not a live region: it changes every second. The stale banner announces itself instead.
-            Text(freshnessLabel(status.freshness, status.stale), style = MaterialTheme.typography.bodySmall, color = age)
+            Text(freshnessLabel(freshness(), status.stale), style = MaterialTheme.typography.bodySmall, color = age)
         }
     }
 }
 
 /** MR6/MR7: the mounted display, drawn as the dash draws it (black, white): glyph 96 dp, distance 64 sp, road 28 sp, ETA and distance left at the foot. */
 @Composable
-private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
+private fun DashPanel(live: MirrorStatus.Live, freshness: () -> Freshness, modifier: Modifier = Modifier) {
     val t = live.turn
     Column(
         modifier.alpha(if (live.paused) PAUSED_ALPHA else 1f).clip(KtmShapes.Card).background(DashPalette.bg)
@@ -377,7 +382,7 @@ private fun DashPanel(live: MirrorStatus.Live, modifier: Modifier = Modifier) {
     ) {
         // The turn scrolls when the font is large; ETA and distance left stay at the foot.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-        OnDashLine(live, DashPalette.subtle, if (live.stale) KtmTheme.colors.warn else DashPalette.subtle)
+        OnDashLine(live, DashPalette.subtle, if (live.stale) KtmTheme.colors.warn else DashPalette.subtle, freshness)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.lg)) {
             // With no instruction text the glyph is the only thing that says which way to turn.
             t.icon?.let {

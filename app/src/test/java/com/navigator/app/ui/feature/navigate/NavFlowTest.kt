@@ -271,4 +271,36 @@ class NavFlowTest {
         assertTrue(chosen.viaConfirm)
         assertFalse(NavFlowCodec.decode(NavFlowCodec.encode(quick)).viaConfirm)
     }
+
+    @Test fun lookingAtAPlaceMidGuidanceStepsAwayFromTheTripFirst() {
+        assertTrue(NavFlowRules.stepsAwayToLook(tripLive = true, stage = NavStage.NAVIGATING))
+        assertFalse("already on the map", NavFlowRules.stepsAwayToLook(tripLive = true, stage = NavStage.BROWSE))
+        assertFalse("no trip: nothing to step away from", NavFlowRules.stepsAwayToLook(tripLive = false, stage = NavStage.NAVIGATING))
+    }
+
+    @Test fun theWhereToShortcutSearchesWithAStepAwayTripButLeavesGuidanceAlone() {
+        assertTrue(NavFlowRules.searchShortcutKeepsScreen(NavStage.NAVIGATING))
+        assertTrue(NavFlowRules.searchShortcutKeepsScreen(NavStage.SEARCH))
+        assertFalse("a trip stepped away from is on the map: search", NavFlowRules.searchShortcutKeepsScreen(NavStage.BROWSE))
+        assertFalse(NavFlowRules.searchShortcutKeepsScreen(NavStage.PREVIEW))
+    }
+
+    private val toit = SavedPlace(13.0, 77.5, "Toit")
+
+    @Test fun onlyPlacesTheRiderSearchedLinkedOrPinnedGoIntoTheRecents() {
+        val searching = NavFlowState().openSearch(SearchTarget.DESTINATION)
+        assertTrue("picked from search", searching.applyPicked(toit).recent)
+        assertTrue("a link or a long-press", NavFlowState().choose(toit).recent)
+        assertFalse("a saved place shown from the Places tab", NavFlowState().choose(toit, recent = false).recent)
+        assertFalse("Home, Work and saved quick routes", NavFlowState().quickRoute(toit).recent)
+        assertFalse("Ride back", NavFlowState().rideBack(toit, emptyList()).recent)
+        assertFalse("back to the route after a failed start", NavFlowState().backToRoute(toit, emptyList()).recent)
+    }
+
+    @Test fun theRecentFlagSurvivesARestoreAndAnOldSavedStateMeansNo() {
+        val state = NavFlowState().choose(toit)
+        assertTrue(NavFlowCodec.decode(NavFlowCodec.encode(state)).recent)
+        val old = org.json.JSONObject(NavFlowCodec.encode(state)).apply { remove("recent") }.toString()
+        assertFalse(NavFlowCodec.decode(old).recent)
+    }
 }

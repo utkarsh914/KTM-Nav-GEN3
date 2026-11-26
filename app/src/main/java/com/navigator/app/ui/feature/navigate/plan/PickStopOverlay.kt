@@ -1,5 +1,6 @@
 package com.navigator.app.ui.feature.navigate.plan
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +38,10 @@ fun PickStopOverlay(
     guidance: (@Composable () -> Unit)? = null,
     /** How much of the map's left side the landscape panel covers: the host pads the map for it (the one owner of padding). */
     onFootprint: (Int) -> Unit,
+    /** Mid-trip the stop goes in before [destination] (the next stop or the destination) and the stop list is not on screen. */
+    midTrip: Boolean = false,
+    /** No internet: a stop can't be added whatever the limit says. */
+    offline: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -61,11 +66,19 @@ fun PickStopOverlay(
     PickOnMapScreen(
         state = state, onBack = onBack, onUse = { controller.use(fallback)?.let(onUse) },
         hint = stringResource(R.string.stop_pick_title), title = fallback, stopNumber = number,
-        subtitle = stringResource(R.string.stop_goes_in_before, destination),
-        useLabel = stringResource(if (canAdd) R.string.stop_add_here else R.string.route_stop_limit),
-        useEnabled = canAdd,
+        subtitle = stringResource(if (midTrip) R.string.stop_goes_in_before_trip else R.string.stop_goes_in_before, destination),
+        useLabel = stringResource(pickUseLabel(canAdd, offline)),
+        useEnabled = canAdd && !offline,
         guidance = guidance,
         // The whole map is the canvas in portrait; in landscape the panel's side is not, so the pin moves to the open part.
         onFootprint = { footprint = it; onFootprint(it) },
     )
+}
+
+/** The reason the button can't add comes first: no internet, then the stop limit. */
+@StringRes
+internal fun pickUseLabel(canAdd: Boolean, offline: Boolean): Int = when {
+    offline -> R.string.trip_stop_offline
+    canAdd -> R.string.stop_add_here
+    else -> R.string.route_stop_limit
 }

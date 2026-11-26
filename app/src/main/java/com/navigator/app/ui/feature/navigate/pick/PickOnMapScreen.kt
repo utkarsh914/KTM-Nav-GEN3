@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.navigator.app.R
+import com.navigator.app.ui.components.ButtonSize
 import com.navigator.app.ui.components.KtmButton
 import com.navigator.app.ui.components.LandscapePanel
 import com.navigator.app.ui.components.LandscapePanelSpec
@@ -55,6 +56,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.LocalRidingSurface
 import com.navigator.app.ui.theme.mapCornerPadding
 import com.navigator.app.ui.theme.pageInsets
 
@@ -158,9 +160,11 @@ private fun HintRow(onBack: () -> Unit, hint: String, pill: Boolean) {
 @Composable
 private fun Pin(state: PickOnMapState, stopNumber: Int?, modifier: Modifier) {
     val motion = KtmTheme.motion
-    val pinLift by animateDpAsState(if (state.resolving) PIN_LIFT else 0.dp, motion.spatialFast(), label = "pinLift")
+    // Mid-trip the pin moves on the riding tier: a plain short tween, no bounce.
+    val riding = LocalRidingSurface.current
+    val pinLift by animateDpAsState(if (state.resolving) PIN_LIFT else 0.dp, if (riding) motion.ridingQuick() else motion.spatialFast(), label = "pinLift")
     val drop = remember { Animatable(if (motion.reduced) 0f else 1f) }
-    LaunchedEffect(Unit) { drop.animateTo(0f, motion.playful()) }
+    LaunchedEffect(Unit) { drop.animateTo(0f, if (riding) motion.ridingQuick() else motion.playful()) }
     Icon(
         if (stopNumber != null) KtmIcons.PinPlus else KtmIcons.Pin, null, tint = KtmTheme.accent.fill,
         modifier = modifier.size(KtmLayout.mapPin).offset { IntOffset(0, (-(KtmLayout.mapPin / 2 + pinLift + KtmLayout.mapPin * 2 * drop.value)).roundToPx()) },
@@ -196,7 +200,8 @@ private fun Details(state: PickOnMapState, title: String, stopNumber: Int?, subt
 
 @Composable
 private fun UseButton(label: String, onUse: () -> Unit, enabled: Boolean) {
-    KtmButton(label, onUse, Modifier.fillMaxWidth(), enabled = enabled)
+    // The primary action of a riding surface is a 64 dp target.
+    KtmButton(label, onUse, Modifier.fillMaxWidth(), size = if (LocalRidingSurface.current) ButtonSize.Riding else ButtonSize.Rest, enabled = enabled)
 }
 
 /** The pin rises this far while the map is moving. */

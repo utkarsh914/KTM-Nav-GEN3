@@ -96,4 +96,14 @@ class MirrorStatusTest {
         assertNull(t.road); assertNull(t.instruction); assertNull(t.eta)
         assertEquals("12 km", t.remaining)
     }
+
+    @Test fun theStatusWithoutItsAgeDoesNotChangeFromOneSecondToTheNext() {
+        val turn = MirrorTurn(null, "400 m", "Turn right", "MG Road", null, null)
+        val a = MirrorStatus.Live(turn, Freshness.Seconds(5), paused = false, stale = false)
+        val b = MirrorStatus.Live(turn, Freshness.Seconds(6), paused = false, stale = false)
+        assertEquals(a.withoutAge(), b.withoutAge())
+        assertEquals("a real change still shows", false, a.withoutAge() == a.copy(stale = true).withoutAge())
+        val ready = MirrorStatus.Ready(emptyList())
+        assertEquals(ready, ready.withoutAge())
+    }
 }

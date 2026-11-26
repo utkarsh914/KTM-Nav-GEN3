@@ -79,9 +79,12 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     /** The skeleton pulse, one half cycle. */
     fun <T> skeletonPulse(): DurationBasedAnimationSpec<T> = tween(SKELETON_PULSE_MS)
 
-    /** Riding, arriving or resizing: One UI's basic curve, no overshoot, and a hard ceiling of [RIDING_MAX_MS]. */
+    /**
+     * Riding, arriving or resizing: One UI's basic curve, no overshoot, and a hard ceiling of [RIDING_MAX_MS] for the
+     * whole move: a staggered entrance is late by [delayMs] and shorter by as much, so it is over at the same time.
+     */
     fun <T> ridingSpatial(delayMs: Int = 0): FiniteAnimationSpec<T> =
-        if (reduced) snap() else tween(RIDING_MAX_MS, delayMillis = delayMs, easing = RIDING_ENTER_EASING)
+        if (reduced) snap() else tween(ridingLeft(delayMs), delayMillis = delayMs, easing = RIDING_ENTER_EASING)
 
     /** Riding, leaving: eases in and is gone faster than it arrived ([RIDING_EXIT_MS]). */
     fun <T> ridingExit(): FiniteAnimationSpec<T> =
@@ -90,9 +93,12 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
     /** A riding fade out, 100 ms; the matching fade in is [ridingFade]. Riding never uses a spring. */
     fun <T> ridingFadeOut(): FiniteAnimationSpec<T> = tween(if (reduced) EFFECTS_FAST_MS / 2 else EFFECTS_FAST_MS, easing = LinearEasing)
 
-    /** A riding fade that starts [delayMs] late (the staggered entrance); reduced motion drops the delay. */
+    /** A riding fade that starts [delayMs] late (the staggered entrance) and still ends inside [RIDING_MAX_MS]; reduced motion drops the delay. */
     fun <T> ridingFade(delayMs: Int = 0): FiniteAnimationSpec<T> =
-        if (reduced) tween(EFFECTS_FAST_MS) else tween(EFFECTS_DEFAULT_MS, delayMillis = delayMs, easing = LinearEasing)
+        if (reduced) tween(EFFECTS_FAST_MS) else tween(minOf(EFFECTS_DEFAULT_MS, ridingLeft(delayMs)), delayMillis = delayMs, easing = LinearEasing)
+
+    /** What is left of the riding ceiling after a [delayMs] stagger (never less than a fast fade). */
+    private fun ridingLeft(delayMs: Int): Int = (RIDING_MAX_MS - delayMs).coerceAtLeast(EFFECTS_FAST_MS)
 
     /** The old trip-sheet content leaves this fast, before the new one fades in ([RIDING_SWAP_IN_DELAY_MS]). */
     fun <T> ridingSwapOut(): FiniteAnimationSpec<T> = if (reduced) snap() else tween(RIDING_SWAP_OUT_MS)

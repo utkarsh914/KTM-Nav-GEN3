@@ -114,6 +114,13 @@ class RidingSheetsTest {
         assertEquals(listOf("add:Indian Oil", "cat:FUEL", "search"), log)
     }
 
+    @Test fun offlineTheSearchPillIsDimmedAndDoesNotOpenTheSearch() {
+        riding { TripStopSheet(stopUi(online = false), stopActions()) }
+        rule.onNodeWithText("Search for a stop").assertIsNotEnabled()
+        rule.onNodeWithText("Search for a stop").performClick()
+        assertEquals(emptyList<String>(), log)
+    }
+
     @Test fun theMicShowsOnlyWhereThereIsASpeechRecogniserAndSpeaks() {
         riding { TripStopSheet(stopUi(), stopActions()) }
         rule.onAllNodes(hasContentDescription("Search by voice")).assertCountEquals(0)

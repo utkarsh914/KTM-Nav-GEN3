@@ -50,8 +50,10 @@ class RoutePreviewViewModelTest {
     @Before fun setUp() = Dispatchers.setMain(StandardTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
+    private var now = 1_000_000L
+
     private fun vm(api: RoutesApi, fresh: suspend () -> Pair<Double, Double>? = { 12.0 to 77.0 }, last: () -> Pair<Double, Double>? = { 11.0 to 76.0 }) =
-        RoutePreviewViewModel(api, fresh, last, { TravelMode.TWO_WHEELER })
+        RoutePreviewViewModel(api, fresh, last, { TravelMode.TWO_WHEELER }, { now })
 
     @Test fun loadsRoutesFromAFreshFixAndSelectsTheFirst() = runTest {
         val api = Api(listOf(route(30), route(35)))
@@ -123,7 +125,8 @@ class RoutePreviewViewModelTest {
 
     @Test fun returningToTheSamePlanKeepsTheRoutesAndTheChoice() = runTest {
         val api = Api(listOf(route(30), route(35)))
-        val vm = vm(api)
+        // The rider has not moved: the system's position is where the fix was.
+        val vm = vm(api, last = { 12.0 to 77.0 })
         vm.load(dest, emptyList()); runCurrent()
         vm.select(1)
         vm.load(dest, emptyList()); runCurrent()
@@ -174,5 +177,55 @@ class RoutePreviewViewModelTest {
         assertTrue("stale legs are hidden until the new routes land", reordered.legLines.isEmpty())
         assertNull(RouteSheetMapper.state(dest, emptyList(), RoutePreviewState(), 0L).summary)
         assertTrue(fresh.summary!!.contains("25 min"))
+    }
+
+    @Test fun noOriginIsPublishedBeforeOneHasBeenFound() = runTest {
+        val vm = vm(Api(listOf(route(30))), last = { 1.0 to 1.0 })
+        assertNull("a stale launch-time position must not reach the host", vm.state.value.origin)
+    }
+
+    @Test fun aSlowFixUsesTheSystemsNewestPositionNotAnOldFixOfOurs() = runTest {
+        val api = Api(listOf(route(30)))
+        var here = 11.0 to 76.0
+        var gps: Pair<Double, Double>? = 12.0 to 77.0
+        val vm = vm(api, fresh = { gps ?: run { delay(60_000); null } }, last = { here })
+        vm.load(dest, emptyList()); runCurrent()
+        assertEquals(12.0 to 77.0, api.calls.last().first)
+        // Hours later the GPS is slow: the system's last known position is newer than the fix kept from then.
+        now += 3 * 60 * 60_000L
+        gps = null; here = 13.5 to 77.7
+        vm.clear(); vm.load(dest, emptyList())
+        advanceTimeBy(RoutePreviewViewModel.FRESH_FIX_MS + 1); runCurrent()
+        assertEquals(13.5 to 77.7, api.calls.last().first)
+    }
+
+    @Test fun aFixOfOursOnlySecondsOldStillBeatsTheSystemsWhenTheNextOneIsSlow() = runTest {
+        val api = Api(listOf(route(30)))
+        var gps: Pair<Double, Double>? = 12.0 to 77.0
+        val vm = vm(api, fresh = { gps ?: run { delay(60_000); null } }, last = { 11.0 to 76.0 })
+        vm.load(dest, emptyList()); runCurrent()
+        now += 20_000
+        gps = null
+        vm.clear(); vm.load(dest, emptyList())
+        advanceTimeBy(RoutePreviewViewModel.FRESH_FIX_MS + 1); runCurrent()
+        assertEquals(12.0 to 77.0, api.calls.last().first)
+    }
+
+    @Test fun routesAreReusedForTheSamePlanOnlyWhileFreshAndStillNearTheOrigin() = runTest {
+        val api = Api(listOf(route(30)))
+        var here: Pair<Double, Double>? = 12.0 to 77.0
+        val vm = vm(api, last = { here })
+        vm.load(dest, emptyList()); runCurrent()
+        vm.load(dest, emptyList()); runCurrent()
+        assertEquals("same plan, same place, a moment later: reused", 1, api.calls.size)
+        here = 12.0 to 77.003 // about 330 m east
+        vm.load(dest, emptyList()); runCurrent()
+        assertEquals("a short way is still the same route", 1, api.calls.size)
+        here = 12.0 to 77.006 // about 650 m
+        vm.load(dest, emptyList()); runCurrent()
+        assertEquals("moved over 500 m: new routes", 2, api.calls.size)
+        now += RoutePreviewViewModel.ROUTES_TTL_MS + 1
+        vm.load(dest, emptyList()); runCurrent()
+        assertEquals("older than five minutes: new routes", 3, api.calls.size)
     }
 }

@@ -52,6 +52,7 @@ import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
+import com.navigator.app.ui.theme.LocalRidingSurface
 import com.navigator.app.ui.theme.rememberHaptics
 
 /** Visual style of a [KtmButton]. One primary action per screen; destructive actions use a danger style, never the accent. */
@@ -125,7 +126,7 @@ fun KtmButton(
     val pressed by source.collectIsPressedAsState()
     val reduced = KtmTheme.motion.reduced
     // Down is immediate; the release settles back with a hair of bounce (none on the riding sizes).
-    val calmRelease = pressed || size == ButtonSize.Riding || size.stacked
+    val calmRelease = pressed || size == ButtonSize.Riding || size.stacked || LocalRidingSurface.current
     val scale by animateFloatAsState(if (pressed && !reduced) 0.97f else 1f, if (calmRelease) KtmTheme.motion.effectsFast() else KtmTheme.motion.playful(), label = "press")
     val ringColor = if (style == ButtonStyle.Primary) KtmTheme.colors.fg else KtmTheme.accent.text
     val outline = palette.border?.let { BorderStroke(KtmLayout.outlineThin, it) }

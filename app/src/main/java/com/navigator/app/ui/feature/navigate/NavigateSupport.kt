@@ -60,3 +60,14 @@ internal val SavedPlaceSaver = Saver<SavedPlace?, List<Any>>(
     save = { p -> p?.let { listOf(it.lat, it.lng, it.label, it.address.orEmpty()) } ?: emptyList() },
     restore = { l -> if (l.size < 4) null else SavedPlace(l[0] as Double, l[1] as Double, l[2] as String, (l[3] as String).ifEmpty { null }) },
 )
+
+/**
+ * The last non-null [value]: a stage that is leaving keeps rendering what it showed, while the state it read from has
+ * already been cleared (no empty card popping out of the exit transition).
+ */
+@androidx.compose.runtime.Composable
+internal fun <T : Any> rememberLast(value: T?): T? {
+    val last = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(value) }
+    if (value != null) last.value = value
+    return value ?: last.value
+}

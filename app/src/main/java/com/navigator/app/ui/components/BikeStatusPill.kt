@@ -72,7 +72,7 @@ fun BikeStatusPill(
     }
 }
 
-/** MR7: the pill folded down to the bike and its status dot, for the short landscape screen. The label stays for screen readers. */
+/** MR7: the pill folded down to the bike and its status dot, for the short landscape screen (on the mount: a 56 dp target). The label stays for screen readers. */
 @Composable
 fun BikeStatusDot(
     label: String,
@@ -85,7 +85,7 @@ fun BikeStatusDot(
     val haptics = rememberHaptics()
     Box(
         modifier
-            .size(KtmLayout.targetRest)
+            .size(KtmLayout.targetPrimary)
             .clip(CircleShape)
             .background(c.surf)
             .semantics(mergeDescendants = true) {

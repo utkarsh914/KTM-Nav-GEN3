@@ -82,6 +82,9 @@ internal class PlanStage(
     val onClose: () -> Unit,
     val onInsets: (left: Int, bottom: Int) -> Unit,
     val onAskReplace: (ReplaceRequest) -> Unit,
+    /** The rider said Replace at the place card: Start in the preview replaces the running trip without asking again. */
+    val replacing: Boolean,
+    val onReplacing: () -> Unit,
     val onGoToPreview: () -> Unit,
     val onAddAsStop: (SavedPlace) -> Unit,
     val onPickingStop: (Boolean) -> Unit,
@@ -96,7 +99,8 @@ internal class PlanStage(
 @Composable
 internal fun BoxScope.ConfirmStage(plan: PlanStage) {
     val resources = LocalResources.current
-    val sel = plan.selected
+    // The card leaves with the place it showed: `selected` is cleared the moment Back is pressed.
+    val sel = rememberLast(plan.selected)
     // PL1: Back is a map control above the sheet, the way to the search or the map it came from. The landscape panel
     // covers that corner and carries its own Back. A trip still running while another is planned: one tap back to it.
     PlanTopRow(plan, showBack = sel != null)
@@ -126,7 +130,8 @@ internal fun BoxScope.ConfirmStage(plan: PlanStage) {
                     },
                     onDirections = {
                         if (ReplacePolicy.decide(plan.tripRunning()) == ReplaceDecision.Ask) {
-                            plan.onAskReplace(ReplaceRequest(sel, cancelFirst = true) { plan.onGoToPreview() })
+                            // The trip keeps running until Start: Back from the preview must not have cost the rider their trip.
+                            plan.onAskReplace(ReplaceRequest(sel, cancelFirst = false) { plan.onReplacing(); plan.onGoToPreview() })
                         } else plan.onGoToPreview()
                     },
                     onAddAsStop = { plan.onAddAsStop(sel) },
@@ -155,7 +160,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
     val resources = LocalResources.current
     // Picking a stop: the pick screen owns the top of the map.
     if (!plan.pickingStop) PlanTopRow(plan, showBack = false)
-    val dest = plan.selected
+    val dest = rememberLast(plan.selected)
     if (dest != null) {
         val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
         val undoLabel = resources.getString(R.string.common_undo)
@@ -197,7 +202,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
                         onRetry = plan.onRetryRoutes,
                         onStart = {
                             // A trip is already running (rider stepped away to the map): starting another replaces it, so ask first.
-                            if (ReplacePolicy.decide(plan.tripRunning()) == ReplaceDecision.Ask) {
+                            if (ReplacePolicy.decide(plan.tripRunning(), agreed = plan.replacing) == ReplaceDecision.Ask) {
                                 plan.onAskReplace(ReplaceRequest(dest, cancelFirst = false) { plan.onStart(dest) })
                             } else plan.onStart(dest)
                         },

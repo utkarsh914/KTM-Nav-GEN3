@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -170,25 +171,24 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
     ) {
         if (m.fill) {
             Column(
-                Modifier.fillMaxWidth().weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
-                    .padding(start = KtmSpacing.md, top = m.top, end = KtmSpacing.lg),
+                Modifier.fillMaxWidth().weight(1f).padding(start = KtmSpacing.md, top = m.top, end = KtmSpacing.lg),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.gap)) {
                     ManeuverGlyph(ui, m, on)
                     DistanceLine(ui, m, on, dim, Modifier.weight(1f, fill = false))
                 }
-                Column(Modifier.padding(start = KtmSpacing.xs, top = KtmSpacing.sm)) { InstructionLines(ui, m, on, dim) }
+                Column(Modifier.padding(start = KtmSpacing.xs, top = KtmSpacing.sm).turnAnnouncement(ui)) { InstructionLines(ui, m, on, dim) }
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
+                Modifier.fillMaxWidth().padding(horizontal = KtmSpacing.lg, vertical = KtmSpacing.md),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
             ) {
                 ManeuverGlyph(ui, m, on)
                 Column(Modifier.weight(1f)) {
                     DistanceLine(ui, m, on, dim)
-                    InstructionLines(ui, m, on, dim)
+                    Column(Modifier.turnAnnouncement(ui)) { InstructionLines(ui, m, on, dim) }
                 }
             }
         }
@@ -214,9 +214,25 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
     }
 }
 
+/**
+ * What TalkBack announces for a new turn: the icon's name, then the instruction and the road, as one live node. It
+ * changes only with the maneuver, so it is not re-read every second as the distance falls; the distance is a node of
+ * its own beside it (readable, not live).
+ */
+@Composable
+private fun Modifier.turnAnnouncement(ui: ManeuverUi.Active): Modifier {
+    val icon = TurnIconNames.human(ui.icon)
+    return semantics(mergeDescendants = true) {
+        liveRegion = LiveRegionMode.Polite
+        // While rerouting the card's own "Rerouting" line is the live one: the dimmed last instruction is not announced again.
+        if (!ui.busy) contentDescription = icon
+    }
+}
+
 @Composable
 private fun ManeuverGlyph(ui: ManeuverUi.Active, m: ManeuverMetrics, on: Color) {
-    Box(Modifier.size(m.glyph), contentAlignment = Alignment.Center) {
+    // The announcement above names the icon: the glyph itself is silent.
+    Box(Modifier.size(m.glyph).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
         if (ui.busy) CircularProgressIndicator(Modifier.size(m.glyph * 0.8f), color = on, strokeWidth = KtmSpacing.xs)
         else TurnIconRef(ui.icon, size = m.glyph, color = on)
     }

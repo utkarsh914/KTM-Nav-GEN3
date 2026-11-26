@@ -47,6 +47,11 @@ internal data class NavFlowState(
     val query: String = "",
     /** False when the preview was opened straight from a quick route (Home/Work, Ride back): Back skips the place sheet. */
     val viaConfirm: Boolean = true,
+    /**
+     * Whether [selected] goes into the recents: a place the rider searched for, opened from a link or pinned. Not Home,
+     * Work or a saved place (they are already one tap away), and not a Ride back (its start is not somewhere they chose).
+     */
+    val recent: Boolean = false,
 ) {
     fun openSearch(target: SearchTarget): NavFlowState =
         copy(query = "", searchTarget = target, stage = NavStage.SEARCH)
@@ -64,12 +69,12 @@ internal data class NavFlowState(
             )
         } else {
             // Stops belong to the previous destination.
-            copy(selected = p, stops = emptyList(), confirmFromSearch = true, viaConfirm = true, stage = NavStage.CONFIRM)
+            copy(selected = p, stops = emptyList(), confirmFromSearch = true, viaConfirm = true, recent = true, stage = NavStage.CONFIRM)
         }
 
     /** Pick from somewhere other than the search list (pin drop, link, saved place). */
-    fun choose(p: SavedPlace): NavFlowState =
-        copy(selected = p, stops = emptyList(), confirmFromSearch = false, viaConfirm = true, stage = NavStage.CONFIRM)
+    fun choose(p: SavedPlace, recent: Boolean = true): NavFlowState =
+        copy(selected = p, stops = emptyList(), confirmFromSearch = false, viaConfirm = true, recent = recent, stage = NavStage.CONFIRM)
 
     fun backToBrowse(): NavFlowState =
         copy(
@@ -150,6 +155,15 @@ internal object NavFlowRules {
      */
     fun shouldAutoResume(sessionActive: Boolean, stage: NavStage, leftNavManually: Boolean): Boolean =
         sessionActive && stage != NavStage.NAVIGATING && stage != NavStage.TRIP_FINISHED && !leftNavManually
+
+    /** The "Where to?" shortcut leaves guidance alone, and a search already open. */
+    fun searchShortcutKeepsScreen(stage: NavStage): Boolean = stage == NavStage.NAVIGATING || stage == NavStage.SEARCH
+
+    /**
+     * Looking at a place (Show on map, a pin) while guidance is on screen steps away from the trip first: it keeps running
+     * behind the Resume pill, instead of the guidance view vanishing with nothing to come back to.
+     */
+    fun stepsAwayToLook(tripLive: Boolean, stage: NavStage): Boolean = tripLive && stage == NavStage.NAVIGATING
 }
 
 /** (De)serialisation of [NavFlowState] for SavedStateHandle; tolerant of corrupt input. */
@@ -162,6 +176,7 @@ internal object NavFlowCodec {
         put("fromSearch", s.confirmFromSearch)
         put("query", s.query)
         put("viaConfirm", s.viaConfirm)
+        put("recent", s.recent)
     }.toString()
 
     fun decode(raw: String?): NavFlowState {
@@ -177,6 +192,7 @@ internal object NavFlowCodec {
                 confirmFromSearch = o.optBoolean("fromSearch", true),
                 query = o.optString("query"),
                 viaConfirm = o.optBoolean("viaConfirm", true),
+                recent = o.optBoolean("recent", false),
             )
         }.getOrDefault(NavFlowState())
     }

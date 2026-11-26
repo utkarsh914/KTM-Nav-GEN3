@@ -102,8 +102,22 @@ sealed interface ReplaceDecision {
     data object Ask : ReplaceDecision
 }
 
+/** When the plan's camera moves: once per change of what is framed (a card that resizes must not re-centre a panned map). */
+object PlanFraming {
+    /**
+     * [waitingForRoutes]: the preview's routes are still loading, so there is nothing to frame yet. A failed load is not
+     * waiting: the camera goes to the destination (the controller does that for a scene without routes).
+     */
+    fun reframe(pickingStop: Boolean, changed: Boolean, waitingForRoutes: Boolean): Boolean = !pickingStop && changed && !waitingForRoutes
+}
+
 object ReplacePolicy {
-    fun decide(tripLive: Boolean): ReplaceDecision = if (tripLive) ReplaceDecision.Ask else ReplaceDecision.Proceed
+    /**
+     * A live trip is only replaced by the rider's say-so, asked once: the place card's Replace carries into the preview
+     * ([agreed]), where Start does the replacing. Until then the trip keeps running, so backing out loses nothing.
+     */
+    fun decide(tripLive: Boolean, agreed: Boolean = false): ReplaceDecision =
+        if (tripLive && !agreed) ReplaceDecision.Ask else ReplaceDecision.Proceed
 }
 
 /** The Add-a-stop sheet of PL6: where the new stop goes and what it is called. */

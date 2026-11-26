@@ -129,6 +129,7 @@ fun KtmApp(onQuit: () -> Unit) {
     val accent = remember(snap.accentColorId) { accentFor(snap.accentColorId) }
 
     val feedback = rememberFeedback()
+    val recordingUi = remember { RecordingUi() }
     val scope = rememberCoroutineScope()
     val chrome = remember { ShellChrome() }
     // Not read in composition: it changes every frame while the tab bar slides in or out.
@@ -249,6 +250,8 @@ fun KtmApp(onQuit: () -> Unit) {
             LocalOpenBikeSettings provides { navController.push(Route.SettingsPage(SettingsPage.BIKE_DASH)) },
         ) {
             NavWindowEffects()
+            // Not inside the strip: it leaves composition while the riding screen is up, and a ride that ends then is still announced.
+            RecordingOutcome(recordingUi, feedback, onOpenRides = { navController.openTab(Tab.Rides) }, mirrorEngine = !inAppState.value)
             Box(Modifier.fillMaxSize().background(KtmTheme.colors.bg)) {
                 // The one map, behind the whole shell at full window size: map pages are transparent over it, other pages cover it.
                 // DO NOT move it into the shell or a page, resize it, or put anything over the empty areas of map pages that takes
@@ -269,9 +272,8 @@ fun KtmApp(onQuit: () -> Unit) {
                                 onOpen = { intents.post(AppIntent.OpenNav); navController.openTab(Tab.Navigate) },
                             )
                             RecordingStrip(
-                                feedback = feedback,
+                                ui = recordingUi,
                                 onOpenActivity = { navController.openTab(Tab.Navigate) },
-                                onOpenRides = { navController.openTab(Tab.Rides) },
                                 mirrorEngine = !inAppState.value,
                             )
                         }

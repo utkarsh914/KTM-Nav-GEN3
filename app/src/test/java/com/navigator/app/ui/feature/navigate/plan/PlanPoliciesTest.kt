@@ -81,6 +81,7 @@ class PlanPoliciesTest {
     @Test fun aRunningTripMakesStartAskFirst() {
         assertEquals(ReplaceDecision.Ask, ReplacePolicy.decide(tripLive = true))
         assertEquals(ReplaceDecision.Proceed, ReplacePolicy.decide(tripLive = false))
+        assertEquals("said Replace at the place card: Start does it without asking again", ReplaceDecision.Proceed, ReplacePolicy.decide(tripLive = true, agreed = true))
     }
 
     @Test fun anUnnamedSpotIsCalledNewStop() {
@@ -121,5 +122,12 @@ class PlanPoliciesTest {
         val c = SavedPlace(3.0, 3.0, "Fuel")
         assertEquals(listOf("Churkhi Road · Near the mill", "Churkhi Road (2)", "Fuel"), RouteSheetMapper.distinctLabels(listOf(a, b, c)))
         assertEquals(listOf("Fuel"), RouteSheetMapper.distinctLabels(listOf(c)))
+    }
+
+    @Test fun aFailedRouteStillFramesTheDestinationButALoadingOneWaits() {
+        assertTrue(PlanFraming.reframe(pickingStop = false, changed = true, waitingForRoutes = false))
+        assertFalse("routes still loading: nothing to frame yet", PlanFraming.reframe(false, changed = true, waitingForRoutes = true))
+        assertFalse("picking a stop: the pin owns the camera", PlanFraming.reframe(true, changed = true, waitingForRoutes = false))
+        assertFalse("nothing changed", PlanFraming.reframe(false, changed = false, waitingForRoutes = false))
     }
 }

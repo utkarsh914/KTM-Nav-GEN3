@@ -46,13 +46,20 @@ class SpeedSource(private val context: Context) {
     }
 
     fun acquire() {
-        if (holders++ > 0) return
+        holders++
+        register()
+    }
+
+    /** Only with the permission, and again on the next acquire if it was missing before (the rider may have granted it since). */
+    private fun register() {
+        if (manager != null) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
-        manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        runCatching {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+        val registered = runCatching {
             @Suppress("MissingPermission")
-            manager?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
-        }
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener)
+        }.isSuccess
+        if (registered) manager = lm
     }
 
     fun release() {

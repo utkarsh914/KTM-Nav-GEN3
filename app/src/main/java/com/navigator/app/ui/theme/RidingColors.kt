@@ -58,6 +58,9 @@ val RidingNight = RidingColors(
 
 val LocalRidingColors = staticCompositionLocalOf { RidingDay }
 
+/** True inside [RidingTheme]: a component shown there follows the riding rules (riding motion tokens, 64 dp primary actions). */
+val LocalRidingSurface = staticCompositionLocalOf { false }
+
 /** The font scale before [RidingTheme] clamped it, for a sheet that scrolls body text and should follow the rider's setting. */
 private val LocalUnclampedDensity = compositionLocalOf<Density?> { null }
 
@@ -106,6 +109,7 @@ fun RidingTheme(
     }
     CompositionLocalProvider(
         LocalRidingColors provides (if (night) RidingNight else RidingDay),
+        LocalRidingSurface provides true,
         LocalKtmColors provides colors,
         LocalAccentScheme provides accentScheme,
         LocalDensity provides clamped,

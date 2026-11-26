@@ -22,12 +22,15 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.AppContainer
 import com.navigator.app.app.appContainer
+import com.navigator.app.data.mirror.Freshness
 import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.mirror.MirrorStatus
+import com.navigator.app.data.mirror.withoutAge
 import com.navigator.app.nav.ktm.EtaFormatter
 import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.providers.NotificationNavProvider
@@ -42,12 +45,26 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 class MirrorViewModel(private val repo: MirrorRepository) : ViewModel() {
-    /** Null until the first reading, so the screen never flashes a wrong state. */
-    val status: StateFlow<MirrorStatus?> = repo.status.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    /**
+     * Null until the first reading, so the screen never flashes a wrong state. Without the ticking age: that is in
+     * [freshness], so a screen does not recompose every second for a label that is one line of it.
+     */
+    val status: StateFlow<MirrorStatus?> = repo.status
+        .map { it.withoutAge() }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** How long ago guidance last arrived; changes every second while there is guidance. */
+    val freshness: StateFlow<Freshness> = repo.status
+        .map { (it as? MirrorStatus.Live)?.freshness ?: Freshness.JustNow }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Freshness.JustNow)
 
     fun refresh() = repo.refresh()
     fun setSending(on: Boolean) = repo.setSending(on)
@@ -68,7 +85,9 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val container = context.appContainer
     val vm: MirrorViewModel = viewModel(factory = MirrorViewModel.factory(container))
-    val status by vm.status.collectAsState()
+    // Lifecycle-aware: the repository ticks every second while collected, and not a second of it is wanted in the background.
+    val status by vm.status.collectAsStateWithLifecycle()
+    val freshness = vm.freshness.collectAsStateWithLifecycle()
     val bikeStatus by container.connection.status.collectAsState()
     val pill = BikePillMapper.map(bikeStatus)
     val bike = MirrorBike(pill, stringResource(pill.label, pill.labelArg.orEmpty()), stringResource(pill.state))
@@ -116,7 +135,7 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
         // The page has no top bar and no map behind it: clear of the status bar and cutout, and in landscape (no tab bar) the gesture area.
         val top = WindowInsetsSides.Top + WindowInsetsSides.Horizontal
         val sides = if (landscape) top + WindowInsetsSides.Bottom else top
-        status?.let { MirrorContent(it, bike, time, landscape, actions, Modifier.pageInsets(sides), recording = recording.active) }
+        status?.let { MirrorContent(it, bike, time, landscape, actions, Modifier.pageInsets(sides), recording = recording.active, freshness = { freshness.value }) }
     }
     // A mirrored trip is on the dash while Google Maps guides: the sheet's test must not replace it.
     val mirrored by NotificationNavProvider.state.collectAsState()

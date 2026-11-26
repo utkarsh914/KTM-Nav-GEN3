@@ -18,6 +18,11 @@ import com.navigator.app.ui.components.PillTone
 import com.navigator.app.ui.feature.navigate.BikePillUi
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.dp
+import com.navigator.app.ui.components.BikeStatusDot
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -137,5 +142,10 @@ class MirrorContentTest {
         rule.onNodeWithText("Send to dash").assertIsDisplayed()
         rule.onNodeWithText("On").assertIsDisplayed()
         rule.onAllNodesWithText("Send turns to the dash").assertCountEquals(0)
+    }
+
+    @Test fun theMountedBikeDotIsAFiftySixDpTarget() {
+        rule.setContent { KtmTheme(darkTheme = false) { BikeStatusDot("Your bike", PillTone.Connected, {}) } }
+        rule.onNodeWithContentDescription("Your bike").assertWidthIsAtLeast(56.dp).assertHeightIsAtLeast(56.dp)
     }
 }

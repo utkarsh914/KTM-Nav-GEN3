@@ -67,10 +67,12 @@ class TripFinishedViewModel(
     fun begin() {
         if (job?.isActive == true) return
         _state.value = FinishState()
+        // Read once: turning recording on from the summary changes the setting for the next trip, not the banner of this one.
+        val enabled = recordingEnabled()
         job = (scope ?: viewModelScope).launch {
             val timedOut = MutableStateFlow(false)
             launch { delay(timeoutMs); timedOut.value = true }
-            combine(finish, timedOut) { f, t -> FinishResolution.resolve(f, t, recordingEnabled()) }
+            combine(finish, timedOut) { f, t -> FinishResolution.resolve(f, t, enabled) }
                 .distinctUntilChanged()
                 .collect { ui ->
                     // A track that can't be read leaves the stats without a map line, not a crash.

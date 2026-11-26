@@ -21,6 +21,12 @@ object MirrorHints {
     /** No update for this long while guidance is showing counts as stale. */
     const val STALE_AFTER_MS = 30_000L
 
+    /** Waiting at a light or a crossing, Google Maps has nothing new to say: a standing rider is given this long instead. */
+    const val STALE_STATIONARY_AFTER_MS = 120_000L
+
+    /** Below this speed the rider is taken to be standing still. */
+    const val STATIONARY_BELOW_KMH = 5f
+
     fun compute(
         accessGranted: Boolean,
         listenerConnected: Boolean,
@@ -28,11 +34,14 @@ object MirrorHints {
         hasNav: Boolean,
         ageMs: Long?,
         ignoringBatteryOptimizations: Boolean,
+        /** The rider's speed; null when unknown (then the normal threshold applies). */
+        speedKmh: Float? = null,
     ): List<Kind> {
         if (!accessGranted) return listOf(Kind.NO_ACCESS)
         val out = ArrayList<Kind>(2)
         if (!listenerConnected) out += Kind.LISTENER_DISCONNECTED
-        if (hasNav && !paused && listenerConnected && ageMs != null && ageMs > STALE_AFTER_MS) out += Kind.STALE
+        val staleAfter = if (speedKmh != null && speedKmh < STATIONARY_BELOW_KMH) STALE_STATIONARY_AFTER_MS else STALE_AFTER_MS
+        if (hasNav && !paused && listenerConnected && ageMs != null && ageMs > staleAfter) out += Kind.STALE
         if (!hasNav && !ignoringBatteryOptimizations) out += Kind.BATTERY
         return out
     }

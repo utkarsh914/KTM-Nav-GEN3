@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -38,7 +39,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.google.android.libraries.navigation.NavigationView
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
-import com.navigator.app.data.connection.BikeStatus
 import com.navigator.app.location.freshLocation
 import com.navigator.app.location.hasLocationPermission
 import com.navigator.app.location.lastKnownLocation
@@ -72,11 +72,16 @@ import com.navigator.app.ui.feature.navigate.finished.FinishUi
 import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
+import com.navigator.app.ui.feature.navigate.pick.AndroidReverseGeocoder
 import com.navigator.app.ui.feature.navigate.plan.NewStop
+import com.navigator.app.ui.feature.navigate.plan.PlanFraming
 import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
 import com.navigator.app.ui.feature.navigate.plan.RoutePreviewViewModel
 import com.navigator.app.ui.feature.navigate.plan.RouteSheetMapper
 import com.navigator.app.ui.feature.navigate.plan.RoutesApi
+import com.navigator.app.ui.feature.navigate.riding.DashChip
+import com.navigator.app.ui.feature.navigate.riding.DashChipPolicy
+import com.navigator.app.ui.feature.navigate.riding.DashChipStep
 import com.navigator.app.ui.feature.navigate.riding.EndTripDialog
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEffect
 import com.navigator.app.ui.feature.navigate.riding.MapButtonEvent
@@ -118,6 +123,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 
 /** Transition between [NavStage] chrome. Between BROWSE and SEARCH the Where to? field and the panel are one
@@ -342,6 +348,8 @@ fun NavigateHost(
     var showEndConfirm by riding::showEndConfirm
     // A new trip asked for while another runs: DL3 (replace, keep, or add the place as a stop).
     var replaceRequest by remember { mutableStateOf<ReplaceRequest?>(null) }
+    // The rider agreed to replace the running trip with the place being planned: Start does it (see ReplacePolicy).
+    var replacingTrip by remember { mutableStateOf(false) }
 
     // ---- Trip-finished state ---------------------------------------------
     val rideStore = remember { RideStore(context) }
@@ -400,13 +408,15 @@ fun NavigateHost(
         // Record the recent as soon as the rider opens the preview for a place -
         // reaching this screen is a strong signal of intent, even if they don't
         // hit Start. addRecent de-dupes by coords, so re-adding at Start is safe.
-        // ("Ride back" destinations are synthetic: they shouldn't litter the recents.)
-        if (p.label != rideBackLabel) {
-            store.addRecent(p)
-        }
+        // (Only places the rider searched for, linked or pinned: see NavFlowState.recent.)
+        if (flow.state.recent) store.addRecent(p)
         routeVm.load(p, stops)
     }
     LaunchedEffect(routePreview.origin) { routePreview.origin?.let { origin = it } }
+    // Planning is over once the rider is back on the map, riding, or looking at the summary: the next preview computes anew.
+    LaunchedEffect(stage) {
+        if (stage == NavStage.BROWSE || stage == NavStage.NAVIGATING || stage == NavStage.TRIP_FINISHED) routeVm.clear()
+    }
 
     // Reflect the current stage on the map (pin on CONFIRM; pin + routes on PREVIEW).
     val pinStyle = PreviewPinStyle(
@@ -433,7 +443,8 @@ fun NavigateHost(
             fitKey++
         }
     }
-    LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate) {
+    // pinStyle is a key: a change of theme redraws the pins and routes in the new colours (the camera stays, see frameKey).
+    LaunchedEffect(stage, selected, mapReady, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey, stopCandidate, pinStyle) {
         if (!mapReady) return@LaunchedEffect
         // The finished screen owns the map (draws the ride track); don't clear it.
         if (stage == NavStage.TRIP_FINISHED) return@LaunchedEffect
@@ -454,9 +465,12 @@ fun NavigateHost(
             else -> {}
         }
         // The camera is moved only when what is framed changed, not when a spot is proposed or a sheet resizes.
-        val frameKey = listOf(stage, selected, routePreview.routes, routePreview.selected, stops, pickingStop, fitKey)
-        // While routes load there is nothing to frame (the camera stays where it is); it moves when they arrive.
-        val reframe = !pickingStop && frameKey != lastFit[0] && !(stage == NavStage.PREVIEW && routePreview.routes.isEmpty())
+        val frameKey = listOf(stage, selected, routePreview.routes, routePreview.failed, routePreview.selected, stops, pickingStop, fitKey)
+        // While routes load there is nothing to frame (the camera stays where it is); it moves when they arrive, or when they failed.
+        val changed = frameKey != lastFit[0]
+        val waiting = stage == NavStage.PREVIEW && routePreview.routes.isEmpty() && !routePreview.failed
+        val reframe = PlanFraming.reframe(pickingStop, changed, waiting)
+        // The key holds what the move waited for (the routes, their failure, the pick), so a held-back move is owed when it changes.
         lastFit[0] = frameKey
         when (stage) {
             // Only the camera waits for a change of what is framed: a card that grows must not re-centre a panned map.
@@ -572,7 +586,13 @@ fun NavigateHost(
         }
     }
 
-    fun choose(p: SavedPlace) = flow.update { it.choose(p) }
+    fun choose(p: SavedPlace, recent: Boolean = true) {
+        if (NavFlowRules.stepsAwayToLook(tripActive, stage)) {
+            trip.setMinimised(true)
+            map.resetNorth()
+        }
+        flow.update { it.choose(p, recent) }
+    }
 
     fun backToBrowse() {
         flow.update { it.backToBrowse() }
@@ -592,9 +612,7 @@ fun NavigateHost(
         val dest = NavDestination(p.lat, p.lng, p.label, sel?.routeToken, mode, tripStops)
         // False for a double tap: a second start would supersede the first mid-compute.
         if (!trip.start(dest, origin, sel?.points?.map { it.latitude to it.longitude })) return
-        if (p.label != rideBackLabel) {
-            store.addRecent(p)
-        }
+        if (flow.state.recent) store.addRecent(p)
         stage = NavStage.NAVIGATING
     }
 
@@ -612,12 +630,22 @@ fun NavigateHost(
         stage = NavStage.BROWSE
     }
 
+    var rideBackPending by remember { mutableStateOf(false) }
     // "Ride back": plan the reverse of the finished trip (start point as destination, stops reversed).
     fun rideBack() {
         val plan = trip.rideBackPlan(finishState.points?.firstOrNull()?.let { it.lat to it.lng }) ?: return
         val tripStops = plan.tripStops.map { SavedPlace(it.lat, it.lng, it.label ?: stopFallback) }
-        backToBrowse()
-        flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, rideBackLabel), tripStops) }
+        if (rideBackPending) return
+        rideBackPending = true
+        // The summary and Save place name the start by its street when the phone can say (a moment at most), else "Ride start".
+        scope.launch {
+            val street = withTimeoutOrNull(RIDE_BACK_LABEL_MS) {
+                runCatching { AndroidReverseGeocoder(appContext).streetName(MapPoint(plan.origin.first, plan.origin.second)) }.getOrNull()
+            }
+            rideBackPending = false
+            backToBrowse()
+            flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, street ?: rideBackLabel), tripStops) }
+        }
     }
 
     // "Back to route" after a failed start: the preview is built from the trip itself, not from what the flow still holds.
@@ -694,8 +722,9 @@ fun NavigateHost(
     LaunchedEffect(searchRequest) {
         if (!searchRequest) return@LaunchedEffect
         onSearchRequestConsumed()
-        // A running trip keeps its screen: a shortcut must not pull the rider out of guidance.
-        if (tripActive || stage == NavStage.SEARCH) return@LaunchedEffect
+        // Guidance on screen keeps its screen: a shortcut must not pull the rider out of it. A trip stepped away from
+        // (the map with the Resume pill) is not that: the shortcut searches, as it does without a trip.
+        if (NavFlowRules.searchShortcutKeepsScreen(stage)) return@LaunchedEffect
         // From a place card, a preview or the finished card the shortcut still means "search": leave it first.
         if (stage != NavStage.BROWSE) backToBrowse()
         openSearch()
@@ -703,7 +732,11 @@ fun NavigateHost(
 
     // The recorder's outcome is resolved while the finished screen is up (FinishResolution, with its 6 s wait).
     LaunchedEffect(stage) {
-        if (stage == NavStage.TRIP_FINISHED) finished.begin() else { finished.reset(); finishInsets = null; recordingTurnedOn = false }
+        if (stage == NavStage.TRIP_FINISHED) finished.begin() else {
+            // After the summary has left (its exit still shows it): clearing it at once would blank it mid-transition.
+            delay(KtmMotionSpecs.STAGE_MS + FINISH_CLEAR_MARGIN_MS)
+            finished.reset(); finishInsets = null; recordingTurnedOn = false
+        }
     }
 
     // A failed start while the rider stepped away to the map: bring the failure card up.
@@ -722,9 +755,13 @@ fun NavigateHost(
     fun rideTo(place: SavedPlace) {
         // Mid-guidance a shortcut must not tear the planning flow out from under the live trip: ask first (DL3).
         if (stage == NavStage.NAVIGATING) {
-            replaceRequest = ReplaceRequest(place, cancelFirst = true) {
+            // The trip keeps running (stepped away, behind the Resume pill) until Start replaces it.
+            replaceRequest = ReplaceRequest(place, cancelFirst = false) {
+                trip.setMinimised(true)
+                map.resetNorth()
                 backToBrowse()
                 flow.update { it.quickRoute(place) }
+                replacingTrip = true
             }
             return
         }
@@ -735,7 +772,8 @@ fun NavigateHost(
     LaunchedEffect(pendingPlace) {
         val p = pendingPlace ?: return@LaunchedEffect
         onPendingPlaceConsumed()
-        if (pendingDirections) rideTo(p) else choose(p)
+        // A saved place from the Places tab is not a new recent.
+        if (pendingDirections) rideTo(p) else choose(p, recent = false)
     }
     LaunchedEffect(quickRoute) {
         val slot = quickRoute ?: return@LaunchedEffect
@@ -786,6 +824,10 @@ fun NavigateHost(
         if (replaceStage != stage) replaceRequest = null
         replaceStage = stage
     }
+    // The agreement is for the plan on screen: a new place card, the map, riding or the summary start without it.
+    LaunchedEffect(stage) {
+        if (stage == NavStage.BROWSE || stage == NavStage.CONFIRM || stage == NavStage.NAVIGATING || stage == NavStage.TRIP_FINISHED) replacingTrip = false
+    }
     LaunchedEffect(stage) {
         map.setGestureListening(stage == NavStage.NAVIGATING)
         riding.onStageChanged(stage, openAddStop = addStopOnResume)
@@ -794,9 +836,11 @@ fun NavigateHost(
     DisposableEffect(map) { onDispose { map.setGestureListening(false) } }
     LaunchedEffect(map) { map.gesturePans.collect { if (stage == NavStage.NAVIGATING) applyMapButton(MapButtonEvent.Pan(System.currentTimeMillis())) } }
     // Checked every second while the map is panned: a steady speed emits no new value to react to.
+    // The loop outlives the speed it was launched with: it reads the latest one each time round.
+    val latestSpeed by rememberUpdatedState(navSpeedKmh)
     LaunchedEffect(mapButton.panned, stage, riding.pickingStop) {
         while (mapButton.panned && stage == NavStage.NAVIGATING && !riding.pickingStop) {
-            navSpeedKmh?.let { applyMapButton(MapButtonEvent.Speed(it, System.currentTimeMillis())) }
+            latestSpeed?.let { applyMapButton(MapButtonEvent.Speed(it, System.currentTimeMillis())) }
             delay(1_000)
         }
     }
@@ -809,21 +853,28 @@ fun NavigateHost(
     }
     // The dash is the primary display, so losing it matters: a red chip once, then a green one when it is back.
     val bikeStatus by container.connection.status.collectAsState()
-    val dashUp = bikeStatus is BikeStatus.Connected
-    var dashWasUp by remember { mutableStateOf<Boolean?>(null) }
+    val dashClass = DashChipPolicy.classOf(bikeStatus)
     var dashLostShown by remember { mutableStateOf(false) }
-    LaunchedEffect(dashUp, stage) {
-        if (stage != NavStage.NAVIGATING) { dashWasUp = null; dashLostShown = false; return@LaunchedEffect }
-        val was = dashWasUp
-        dashWasUp = dashUp
-        // Red when it drops, or when a paired bike isn't there as the trip starts or resumes; green only after a red.
-        if ((was == true && !dashUp) || (was == null && !dashUp && bikeStatus !is BikeStatus.NotPaired && bikeStatus !is BikeStatus.Connecting && bikeStatus !is BikeStatus.Reconnecting)) {
-            dashLostShown = true
-            feedback.chip(resources.getString(R.string.riding_chip_dash_lost), ChipTone.Bad, onTap = { showBike = true })
+    // Re-keyed by the class of the link, so a blip shorter than the grace is cancelled before it shows anything.
+    LaunchedEffect(dashClass, stage) {
+        if (stage != NavStage.NAVIGATING) { dashLostShown = false; return@LaunchedEffect }
+        fun lost(chip: DashChip) = when (chip) {
+            DashChip.LOST_RETRYING -> R.string.riding_chip_dash_lost
+            DashChip.LOST -> R.string.riding_chip_dash_off
+            DashChip.BLUETOOTH_OFF -> R.string.riding_chip_bluetooth_off
+            DashChip.BACK -> R.string.riding_chip_dash_back
         }
-        if (was == false && dashUp && dashLostShown) {
-            dashLostShown = false
-            feedback.chip(resources.getString(R.string.riding_chip_dash_back), ChipTone.Ok)
+        when (val step = DashChipPolicy.step(dashClass, dashLostShown)) {
+            DashChipStep.Nothing -> {}
+            is DashChipStep.After -> {
+                delay(step.delayMs)
+                dashLostShown = true
+                feedback.chip(resources.getString(lost(step.chip)), ChipTone.Bad, onTap = { showBike = true })
+            }
+            is DashChipStep.Now -> {
+                dashLostShown = false
+                feedback.chip(resources.getString(lost(step.chip)), ChipTone.Ok)
+            }
         }
     }
 
@@ -861,7 +912,7 @@ fun NavigateHost(
         places = places, appScope = container.appScope, tripRunning = ::tripRunning,
         onResume = ::resumeNav, onBack = ::performBack, onClose = ::backToBrowse,
         onInsets = { left, bottom -> planInsets.value = left to bottom },
-        onAskReplace = { replaceRequest = it }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
+        onAskReplace = { replaceRequest = it }, replacing = replacingTrip, onReplacing = { replacingTrip = true }, onGoToPreview = { if (stage == NavStage.CONFIRM) stage = NavStage.PREVIEW }, onAddAsStop = { if (stage == NavStage.CONFIRM) addAsStop(it) },
         onPickingStop = { pickingStop = it }, onStopCandidate = { stopCandidate = it },
         onSelectRoute = routeVm::select, onAddStop = { if (stage == NavStage.PREVIEW) openSearchForStop() }, onStart = { if (stage == NavStage.PREVIEW) startTo(it) },
         onRetryRoutes = { selected?.let { routeVm.load(it, stops) } },
@@ -968,7 +1019,7 @@ fun NavigateHost(
                 )
 
                 NavStage.TRIP_FINISHED -> TripFinishedStage(
-                    selected = selected, finishState = finishState, tripState = tripState, appSettings = appSettings,
+                    selectedNow = selected, finishState = finishState, tripState = tripState, appSettings = appSettings,
                     recordingTurnedOn = recordingTurnedOn, store = store, rideStore = rideStore, scope = scope,
                     onFinishInsets = { left, bottom -> finishInsets = left to bottom }, onDone = ::backToBrowse,
                     onRideBack = ::rideBack, onRecordingTurnedOn = { recordingTurnedOn = true },
@@ -1021,3 +1072,9 @@ fun NavigateHost(
         )
     }
 }
+
+/** A little over the stage transition: when the finish state is safe to clear. */
+private const val FINISH_CLEAR_MARGIN_MS = 100L
+
+/** How long Ride back waits for the street name of the start before it calls it "Ride start". */
+private const val RIDE_BACK_LABEL_MS = 1_500L

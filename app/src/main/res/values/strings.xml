@@ -260,6 +260,7 @@
     <!-- Add a stop on the map (PL6) -->
     <string name="stop_pick_title">Move the map to place the stop</string>
     <string name="stop_goes_in_before">Goes in before %1$s. You can reorder it in the stop list.</string>
+    <string name="stop_goes_in_before_trip">Goes in before %1$s</string>
     <string name="pick_near">Near %1$s</string>
     <string name="pick_no_street">No street name here</string>
     <string name="stop_new">New stop</string>
@@ -291,13 +292,15 @@
     <string name="riding_chip_offline">Offline · guidance continues</string>
     <string name="riding_chip_offline_reroute">Offline · reroutes when back online</string>
     <string name="riding_chip_dash_lost">Dash disconnected · retrying</string>
+    <string name="riding_chip_dash_off">Dash disconnected</string>
+    <string name="riding_chip_bluetooth_off">Bluetooth is off</string>
     <string name="riding_chip_dash_back">Dash connected</string>
     <string name="riding_chip_stop_added">Stop added · %1$s</string>
     <string name="riding_chip_stop_removed">Stop removed · %1$s</string>
     <string name="riding_chip_stop_remove_failed">Couldn\'t remove the stop · trip continues</string>
     <string name="trip_stop_unnamed">Stop</string>
     <string name="trip_destination_unnamed">Destination</string>
-    <string name="ride_back_label">Trip start</string>
+    <string name="ride_back_label">Ride start</string>
     <string name="riding_chip_stop_failed">Couldn\'t add the stop · trip continues</string>
     <string name="riding_chip_not_navigating">Start navigating first</string>
     <string name="riding_chip_ended">That trip has already ended</string>

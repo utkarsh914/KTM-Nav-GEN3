@@ -94,7 +94,13 @@ class KtmLayoutAndMotionTest {
             assertTrue((spec as TweenSpec).durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
         }
         val bar = m.ridingFade<Float>(KtmMotionSpecs.RIDING_BAR_DELAY_MS) as TweenSpec
-        assertTrue("the entrance finishes inside the ceiling plus its stagger", bar.delay + bar.durationMillis <= 2 * KtmMotionSpecs.RIDING_MAX_MS)
+        assertTrue("the whole entrance, stagger included, finishes inside the riding ceiling", bar.delay + bar.durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
+        listOf(KtmMotionSpecs.RIDING_CARD_DELAY_MS, KtmMotionSpecs.RIDING_BAR_DELAY_MS).forEach { delay ->
+            val slide = m.ridingSpatial<Float>(delay) as TweenSpec
+            val fade = m.ridingFade<Float>(delay) as TweenSpec
+            assertTrue("slide after a ${delay} ms stagger", slide.delay + slide.durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
+            assertTrue("fade after a ${delay} ms stagger", fade.delay + fade.durationMillis <= KtmMotionSpecs.RIDING_MAX_MS)
+        }
     }
 
     @Test fun ridingArrivesOnOneUisCurveAndLeavesFasterOnAnEaseIn() {

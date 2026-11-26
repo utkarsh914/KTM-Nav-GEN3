@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 internal fun TripFinishedStage(
-    selected: SavedPlace?,
+    selectedNow: SavedPlace?,
     finishState: FinishState,
     tripState: TripState,
     appSettings: AppSettings,
@@ -50,11 +50,14 @@ internal fun TripFinishedStage(
     onOpenRecordingSettings: () -> Unit,
 ) {
     val context = LocalContext.current
+    // The summary leaves with what it showed: the place and the trip's length are cleared the moment the stage changes.
+    val selected = rememberLast(selectedNow)
+    val finishedDuration = rememberLast(tripState.finished?.durationSec)
     var placeSaved by remember(selected) { mutableStateOf(selected?.let { store.isSaved(it.lat, it.lng) } ?: false) }
     val model = TripFinishedModel(
         destination = selected?.label,
         ui = finishState.ui,
-        fallbackDurationSec = tripState.finished?.durationSec ?: 0,
+        fallbackDurationSec = finishedDuration ?: 0,
         avgMode = appSettings.avgSpeedMode,
         placeSaved = placeSaved,
         canSavePlace = selected != null,

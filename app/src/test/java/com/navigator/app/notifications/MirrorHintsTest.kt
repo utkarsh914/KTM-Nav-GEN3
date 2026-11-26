@@ -26,6 +26,16 @@ class MirrorHintsTest {
         assertEquals(emptyList<Kind>(), hints(hasNav = true, age = null))
     }
 
+    @Test fun aStandingRiderIsNotToldMapsWentQuietUntilTwoMinutes() {
+        fun at(speed: Float?, age: Long) = MirrorHints.compute(true, true, false, true, age, true, speed)
+        assertEquals("standing at a light: 31 s of silence is normal", emptyList<Kind>(), at(0f, 31_000))
+        assertEquals(emptyList<Kind>(), at(4.9f, MirrorHints.STALE_STATIONARY_AFTER_MS))
+        assertEquals(listOf(Kind.STALE), at(0f, MirrorHints.STALE_STATIONARY_AFTER_MS + 1))
+        assertEquals("riding: the normal 30 s", listOf(Kind.STALE), at(60f, 31_000))
+        assertEquals("exactly at the limit speed counts as moving", listOf(Kind.STALE), at(MirrorHints.STATIONARY_BELOW_KMH, 31_000))
+        assertEquals("speed unknown: the normal threshold", listOf(Kind.STALE), at(null, 31_000))
+    }
+
     @Test fun batteryTipOnlyWhenIdle() {
         assertEquals(listOf(Kind.BATTERY), hints(hasNav = false, battery = false))
         assertEquals(emptyList<Kind>(), hints(hasNav = false, battery = true))

@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -105,9 +106,10 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
         }
         Spacer(Modifier.height(KtmSpacing.md))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(KtmSpacing.sm)) {
-            SearchPill(actions.onSearchByName, Modifier.weight(1f))
+            // The search needs internet: offline the field is dimmed and says so above, instead of closing the sheet to refuse.
+            SearchPill(actions.onSearchByName, Modifier.weight(1f), enabled = ui.online)
             if (ui.voiceAvailable) {
-                KtmIconButton(KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice, style = IconButtonStyle.Tonal, size = IconButtonSize.Map, circular = true)
+                KtmIconButton(KtmIcons.Mic, stringResource(R.string.navigate_voice), actions.onVoice, style = IconButtonStyle.Tonal, size = IconButtonSize.Map, circular = true, enabled = ui.online)
             }
         }
         Spacer(Modifier.height(KtmSpacing.md))
@@ -142,12 +144,13 @@ fun TripStopSheet(ui: TripStopUi, actions: TripStopActions) {
 
 /** SE4: the field that opens the full search (free text, voice), 56 dp for a glove. */
 @Composable
-private fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SearchPill(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val c = KtmTheme.colors
     val haptics = rememberHaptics()
     Row(
         modifier.fillMaxWidth().heightIn(min = KtmLayout.targetPrimary).clip(KtmShapes.Pill).background(c.surf2)
-            .clickable(role = Role.Button) { haptics.tap(); onClick() }.padding(horizontal = KtmSpacing.lg),
+            .alpha(if (enabled) 1f else KtmLayout.disabledAlpha)
+            .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onClick() }.padding(horizontal = KtmSpacing.lg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(KtmSpacing.md),
     ) {

@@ -56,4 +56,21 @@ class SpeedSourceTest {
         assertNull(source.speedKmh.value)
         source.release()
     }
+
+    @Test fun aHoldTakenBeforeThePermissionStartsWorkingOnTheNextAcquireAndStaysCounted() {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val source = SpeedSource(context)
+        source.acquire() // no permission yet: counted, nothing registered
+        shadowOf(context as Application).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        source.acquire() // the second holder finds the permission and registers
+        shadowOf(lm).simulateLocation(fix(10f))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(36f, source.speedKmh.value!!, 0.01f)
+        source.release()
+        shadowOf(lm).simulateLocation(fix(5f).apply { elapsedRealtimeNanos += 2_000_000_000L; time += 2_000 })
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("the first holder still holds it", 18f, source.speedKmh.value!!, 0.01f)
+        source.release()
+        assertNull(source.speedKmh.value)
+    }
 }

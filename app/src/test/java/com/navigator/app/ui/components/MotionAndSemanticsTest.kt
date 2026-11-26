@@ -83,7 +83,7 @@ class MotionAndSemanticsTest {
         assertTrue("fades stay fades, only shorter", reduced.effectsDefault<Float>() is TweenSpec)
         assertTrue("a riding slide jumps when reduced: callers zero the offset and keep the fade", reduced.ridingSpatial<Float>() is SnapSpec)
         val riding = normal.ridingSpatial<Float>(delayMs = 50) as TweenSpec
-        assertEquals(KtmMotionSpecs.RIDING_MAX_MS, riding.durationMillis)
+        assertEquals("a staggered move is shorter by its delay, so it still ends inside the ceiling", KtmMotionSpecs.RIDING_MAX_MS, riding.delay + riding.durationMillis)
         assertEquals(50, riding.delay)
     }
 

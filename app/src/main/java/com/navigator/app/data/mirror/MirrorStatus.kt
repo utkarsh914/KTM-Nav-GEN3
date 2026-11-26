@@ -15,6 +15,8 @@ data class MirrorInputs(
     val navPackage: String?,
     val lastUpdateMs: Long,
     val nowMs: Long,
+    /** The rider's speed, when known: a standing rider is not told Google Maps went quiet within two minutes. */
+    val speedKmh: Float? = null,
 )
 
 enum class MirrorSetupKind { Access, Listener, Battery }
@@ -87,6 +89,9 @@ sealed interface MirrorStatus {
     data class Live(val turn: MirrorTurn, val freshness: Freshness, val paused: Boolean, val stale: Boolean) : MirrorStatus
 }
 
+/** The status without its ticking age: equal from one second to the next while nothing else changed (see MirrorViewModel). */
+fun MirrorStatus.withoutAge(): MirrorStatus = if (this is MirrorStatus.Live) copy(freshness = Freshness.JustNow) else this
+
 object MirrorStatusMapper {
     fun map(i: MirrorInputs): MirrorStatus {
         val rows = listOf(
@@ -101,7 +106,7 @@ object MirrorStatusMapper {
         val age = if (i.lastUpdateMs > 0L) (i.nowMs - i.lastUpdateMs).coerceAtLeast(0L) else 0L
         val stale = MirrorHints.compute(
             accessGranted = true, listenerConnected = true, paused = i.paused, hasNav = true, ageMs = age,
-            ignoringBatteryOptimizations = true,
+            ignoringBatteryOptimizations = true, speedKmh = i.speedKmh,
         ).contains(MirrorHints.Kind.STALE)
         return MirrorStatus.Live(MirrorTurn.from(i.guidance, i.navText), Freshness.of(age), i.paused, stale)
     }

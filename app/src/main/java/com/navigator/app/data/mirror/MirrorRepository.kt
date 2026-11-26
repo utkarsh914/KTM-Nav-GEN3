@@ -1,6 +1,7 @@
 package com.navigator.app.data.mirror
 
 import com.navigator.app.data.permissions.PermissionId
+import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.nav.providers.NotificationNavProvider
 import com.navigator.app.notifications.NotificationRepository
@@ -25,12 +26,13 @@ class MirrorRepository(
     private val navPackage: Flow<String?> = NotificationRepository.currentNavPackage,
     private val lastUpdateMs: Flow<Long> = NotificationRepository.lastUpdateMs,
     private val setPausedImpl: (Boolean) -> Unit = NotificationNavProvider::setPaused,
+    private val speedKmh: Flow<Float?> = SpeedMonitor.speedKmh,
 ) {
     private val clock: Flow<Long> = flow { while (true) { emit(now()); delay(tickMs) } }
 
     val status: Flow<MirrorStatus> = combine(
         combine(permissions.state, listenerConnected, paused) { p, l, pa -> Triple(p, l, pa) },
-        combine(guidance, navText, navPackage, lastUpdateMs) { g, t, pkg, u -> arrayOf(g, t, pkg, u) },
+        combine(guidance, navText, navPackage, lastUpdateMs, speedKmh) { g, t, pkg, u, v -> arrayOf(g, t, pkg, u, v) },
         clock,
     ) { (perms, listener, paused), nav, nowMs ->
         @Suppress("UNCHECKED_CAST")
@@ -45,6 +47,7 @@ class MirrorRepository(
                 navPackage = nav[2] as String?,
                 lastUpdateMs = nav[3] as Long,
                 nowMs = nowMs,
+                speedKmh = nav[4] as Float?,
             ),
         )
     }

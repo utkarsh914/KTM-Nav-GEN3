@@ -13,7 +13,6 @@ import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.places.PlacesRepository
 import com.navigator.app.data.rides.RidesRepository
 import com.navigator.app.data.settings.SettingsRepository
-import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.location.SpeedSource
 import com.navigator.app.nav.destination.LinkResolution
 import com.navigator.app.nav.destination.MapsUrlResolver
@@ -25,13 +24,18 @@ import com.navigator.app.ride.RideStore
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.trip.SdkGuidanceSource
 import com.navigator.app.trip.TripController
+import com.navigator.app.trip.isLive
 import com.navigator.app.ui.feature.navigate.link.LinkOutcome
 import com.navigator.app.ui.feature.navigate.link.SharedLinkController
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 /**
  * Manual dependency injection: the app-scoped objects ViewModels, services and receivers share.
@@ -102,10 +106,19 @@ class DefaultAppContainer(context: Context) : AppContainer {
             nav = trip.navState,
             minimised = trip.state.map { it.minimised },
             enabled = settings.snapshot.map { it.turnBeepEnabled },
-            speedKmh = SpeedMonitor.speedKmh,
+            // The phone's own speed: the bike service (SpeedMonitor) may not be running in standalone navigation.
+            speedKmh = speed.speedKmh,
             config = { settings.legacy.swapBeepChannels to settings.legacy.beepVolumePercent },
             sink = TurnBeeperSink,
         )
+        // Nothing else holds the GPS while the app is in the background with a trip running: the beeps hold it themselves.
+        var held = false
+        combine(trip.phase, settings.snapshot.map { it.turnBeepEnabled }) { phase, on -> phase.isLive && on }
+            .distinctUntilChanged()
+            .onEach { want ->
+                if (want && !held) { held = true; speed.acquire() } else if (!want && held) { held = false; speed.release() }
+            }
+            .launchIn(scope)
     }
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
     override val quit by lazy { QuitController.create(appContext, trip, connection) { activityHolder.current } }

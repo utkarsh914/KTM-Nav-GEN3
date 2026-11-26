@@ -14,6 +14,11 @@ import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.theme.KtmTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import com.navigator.app.ui.theme.RidingTheme
+import com.navigator.app.ui.theme.KtmLayout
+import com.navigator.app.ui.components.ButtonSize
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,5 +106,15 @@ class PickOnMapLandscapeTest {
         val use = rule.onNodeWithText("Use this point").getUnclippedBoundsInRoot()
         val footprintDp = footprints.last() / rule.density.density
         assertTrue("action ends at ${use.right}, the panel's footprint is $footprintDp", use.right.value <= footprintDp)
+    }
+
+    @Test fun midTripTheUseButtonIsAPrimaryRidingTargetAndAtRestItIsNot() {
+        rule.setContent { KtmTheme(darkTheme = true) { RidingTheme(night = true) { PickOnMapScreen(here, onBack = {}, onUse = {}) } } }
+        rule.onNodeWithText("Use this point").assertHeightIsAtLeast(KtmLayout.targetRiding)
+    }
+
+    @Test fun atRestTheUseButtonKeepsTheRestSize() {
+        rule.setContent { KtmTheme(darkTheme = true) { PickOnMapScreen(here, onBack = {}, onUse = {}) } }
+        rule.onNodeWithText("Use this point").assertHeightIsEqualTo(ButtonSize.Rest.height)
     }
 }
