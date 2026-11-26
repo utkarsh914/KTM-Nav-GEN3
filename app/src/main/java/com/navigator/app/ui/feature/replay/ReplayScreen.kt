@@ -169,7 +169,9 @@ fun ReplayScreen(
         // The camera frames the whole track in what the sheet or panel leaves open, again for a new track (after a trim).
         var framed by remember { mutableStateOf<Any?>(null) }
         // Once the page has arrived and the sheet has stopped growing: one padding, one frame.
-        LaunchedEffect(mapReady, pageSettled, ready?.points) {
+        // Again when the screen takes the map back: a frame that was not ours to make is made then.
+        val attached by map.attachments.collectAsState()
+        LaunchedEffect(mapReady, pageSettled, ready?.points, attached) {
             val r = ready ?: return@LaunchedEffect
             if (!mapReady || !pageSettled) return@LaunchedEffect
             snapshotFlow { insets }.filter { it != MapInsets() }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { open ->

@@ -39,9 +39,6 @@ class RetainedNavigationView(
     private var funnelMap: com.google.android.gms.maps.GoogleMap? = null
     private var pendingShell = MapInsets()
 
-    /** Whether the SDK's guidance chrome is on, as the last owner left it (null before any): the SDK re-pads its own chrome when it flips. */
-    var guidanceOn: Boolean? = null
-
     /** Which screen the shared map answers to (see [MapOwnership]). */
     val ownership = MapOwnership()
 

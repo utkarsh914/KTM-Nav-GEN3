@@ -111,7 +111,8 @@ fun RidingScreen(
         ) {
             // Behind the open trip sheet the card is dimmed with the map and silent for screen readers.
             val cardAlpha by androidx.compose.animation.core.animateFloatAsState(if (sheetOpen) CARD_DIMMED else 1f, motion.ridingFade(), label = "cardDim")
-            Column(Modifier.graphicsLayer { alpha = cardAlpha }.consumeMapTouches().then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier)) {
+            // With the sheet open the card is only a dimmed backdrop: a tap on it closes the sheet (the scrim is under it).
+            Column(Modifier.graphicsLayer { alpha = cardAlpha }.then(if (sheetOpen) Modifier.clearAndSetSemantics {} else Modifier.consumeMapTouches())) {
                 ManeuverCard(maneuver, Modifier.onSizeChanged { size[0] = it.height + gap + sysTop; cardPx.intValue = size[0]; onInsets(size[0], size[1]) }, destination = bar.destination)
                 RidingChipHost(chip)
             }

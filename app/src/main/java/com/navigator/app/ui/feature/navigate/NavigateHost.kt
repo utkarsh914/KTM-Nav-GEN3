@@ -116,6 +116,7 @@ import com.navigator.app.ui.theme.accentFor
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -313,6 +314,9 @@ fun NavigateHost(
     var pickingStop by rememberSaveable { mutableStateOf(false) }
     // How much of the map the plan sheet covers (left, bottom in px), so the camera frames the route in the rest.
     val planInsets = remember { mutableStateOf(0 to 0) }
+    val orientation = androidx.compose.ui.platform.LocalConfiguration.current.orientation
+    val lastPlanPadding = remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val paddedOrientation = remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     // Bumped when the sheet settles at a new height so the camera frames the route again (not for the proposed-stop sheet).
     var fitKey by remember { mutableIntStateOf(0) }
     val lastFit = remember { arrayOfNulls<Any>(1) }
@@ -441,7 +445,11 @@ fun NavigateHost(
             NavStage.CONFIRM, NavStage.PREVIEW -> {
                 // Framed in what the sheet leaves open (PL2); picking a stop uses the whole map (the pin is at its middle).
                 // Picking a stop: the pick screen pads the map itself (the pin is at the middle of what is open).
-                if (!pickingStop) map.setPadding(planInsets.value.first, 0, 0, planInsets.value.second)
+                if (!pickingStop) {
+                    map.setPadding(planInsets.value.first, 0, 0, planInsets.value.second)
+                    lastPlanPadding.value = planInsets.value
+                    paddedOrientation.intValue = orientation
+                }
             }
             else -> {}
         }
@@ -492,12 +500,16 @@ fun NavigateHost(
         }
     }
 
-    // A rotation or a resized sheet changes what the plan sheets cover: the map follows (padding only, the camera stays),
-    // not just when a new frame is pending.
-    LaunchedEffect(stage, pickingStop, mapReady) {
+    // A rotation changes what the plan sheets cover: the map follows (padding only, the camera stays). Only a rotation:
+    // a sheet that merely resizes keeps the frame the rider is looking at (one frame per change of what is shown).
+    LaunchedEffect(orientation, stage, pickingStop, mapReady) {
         if (!mapReady || pickingStop || (stage != NavStage.PREVIEW && stage != NavStage.CONFIRM)) return@LaunchedEffect
+        if (paddedOrientation.intValue == orientation) return@LaunchedEffect
         // The sheets report their size every frame while they animate: the map follows once they have settled.
-        snapshotFlow { planInsets.value }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).collect { map.setPadding(it.first, 0, 0, it.second) }
+        val covered = snapshotFlow { planInsets.value }.settled(KtmMotionSpecs.INSETS_SETTLE_MS).first { it != lastPlanPadding.value }
+        map.setPadding(covered.first, 0, 0, covered.second)
+        lastPlanPadding.value = covered
+        paddedOrientation.intValue = orientation
     }
 
     // Draw the just-finished ride's speed-coloured track on the map behind the

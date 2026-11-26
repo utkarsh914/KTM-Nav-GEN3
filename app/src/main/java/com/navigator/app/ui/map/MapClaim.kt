@@ -23,9 +23,6 @@ import com.navigator.app.ui.shell.rememberPageSettled
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.job
-import kotlin.coroutines.coroutineContext
 
 /** What the riding surfaces cover of the map, in px. */
 data class MapInsets(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0) {
@@ -68,18 +65,16 @@ fun MapClaim(
     // an already-loaded view, so this is cheap.
     LaunchedEffect(navView, active) {
         if (!active) return@LaunchedEffect
-        val me = coroutineContext.job
         controller.arm()
-        navView.getMapAsync { gm ->
-            // The page may have stopped being the active one while the map was on its way: then it takes nothing.
-            if (!me.isActive) return@getMapAsync
-            controller.attach(gm, navView)
-            // Only frame the camera the first time: re-entry keeps the rider's pan and zoom.
-            if (!retained.mapInitialized) {
-                val start = lastKnownLocation(context)?.let { LatLng(it.first, it.second) } ?: LatLng(12.9716, 77.5946) // Bengaluru fallback
-                gm.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 15f))
-                retained.mapInitialized = true
-            }
+        // The SDK delivers the map later, on the main thread, even when it has it already. A page that stops being the
+        // active one while it waits is cancelled here and takes nothing.
+        val gm = awaitDelivery<com.google.android.gms.maps.GoogleMap> { deliver -> navView.getMapAsync { deliver(it) } }
+        controller.attach(gm, navView)
+        // Only frame the camera the first time: re-entry keeps the rider's pan and zoom.
+        if (!retained.mapInitialized) {
+            val start = lastKnownLocation(context)?.let { LatLng(it.first, it.second) } ?: LatLng(12.9716, 77.5946) // Bengaluru fallback
+            gm.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 15f))
+            retained.mapInitialized = true
         }
     }
 

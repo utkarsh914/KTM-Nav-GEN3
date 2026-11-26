@@ -70,4 +70,29 @@ class RidingTouchThroughTest {
         }
         rule.runOnIdle { assertTrue("the map got the drag: $drags", drags > 50f) }
     }
+
+    @Test fun withTheSheetOpenATapOnTheDimmedCardClosesIt() {
+        var dismissed = 0
+        rule.setContent {
+            KtmTheme(darkTheme = true) {
+                RidingTheme(night = true) {
+                    RidingScreen(
+                        maneuver = ManeuverUi.Active(TurnIcon.QUITE_RIGHT, "450 m", "Turn right onto", "Jalaun Rd", null, ManeuverFooter.None, false),
+                        bar = TripBarUi(
+                            speed = "42", speedKnown = true, overspeed = false, alert = null, timeLeft = TimeLeft(0, 25),
+                            distance = "12 km", arrival = "14:32", progress = 0.5f, destination = "Toit", starting = false,
+                        ),
+                        chip = null, recenter = false, bearing = { 0f },
+                        actions = RidingActions(onOpenSheet = {}, onMapButton = {}, onNorthUp = {}, onDismissSheet = { dismissed++ }),
+                        onInsets = { _, _ -> }, sheetOpen = true,
+                    )
+                }
+            }
+        }
+        rule.onRoot().performTouchInput {
+            val at = Offset(width * 0.5f, 40f + height * 0.08f)
+            down(at); moveTo(at + Offset(2f, 1f)); up()
+        }
+        rule.runOnIdle { assertEquals("the scrim under the card gets the tap", 1, dismissed) }
+    }
 }

@@ -335,7 +335,7 @@ class NavSdkMapController(
         userMarker.update(gm, LatLng(at.lat, at.lng), headingDegrees)
     }
 
-    override fun hideUserMarker() { if (owns) userMarker.remove() }
+    override fun hideUserMarker() = userMarker.remove()
 
     override fun recenter(at: MapPoint) {
         ownedMap()?.glide(CameraUpdateFactory.newLatLngZoom(LatLng(at.lat, at.lng), 16f), KtmMotionSpecs.CAMERA_RECENTER_MS)
@@ -372,10 +372,7 @@ class NavSdkMapController(
         runCatching { view.setRecenterButtonEnabled(false) }
         runCatching { view.setReportIncidentButtonEnabled(false) }
         runCatching { view.setTrafficIncidentCardsEnabled(false) }
-        // The SDK may re-pad its own chrome when guidance switches on or off; a replay with the same state changes nothing.
-        // The state belongs to the shared view, not to this screen: the first screen after a change of owner compares with it.
-        if (retained.guidanceOn != null && guidance != retained.guidanceOn) retained.reapplyPadding()
-        retained.guidanceOn = guidance
+        retained.reapplyPadding() // the SDK may have re-padded its own chrome
     }
 
     override fun setNightMode(dark: Boolean) {
