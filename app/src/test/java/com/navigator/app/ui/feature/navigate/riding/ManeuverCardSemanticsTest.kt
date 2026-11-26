@@ -58,4 +58,12 @@ class ManeuverCardSemanticsTest {
         rule.waitForIdle()
         assertTrue(spoken() != first && "Bypass Rd" in spoken())
     }
+
+    @Test fun whileReroutingTheDimmedLastInstructionIsNotAnnouncedAgain() {
+        val busy = ManeuverUi.Active(TurnIcon.QUITE_RIGHT, null, "Turn right onto", "Jalaun Rd", null, ManeuverFooter.None, true)
+        rule.setContent { KtmTheme(darkTheme = true) { RidingTheme(night = true) { ManeuverCard(busy) } } }
+        // The one live node is the card's own "Rerouting" line.
+        rule.onAllNodes(live).assertCountEquals(1)
+        assertFalse("Jalaun Rd" in spoken())
+    }
 }

@@ -587,7 +587,7 @@ fun NavigateHost(
     }
 
     fun choose(p: SavedPlace, recent: Boolean = true) {
-        if (NavFlowRules.stepsAwayToLook(tripActive, stage)) {
+        if (NavFlowRules.stepsAwayToLook(tripRunning(), stage)) {
             trip.setMinimised(true)
             map.resetNorth()
         }
@@ -639,10 +639,13 @@ fun NavigateHost(
         rideBackPending = true
         // The summary and Save place name the start by its street when the phone can say (a moment at most), else "Ride start".
         scope.launch {
+            // streetName reports its own failures as null; cancellation must reach this coroutine.
             val street = withTimeoutOrNull(RIDE_BACK_LABEL_MS) {
-                runCatching { AndroidReverseGeocoder(appContext).streetName(MapPoint(plan.origin.first, plan.origin.second)) }.getOrNull()
+                AndroidReverseGeocoder(appContext).streetName(MapPoint(plan.origin.first, plan.origin.second))
             }
             rideBackPending = false
+            // The rider may have left the summary while the street was looked up: then there is nothing to plan from.
+            if (flow.stage != NavStage.TRIP_FINISHED) return@launch
             backToBrowse()
             flow.update { it.rideBack(SavedPlace(plan.origin.first, plan.origin.second, street ?: rideBackLabel), tripStops) }
         }
@@ -854,9 +857,11 @@ fun NavigateHost(
     // The dash is the primary display, so losing it matters: a red chip once, then a green one when it is back.
     val bikeStatus by container.connection.status.collectAsState()
     val dashClass = DashChipPolicy.classOf(bikeStatus)
+    val latestDashClass by rememberUpdatedState(dashClass)
     var dashLostShown by remember { mutableStateOf(false) }
-    // Re-keyed by the class of the link, so a blip shorter than the grace is cancelled before it shows anything.
-    LaunchedEffect(dashClass, stage) {
+    // Keyed on down or not, so a link that flaps between "retrying" and "disconnected" keeps one grace running and one chip
+    // showing; a blip shorter than the grace is cancelled before it shows anything. The wording is chosen when it fires.
+    LaunchedEffect(DashChipPolicy.isDown(dashClass), stage) {
         if (stage != NavStage.NAVIGATING) { dashLostShown = false; return@LaunchedEffect }
         fun lost(chip: DashChip) = when (chip) {
             DashChip.LOST_RETRYING -> R.string.riding_chip_dash_lost
@@ -864,12 +869,13 @@ fun NavigateHost(
             DashChip.BLUETOOTH_OFF -> R.string.riding_chip_bluetooth_off
             DashChip.BACK -> R.string.riding_chip_dash_back
         }
-        when (val step = DashChipPolicy.step(dashClass, dashLostShown)) {
+        when (val step = DashChipPolicy.step(latestDashClass, dashLostShown)) {
             DashChipStep.Nothing -> {}
             is DashChipStep.After -> {
                 delay(step.delayMs)
+                val chip = DashChipPolicy.lostChip(latestDashClass) ?: return@LaunchedEffect
                 dashLostShown = true
-                feedback.chip(resources.getString(lost(step.chip)), ChipTone.Bad, onTap = { showBike = true })
+                feedback.chip(resources.getString(lost(chip)), ChipTone.Bad, onTap = { showBike = true })
             }
             is DashChipStep.Now -> {
                 dashLostShown = false

@@ -33,11 +33,19 @@ object DashChipPolicy {
         BikeStatus.NotPaired -> DashClass.NOT_PAIRED
     }
 
-    fun step(now: DashClass, lostShown: Boolean): DashChipStep = when (now) {
-        DashClass.UP -> if (lostShown) DashChipStep.Now(DashChip.BACK) else DashChipStep.Nothing
-        DashClass.TRYING -> DashChipStep.After(DOWN_GRACE_MS, DashChip.LOST_RETRYING)
-        DashClass.DOWN, DashClass.NEEDS_REPAIR -> DashChipStep.After(DOWN_GRACE_MS, DashChip.LOST)
-        DashClass.BLUETOOTH_OFF -> DashChipStep.After(DOWN_GRACE_MS, DashChip.BLUETOOTH_OFF)
-        DashClass.NOT_PAIRED -> DashChipStep.Nothing
+    /** The link is not there (trying, down, needs a re-pair, Bluetooth off): what the grace is for. Flapping among these is one outage. */
+    fun isDown(c: DashClass): Boolean = lostChip(c) != null
+
+    /** The red chip's words for a link in class [c]; null when it is up or there is no bike to lose. */
+    fun lostChip(c: DashClass): DashChip? = when (c) {
+        DashClass.TRYING -> DashChip.LOST_RETRYING
+        DashClass.DOWN, DashClass.NEEDS_REPAIR -> DashChip.LOST
+        DashClass.BLUETOOTH_OFF -> DashChip.BLUETOOTH_OFF
+        DashClass.UP, DashClass.NOT_PAIRED -> null
+    }
+
+    fun step(now: DashClass, lostShown: Boolean): DashChipStep = when {
+        now == DashClass.UP -> if (lostShown) DashChipStep.Now(DashChip.BACK) else DashChipStep.Nothing
+        else -> lostChip(now)?.let { DashChipStep.After(DOWN_GRACE_MS, it) } ?: DashChipStep.Nothing
     }
 }

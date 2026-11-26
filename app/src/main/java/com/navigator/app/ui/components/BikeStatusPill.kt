@@ -72,7 +72,7 @@ fun BikeStatusPill(
     }
 }
 
-/** MR7: the pill folded down to the bike and its status dot, for the short landscape screen (on the mount: a 56 dp target). The label stays for screen readers. */
+/** MR7: the pill folded down to the bike and its status dot, for a narrow window (a 56 dp target, as a glove needs). The label stays for screen readers. */
 @Composable
 fun BikeStatusDot(
     label: String,

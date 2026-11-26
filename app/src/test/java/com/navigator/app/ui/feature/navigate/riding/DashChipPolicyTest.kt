@@ -34,4 +34,20 @@ class DashChipPolicyTest {
         assertEquals(DashChipStep.Nothing, DashChipPolicy.step(DashClass.NOT_PAIRED, lostShown = false))
         assertEquals(DashChipStep.Nothing, DashChipPolicy.step(DashClass.NOT_PAIRED, lostShown = true))
     }
+
+    @Test fun aLinkThatFlapsBetweenRetryingAndDisconnectedIsOneOutageWithOneGrace() {
+        assertEquals(DashChipPolicy.isDown(DashClass.TRYING), DashChipPolicy.isDown(DashClass.DOWN))
+        assertEquals(true, DashChipPolicy.isDown(DashClass.TRYING))
+        assertEquals(true, DashChipPolicy.isDown(DashClass.NEEDS_REPAIR))
+        assertEquals(true, DashChipPolicy.isDown(DashClass.BLUETOOTH_OFF))
+        assertEquals(false, DashChipPolicy.isDown(DashClass.UP))
+        assertEquals("nothing to lose", false, DashChipPolicy.isDown(DashClass.NOT_PAIRED))
+    }
+
+    @Test fun theWordsAreChosenForTheClassTheLinkHasWhenTheChipFires() {
+        assertEquals(DashChip.LOST_RETRYING, DashChipPolicy.lostChip(DashClass.TRYING))
+        assertEquals(DashChip.LOST, DashChipPolicy.lostChip(DashClass.DOWN))
+        assertEquals(DashChip.BLUETOOTH_OFF, DashChipPolicy.lostChip(DashClass.BLUETOOTH_OFF))
+        assertEquals(null, DashChipPolicy.lostChip(DashClass.UP))
+    }
 }

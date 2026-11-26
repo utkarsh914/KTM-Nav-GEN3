@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * The one live speed (km/h) for the UI: GPS at 1 Hz, on only while something holds it ([acquire]):
- * the riding screen or a recording. Independent of the BLE service, so it works during standalone
+ * the riding screen, a recording, or the turn beeps of a live trip. Independent of the BLE service, so it works during standalone
  * navigation. Null until a fix with a speed arrives, and again 5 s after the last one (tunnel, GPS
  * off) so a frozen number never stays on screen. The overspeed alarm stays in [SpeedMonitor].
  * Main thread.

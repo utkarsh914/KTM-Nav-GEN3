@@ -223,9 +223,11 @@ private fun ActiveCard(ui: ManeuverUi.Active, m: ManeuverMetrics, bg: Color, ban
 private fun Modifier.turnAnnouncement(ui: ManeuverUi.Active): Modifier {
     val icon = TurnIconNames.human(ui.icon)
     return semantics(mergeDescendants = true) {
-        liveRegion = LiveRegionMode.Polite
         // While rerouting the card's own "Rerouting" line is the live one: the dimmed last instruction is not announced again.
-        if (!ui.busy) contentDescription = icon
+        if (!ui.busy) {
+            liveRegion = LiveRegionMode.Polite
+            contentDescription = icon
+        }
     }
 }
 

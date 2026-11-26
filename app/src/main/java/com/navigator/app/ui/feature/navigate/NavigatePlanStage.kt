@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -161,6 +163,14 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
     // Picking a stop: the pick screen owns the top of the map.
     if (!plan.pickingStop) PlanTopRow(plan, showBack = false)
     val dest = rememberLast(plan.selected)
+    // The sheet leaves with its routes and stops: Back clears the place, the preview and the stops at once, and an
+    // empty sheet must not pop out of the exit transition.
+    val planning = plan.selected != null
+    val lastPreview = remember { mutableStateOf(plan.routePreview) }
+    val lastStops = remember { mutableStateOf(flow.stops) }
+    if (planning) { lastPreview.value = plan.routePreview; lastStops.value = flow.stops }
+    val shownPreview = if (planning) plan.routePreview else lastPreview.value
+    val shownStops = if (planning) flow.stops else lastStops.value
     if (dest != null) {
         val stopRemoved = { label: String -> resources.getString(R.string.route_stop_removed, label) }
         val undoLabel = resources.getString(R.string.common_undo)
@@ -184,7 +194,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
             }
             else -> PlanPanel(onInsets = plan.onInsets) {
                 RouteSheet(
-                    state = RouteSheetMapper.state(dest, flow.stops, plan.routePreview, System.currentTimeMillis()),
+                    state = RouteSheetMapper.state(dest, shownStops, shownPreview, System.currentTimeMillis()),
                     actions = RouteSheetActions(
                         onBack = plan.onBack,
                         onSelect = plan.onSelectRoute,

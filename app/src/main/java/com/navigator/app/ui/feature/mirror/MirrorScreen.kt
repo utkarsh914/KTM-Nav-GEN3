@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
@@ -55,13 +56,15 @@ class MirrorViewModel(private val repo: MirrorRepository) : ViewModel() {
      * Null until the first reading, so the screen never flashes a wrong state. Without the ticking age: that is in
      * [freshness], so a screen does not recompose every second for a label that is one line of it.
      */
-    val status: StateFlow<MirrorStatus?> = repo.status
+    private val shared = repo.status.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    val status: StateFlow<MirrorStatus?> = shared
         .map { it.withoutAge() }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** How long ago guidance last arrived; changes every second while there is guidance. */
-    val freshness: StateFlow<Freshness> = repo.status
+    val freshness: StateFlow<Freshness> = shared
         .map { (it as? MirrorStatus.Live)?.freshness ?: Freshness.JustNow }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Freshness.JustNow)
