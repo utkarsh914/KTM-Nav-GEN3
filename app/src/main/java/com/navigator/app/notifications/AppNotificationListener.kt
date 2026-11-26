@@ -9,6 +9,7 @@ import com.navigator.app.audio.BeepSourcePolicy
 import com.navigator.app.audio.TurnBeeper
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ble.BccuProtocol
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.model.isActiveNav
@@ -183,7 +184,7 @@ class AppNotificationListener : NotificationListenerService() {
                 )
             ) {
                 TurnBeeper.swapChannels = settings.swapBeepChannels
-                TurnBeeper.volumePercent = settings.beepVolumePercent
+                TurnBeeper.volumePercent = SettingSpecs.nearestBeepVolumeStep(settings.beepVolumePercent)
                 TurnBeeper.gpsSpeedKmh = SpeedMonitor.speedKmh.value
                 TurnBeeper.onGuidance(distanceTitle, guessedIcon)
             }

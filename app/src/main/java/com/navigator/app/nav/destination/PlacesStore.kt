@@ -121,8 +121,9 @@ class PlacesStore(context: Context) {
     private fun writeFavorites(favs: List<FavoritePlace>, durable: Boolean = false) {
         val edit = prefs.edit().putString(KEY_FAVORITES, PlacesJson.writeFavorites(favs))
         if (durable) edit.commit() else edit.apply()
-        // Keep the launcher's "Ride home / work" shortcuts in step with Home / Work.
-        AppShortcuts.sync(appContext, favs)
+        // Keep the launcher's "Ride home / work" shortcuts in step with Home / Work: a system call, so off the caller's
+        // thread (often the main one). One thread, so the last write is the last sync.
+        SHORTCUTS.execute { AppShortcuts.sync(appContext, favs) }
     }
 
     /** The raw stored lists, for a backup file. */
@@ -151,6 +152,7 @@ class PlacesStore(context: Context) {
     private fun coordKey(lat: Double, lng: Double): String = PlacesJson.coordKey(lat, lng)
 
     companion object {
+        private val SHORTCUTS = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "shortcut-sync").apply { isDaemon = true } }
         const val PREFS_NAME = "places_store"
         private const val KEY_RECENTS = "recents"
         private const val KEY_FAVORITES = "favorites"

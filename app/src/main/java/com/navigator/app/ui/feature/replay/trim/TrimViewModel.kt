@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** What the cut would leave. */
-data class Kept(val distanceMeters: Int, val durationSeconds: Int)
+data class Kept(val distanceMeters: Int, val ridingSeconds: Int)
 
 sealed interface TrimUi {
     data object Loading : TrimUi
@@ -84,7 +84,7 @@ class TrimViewModel(
     private fun ready() = _ui.value as? TrimUi.Ready
 
     private fun keptOf(points: List<RidePoint>, range: TrimRange): Kept? =
-        RideTrim.trim(points, range.from, range.to)?.let { RideMetrics.summarize(it) }?.let { Kept(it.distanceMeters, it.durationSeconds) }
+        RideTrim.trim(points, range.from, range.to)?.let { RideMetrics.summarize(it) }?.let { Kept(it.distanceMeters, it.movingSeconds) }
 
     private fun setRange(block: (TrimRange) -> TrimRange) {
         val r = ready() ?: return

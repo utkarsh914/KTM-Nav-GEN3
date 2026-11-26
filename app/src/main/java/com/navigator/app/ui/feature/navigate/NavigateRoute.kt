@@ -22,6 +22,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.ui.theme.KtmMotionSpecs
 import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
@@ -94,16 +95,18 @@ fun NavigateRoute(
         r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.takeIf { it.isNotBlank() }
             ?.let { onSearch(it, null) }
     }
-    val allow = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        // "Don't ask again": the system dialog can no longer appear, so take the rider to the app's settings.
+    val blocked = stringResource(R.string.permission_blocked)
+    val openSettings = stringResource(R.string.common_open_settings)
+    val allow = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        // "Don't ask again": the system dialog can no longer appear. Offer the app's settings; never jump there.
         val activity = context.findHostActivity()
-        if (!granted && activity != null &&
-            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-        ) {
-            runCatching {
-                context.startActivity(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
-                )
+        if (result.values.none { it } && activity != null && LocationPermission.cannotAskAgain(activity)) {
+            feedback.snackbar(blocked, openSettings) {
+                runCatching {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                    )
+                }
             }
         }
     }
@@ -139,7 +142,7 @@ fun NavigateRoute(
         ),
         onBike = { if (state.bike.opensPairing) onOpenPairing() else showBike = true },
         onFixLocation = {
-            if (location == LocationState.PermissionOff) allow.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            if (location == LocationState.PermissionOff) allow.launch(LocationPermission.REQUEST)
             else runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
         },
         onRetryMap = onRetryMap,

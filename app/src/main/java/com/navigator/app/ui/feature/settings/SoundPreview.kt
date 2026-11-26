@@ -9,9 +9,7 @@ import com.navigator.app.audio.TurnBeeper
 /** The "hear it before you ride" previews: the real beep at the chosen volume and side order, and the real alert tone. */
 object SoundPreview {
     fun beeps(volumePercent: Int, swap: Boolean) {
-        TurnBeeper.volumePercent = volumePercent
-        TurnBeeper.swapChannels = swap
-        TurnBeeper.preview()
+        TurnBeeper.preview(volumePercent, swap)
     }
 
     /** Matches the live alert: alarm stream, full volume. */

@@ -97,7 +97,7 @@ class PlacesViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.vm() = PlacesViewModel(repo) { origin }.also { it.ui.launchIn(backgroundScope) }
+    private fun TestScope.vm() = PlacesViewModel(repo, { origin }, dispatcher).also { it.ui.launchIn(backgroundScope) }
 
     @Test fun splitsHomeWorkAndSaved() = runTest(dispatcher) {
         repo.assign(toit, FavoriteSlot.HOME); repo.assign(office, FavoriteSlot.WORK); repo.assign(park, FavoriteSlot.OTHER)

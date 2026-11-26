@@ -11,6 +11,7 @@ import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.location.LocationPermission
 
 /**
  * The "Record a ride" shortcut (SY6): a no-UI trampoline that starts the recording service and finishes, so recording
@@ -24,7 +25,7 @@ class RecordRideShortcutActivity : Activity() {
         // Starting a recording is the rider's own act: it ends a standing quit.
         com.navigator.app.settings.AppSettings(app).quitUntilOpen = false
         val setUp = appContainer.settings.snapshot.value.onboardingComplete
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val granted = LocationPermission.hasPrecise(this)
         if (!setUp) {
             // Nothing is set up yet: the app's own setup comes first.
             say(app, R.string.shortcut_record_needs_setup)

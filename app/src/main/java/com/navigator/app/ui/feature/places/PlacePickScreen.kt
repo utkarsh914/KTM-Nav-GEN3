@@ -27,6 +27,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
@@ -99,7 +100,7 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
         else {
             // After "don't ask again" Android shows no dialog any more: the way out is the app's own settings.
             val activity = context.findHostActivity()
-            val stuck = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+            val stuck = activity != null && LocationPermission.cannotAskAgain(activity)
             feedback.snackbar(
                 resources.getString(R.string.search_current_denied),
                 if (stuck) resources.getString(R.string.common_open_settings) else null,
@@ -130,7 +131,7 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
                 onBack = onBack,
                 onPickOnMap = { mapping = true },
                 onUseCurrent = {
-                    if (hasLocationPermission(context)) useHere(unavailableText, fallbackName) else askLocation.launch(LOCATION_PERMISSIONS)
+                    if (LocationPermission.hasAny(context)) useHere(unavailableText, fallbackName) else askLocation.launch(LocationPermission.REQUEST)
                 },
             )
         }
@@ -138,9 +139,3 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
 }
 
 private const val NAME_TIMEOUT_MS = 3_000L
-
-private val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-
-private fun hasLocationPermission(context: Context) = LOCATION_PERMISSIONS.any {
-    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-}

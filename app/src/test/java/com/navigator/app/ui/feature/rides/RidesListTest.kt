@@ -39,6 +39,13 @@ class RidesListTest {
         assertEquals(listOf("H", "d", "H", "c", "H", "b", "a"), ids(l))
     }
 
+    @Test fun durationSortsByTimeMovingNotByElapsedTime() {
+        // "long" took longer on the clock but rode for less than "short": the card shows moving time, so the sort follows it.
+        val long = ride("long", ms(2026, 11, 20), sec = 7200).copy(movingSeconds = 600)
+        val short = ride("short", ms(2026, 11, 19), sec = 3000).copy(movingSeconds = 2400)
+        assertEquals(listOf("short", "long"), ids(RidesListBuilder.build(listOf(long, short), "", RideSort(RideSortField.Duration), utc)))
+    }
+
     @Test fun otherFieldsSortFlatWithNoHeaders() {
         assertEquals(listOf("d", "c", "b", "a"), ids(RidesListBuilder.build(all, "", RideSort(RideSortField.Distance), utc)))
         assertEquals(listOf("a", "b", "c", "d"), ids(RidesListBuilder.build(all, "", RideSort(RideSortField.Distance, false), utc)))

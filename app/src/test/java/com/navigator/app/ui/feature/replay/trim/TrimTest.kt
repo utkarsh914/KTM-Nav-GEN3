@@ -104,7 +104,7 @@ class TrimViewModelTest {
         val whole = v.ready().kept!!
         v.moveStart(0.25f); v.moveEnd(0.75f)
         assertEquals(TrimRange(14, 44, 59), v.ready().range)
-        assertTrue(v.ready().kept!!.durationSeconds < whole.durationSeconds)
+        assertTrue(v.ready().kept!!.ridingSeconds < whole.ridingSeconds)
         assertTrue(v.ready().canApply)
     }
 

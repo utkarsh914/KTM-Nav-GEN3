@@ -23,6 +23,7 @@ import com.navigator.app.ride.RideFinish
 import com.navigator.app.ride.RideRecordingService
 import com.navigator.app.ride.RideSession
 import com.navigator.app.ride.formatElapsed
+import com.navigator.app.ride.rideDurationText
 import com.navigator.app.ui.components.ActivityStrip
 import com.navigator.app.ui.components.ActivityStripState
 import com.navigator.app.ui.components.ButtonStyle
@@ -62,7 +63,7 @@ fun RecordingOutcome(ui: RecordingUi, feedback: Feedback, onOpenRides: () -> Uni
                 resources.getString(
                     R.string.ride_saved,
                     DistanceFormatter.format(f.ride.distanceMeters, DistanceUnits.METRIC),
-                    formatElapsed(f.ride.durationSeconds * 1000L),
+                    rideDurationText(resources, f.ride.ridingSeconds),
                 ),
                 actionLabel = resources.getString(R.string.ride_saved_view),
                 onAction = onOpenRides,

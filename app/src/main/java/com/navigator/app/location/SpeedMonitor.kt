@@ -1,5 +1,6 @@
 package com.navigator.app.location
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
@@ -88,11 +89,10 @@ class SpeedMonitor(private val context: Context) : LocationListener {
     private var lastDashSpeed = -1
     private var lastDashSentAtMs = 0L
 
+    @SuppressLint("MissingPermission") // LocationPermission.hasPrecise is checked first (lint cannot see through it)
     fun start() {
         if (started) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!LocationPermission.hasPrecise(context)) {
             AppLogger.log("Speed", "No location permission - overspeed monitor idle")
             return
         }

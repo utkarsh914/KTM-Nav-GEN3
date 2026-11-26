@@ -499,7 +499,7 @@ class AppSettings(context: Context) {
         )
 
         val KNOWN_NAV_APPS = setOf(
-            "com.google.android.apps.maps",
+            com.navigator.app.notifications.NavNotificationFilter.GOOGLE_MAPS,
             "com.waze",
             "com.here.app.maps",
             "com.sygic.aura",

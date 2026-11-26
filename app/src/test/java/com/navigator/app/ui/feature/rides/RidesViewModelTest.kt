@@ -197,16 +197,16 @@ class RidesViewModelTest {
         watch()
         val events = mutableListOf<RidesEvent>()
         vm.events.onEach { events += it }.launchIn(backgroundScope)
-        vm.importGpx({ null }, null)
+        vm.importGpx({ null }, { null })
         assertEquals(ImportResult.Unreadable, (events.last() as RidesEvent.Imported).result)
         val gpx = Gpx.write("Loop", pts(60, 5_000_000L))
-        vm.importGpx({ gpx.byteInputStream() }, "loop.gpx")
+        vm.importGpx({ gpx.byteInputStream() }, { "loop.gpx" })
         val first = (events.last() as RidesEvent.Imported).result as ImportResult.Imported
         assertEquals("Loop", first.ride.destinationLabel)
-        vm.importGpx({ gpx.byteInputStream() }, "loop.gpx")
+        vm.importGpx({ gpx.byteInputStream() }, { "loop.gpx" })
         assertEquals(ImportResult.Duplicate, (events.last() as RidesEvent.Imported).result)
         val tiny = Gpx.write("x", pts(1, 9_000_000L))
-        vm.importGpx({ tiny.byteInputStream() }, "x.gpx")
+        vm.importGpx({ tiny.byteInputStream() }, { "x.gpx" })
         assertEquals("a one-fix track is not a track", ImportResult.Unreadable, (events.last() as RidesEvent.Imported).result)
     }
 }

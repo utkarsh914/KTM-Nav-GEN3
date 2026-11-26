@@ -40,6 +40,9 @@ object ReplayFormat {
     /** "Thu 19 Nov". */
     fun rideDay(ms: Long): String = if (ms <= 0L) "" else at(ms).let { (if (thisYear(it)) current().day else current().dayYear).format(it) }
 
+    /** A list's day header: the same style as [rideDay], with the year when it is not this year's. */
+    fun headerDay(date: java.time.LocalDate, withYear: Boolean): String = (if (withYear) current().dayYear else current().day).format(date)
+
     /** "Thu 19 Nov · 5:51 pm" (the date and the time the ride began). */
     fun rideDate(ms: Long): String = if (ms <= 0L) "" else at(ms).let { (if (thisYear(it)) current().dateTime else current().dateTimeYear).format(it) }
 

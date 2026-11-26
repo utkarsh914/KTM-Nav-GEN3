@@ -9,6 +9,7 @@ import com.navigator.app.app.AppContainer
 import com.navigator.app.app.DefaultAppContainer
 import com.navigator.app.ble.DashText
 import com.navigator.app.data.settings.NavEngine
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.destination.PlacesStore
 import com.navigator.app.nav.ktm.ClockFormat
@@ -91,9 +92,7 @@ class OpenDashApplication : Application() {
         }
     }
 
-    private fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
+    private fun hasLocationPermission(): Boolean = LocationPermission.hasPrecise(this)
 
     /** The recording switch is on and the rider has not quit (a quit stands until they reopen the app). */
     private fun autoRecordingAllowed(): Boolean = AppSettings(this).let { it.rideRecordingEnabled && !it.quitUntilOpen }

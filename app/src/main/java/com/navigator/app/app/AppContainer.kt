@@ -12,6 +12,7 @@ import com.navigator.app.data.mirror.MirrorRepository
 import com.navigator.app.data.permissions.PermissionsRepository
 import com.navigator.app.data.places.PlacesRepository
 import com.navigator.app.data.rides.RidesRepository
+import com.navigator.app.data.settings.SettingSpecs
 import com.navigator.app.data.settings.SettingsRepository
 import com.navigator.app.location.SpeedSource
 import com.navigator.app.nav.destination.LinkResolution
@@ -31,6 +32,7 @@ import java.lang.ref.WeakReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
@@ -56,6 +58,9 @@ interface AppContainer {
 
     /** The hard quit (Settings' Quit row and every notification Quit button). */
     val quit: QuitController
+
+    /** True once a restore replaced the settings: the Backup page reminds the rider to restart until the process does. */
+    val restartPending: MutableStateFlow<Boolean>
 
     /** A shared Google Maps link being resolved; app-scoped so it survives leaving the Navigate tab. */
     val sharedLink: SharedLinkController
@@ -108,7 +113,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
             enabled = settings.snapshot.map { it.turnBeepEnabled },
             // The phone's own speed: the bike service (SpeedMonitor) may not be running in standalone navigation.
             speedKmh = speed.speedKmh,
-            config = { settings.legacy.swapBeepChannels to settings.legacy.beepVolumePercent },
+            config = { settings.legacy.swapBeepChannels to SettingSpecs.nearestBeepVolumeStep(settings.legacy.beepVolumePercent) },
             sink = TurnBeeperSink,
         )
         // Nothing else holds the GPS while the app is in the background with a trip running: the beeps hold it themselves.
@@ -121,6 +126,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
             .launchIn(scope)
     }
     // Lazy: the grant reads touch system services, so keep them off the cold-start path.
+    override val restartPending = MutableStateFlow(false)
     override val quit by lazy { QuitController.create(appContext, trip, connection) { activityHolder.current } }
     override val permissions by lazy { PermissionsRepository(appContext, settings, appScope) }
     override val mirror by lazy { MirrorRepository(permissions) }

@@ -229,6 +229,7 @@
     <string name="route_only">Route</string>
     <string name="route_on_time">no delays</string>
     <string name="route_delay">+%1$d min traffic</string>
+    <string name="route_delay_template">+%1$d min traffic</string>
     <string name="route_option_description">%1$s, %2$s, %3$s, %4$s</string>
     <string name="route_add_stop_button">Add stop</string>
     <string name="route_add_stop_row">Add a stop</string>
@@ -458,8 +459,10 @@
     <string name="ride_when_date_how">%1$s · %2$s · %3$s</string>
     <string name="ride_stats_three">%1$s · %2$s · %3$s</string>
     <string name="ride_stats_two">%1$s · %2$s</string>
-    <string name="ride_duration_min">%1$d min</string>
-    <string name="ride_duration_h">%1$d h %2$02d</string>
+    <string name="duration_less_than_min">&lt;1 min</string>
+    <string name="duration_min_template">%d min</string>
+    <string name="duration_hm_template">%d h %02d min</string>
+    <string name="route_arrive_template">arrive %1$s</string>
     <string name="ride_speed_kmh">%1$d km/h</string>
     <string name="ride_star">Star ride</string>
     <string name="ride_unstar">Remove star</string>
@@ -686,6 +689,9 @@
     <string name="search_use_current">Use my current location</string>
     <string name="search_use_current_caption">Saves where you are right now</string>
     <string name="common_open_settings">Open settings</string>
+    <string name="gpx_share_title">Share ride as GPX</string>
+    <string name="gpx_default_name">Ride</string>
+    <string name="permission_blocked">Android won\'t ask again. Turn it on in the app\'s settings.</string>
     <string name="search_current_denied">Location access is off. Allow it to use where you are.</string>
     <string name="search_current_unavailable">Can\'t find your location yet. Check that location is on.</string>
 
@@ -1035,7 +1041,7 @@
     <string name="onb_product">Navigator</string>
     <string name="onb_preview">Preview</string>
     <string name="onb_welcome_title">Turn-by-turn on your dash</string>
-    <string name="onb_welcome_message">Google navigation and your phone\'s notifications, sent to your bike\'s dash over Bluetooth. No account. Nothing leaves your phone.</string>
+    <string name="onb_welcome_message">Google navigation and your phone\'s notifications, sent to your bike\'s dash over Bluetooth. No account. Mirror mode stays on your phone.</string>
     <string name="onb_demo_distance">250 m</string>
     <string name="onb_demo_road">Mountain Road</string>
     <string name="onb_demo_eta">14:32</string>

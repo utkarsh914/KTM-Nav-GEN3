@@ -66,5 +66,5 @@ object PlaceActions {
 
     private fun coords(p: SavedPlace) = String.format(Locale.ROOT, "%.6f,%.6f", p.lat, p.lng)
 
-    const val MAPS_PACKAGE = "com.google.android.apps.maps"
+    const val MAPS_PACKAGE = com.navigator.app.ui.shell.GoogleMapsLauncher.MAPS_PACKAGE
 }

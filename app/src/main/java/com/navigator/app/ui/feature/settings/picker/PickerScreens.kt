@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.app.appContainer
 
@@ -26,6 +27,7 @@ fun AudioPickerScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val vm: AudioPickerViewModel = viewModel(factory = AudioPickerViewModel.factory(context.appContainer, context))
     val ui by vm.ui.collectAsState()
+    LifecycleResumeEffect(vm) { vm.refresh(); onPauseOrDispose { } }
     AudioPickerContent(
         ui,
         AudioPickerActions(

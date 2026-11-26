@@ -120,7 +120,7 @@ fun TripFinishedContent(model: TripFinishedModel, actions: TripFinishedActions, 
             if (compact) {
                 val ride = (model.ui as? FinishUi.Recorded)?.ride
                 Text(
-                    timeLeftText(TimeLeft.of(ride?.durationSeconds ?: model.fallbackDurationSec)),
+                    timeLeftText(TimeLeft.of(ride?.ridingSeconds ?: model.fallbackDurationSec)),
                     style = MaterialTheme.typography.headlineSmall, color = c.fg, maxLines = 1,
                 )
             }
@@ -158,7 +158,7 @@ private fun Stats(model: TripFinishedModel, landscape: Boolean, compact: Boolean
     val ride: RecordedRide? = (model.ui as? FinishUi.Recorded)?.ride
     val saving = model.ui == FinishUi.Saving
     val time = stringResource(if (model.ui is FinishUi.NoRecording) R.string.finished_time else R.string.finished_riding_time)
-    val timeValue = timeLeftText(TimeLeft.of(ride?.durationSeconds ?: model.fallbackDurationSec))
+    val timeValue = timeLeftText(TimeLeft.of(ride?.ridingSeconds ?: model.fallbackDurationSec))
     val unit = stringResource(R.string.riding_speed_unit)
     val avgLabel = stringResource(if (model.avgMode == AvgSpeedMode.OVERALL) R.string.finished_avg_overall else R.string.finished_avg_moving)
     when {

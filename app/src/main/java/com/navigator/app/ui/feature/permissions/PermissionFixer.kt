@@ -4,20 +4,28 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.core.app.ActivityCompat
+import com.navigator.app.R
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.ui.findHostActivity
+import com.navigator.app.ui.shell.LocalFeedback
+
+private const val NO_DIALOG_MS = 400L
 
 /** Carries out a [FixStep]: Android's dialogs and screens, and the explainer sheet that comes first. */
 class PermissionFixer internal constructor(
@@ -50,7 +58,18 @@ fun rememberPermissionFixer(onResult: () -> Unit): PermissionFixer {
         runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))) }
     }
 
-    // Once Android stops showing its dialog ("don't ask again"), the only way left is the app's own settings.
+    // The app's settings are offered, never jumped to: a dismissed first prompt is a "not now", not a "never".
+    val feedback = LocalFeedback.current
+    val resources = LocalResources.current
+    fun offerSettings() = feedback.snackbar(
+        resources.getString(R.string.permission_blocked), resources.getString(R.string.common_open_settings),
+    ) { openAppSettings() }
+
+    // Android shows no dialog once it has been refused for good, and answers at once: that, or a refusal that left no
+    // rationale after one was due, is "don't ask again". A first prompt that is only dismissed is neither.
+    var askedAt by remember { mutableLongStateOf(0L) }
+    var rationaleWasDue by remember { mutableStateOf(false) }
+    fun answeredWithoutDialog() = SystemClock.elapsedRealtime() - askedAt < NO_DIALOG_MS
     fun cannotAskAgain(permission: String): Boolean {
         val activity = context.findHostActivity() ?: return false
         return !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
@@ -60,11 +79,11 @@ fun rememberPermissionFixer(onResult: () -> Unit): PermissionFixer {
         refresh()
         if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) BccuConnectionService.reevaluateLocationIfRunning()
         val denied = result.filterValues { !it }.keys
-        if (denied.isNotEmpty() && denied.all(::cannotAskAgain)) openAppSettings()
+        if (denied.isNotEmpty() && denied.all(::cannotAskAgain) && (rationaleWasDue || answeredWithoutDialog())) offerSettings()
     }
     val background = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         refresh()
-        if (granted) BccuConnectionService.reevaluateLocationIfRunning() else openAppSettings()
+        if (granted) BccuConnectionService.reevaluateLocationIfRunning() else offerSettings()
     }
     val battery = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { refresh() }
 
@@ -75,7 +94,12 @@ fun rememberPermissionFixer(onResult: () -> Unit): PermissionFixer {
     return PermissionFixer(
         run = { step ->
             when (step) {
-                is FixStep.Request -> request.launch(step.permissions.toTypedArray())
+                is FixStep.Request -> {
+                    askedAt = SystemClock.elapsedRealtime()
+                    val activity = context.findHostActivity()
+                    rationaleWasDue = activity != null && step.permissions.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
+                    request.launch(step.permissions.toTypedArray())
+                }
                 is FixStep.Explain -> explainer = step.explainer
                 FixStep.OpenBattery -> runCatching { battery.launch(batteryIntent()) }
             }

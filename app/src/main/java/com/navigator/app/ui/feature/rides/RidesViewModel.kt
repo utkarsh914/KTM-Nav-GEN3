@@ -155,7 +155,7 @@ class RidesViewModel(private val repo: RidesRepository, private val appScope: Co
         appScope.launch { repo.purge(ids) }
     }
 
-    fun importGpx(open: () -> InputStream?, name: String?) {
+    fun importGpx(open: () -> InputStream?, name: () -> String?) {
         viewModelScope.launch { _events.send(RidesEvent.Imported(repo.importGpx(open, name))) }
     }
 

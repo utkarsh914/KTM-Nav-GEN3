@@ -29,19 +29,35 @@ import com.navigator.app.ui.components.KtmTopBar
 import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class NavAppPickerUi(val apps: List<AppEntry>, val selected: String?)
 
 /** Which nav app to mirror when it is not detected. Choosing one turns detecting off. */
-class NavAppPickerViewModel(private val settings: SettingsRepository, labels: AppLabels) : ViewModel() {
-    private val apps = AppSettings.KNOWN_NAV_APPS.map { AppEntry(it, labels.label(it)) }.sortedBy { it.label.lowercase() }
+class NavAppPickerViewModel(
+    private val settings: SettingsRepository,
+    private val labels: AppLabels,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
+    // Looking an app's name up asks the package manager: not on the main thread.
+    private val apps = MutableStateFlow<List<AppEntry>>(emptyList())
 
-    val ui: StateFlow<NavAppPickerUi> = settings.snapshot.map { NavAppPickerUi(apps, it.navAppOverride) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NavAppPickerUi(apps, settings.snapshot.value.navAppOverride))
+    init {
+        viewModelScope.launch {
+            apps.value = withContext(io) { AppSettings.KNOWN_NAV_APPS.map { AppEntry(it, labels.label(it)) }.sortedBy { it.label.lowercase() } }
+        }
+    }
+
+    val ui: StateFlow<NavAppPickerUi> = combine(apps, settings.snapshot) { list, snap -> NavAppPickerUi(list, snap.navAppOverride) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NavAppPickerUi(apps.value, settings.snapshot.value.navAppOverride))
 
     fun choose(packageName: String) = settings.update { navAppOverride = packageName }
 

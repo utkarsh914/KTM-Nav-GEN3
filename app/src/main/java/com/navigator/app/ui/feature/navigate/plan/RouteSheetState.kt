@@ -34,9 +34,9 @@ data class RouteSheetState(
 }
 
 object RouteSheetMapper {
-    fun options(routes: List<RoutePreview>, stopCount: Int): List<RouteOptionUi> = routes.mapIndexed { i, r ->
+    fun options(routes: List<RoutePreview>, stopCount: Int, words: PlanWords = PlanWords.English): List<RouteOptionUi> = routes.mapIndexed { i, r ->
         RouteOptionUi(
-            time = StopLegs.duration(r.durationSeconds),
+            time = StopLegs.duration(r.durationSeconds, words.duration),
             distance = DistanceFormatter.format(r.distanceMeters, DistanceUnits.METRIC),
             badge = RouteSelection.badge(i, stopCount),
             alternative = RouteSelection.alternativeNumber(i),
@@ -46,8 +46,8 @@ object RouteSheetMapper {
     }
 
     /** The time label on each route of the map. Only alternatives need telling apart: a single route's time is in the sheet. */
-    fun callouts(routes: List<RoutePreview>, stopCount: Int): List<String> =
-        if (stopCount > 0 || routes.size < 2) emptyList() else routes.map { StopLegs.duration(it.durationSeconds) }
+    fun callouts(routes: List<RoutePreview>, stopCount: Int, words: PlanWords = PlanWords.English): List<String> =
+        if (stopCount > 0 || routes.size < 2) emptyList() else routes.map { StopLegs.duration(it.durationSeconds, words.duration) }
 
     /** Stops that share a name get their address (or a number) added, so a reorder can be seen. */
     fun distinctLabels(stops: List<SavedPlace>): List<String> {
@@ -64,11 +64,11 @@ object RouteSheetMapper {
     }
 
     /** "20 min · 6.8 km · arrive 6:36 pm · +2 min traffic" (PL3); the traffic part only when there is some. */
-    fun summary(o: RouteOptionUi, durationSeconds: Int, nowMs: Long): String = buildList {
+    fun summary(o: RouteOptionUi, durationSeconds: Int, nowMs: Long, words: PlanWords = PlanWords.English): String = buildList {
         add(o.time)
         add(o.distance)
-        add("arrive " + ClockFormat.local(nowMs + durationSeconds * 1000L, ZoneId.systemDefault()))
-        if (o.delayTone != DelayTone.OnTime) add("+${o.delayMinutes} min traffic")
+        add(words.arrive.format(ClockFormat.local(nowMs + durationSeconds * 1000L, ZoneId.systemDefault())))
+        if (o.delayTone != DelayTone.OnTime) add(words.traffic.format(o.delayMinutes))
     }.joinToString(" \u00b7 ")
 
     fun state(
@@ -76,13 +76,14 @@ object RouteSheetMapper {
         stops: List<SavedPlace>,
         preview: RoutePreviewState,
         nowMs: Long,
+        words: PlanWords = PlanWords.English,
     ): RouteSheetState {
-        val options = options(preview.routes, stops.size)
+        val options = options(preview.routes, stops.size, words)
         val selected = preview.selectedRoute
         // Leg lines only fit the stops the routes were computed for: right after a reorder, add or remove the
         // old legs would otherwise show against the new order until the new routes land.
         val legLines = if (preview.forStops != stops || selected == null) emptyList()
-        else StopLegs.lines(selected.legs, stops.size + 1, nowMs)
+        else StopLegs.lines(selected.legs, stops.size + 1, nowMs, words = words)
         return RouteSheetState(
             destination = destination.label,
             stops = distinctLabels(stops),
@@ -91,7 +92,7 @@ object RouteSheetMapper {
             loading = preview.loading,
             failed = preview.failed,
             legLines = legLines,
-            summary = selected?.let { r -> options.getOrNull(preview.selected)?.let { o -> summary(o, r.durationSeconds, nowMs) } },
+            summary = selected?.let { r -> options.getOrNull(preview.selected)?.let { o -> summary(o, r.durationSeconds, nowMs, words) } },
         )
     }
 }

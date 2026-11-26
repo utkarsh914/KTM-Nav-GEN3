@@ -110,18 +110,19 @@ object TurnBeeper {
     fun reset() = stopPattern()
 
     /**
-     * Settings preview: left, right, left at the configured volume and channel
-     * swap - never ducked, so the rider hears the true riding loudness even
-     * while parked (where the stationary duck would otherwise kick in).
+     * Settings preview: left, right, left at the given volume and channel swap
+     * (the live ones are not touched) - never ducked, so the rider hears the true
+     * riding loudness even while parked (where the stationary duck would
+     * otherwise kick in).
      */
-    fun preview() {
+    fun preview(volumePercent: Int = this.volumePercent, swapChannels: Boolean = this.swapChannels) {
         scope.launch {
             try {
-                playBeep(Side.LEFT, ducked = false)
+                playBeep(Side.LEFT, ducked = false, volumePercent, swapChannels)
                 delay(500)
-                playBeep(Side.RIGHT, ducked = false)
+                playBeep(Side.RIGHT, ducked = false, volumePercent, swapChannels)
                 delay(500)
-                playBeep(Side.LEFT, ducked = false)
+                playBeep(Side.LEFT, ducked = false, volumePercent, swapChannels)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -183,7 +184,9 @@ object TurnBeeper {
 
     private fun parseMeters(text: String?): Int? = NavSubtextParser.distanceMeters(text)
 
-    private fun playBeep(side: Side, ducked: Boolean = duckedNow()) {
+    private fun playBeep(
+        side: Side, ducked: Boolean = duckedNow(), volumePercent: Int = this.volumePercent, swapChannels: Boolean = this.swapChannels,
+    ) {
         // Volume: user setting, cut way down while the bike is provably waiting
         // (stationary per GPS, or engine off per the vibration monitor) - the
         // R20 ride found full-rate beeping at a signal with the kill switch on

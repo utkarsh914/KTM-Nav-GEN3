@@ -40,7 +40,7 @@ import com.navigator.app.ui.components.LandscapePanelSpec
 import com.navigator.app.ui.feature.navigate.BikePillMapper
 import com.navigator.app.ui.feature.navigate.BikeSheetHost
 import com.navigator.app.ui.feature.record.rememberStartRecording
-import com.navigator.app.ui.shell.openGoogleMapsApp
+import com.navigator.app.ui.shell.GoogleMapsLauncher
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.delay
@@ -129,7 +129,7 @@ fun MirrorScreen(onOpenConnect: () -> Unit, modifier: Modifier = Modifier) {
             }
         },
         onSending = vm::setSending,
-        onOpenMaps = { openGoogleMapsApp(context) },
+        onOpenMaps = { GoogleMapsLauncher.openApp(context) },
         onRecord = startRecording,
     )
 

@@ -37,6 +37,7 @@ import com.navigator.app.R
 import com.navigator.app.app.AppIntents
 import com.navigator.app.audio.TurnBeeper
 import com.navigator.app.data.connection.ConnectionMapping
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.location.SpeedMonitor
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.nav.DashOutput
@@ -567,9 +568,7 @@ class BccuConnectionService : LifecycleService() {
      */
     private fun startForegroundWithTypes() {
         var fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-        val fine = ContextCompat.checkSelfPermission(
-            this, android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val fine = LocationPermission.hasPrecise(this)
         val background = ContextCompat.checkSelfPermission(
             this, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
         ) == PackageManager.PERMISSION_GRANTED

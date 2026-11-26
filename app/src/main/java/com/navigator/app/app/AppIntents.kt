@@ -195,7 +195,7 @@ class AppIntents {
             val parsed = parse(
                 action = intent.action,
                 type = intent.type,
-                text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim(),
+                text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.trim(),
                 openNav = intent.getBooleanExtra(EXTRA_OPEN_NAV, false),
                 shortcutSlot = AppShortcuts.slotFrom(intent),
                 request = intent.getStringExtra(EXTRA_REQUEST),

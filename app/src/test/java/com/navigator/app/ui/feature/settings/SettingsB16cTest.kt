@@ -32,6 +32,7 @@ import com.navigator.app.ui.feature.permissions.PermissionFix
 import com.navigator.app.ui.theme.KtmTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -162,6 +163,13 @@ class BackupAndAboutViewModelTest {
         assertFalse(vm.ui.value.restoring)
         vm.backUpTo(uri)
         assertTrue(vm.ui.value.restartPending)
+    }
+
+    @Test fun theRestartReminderOutlivesThePageThatRestored() = runTest(UnconfinedTestDispatcher()) {
+        val reminder = MutableStateFlow(false)
+        BackupViewModel(FakeGateway(), reminder).restore(uri, rides = false, places = false, settings = true)
+        // The page closed; a new one opens: it still says the app needs a restart.
+        assertTrue(BackupViewModel(FakeGateway(), reminder).ui.value.restartPending)
     }
 
     @Test fun aChosenFileOpensTheSheetWithWhatItHolds() = runTest(UnconfinedTestDispatcher()) {

@@ -50,6 +50,7 @@ object AppLogger {
 
     private const val MAX_FILE_BYTES = 4L * 1024 * 1024
     private const val KEEP_LOG_FILES = 5
+    private const val KEEP_PUBLIC_COPIES = 3
     private const val PREFS = "opendash_logging"
     private const val KEY_PUBLIC_MIRROR = "public_mirror"
     private var privateBytes = 0L
@@ -159,6 +160,7 @@ object AppLogger {
         val resolver = appContext.contentResolver
         if (!mediaStoreUriResolved) {
             mediaStoreUriResolved = true
+            prunePublicCopies(resolver)
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, logFile.name)
                 put(MediaStore.Downloads.MIME_TYPE, "text/plain")
@@ -168,6 +170,21 @@ object AppLogger {
         }
         val uri = mediaStoreUri ?: return
         resolver.openOutputStream(uri, "wa")?.use { it.write((line + "\n").toByteArray()) }
+    }
+
+    /** Every launch adds a copy to Downloads; keep the newest [KEEP_PUBLIC_COPIES] - 1 (a new one is about to be created). */
+    private fun prunePublicCopies(resolver: android.content.ContentResolver) {
+        runCatching {
+            val old = mutableListOf<Uri>()
+            resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.Downloads._ID),
+                "${MediaStore.Downloads.RELATIVE_PATH} = ? AND ${MediaStore.Downloads.DISPLAY_NAME} LIKE ?",
+                arrayOf("Download/OpenDash/", "opendash_log_%"), "${MediaStore.Downloads.DISPLAY_NAME} DESC",
+            )?.use { c ->
+                while (c.moveToNext()) old += android.content.ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(0))
+            }
+            old.drop(KEEP_PUBLIC_COPIES - 1).forEach { resolver.delete(it, null, null) }
+        }
     }
 
     fun currentLogFile(): File? = if (initialized) logFile else null

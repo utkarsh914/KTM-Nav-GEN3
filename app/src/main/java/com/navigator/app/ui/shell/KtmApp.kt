@@ -607,9 +607,7 @@ private fun openInGoogleMaps(context: Context, sharedText: String): Boolean {
     val uri = resolver.extractUrl(sharedText)?.toUri()
         ?: resolver.parseCoordinates(sharedText)?.let { "geo:${it.lat},${it.lng}".toUri() }
         ?: return false
-    val view = Intent(Intent.ACTION_VIEW, uri)
-    val maps = PlaceActions.mapsIntent(uri)
-    return runCatching { context.startActivity(maps) }.recoverCatching { context.startActivity(view) }.isSuccess
+    return GoogleMapsLauncher.open(context, Intent(Intent.ACTION_VIEW, uri))
 }
 
 /** The tag of a "Rides merged · Undo" offer; a page that edits the merged ride ends it by this tag. */

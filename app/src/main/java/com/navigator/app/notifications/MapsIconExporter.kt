@@ -24,7 +24,7 @@ import java.io.FileOutputStream
  */
 object MapsIconExporter {
 
-    private const val MAPS_PKG = "com.google.android.apps.maps"
+    private const val MAPS_PKG = NavNotificationFilter.GOOGLE_MAPS
     private const val RENDER = 128 // export at 128px; training script scales to 96
 
     val MANEUVER_NAMES: List<String> = listOf(

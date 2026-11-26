@@ -53,6 +53,12 @@ android {
         // (A shallow clone reports a truncated, too-small count: ignore it rather than risk a downgrade.)
         val shallow = gitOutput("rev-parse", "--is-shallow-repository") == "true"
         val commitCount = if (shallow) null else gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
+        // A release must not take the day-based fallback: it can be lower than an installed build's code and would
+        // install as a downgrade. Debug and benchmark builds may (they are never shipped).
+        val buildingRelease = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+        if (commitCount == null && buildingRelease) {
+            throw GradleException("A release build needs the git history for its versionCode (no git, or a shallow clone). Build from a full clone.")
+        }
         versionCode = if (commitCount != null) 100_000 + commitCount
         else maxOf(100_000, (System.currentTimeMillis() / 86_400_000L).toInt())
         // The release line + the commit it was built from (and "-dirty" for uncommitted
@@ -116,6 +122,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
             isDebuggable = false
+            isProfileable = true
             // Jank logging adds work to the frames being measured: off unless local.properties has JANK_LOG=true
             // (hand-testing the build; the Jank lines land in Settings > Logs).
             buildConfigField("boolean", "JANK_LOG", (localProps.getProperty("JANK_LOG") == "true").toString())
@@ -230,8 +237,6 @@ dependencies {
     implementation("androidx.metrics:metrics-performance:1.0.0")
     // Installs the Baseline Profile (src/main/baseline-prof.txt) on first run so the app is AOT-compiled without Play.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
-    // Composable names in system traces (Perfetto) of the benchmark build, for finding what makes a frame slow.
-    "benchmarkImplementation"("androidx.compose.runtime:runtime-tracing:1.0.0-beta01")
 
     // Required by the Navigation SDK AAR (it enables core-library desugaring itself).
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")

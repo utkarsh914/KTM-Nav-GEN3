@@ -29,10 +29,13 @@ data class AudioPickerUi(
 }
 
 /** DL8: pick the one device calls play through, or none. A tap saves. */
-class AudioPickerViewModel(private val settings: SettingsRepository, source: AudioDevices) : ViewModel() {
+class AudioPickerViewModel(private val settings: SettingsRepository, private val source: AudioDevices) : ViewModel() {
     private val devices = MutableStateFlow<AudioDeviceList?>(null)
 
-    init {
+    init { refresh() }
+
+    /** Read again when the page comes back: a speaker paired, or access allowed, while it was away. */
+    fun refresh() {
         viewModelScope.launch { devices.value = source.bonded() }
     }
 

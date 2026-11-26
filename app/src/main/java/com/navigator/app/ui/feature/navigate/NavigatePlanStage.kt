@@ -33,6 +33,7 @@ import com.navigator.app.ui.feature.navigate.plan.PlaceSaving
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheet
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheetActions
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheetState
+import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.PlanPanel
 import com.navigator.app.ui.feature.navigate.plan.ReplaceDecision
 import com.navigator.app.ui.feature.navigate.plan.ReplacePolicy
@@ -194,7 +195,7 @@ internal fun BoxScope.PreviewStage(plan: PlanStage, flow: NavFlowViewModel) {
             }
             else -> PlanPanel(onInsets = plan.onInsets) {
                 RouteSheet(
-                    state = RouteSheetMapper.state(dest, shownStops, shownPreview, System.currentTimeMillis()),
+                    state = RouteSheetMapper.state(dest, shownStops, shownPreview, System.currentTimeMillis(), PlanWords.of(resources)),
                     actions = RouteSheetActions(
                         onBack = plan.onBack,
                         onSelect = plan.onSelectRoute,

@@ -34,8 +34,10 @@ class AutoConnectReceiver : BroadcastReceiver() {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 val device = getDeviceExtra(intent) ?: return
                 val savedAddress = AppSettings(context).bondedDeviceAddress ?: return
-                AppLogger.log("AutoConnect", "ACL_CONNECTED from ${device.address}, saved=$savedAddress")
-                if (device.address.equals(savedAddress, ignoreCase = true)) {
+                // Only the bike's own address is logged: the log is mirrored to Downloads, and other devices are not ours to record.
+                val ours = device.address.equals(savedAddress, ignoreCase = true)
+                AppLogger.log("AutoConnect", if (ours) "ACL_CONNECTED from the bike ${device.address}" else "ACL_CONNECTED from another device")
+                if (ours) {
                     AppLogger.log("AutoConnect", "Match - starting BccuConnectionService")
                     BccuConnectionService.start(context, savedAddress, bikePresent = true)
                 }

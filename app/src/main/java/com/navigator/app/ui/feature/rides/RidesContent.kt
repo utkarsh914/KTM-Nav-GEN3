@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.rides
 
-import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -60,6 +59,7 @@ import com.navigator.app.ui.components.StateAction
 import com.navigator.app.ui.components.fullBleed
 import com.navigator.app.ui.components.keyboardClearance
 import com.navigator.app.ui.feature.record.RecordFab
+import com.navigator.app.ui.feature.replay.ReplayFormat
 import com.navigator.app.ui.shell.SnackbarClearance
 import com.navigator.app.ui.shell.rideContainer
 import com.navigator.app.ui.theme.KtmIcons
@@ -69,8 +69,6 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
 import com.navigator.app.ui.theme.rememberHaptics
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class RidesActions(
     val onOpenRide: (String) -> Unit,
@@ -318,8 +316,8 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
     val label = when (RidesListBuilder.dayKind(date, today)) {
         DayKind.Today -> stringResource(R.string.rides_day_today)
         DayKind.Yesterday -> stringResource(R.string.rides_day_yesterday)
-        DayKind.ThisYear -> date.format(DAY)
-        DayKind.Older -> date.format(DAY_YEAR)
+        DayKind.ThisYear -> ReplayFormat.headerDay(date, withYear = false)
+        DayKind.Older -> ReplayFormat.headerDay(date, withYear = true)
     }
     Text(
         label, style = MaterialTheme.typography.titleSmall, color = KtmTheme.colors.fg2,
@@ -327,12 +325,6 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
             .semantics { heading() },
     )
 }
-
-private fun dayFormatter(skeleton: String): DateTimeFormatter =
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton))
-
-private val DAY: DateTimeFormatter by lazy { dayFormatter("EEEdMMM") }
-private val DAY_YEAR: DateTimeFormatter by lazy { dayFormatter("dMMMyyyy") }
 
 @Composable
 private fun EmptyRides(autoRecordOn: Boolean, recording: Boolean, actions: RidesActions) {

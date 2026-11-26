@@ -161,7 +161,7 @@ private fun ColumnScope.Body(ui: TrimUi.Ready, actions: TrimActions) {
     }
     ui.kept?.let {
         Text(
-            stringResource(R.string.trim_keeps, DistanceFormatter.format(it.distanceMeters, DistanceUnits.METRIC), rideDuration(it.durationSeconds)),
+            stringResource(R.string.trim_keeps, DistanceFormatter.format(it.distanceMeters, DistanceUnits.METRIC), rideDuration(it.ridingSeconds)),
             style = MaterialTheme.typography.titleLarge, color = c.fg, modifier = Modifier.fillMaxWidth(),
         )
     }

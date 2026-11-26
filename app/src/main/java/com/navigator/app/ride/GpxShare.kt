@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
+import com.navigator.app.R
 import com.navigator.app.logging.AppLogger
 import java.io.File
 
@@ -26,16 +27,16 @@ object GpxShare {
         dir.listFiles()?.forEach { if (it.lastModified() < cutoff) runCatching { it.delete() } }
         val file = File(dir, Gpx.fileName(ride.destinationLabel, ride.startMs))
         return try {
-            file.writeText(Gpx.write(ride.destinationLabel ?: "Ride", points), Charsets.UTF_8)
+            file.writeText(Gpx.write(ride.destinationLabel ?: context.getString(R.string.gpx_default_name), points), Charsets.UTF_8)
             val uri = FileProvider.getUriForFile(context, AUTHORITY, file)
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "application/gpx+xml"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, ride.destinationLabel ?: "Ride")
+                putExtra(Intent.EXTRA_SUBJECT, ride.destinationLabel ?: context.getString(R.string.gpx_default_name))
                 clipData = ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            Intent.createChooser(send, "Share ride as GPX").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            Intent.createChooser(send, context.getString(R.string.gpx_share_title)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: Exception) {
             AppLogger.log("Ride", "!! GPX export failed: ${e.javaClass.simpleName}")
             null

@@ -1,5 +1,6 @@
 package com.navigator.app.ride
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -11,6 +12,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import androidx.core.content.ContextCompat
 import com.navigator.app.BuildConfig
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.logging.AppLogger
 import com.navigator.app.settings.AppSettings
 import java.io.Writer
@@ -63,12 +65,11 @@ class RideRecorder(private val context: Context) {
 
     /** Begin recording a new ride toward the given (optional) destination. */
     /** @return true when recording is running (also if it already was). */
+    @SuppressLint("MissingPermission") // LocationPermission.hasPrecise is checked first (lint cannot see through it)
     fun start(destLabel: String?, destLat: Double?, destLng: Double?, source: String = RideSource.NAV): Boolean {
         if (started) return true
         this.source = source
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!LocationPermission.hasPrecise(context)) {
             AppLogger.log("Ride", "No location permission - recording skipped")
             return false
         }
@@ -131,13 +132,12 @@ class RideRecorder(private val context: Context) {
         AppLogger.log("Ride", "Recording paused")
     }
 
+    @SuppressLint("MissingPermission") // LocationPermission.hasPrecise is checked first (lint cannot see through it)
     fun resume() {
         if (!started || !paused) return
         val ht = thread ?: return
         // Permission may have been revoked while paused.
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!LocationPermission.hasPrecise(context)) {
             AppLogger.log("Ride", "Can't resume: location permission is off")
             return
         }

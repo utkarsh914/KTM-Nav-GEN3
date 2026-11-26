@@ -73,6 +73,7 @@ import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.pick.AndroidReverseGeocoder
+import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.NewStop
 import com.navigator.app.ui.feature.navigate.plan.PlanFraming
 import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
@@ -488,7 +489,7 @@ fun NavigateHost(
                         selectedRoute = routePreview.selected,
                         frameAlso = listOfNotNull(origin?.let { MapPoint(it.first, it.second) }) +
                             stops.map { MapPoint(it.lat, it.lng) },
-                        routeLabels = RouteSheetMapper.callouts(routePreview.routes, stops.size),
+                        routeLabels = RouteSheetMapper.callouts(routePreview.routes, stops.size, PlanWords.of(resources)),
                         style = pinStyle,
                         pending = stopCandidate?.let { MapPoint(it.lat, it.lng) },
                         reframe = reframe,

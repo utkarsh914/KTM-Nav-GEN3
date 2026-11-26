@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.core.content.ContextCompat
 import com.navigator.app.R
+import com.navigator.app.location.LocationPermission
 import com.navigator.app.ride.RecordStartPolicy
 import com.navigator.app.ride.RecordStartResult
 import com.navigator.app.ride.RideRecordingService
@@ -47,8 +48,7 @@ fun rememberStartRecording(): () -> Unit {
     val resources = LocalResources.current
     return remember(context, feedback) {
         {
-            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
+            val granted = LocationPermission.hasPrecise(context)
             when (RecordStartPolicy.result(granted) { RideRecordingService.startManual(context) }) {
                 RecordStartResult.Started -> Unit
                 RecordStartResult.NeedsLocation -> feedback.snackbar(resources.getString(R.string.record_needs_location))

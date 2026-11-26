@@ -10,6 +10,8 @@ import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.FavoritePlace
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class PlacesUi(
     val home: SavedPlace?,
@@ -44,10 +48,11 @@ sealed interface PlacesEvent {
 class PlacesViewModel(
     private val repo: PlacesRepository,
     private val originProvider: () -> Pair<Double, Double>? = { null },
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private data class Local(val origin: Pair<Double, Double>? = null, val selecting: Boolean = false, val selected: Set<String> = emptySet())
 
-    private val local = MutableStateFlow(Local(origin = originProvider()))
+    private val local = MutableStateFlow(Local())
     private val _events = Channel<PlacesEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
     private var saved: List<SavedPlace> = emptyList()
@@ -69,7 +74,15 @@ class PlacesViewModel(
     val ui: StateFlow<PlacesUi> = combine(repo.favorites, local, ::build)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(repo.favorites.value, local.value))
 
-    fun refreshOrigin() = local.update { it.copy(origin = originProvider() ?: it.origin) }
+    init { refreshOrigin() }
+
+    /** The location lookup is a system call: off the main thread. A lost fix keeps the last known one. */
+    fun refreshOrigin() {
+        viewModelScope.launch {
+            val here = withContext(io) { originProvider() }
+            local.update { it.copy(origin = here ?: it.origin) }
+        }
+    }
 
     fun startSelecting(key: String? = null) =
         local.update { it.copy(selecting = true, selected = if (key != null) it.selected + key else it.selected) }
@@ -116,7 +129,7 @@ class PlacesViewModel(
             return object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    PlacesViewModel(container.places) { lastKnownLocation(app) } as T
+                    PlacesViewModel(container.places, { lastKnownLocation(app) }) as T
             }
         }
     }

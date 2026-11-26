@@ -41,7 +41,10 @@ data class SoundsUi(
 class SoundsViewModel(private val settings: SettingsRepository, private val devices: AudioDevices) : ViewModel() {
     private val bonded = MutableStateFlow<List<AudioDevice>>(emptyList())
 
-    init {
+    init { refresh() }
+
+    /** Read again: a speaker paired, or access allowed, while the page was away. */
+    fun refresh() {
         viewModelScope.launch { bonded.value = devices.bonded().devices }
     }
 

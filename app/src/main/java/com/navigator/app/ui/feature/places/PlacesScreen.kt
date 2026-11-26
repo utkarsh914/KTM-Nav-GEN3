@@ -19,6 +19,7 @@ import com.navigator.app.app.appContainer
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
 import com.navigator.app.ui.feature.navigate.StraightLine
+import com.navigator.app.ui.shell.GoogleMapsLauncher
 import com.navigator.app.ui.shell.LocalFeedback
 
 /**
@@ -66,7 +67,7 @@ fun PlacesScreen(
     BackHandler(enabled = ui.selecting) { vm.stopSelecting() }
 
     fun openMaps(intent: Intent) {
-        if (!startMaps(context, intent)) feedback.snackbar(resources.getString(R.string.places_maps_missing))
+        if (!GoogleMapsLauncher.open(context, intent)) feedback.snackbar(resources.getString(R.string.places_maps_missing))
     }
 
     PlacesContent(
@@ -110,8 +111,3 @@ fun PlacesScreen(
 
 fun slotName(slot: FavoriteSlot): Int = if (slot == FavoriteSlot.WORK) R.string.navigate_tile_work else R.string.navigate_tile_home
 
-/** Google Maps if it is installed, else whatever can show the link. */
-private fun startMaps(context: Context, intent: Intent): Boolean =
-    runCatching { context.startActivity(intent) }
-        .recoverCatching { context.startActivity(Intent(intent).setPackage(null)) }
-        .isSuccess

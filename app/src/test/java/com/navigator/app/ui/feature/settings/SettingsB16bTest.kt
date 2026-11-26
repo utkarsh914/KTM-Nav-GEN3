@@ -112,7 +112,7 @@ class SettingsB16bViewModelsTest {
     }
 
     @Test fun choosingANavAppSavesItAndListsTheKnownApps() = runTest(UnconfinedTestDispatcher()) {
-        val vm = NavAppPickerViewModel(settings) { "L-$it" }.also { it.ui.launchIn(backgroundScope) }
+        val vm = NavAppPickerViewModel(settings, { "L-$it" }, UnconfinedTestDispatcher(testScheduler)).also { it.ui.launchIn(backgroundScope) }
         assertEquals(AppSettings.KNOWN_NAV_APPS.size, vm.ui.value.apps.size)
         assertEquals(vm.ui.value.apps.map { it.label }.sortedBy { it.lowercase() }, vm.ui.value.apps.map { it.label })
         vm.choose("com.waze")

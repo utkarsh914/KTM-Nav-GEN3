@@ -113,6 +113,15 @@ class PickerViewModelTest {
         assertFalse(vm.ui.value.loading)
     }
 
+    @Test fun comingBackReadsTheSpeakersAgain() = runTest(UnconfinedTestDispatcher()) {
+        var paired = listOf(AudioDevice("11", "Sena"))
+        val vm = AudioPickerViewModel(settings) { AudioDeviceList(paired) }.also { it.ui.launchIn(backgroundScope) }
+        assertEquals(listOf("11"), vm.ui.value.devices.map { it.address })
+        paired = paired + AudioDevice("22", "Cardo")
+        vm.refresh()
+        assertEquals(listOf("11", "22"), vm.ui.value.devices.map { it.address })
+    }
+
     @Test fun choosingADeviceSavesItAndNoneClearsIt() = runTest(UnconfinedTestDispatcher()) {
         val vm = AudioPickerViewModel(settings) { AudioDeviceList(listOf(AudioDevice("11", "Sena"))) }.also { it.ui.launchIn(backgroundScope) }
         vm.choose("11")

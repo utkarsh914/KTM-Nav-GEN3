@@ -30,7 +30,7 @@ object SettingsSummary {
             )
             SettingsPage.SOUNDS -> CategorySummary(
                 listOf(
-                    if (snap.turnBeepEnabled) UiText.Res(R.string.settings_sum_beeps_at, listOf(snap.beepVolumePercent)) else UiText.Res(R.string.settings_sum_beeps_off),
+                    if (snap.turnBeepEnabled) UiText.Res(R.string.settings_sum_beeps_at, listOf(BeepVolume.of(snap.beepVolumePercent).percent)) else UiText.Res(R.string.settings_sum_beeps_off),
                     if (snap.overspeedEnabled) UiText.Res(R.string.settings_sum_alert_at, listOf(snap.overspeedLimitKmh))
                     else UiText.Res(R.string.settings_sum_alert_off),
                 ),

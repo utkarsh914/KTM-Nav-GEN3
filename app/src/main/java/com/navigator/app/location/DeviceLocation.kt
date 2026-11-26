@@ -9,9 +9,7 @@ import androidx.core.content.ContextCompat
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-fun hasLocationPermission(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-        PackageManager.PERMISSION_GRANTED
+fun hasLocationPermission(context: Context): Boolean = LocationPermission.hasPrecise(context)
 
 /**
  * A fresh current-location fix (falls back to last-known). Used for the route

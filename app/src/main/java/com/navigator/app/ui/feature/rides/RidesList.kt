@@ -54,7 +54,7 @@ object RidesListBuilder {
         val by: Comparator<RecordedRide> = when (sort.field) {
             RideSortField.Date -> compareBy { it.startMs }
             RideSortField.Distance -> compareBy { it.distanceMeters }
-            RideSortField.Duration -> compareBy { it.durationSeconds }
+            RideSortField.Duration -> compareBy { it.ridingSeconds }
             RideSortField.TopSpeed -> compareBy { it.maxSpeedKmh }
         }
         val ordered = shown.sortedWith((if (sort.desc) by.reversed() else by).thenByDescending { it.startMs })

@@ -49,8 +49,13 @@ data class RestoreChoice(val rides: Boolean, val places: Boolean, val settings: 
 }
 
 /** ST8: back up, restore, and the results. */
-class BackupViewModel(private val gateway: BackupGateway, private val onRestored: () -> Unit = {}) : ViewModel() {
-    private val _ui = MutableStateFlow(BackupUi())
+class BackupViewModel(
+    private val gateway: BackupGateway,
+    /** Lives in the container: the reminder to restart stands until the app does, not until this page closes. */
+    private val restartPending: MutableStateFlow<Boolean> = MutableStateFlow(false),
+    private val onRestored: () -> Unit = {},
+) : ViewModel() {
+    private val _ui = MutableStateFlow(BackupUi(restartPending = restartPending.value))
     val ui: StateFlow<BackupUi> = _ui.asStateFlow()
     private val _events = Channel<BackupEvent>(Channel.BUFFERED)
     val events: Flow<BackupEvent> = _events.receiveAsFlow()
@@ -87,7 +92,8 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         _ui.update { it.copy(busy = true, restore = null, restoring = true) }
         viewModelScope.launch {
             val r = gateway.restore(uri, rides, places, settings)
-            _ui.update { it.copy(busy = false, restoring = false, restartPending = it.restartPending || (r.ok && settings)) }
+            if (r.ok && settings) restartPending.value = true
+            _ui.update { it.copy(busy = false, restoring = false, restartPending = restartPending.value) }
             if (r.ok) onRestored()
             _events.send(
                 if (r.ok) BackupEvent.Restored(
@@ -110,7 +116,7 @@ class BackupViewModel(private val gateway: BackupGateway, private val onRestored
         fun factory(container: AppContainer, context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                BackupViewModel(AndroidBackupGateway(context)) { container.settings.refresh() } as T
+                BackupViewModel(AndroidBackupGateway(context), container.restartPending) { container.settings.refresh() } as T
         }
     }
 }

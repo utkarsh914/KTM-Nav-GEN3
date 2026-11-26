@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.rides
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -44,6 +43,7 @@ import com.navigator.app.ui.components.KtmBadge
 import com.navigator.app.ui.components.KtmIconButton
 import com.navigator.app.ui.components.highlightedText
 import com.navigator.app.ui.components.rideDuration
+import com.navigator.app.ui.feature.replay.ReplayFormat
 import com.navigator.app.ui.theme.KtmIcons
 import com.navigator.app.ui.theme.KtmLayout
 import com.navigator.app.ui.theme.KtmShapes
@@ -51,10 +51,7 @@ import com.navigator.app.ui.theme.KtmSpacing
 import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.rememberHaptics
 import java.time.Instant
-import java.time.Year
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** One ride on the list: a route thumbnail, what it is and how it began, one stats line, and the star. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -140,19 +137,8 @@ private fun rideStats(ride: RecordedRide, short: Boolean = false): String {
     else stringResource(R.string.ride_stats_two, distance, duration)
 }
 
-private val DAY: DateTimeFormatter by lazy {
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMM"))
-}
-
-private val DAY_YEAR: DateTimeFormatter by lazy {
-    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEdMMMyyyy"))
-}
-
-/** With no day headers the card names its day, and the year when it is not this one. */
-private fun rideDay(ms: Long): String {
-    val day = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
-    return (if (day.year == Year.now().value) DAY else DAY_YEAR).format(day)
-}
+/** With no day headers the card names its day, and the year when it is not this one (the same wording as the headers). */
+private fun rideDay(ms: Long): String = ReplayFormat.rideDay(ms)
 
 private fun rideTime(ms: Long): String = ClockFormat.formatter().format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 

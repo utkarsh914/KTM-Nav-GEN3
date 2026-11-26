@@ -52,6 +52,22 @@ class RideMetricsTest {
         assertEquals(59, s.durationSeconds)
     }
 
+    @Test fun denseSpeedlessPointsOfASlowRideStillCountDistance() {
+        // 0.000025 deg lng ~ 2.8 m per second (10 km/h): under the jitter hop, but moving, and the track has no speeds.
+        val pts = (0 until 101).map { RidePoint(0.0, it * 0.000025, 1_000L * it, null) }
+        val s = RideMetrics.summarize(pts)
+        // The first few seconds are too short a look to tell riding from a bounce, so they count as still.
+        assertEquals(264.0, s.distanceMeters.toDouble(), 10.0)
+        assertEquals(95.0, s.movingSeconds.toDouble(), 2.0)
+    }
+
+    @Test fun denseSpeedlessPointsOfAStandStillAreStillJitter() {
+        // 0.000005 deg ~ 0.55 m per second (2 km/h is the line): drifting in place.
+        val pts = (0 until 101).map { RidePoint(0.0, it * 0.000002, 1_000L * it, null) }
+        val s = RideMetrics.summarize(pts)
+        assertEquals(0, s.distanceMeters)
+    }
+
     @Test fun slowRidingIsNotMistakenForJitter() {
         // 2.8 m per second = ~10 km/h: hops are under 3 m but speed says moving.
         val pts = (0 until 11).map { RidePoint(0.0, it * 0.000025, 1_000L * it, 10f) }

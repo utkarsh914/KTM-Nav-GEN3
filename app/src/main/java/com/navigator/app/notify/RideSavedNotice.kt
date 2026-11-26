@@ -46,7 +46,7 @@ object RideSavedNotice {
             NotificationChannels.ensure(context, NotificationChannels.RIDE_SAVED)
             val text = context.getString(
                 R.string.rec_saved_text,
-                DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), rideDurationText(context.resources, ride.durationSeconds),
+                DistanceFormatter.format(ride.distanceMeters, DistanceUnits.METRIC), rideDurationText(context.resources, ride.ridingSeconds),
             )
             val open = NotificationActions.open(context, NotificationRequestCodes.RIDE_SAVED, AppIntents.REQUEST_RIDE, ride.id)
             val n = Notification.Builder(context, NotificationChannels.RIDE_SAVED)

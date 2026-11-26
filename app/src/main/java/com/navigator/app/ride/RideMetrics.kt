@@ -45,6 +45,10 @@ object RideMetrics {
     /** At/above this speed the rider counts as moving. */
     const val MOVING_KMH = 2.0
 
+    /** How far back a fix without a speed looks to tell riding slowly from drifting in place. */
+    const val SPEEDLESS_WINDOW_MS = 10_000L
+    const val SPEEDLESS_MIN_SPAN_MS = 5_000L
+
     /** Great-circle distance between two lat/lng points, in metres. */
     fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
         val dLat = Math.toRadians(lat2 - lat1)
@@ -75,6 +79,17 @@ object RideMetrics {
         private var rejectStreak = 0
         private var pausedMs = 0L
         private val elevation = ElevationTracker()
+        private val window = ArrayDeque<RidePoint>()
+
+        /** Net speed from the oldest fix within [SPEEDLESS_WINDOW_MS] to [p]. */
+        private fun windowKmh(p: RidePoint): Float {
+            while (window.isNotEmpty() && p.timeMs - window.first().timeMs > SPEEDLESS_WINDOW_MS) window.removeFirst()
+            val from = window.firstOrNull() ?: return 0f
+            val dtMs = p.timeMs - from.timeMs
+            // Too short a look cannot tell a ride from a bounce: the first seconds of a dense track count as still.
+            if (dtMs < SPEEDLESS_MIN_SPAN_MS) return 0f
+            return (haversineMeters(from.lat, from.lng, p.lat, p.lng) / (dtMs / 1000.0) * 3.6).toFloat()
+        }
 
         /** Feed one fix; returns false when it was rejected as a glitch (and must not be recorded). */
         fun add(p: RidePoint): Boolean {
@@ -100,9 +115,11 @@ object RideMetrics {
                 val dtMs = p.timeMs - lastMs
                 val hop = haversineMeters(prevLat, prevLng, p.lat, p.lng)
                 val speed = p.speedKmh
-                val stationaryJitter = hop < JITTER_HOP_M && (speed == null || speed < MOVING_KMH)
-                if (!stationaryJitter) distanceM += hop
                 val impliedKmh = if (dtMs > 0) hop / (dtMs / 1000.0) * 3.6 else 0.0
+                // Without a reported speed (a GPX track) the ground covered over the last few seconds says it: a dense
+                // track of a slow ride is not jitter, while a position that bounces about in place covers none.
+                val stationaryJitter = hop < JITTER_HOP_M && (speed ?: windowKmh(p)) < MOVING_KMH
+                if (!stationaryJitter) distanceM += hop
                 val moving = !stationaryJitter &&
                     (if (speed != null) speed >= MOVING_KMH else impliedKmh >= MOVING_KMH)
                 if (moving && dtMs > 0) movingMs += dtMs
@@ -113,6 +130,8 @@ object RideMetrics {
                 started = true
             }
             elevation.add(p.altM, p.gapBefore)
+            if (gap || resync) window.clear()
+            window.addLast(p)
             lastMs = p.timeMs
             prevLat = p.lat
             prevLng = p.lng

@@ -63,14 +63,15 @@ class RidesRepository(
 
     /**
      * Store a GPX document as a ride (saved, so the history limit never prunes it). [open] reads the document; [name]
-     * is the file's name, used when the track has none. Runs to completion even if the caller leaves.
+     * is the file's name (looked up here, off the main thread), used when the track has none. Runs to completion even if
+     * the caller leaves.
      */
-    suspend fun importGpx(open: () -> InputStream?, name: String?): ImportResult =
+    suspend fun importGpx(open: () -> InputStream?, name: () -> String? = { null }): ImportResult =
         withContext(io + NonCancellable) {
             val track = runCatching { open()?.use { Gpx.parse(it, System.currentTimeMillis()) } }.getOrNull()
                 ?: return@withContext ImportResult.Unreadable
             if (store.findDuplicate(track.points) != null) return@withContext ImportResult.Duplicate
-            val label = RideTrim.cleanName(track.name ?: name?.replace(Regex("\\.gpx$", RegexOption.IGNORE_CASE), ""))
+            val label = RideTrim.cleanName(track.name ?: name()?.replace(Regex("\\.gpx$", RegexOption.IGNORE_CASE), ""))
             store.importRide(label, track.points)?.let { ImportResult.Imported(it) } ?: ImportResult.TooShort
         }
 
