@@ -7,7 +7,7 @@ The redesign release. The version moves from 0.6 to 1.0.
 ### New design
 - One design system for every screen: colours, type, shapes and components, light and dark, with any accent colour (contrast checked). The riding screens have their own Day/Night mode.
 - One KTM look. The brand picker and Husqvarna theming are gone (Husqvarna dashes still work, they share the electronics). Distances are in kilometres everywhere.
-- Motion follows Android's "Remove animations" setting live. Pages slide in and out, tabs fade in with a small rise, and the back swipe follows the same slide as the back arrow.
+- Motion follows Android's "Remove animations" setting live. Pages slide in and out, tabs fade in with a small rise, and the back swipe, the Back button and the back arrow all play the same transition.
 - TalkBack labels and actions on controls, an adjustable colour picker, and layouts checked at large font sizes.
 
 ### Navigate and riding

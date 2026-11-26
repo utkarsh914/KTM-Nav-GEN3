@@ -158,7 +158,7 @@ class KtmMotionSpecs(val reduced: Boolean = false) {
         /** M4 fallback switch: off, search slides up as before instead of the field growing into the panel. */
         const val SEARCH_CONTAINER = true
 
-        /** What a page (a list page) or a dialog shrinks to in a back swipe: Android's back preview. */
+        /** What a dialog shrinks to in a back swipe: Android's back preview (pages do not follow the finger, D41). */
         const val BACK_SCALE = 0.9f
 
         /** Where a dialog and the bike greeting start growing from. */

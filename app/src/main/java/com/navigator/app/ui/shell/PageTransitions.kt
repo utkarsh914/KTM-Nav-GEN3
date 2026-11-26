@@ -161,7 +161,7 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExitFor(motion
     mapToPage() || mapToMap() -> holdUntilFaded(motion.effectsDefault())
     // Back to Navigate from another tab: the old tab dissolves away on top of a Navigate that is already there.
     motion.reduced || tabSwitch() -> holdUntilFaded(motion.effectsFast())
-    // Also what a predictive back swipe previews: the same slide as the arrow, nothing else.
+    // Also the fallback of a predictive pop (PageBack normally keeps one from happening): the same slide as the arrow.
     else -> slideOutHorizontally(motion.page()) { it }
 }
 

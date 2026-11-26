@@ -54,7 +54,7 @@ fun MapClaim(
     }
 
     // The map is taken by the page that is on top of the back stack and has arrived, not by one that is only composing (a
-    // back-swipe preview, the page under a push). A page that loses the map and is then on top again takes it back.
+    // the page under a push). A page that loses the map and is then on top again takes it back.
     val nav = LocalPageNav.current
     val entry = LocalPageEntry.current
     val stack by (nav?.backStack() ?: remember { MutableStateFlow(emptyList<NavBackStackEntry>()) }).collectAsState()

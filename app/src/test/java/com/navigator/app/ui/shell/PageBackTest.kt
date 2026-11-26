@@ -67,6 +67,11 @@ class PageBackTest {
                         page<Route.Rides> { Text("rides") }
                         page<Route.Logs> { Text("logs") }
                         page<Route.SymbolTest> { Text("symbols") }
+                        page<Route.RideReplay> { e -> Text("ride ${e.toRoute<Route.RideReplay>().rideId}") }
+                        page<Route.TurnCalibration> {
+                            BackHandler(enabled = true) {} // a busy page that swallows Back
+                            Text("busy")
+                        }
                         page<Route.Places> {
                             var open by rememberSaveable { mutableStateOf(false) }
                             BackHandler(enabled = open) { open = false }
@@ -151,6 +156,32 @@ class PageBackTest {
         rule.runOnIdle {
             assertEquals("Back returns to Bike & dash", SettingsPage.BIKE_DASH, nav!!.currentBackStackEntry!!.toRoute<Route.SettingsPage>().page)
         }
+    }
+
+    @Test fun anotherRideOpensOverTheOneOnTopAndTheSameRideIsNotStackedTwice() {
+        host()
+        rule.runOnIdle {
+            nav!!.push(Route.RideReplay("a"))
+            nav!!.push(Route.RideReplay("a"))
+        }
+        settle()
+        assertEquals("the same ride twice is one page", 2, rule.runOnIdle { nav!!.pageStackIds().size })
+        rule.runOnIdle { nav!!.push(Route.RideReplay("b")) }
+        settle()
+        assertEquals("another ride is not lost", 3, rule.runOnIdle { nav!!.pageStackIds().size })
+        rule.onNodeWithText("ride b").assertIsDisplayed()
+    }
+
+    @Test fun aBusyPageStillSwallowsBackAndTheRootIsLeftToTheSystem() {
+        host()
+        swipe(0.5f, release = true) // the root: nothing here handles it, the page stays
+        settle()
+        rule.onNodeWithText("rides").assertIsDisplayed()
+        rule.runOnIdle { nav!!.push(Route.TurnCalibration) }
+        settle()
+        swipe(0.5f, release = true)
+        settle()
+        rule.onNodeWithText("busy").assertIsDisplayed()
     }
 
     @Test fun aPageClosesOnlyWhenItIsOnTopWithAPageUnderIt() {

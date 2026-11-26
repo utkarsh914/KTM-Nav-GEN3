@@ -565,10 +565,17 @@ fun NavHostController.push(route: Route) {
     navigate(route)
 }
 
+/** The page on top already is [route]: same destination and same arguments (another ride, or section, is a new page). */
 internal fun isSamePage(top: NavBackStackEntry, route: Route): Boolean = when {
     !top.destination.hasRoute(route::class) -> false
     route is Route.SettingsPage -> top.toRoute<Route.SettingsPage>() == route
-    else -> true
+    route is Route.Pairing -> top.toRoute<Route.Pairing>() == route
+    route is Route.RideReplay -> top.toRoute<Route.RideReplay>() == route
+    route is Route.EditRide -> top.toRoute<Route.EditRide>() == route
+    route is Route.TrimRide -> top.toRoute<Route.TrimRide>() == route
+    route is Route.PickPlace -> top.toRoute<Route.PickPlace>() == route
+    route is Route.MergeRides -> top.toRoute<Route.MergeRides>() == route
+    else -> true // a route without arguments
 }
 
 /**
