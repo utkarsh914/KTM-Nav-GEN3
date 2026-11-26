@@ -1,9 +1,6 @@
 package com.navigator.app.ui.feature.places
 
-import android.Manifest
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -23,11 +20,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
 import com.navigator.app.location.LocationPermission
+import com.navigator.app.location.PermissionAsk
 import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.SavedPlace
@@ -95,12 +91,13 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
     val unavailableText = resources.getString(R.string.search_current_unavailable)
     val fallbackName = resources.getString(R.string.places_current_label)
     // Asked at the moment it is needed; a refusal says so instead of doing nothing.
+    val ask = remember { PermissionAsk() }
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         if (granted.values.any { it }) useHere(unavailableText, fallbackName)
         else {
             // After "don't ask again" Android shows no dialog any more: the way out is the app's own settings.
             val activity = context.findHostActivity()
-            val stuck = activity != null && LocationPermission.cannotAskAgain(activity)
+            val stuck = ask.refusedForGood(activity, LocationPermission.REQUEST.toList())
             feedback.snackbar(
                 resources.getString(R.string.search_current_denied),
                 if (stuck) resources.getString(R.string.common_open_settings) else null,
@@ -131,7 +128,10 @@ fun PlacePickScreen(slot: FavoriteSlot, retainedNav: RetainedNavigationView, onB
                 onBack = onBack,
                 onPickOnMap = { mapping = true },
                 onUseCurrent = {
-                    if (LocationPermission.hasAny(context)) useHere(unavailableText, fallbackName) else askLocation.launch(LocationPermission.REQUEST)
+                    if (LocationPermission.hasAny(context)) useHere(unavailableText, fallbackName) else {
+                        ask.begin(context.findHostActivity(), LocationPermission.REQUEST.toList())
+                        askLocation.launch(LocationPermission.REQUEST)
+                    }
                 },
             )
         }

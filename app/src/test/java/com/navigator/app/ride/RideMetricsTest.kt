@@ -62,7 +62,7 @@ class RideMetricsTest {
     }
 
     @Test fun denseSpeedlessPointsOfAStandStillAreStillJitter() {
-        // 0.000005 deg ~ 0.55 m per second (2 km/h is the line): drifting in place.
+        // 0.000002 deg ~ 0.22 m per second (2 km/h is the line): drifting in place.
         val pts = (0 until 101).map { RidePoint(0.0, it * 0.000002, 1_000L * it, null) }
         val s = RideMetrics.summarize(pts)
         assertEquals(0, s.distanceMeters)

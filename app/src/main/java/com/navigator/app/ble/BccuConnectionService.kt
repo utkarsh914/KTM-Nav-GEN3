@@ -1,9 +1,7 @@
 package com.navigator.app.ble
 
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -45,7 +43,6 @@ import com.navigator.app.nav.DashPreview
 import com.navigator.app.nav.DashPreviewTee
 import com.navigator.app.nav.NavigationCoordinator
 import com.navigator.app.nav.NavigationProvider
-import com.navigator.app.nav.model.NavSessionState
 import com.navigator.app.nav.providers.GoogleNavSdkController
 import com.navigator.app.nav.providers.GoogleNavSdkProvider
 import com.navigator.app.nav.providers.NotificationNavProvider
@@ -55,7 +52,6 @@ import com.navigator.app.notify.NotificationActions
 import com.navigator.app.notify.NotificationChannels
 import com.navigator.app.notify.NotificationRequestCodes
 import com.navigator.app.notify.StatusNotification
-import com.navigator.app.ride.RideSession
 import com.navigator.app.ride.formatElapsed
 import com.navigator.app.settings.AppSettings
 import com.navigator.app.ui.AppForegroundState

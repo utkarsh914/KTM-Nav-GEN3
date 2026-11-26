@@ -1,14 +1,11 @@
 package com.navigator.app.ride
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.annotation.StringRes
-import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
 import com.navigator.app.location.LocationPermission

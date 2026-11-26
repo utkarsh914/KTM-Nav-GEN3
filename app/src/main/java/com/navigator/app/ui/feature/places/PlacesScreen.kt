@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.places
 
-import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable

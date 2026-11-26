@@ -10,7 +10,7 @@ data class PlanWords(val duration: DurationText.Format, val arrive: String, val 
         val English = PlanWords(DurationText.Format.English, "arrive %1\$s", "+%1\$d min traffic")
 
         fun of(res: Resources) = PlanWords(
-            DurationText.Format.of(res), res.getString(R.string.route_arrive_template), res.getString(R.string.route_delay_template),
+            DurationText.Format.of(res), res.getString(R.string.route_arrive_template), res.getString(R.string.route_delay),
         )
     }
 }

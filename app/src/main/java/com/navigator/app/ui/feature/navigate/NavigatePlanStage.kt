@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -33,8 +33,8 @@ import com.navigator.app.ui.feature.navigate.plan.PlaceSaving
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheet
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheetActions
 import com.navigator.app.ui.feature.navigate.plan.PlaceSheetState
-import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.PlanPanel
+import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.ReplaceDecision
 import com.navigator.app.ui.feature.navigate.plan.ReplacePolicy
 import com.navigator.app.ui.feature.navigate.plan.RoutePreviewState

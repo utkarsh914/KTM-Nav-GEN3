@@ -1,10 +1,7 @@
 package com.navigator.app
 
-import android.Manifest
 import android.app.Application
-import android.content.pm.PackageManager
 import android.text.format.DateFormat
-import androidx.core.content.ContextCompat
 import com.navigator.app.app.AppContainer
 import com.navigator.app.app.DefaultAppContainer
 import com.navigator.app.ble.DashText

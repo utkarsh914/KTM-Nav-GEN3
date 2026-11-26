@@ -1,6 +1,5 @@
 package com.navigator.app.ui.feature.navigate
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -22,16 +21,14 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import com.navigator.app.location.LocationPermission
-import com.navigator.app.ui.theme.KtmMotionSpecs
-import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.navigator.app.R
 import com.navigator.app.app.appContainer
+import com.navigator.app.location.LocationPermission
+import com.navigator.app.location.PermissionAsk
 import com.navigator.app.location.lastKnownLocation
 import com.navigator.app.nav.destination.FavoriteSlot
 import com.navigator.app.nav.destination.PlaceCategory
@@ -46,6 +43,8 @@ import com.navigator.app.ui.map.MapController
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.shell.ImmersiveEffect
 import com.navigator.app.ui.shell.LocalFeedback
+import com.navigator.app.ui.theme.KtmMotionSpecs
+import kotlinx.coroutines.delay
 
 /** Whether the phone has a speech recogniser to hand the voice button to. */
 internal fun voiceAvailable(context: Context): Boolean =
@@ -97,10 +96,10 @@ fun NavigateRoute(
     }
     val blocked = stringResource(R.string.permission_blocked)
     val openSettings = stringResource(R.string.common_open_settings)
+    val ask = remember { PermissionAsk() }
     val allow = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         // "Don't ask again": the system dialog can no longer appear. Offer the app's settings; never jump there.
-        val activity = context.findHostActivity()
-        if (result.values.none { it } && activity != null && LocationPermission.cannotAskAgain(activity)) {
+        if (result.values.none { it } && ask.refusedForGood(context.findHostActivity(), LocationPermission.REQUEST.toList())) {
             feedback.snackbar(blocked, openSettings) {
                 runCatching {
                     context.startActivity(
@@ -142,7 +141,7 @@ fun NavigateRoute(
         ),
         onBike = { if (state.bike.opensPairing) onOpenPairing() else showBike = true },
         onFixLocation = {
-            if (location == LocationState.PermissionOff) allow.launch(LocationPermission.REQUEST)
+            if (location == LocationState.PermissionOff) { ask.begin(context.findHostActivity(), LocationPermission.REQUEST.toList()); allow.launch(LocationPermission.REQUEST) }
             else runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
         },
         onRetryMap = onRetryMap,

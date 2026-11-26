@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
-import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,13 +18,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.core.app.ActivityCompat
 import com.navigator.app.R
 import com.navigator.app.ble.BccuConnectionService
+import com.navigator.app.location.PermissionAsk
 import com.navigator.app.ui.findHostActivity
 import com.navigator.app.ui.shell.LocalFeedback
-
-private const val NO_DIALOG_MS = 400L
 
 /** Carries out a [FixStep]: Android's dialogs and screens, and the explainer sheet that comes first. */
 class PermissionFixer internal constructor(
@@ -65,25 +62,19 @@ fun rememberPermissionFixer(onResult: () -> Unit): PermissionFixer {
         resources.getString(R.string.permission_blocked), resources.getString(R.string.common_open_settings),
     ) { openAppSettings() }
 
-    // Android shows no dialog once it has been refused for good, and answers at once: that, or a refusal that left no
-    // rationale after one was due, is "don't ask again". A first prompt that is only dismissed is neither.
-    var askedAt by remember { mutableLongStateOf(0L) }
-    var rationaleWasDue by remember { mutableStateOf(false) }
-    fun answeredWithoutDialog() = SystemClock.elapsedRealtime() - askedAt < NO_DIALOG_MS
-    fun cannotAskAgain(permission: String): Boolean {
-        val activity = context.findHostActivity() ?: return false
-        return !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
-    }
+    // A first prompt that is only dismissed is "not now"; see PermissionAsk. (Lost on a rotation mid-prompt: then no offer, which is safe.)
+    val ask = remember { PermissionAsk() }
 
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         refresh()
         if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) BccuConnectionService.reevaluateLocationIfRunning()
         val denied = result.filterValues { !it }.keys
-        if (denied.isNotEmpty() && denied.all(::cannotAskAgain) && (rationaleWasDue || answeredWithoutDialog())) offerSettings()
+        if (denied.isNotEmpty() && ask.refusedForGood(context.findHostActivity(), denied)) offerSettings()
     }
     val background = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         refresh()
-        if (granted) BccuConnectionService.reevaluateLocationIfRunning() else offerSettings()
+        // Android itself opens the app's location page for this one: a refusal is just the rider leaving it, so nothing is said.
+        if (granted) BccuConnectionService.reevaluateLocationIfRunning()
     }
     val battery = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { refresh() }
 
@@ -95,9 +86,7 @@ fun rememberPermissionFixer(onResult: () -> Unit): PermissionFixer {
         run = { step ->
             when (step) {
                 is FixStep.Request -> {
-                    askedAt = SystemClock.elapsedRealtime()
-                    val activity = context.findHostActivity()
-                    rationaleWasDue = activity != null && step.permissions.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
+                    ask.begin(context.findHostActivity(), step.permissions)
                     request.launch(step.permissions.toTypedArray())
                 }
                 is FixStep.Explain -> explainer = step.explainer

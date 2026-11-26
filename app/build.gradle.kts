@@ -55,7 +55,10 @@ android {
         val commitCount = if (shallow) null else gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull()
         // A release must not take the day-based fallback: it can be lower than an installed build's code and would
         // install as a downgrade. Debug and benchmark builds may (they are never shipped).
-        val buildingRelease = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+        val buildingRelease = gradle.startParameter.taskNames.any { t ->
+            val name = t.substringAfterLast(':')
+            name.contains("release", ignoreCase = true) || name in setOf("assemble", "build", "bundle")
+        }
         if (commitCount == null && buildingRelease) {
             throw GradleException("A release build needs the git history for its versionCode (no git, or a shallow clone). Build from a full clone.")
         }

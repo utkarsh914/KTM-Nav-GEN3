@@ -132,6 +132,7 @@ object RideMetrics {
             elevation.add(p.altM, p.gapBefore)
             if (gap || resync) window.clear()
             window.addLast(p)
+            while (p.timeMs - window.first().timeMs > SPEEDLESS_WINDOW_MS) window.removeFirst()
             lastMs = p.timeMs
             prevLat = p.lat
             prevLng = p.lng

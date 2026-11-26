@@ -1,7 +1,5 @@
 package com.navigator.app.ui.feature.record
 
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.location.LocationPermission
 import com.navigator.app.ride.RecordStartPolicy

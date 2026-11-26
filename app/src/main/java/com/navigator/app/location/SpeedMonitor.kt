@@ -1,10 +1,8 @@
 package com.navigator.app.location
 
 import android.annotation.SuppressLint
-import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -14,7 +12,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.navigator.app.R
 import com.navigator.app.ble.BccuConnectionService
 import com.navigator.app.logging.AppLogger

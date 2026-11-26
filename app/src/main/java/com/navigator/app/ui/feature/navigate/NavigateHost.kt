@@ -24,12 +24,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -73,9 +72,9 @@ import com.navigator.app.ui.feature.navigate.finished.TripFinishedViewModel
 import com.navigator.app.ui.feature.navigate.link.SharedLinkActions
 import com.navigator.app.ui.feature.navigate.link.SharedLinkCard
 import com.navigator.app.ui.feature.navigate.pick.AndroidReverseGeocoder
-import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.NewStop
 import com.navigator.app.ui.feature.navigate.plan.PlanFraming
+import com.navigator.app.ui.feature.navigate.plan.PlanWords
 import com.navigator.app.ui.feature.navigate.plan.ReplaceTripDialog
 import com.navigator.app.ui.feature.navigate.plan.RoutePreviewViewModel
 import com.navigator.app.ui.feature.navigate.plan.RouteSheetMapper
@@ -96,7 +95,6 @@ import com.navigator.app.ui.map.FollowMode
 import com.navigator.app.ui.map.LocationMarkerStyle
 import com.navigator.app.ui.map.MapClaim
 import com.navigator.app.ui.map.MapInsets
-import com.navigator.app.ui.map.settled
 import com.navigator.app.ui.map.MapPoint
 import com.navigator.app.ui.map.MapStop
 import com.navigator.app.ui.map.PreviewPinStyle
@@ -105,6 +103,7 @@ import com.navigator.app.ui.map.TripPreviewScene
 import com.navigator.app.ui.map.rememberDeviceHeadingState
 import com.navigator.app.ui.map.rememberDeviceLatLng
 import com.navigator.app.ui.map.rememberMapController
+import com.navigator.app.ui.map.settled
 import com.navigator.app.ui.shell.ChipTone
 import com.navigator.app.ui.shell.ImmersiveEffect
 import com.navigator.app.ui.shell.LocalFeedback
@@ -124,8 +123,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Transition between [NavStage] chrome. Between BROWSE and SEARCH the Where to? field and the panel are one
  *  container ([searchContainer]), so the stage only fades around it; the panel from or to any other stage slides

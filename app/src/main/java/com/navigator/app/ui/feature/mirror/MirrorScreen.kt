@@ -45,10 +45,10 @@ import com.navigator.app.ui.theme.KtmTheme
 import com.navigator.app.ui.theme.pageInsets
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 class MirrorViewModel(private val repo: MirrorRepository) : ViewModel() {
